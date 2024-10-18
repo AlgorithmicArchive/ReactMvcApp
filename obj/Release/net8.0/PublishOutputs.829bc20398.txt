@@ -1,0 +1,9 @@
+/home/momin/Github/ReactMvcApp/bin/Release/net8.0/publish/ReactMvcApp
+/home/momin/Github/ReactMvcApp/bin/Release/net8.0/publish/appsettings.Development.json
+/home/momin/Github/ReactMvcApp/bin/Release/net8.0/publish/appsettings.json
+/home/momin/Github/ReactMvcApp/bin/Release/net8.0/publish/package-lock.json
+/home/momin/Github/ReactMvcApp/bin/Release/net8.0/publish/package.json
+/home/momin/Github/ReactMvcApp/bin/Release/net8.0/publish/ReactMvcApp.dll
+/home/momin/Github/ReactMvcApp/bin/Release/net8.0/publish/ReactMvcApp.deps.json
+/home/momin/Github/ReactMvcApp/bin/Release/net8.0/publish/ReactMvcApp.runtimeconfig.json
+/home/momin/Github/ReactMvcApp/bin/Release/net8.0/publish/ReactMvcApp.pdb

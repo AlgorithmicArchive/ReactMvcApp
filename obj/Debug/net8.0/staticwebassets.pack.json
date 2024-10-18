@@ -1,0 +1,349 @@
+{
+  "Files": [
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/obj/Debug/net8.0/scopedcss/projectbundle/ReactMvcApp.bundle.scp.css",
+      "PackagePath": "staticwebassets/ReactMvcApp.bundle.scp.css"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/LadliBeti.jpg",
+      "PackagePath": "staticwebassets/assets/images/LadliBeti.jpg"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/LadliBeti.png",
+      "PackagePath": "staticwebassets/assets/images/LadliBeti.png"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/Pension.png",
+      "PackagePath": "staticwebassets/assets/images/Pension.png"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/contact.png",
+      "PackagePath": "staticwebassets/assets/images/contact.png"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/downArrow.png",
+      "PackagePath": "staticwebassets/assets/images/downArrow.png"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/emblem.png",
+      "PackagePath": "staticwebassets/assets/images/emblem.png"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/homeImage.jpg",
+      "PackagePath": "staticwebassets/assets/images/homeImage.jpg"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/homeImage.png",
+      "PackagePath": "staticwebassets/assets/images/homeImage.png"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/leftArrow.png",
+      "PackagePath": "staticwebassets/assets/images/leftArrow.png"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/login.png",
+      "PackagePath": "staticwebassets/assets/images/login.png"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/marriage.png",
+      "PackagePath": "staticwebassets/assets/images/marriage.png"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/profile.jpg",
+      "PackagePath": "staticwebassets/assets/images/profile.jpg"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/profile.png",
+      "PackagePath": "staticwebassets/assets/images/profile.png"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/register.png",
+      "PackagePath": "staticwebassets/assets/images/register.png"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/rightArrow.png",
+      "PackagePath": "staticwebassets/assets/images/rightArrow.png"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/socialwelfare.jpg",
+      "PackagePath": "staticwebassets/assets/images/socialwelfare.jpg"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/socialwelfare.png",
+      "PackagePath": "staticwebassets/assets/images/socialwelfare.png"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/spinner.gif",
+      "PackagePath": "staticwebassets/assets/images/spinner.gif"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/swach-bharat.png",
+      "PackagePath": "staticwebassets/assets/images/swach-bharat.png"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/unauthorized.jpg",
+      "PackagePath": "staticwebassets/assets/images/unauthorized.jpg"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/css/site.css",
+      "PackagePath": "staticwebassets/css/site.css"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/favicon.ico",
+      "PackagePath": "staticwebassets/favicon.ico"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/js/bundle.js",
+      "PackagePath": "staticwebassets/js/bundle.js"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/js/site.js",
+      "PackagePath": "staticwebassets/js/site.js"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/LICENSE",
+      "PackagePath": "staticwebassets/lib/bootstrap"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-grid.css",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-grid.css"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-grid.css.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-grid.css.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-grid.min.css",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-grid.min.css"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-grid.min.css.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-grid.min.css.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-grid.rtl.css",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-grid.rtl.css"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-grid.rtl.css.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-grid.rtl.css.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-grid.rtl.min.css",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-grid.rtl.min.css"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-grid.rtl.min.css.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-grid.rtl.min.css.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-reboot.css",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-reboot.css"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-reboot.css.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-reboot.css.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-reboot.min.css",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-reboot.min.css"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-reboot.min.css.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-reboot.min.css.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-reboot.rtl.css",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-reboot.rtl.css"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-reboot.rtl.css.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-reboot.rtl.css.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-reboot.rtl.min.css",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-reboot.rtl.min.css"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-reboot.rtl.min.css.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-reboot.rtl.min.css.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-utilities.css",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-utilities.css"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-utilities.css.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-utilities.css.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-utilities.min.css",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-utilities.min.css"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-utilities.min.css.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-utilities.min.css.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-utilities.rtl.css",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-utilities.rtl.css"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-utilities.rtl.css.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-utilities.rtl.css.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-utilities.rtl.min.css",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-utilities.rtl.min.css"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap-utilities.rtl.min.css.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap-utilities.rtl.min.css.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap.css",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap.css"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap.css.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap.css.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap.min.css",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap.min.css"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap.min.css.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap.min.css.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap.rtl.css",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap.rtl.css"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap.rtl.css.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap.rtl.css.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap.rtl.min.css",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap.rtl.min.css"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/css/bootstrap.rtl.min.css.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/css/bootstrap.rtl.min.css.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/js/bootstrap.bundle.js",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/js/bootstrap.bundle.js"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/js/bootstrap.bundle.js.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/js/bootstrap.bundle.js.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/js/bootstrap.bundle.min.js",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/js/bootstrap.bundle.min.js"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/js/bootstrap.bundle.min.js.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/js/bootstrap.bundle.min.js.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/js/bootstrap.esm.js",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/js/bootstrap.esm.js"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/js/bootstrap.esm.js.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/js/bootstrap.esm.js.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/js/bootstrap.esm.min.js",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/js/bootstrap.esm.min.js"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/js/bootstrap.esm.min.js.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/js/bootstrap.esm.min.js.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/js/bootstrap.js",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/js/bootstrap.js"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/js/bootstrap.js.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/js/bootstrap.js.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/js/bootstrap.min.js",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/js/bootstrap.min.js"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/dist/js/bootstrap.min.js.map",
+      "PackagePath": "staticwebassets/lib/bootstrap/dist/js/bootstrap.min.js.map"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/jquery-validation-unobtrusive/LICENSE.txt",
+      "PackagePath": "staticwebassets/lib/jquery-validation-unobtrusive/LICENSE.txt"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.js",
+      "PackagePath": "staticwebassets/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.js"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js",
+      "PackagePath": "staticwebassets/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/jquery-validation/LICENSE.md",
+      "PackagePath": "staticwebassets/lib/jquery-validation/LICENSE.md"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/jquery-validation/dist/additional-methods.js",
+      "PackagePath": "staticwebassets/lib/jquery-validation/dist/additional-methods.js"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/jquery-validation/dist/additional-methods.min.js",
+      "PackagePath": "staticwebassets/lib/jquery-validation/dist/additional-methods.min.js"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/jquery-validation/dist/jquery.validate.js",
+      "PackagePath": "staticwebassets/lib/jquery-validation/dist/jquery.validate.js"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/jquery-validation/dist/jquery.validate.min.js",
+      "PackagePath": "staticwebassets/lib/jquery-validation/dist/jquery.validate.min.js"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/jquery/LICENSE.txt",
+      "PackagePath": "staticwebassets/lib/jquery/LICENSE.txt"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/jquery/dist/jquery.js",
+      "PackagePath": "staticwebassets/lib/jquery/dist/jquery.js"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/jquery/dist/jquery.min.js",
+      "PackagePath": "staticwebassets/lib/jquery/dist/jquery.min.js"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/jquery/dist/jquery.min.map",
+      "PackagePath": "staticwebassets/lib/jquery/dist/jquery.min.map"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.ReactMvcApp.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.build.ReactMvcApp.props",
+      "PackagePath": "build\\ReactMvcApp.props"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.buildMultiTargeting.ReactMvcApp.props",
+      "PackagePath": "buildMultiTargeting\\ReactMvcApp.props"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.buildTransitive.ReactMvcApp.props",
+      "PackagePath": "buildTransitive\\ReactMvcApp.props"
+    }
+  ],
+  "ElementsToRemove": []
+}

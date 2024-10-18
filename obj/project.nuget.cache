@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "7FUbvl046UotQZBj9Azvc4cPi8X3hsp2upr+GuD/e/HpEIISTMxcJU7DKHaM3WtLd5cKDAbBEMEF/QVCsaLI7A==",
+  "success": true,
+  "projectFilePath": "/home/momin/Github/ReactMvcApp/ReactMvcApp.csproj",
+  "expectedPackageFiles": [
+    "/home/momin/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.8/microsoft.aspnetcore.app.ref.8.0.8.nupkg.sha512"
+  ],
+  "logs": []
+}
