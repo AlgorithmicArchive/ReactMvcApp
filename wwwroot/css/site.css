@@ -2,3 +2,19 @@ html,body,#root{
   margin: 0;
   padding: 0;
 }
+
+.skiptranslate iframe{
+  display: none;
+}
+#goog-gt-tt{
+  display: none !important;
+}
+
+#google_translate_element{
+  display: flex;
+  align-items: center;
+}
+
+.goog-te-gadget-simple{
+  border-radius: 25px !important;
+}

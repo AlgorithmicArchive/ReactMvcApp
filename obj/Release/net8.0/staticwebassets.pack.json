@@ -5,10 +5,6 @@
       "PackagePath": "staticwebassets/ReactMvcApp.bundle.scp.css"
     },
     {
-      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/LadliBeti.jpg",
-      "PackagePath": "staticwebassets/assets/images/LadliBeti.jpg"
-    },
-    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/LadliBeti.png",
       "PackagePath": "staticwebassets/assets/images/LadliBeti.png"
     },
@@ -29,20 +25,16 @@
       "PackagePath": "staticwebassets/assets/images/emblem.png"
     },
     {
-      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/homeImage.jpg",
-      "PackagePath": "staticwebassets/assets/images/homeImage.jpg"
-    },
-    {
-      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/homeImage.png",
-      "PackagePath": "staticwebassets/assets/images/homeImage.png"
-    },
-    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/leftArrow.png",
       "PackagePath": "staticwebassets/assets/images/leftArrow.png"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/login.png",
       "PackagePath": "staticwebassets/assets/images/login.png"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/logo.png",
+      "PackagePath": "staticwebassets/assets/images/logo.png"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/marriage.png",
@@ -63,10 +55,6 @@
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/rightArrow.png",
       "PackagePath": "staticwebassets/assets/images/rightArrow.png"
-    },
-    {
-      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/socialwelfare.jpg",
-      "PackagePath": "staticwebassets/assets/images/socialwelfare.jpg"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/images/socialwelfare.png",

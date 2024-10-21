@@ -14,11 +14,14 @@
   "dependencies": {
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
+    "@hookform/resolvers": "^3.9.0",
     "@mui/icons-material": "^6.1.4",
     "@mui/material": "^6.1.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.27.0"
+    "react-hook-form": "^7.53.1",
+    "react-router-dom": "^6.27.0",
+    "yup": "^1.4.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.8",
@@ -26,6 +29,7 @@
     "@babel/preset-react": "^7.25.7",
     "@types/react": "^18.3.11",
     "babel-loader": "^9.2.1",
+    "html-webpack-plugin": "^5.6.2",
     "webpack": "^5.95.0",
     "webpack-cli": "^5.1.4"
   }

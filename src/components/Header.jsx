@@ -1,17 +1,20 @@
 import React from 'react';
-import { Box, Typography, Button, Select, MenuItem } from '@mui/material';
+import { Box, Typography, Button } from '@mui/material';
+import GoogleTranslateWidget from './GoogleTranslateWidget'; // Import the Google Translate Widget
+import TextToSpeechToggle from '../TextToSpeechToggle';
 
 const Header = () => {
   return (
     <Box
       sx={{
-        padding: '0 0',
-        position: 'fixed',  // Make the header fixed at the top
+        padding: '0 ',
+        position: 'fixed',
         top: 0,
         width: '100%',
-        zIndex: 1200,  // Ensure it's above the navbar and content
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',  // Optional: Add a shadow for separation
+        zIndex: 1200,
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
       }}
+      className="notranslate"
     >
       {/* Top Bar */}
       <Box
@@ -19,7 +22,7 @@ const Header = () => {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '0 20px',
+          padding: '5px 20px',
           borderBottom: '1px solid #e0e0e0',
           backgroundColor: 'background.paper',
         }}
@@ -35,16 +38,13 @@ const Header = () => {
           </Typography>
         </Box>
         <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end', gap: '15px' }}>
-          <Button variant="outlined" sx={{ fontSize: '12px' }}>SCREEN READER ACCESS</Button>
+          <TextToSpeechToggle/>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <Typography sx={{ fontSize: '18px', fontWeight: 'bold' }}>A</Typography>
             <Typography sx={{ fontSize: '16px' }}>A</Typography>
           </Box>
-          <Select defaultValue="English" size="small" sx={{ color: 'primary.main' }}>
-            <MenuItem value="English">English</MenuItem>
-            <MenuItem value="Hindi">हिन्दी</MenuItem>
-            <MenuItem value="Urdu">اردو</MenuItem>
-          </Select>
+          {/* Replace the Select dropdown with the Google Translate Widget */}
+          <GoogleTranslateWidget />
         </Box>
       </Box>
 

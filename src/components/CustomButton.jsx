@@ -1,11 +1,12 @@
 import React from 'react';
 import { Button } from '@mui/material';
 
-export default function CustomButton({ text = 'Click Me', onPress = null,bgColor='primary.main',color='background.paper' }) {
+export default function CustomButton({ text = 'Click Me', onClick = null, bgColor='primary.main', color='background.paper', type="button" }) {
   return (
     <Button
       variant="contained"
-      onClick={onPress || undefined} // Handle optional onPress
+      onClick={onClick || undefined} // Handle optional onClick
+      type={type}
       sx={{
         backgroundColor: bgColor,
         color: color,
