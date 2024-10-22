@@ -6,6 +6,7 @@ import * as yup from 'yup';
 import CustomInputField from '../../components/form/CustomInputField';
 import CustomButton from '../../components/CustomButton';
 import { Login } from '../../assets/fetch'; // Assuming the Login function is in this file
+import { useNavigate } from 'react-router-dom';
 
 // Define a validation schema using Yup
 const schema = yup.object().shape({
@@ -22,6 +23,8 @@ export default function LoginScreen() {
     resolver: yupResolver(schema),
   });
 
+  const navigate = useNavigate();
+
   // Handle form submission
   const onSubmit = async (data) => {
     // Convert data to FormData
@@ -31,9 +34,9 @@ export default function LoginScreen() {
     });
 
     try {
-      console.log(formData);
       const response = await Login(formData); // Call the Login function
-      console.log('Login response:', response); // Handle the response as needed
+      console.log(response);
+      if(response.status) navigate('/Verification'); 
     } catch (error) {
       console.error('Login failed:', error);
     }

@@ -10,7 +10,7 @@ namespace SocialWelfare.Controllers.User
         {
             int.TryParse(form["serviceId"].ToString(), out int serviceId);
             HttpContext.Session.SetInt32("serviceId", serviceId);
-            return Json(new { status = true, url = "/User/ServiceForm" });
+            return Json(new { status = true, url = "/user/form" });
         }
 
         [HttpGet]

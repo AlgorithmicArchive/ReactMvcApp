@@ -1,13 +1,12 @@
 import React from 'react';
 import { Box, Typography, Button } from '@mui/material';
 import GoogleTranslateWidget from './GoogleTranslateWidget'; // Import the Google Translate Widget
-import TextToSpeechToggle from '../TextToSpeechToggle';
 
 const Header = () => {
   return (
     <Box
       sx={{
-        padding: '0 ',
+        padding: '0 0',
         position: 'fixed',
         top: 0,
         width: '100%',
@@ -22,7 +21,7 @@ const Header = () => {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '5px 20px',
+          padding: '8px 20px',
           borderBottom: '1px solid #e0e0e0',
           backgroundColor: 'background.paper',
         }}
@@ -38,7 +37,6 @@ const Header = () => {
           </Typography>
         </Box>
         <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end', gap: '15px' }}>
-          <TextToSpeechToggle/>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <Typography sx={{ fontSize: '18px', fontWeight: 'bold' }}>A</Typography>
             <Typography sx={{ fontSize: '16px' }}>A</Typography>

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using SendEmails;
 using ReactMvcApp.Models.Entities;
+using System.Reflection.Emit;
 
 namespace SocialWelfare.Controllers.User
 {
@@ -42,39 +43,49 @@ namespace SocialWelfare.Controllers.User
             return View();
         }
 
-        public IActionResult GetServices()
+       public IActionResult GetServices(int page, int size)
         {
-            var services = dbcontext.Services.Where(u => u.Active == true).ToList();
-            var columns = new List<dynamic>{
-                new {title="S.No."},
-                new {title="Service Name"},
-                new {title="Department"},
-                new {title="Action"},
+            // Fetch services from the database
+            var services = dbcontext.Services.FromSqlRaw("SELECT * FROM Services WHERE Active=1;");
+
+            // Define the columns for the frontend
+         var columns = new List<dynamic>
+            {
+                new { label = "S.No", value="sno" },
+                new { label = "Service Name",value="servicename" },
+                new { label = "Department", value="department" },
+                new { label = "Action",value="button" }
             };
-            List<dynamic> Services = [];
+
+            // Prepare the data list
+            List<dynamic> data = [];
             int index = 1;
+
             foreach (var item in services)
             {
-                var button = new{
+                var button = new
+                {
                     function = "OpenForm",
                     parameters = new[] { item.ServiceId },
                     buttonText = "View"
                 };
-                List<dynamic> data = [index, item.ServiceName, item.Department, JsonConvert.SerializeObject(button)];
-                Services.Add(data);
+                var cell = new
+                {
+                    sno = index,
+                    servicename = item.ServiceName,
+                    department = item.Department,
+                    button
+                };
+                data.Add(cell);
                 index++;
             }
 
-            var obj = new
-            {
-                columns,
-                data = Services.AsEnumerable().Skip(0).Take(10),
-                recordsTotal = Services.Count,
-                recordsFiltered = Services.AsEnumerable().Skip(0).Take(10).ToList().Count
-            };
+            // Pagination logic
+            var pagedData = data.Skip(page * size).Take(size).ToList();
 
-            return Json(new { status = true, obj });
+            return Json(new { status = true, data = pagedData,columns,totalCount = data.Count });
         }
+
 
         public IActionResult ServiceForm(string? ApplicationId, bool? returnToEdit)
         {
