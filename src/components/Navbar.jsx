@@ -1,33 +1,34 @@
-import React, { useContext } from "react";
-import { AppBar, Toolbar, Typography, Button } from "@mui/material";
-import { Link } from "react-router-dom";
-import { UserContext } from "../UserContext";
+import React, { useContext } from 'react';
+import { AppBar, Toolbar, Typography, Button } from '@mui/material';
+import { Link, useNavigate } from 'react-router-dom';
+import { UserContext } from '../UserContext';
 
 const Navbar = () => {
-  const handleScrollToSection3 = () => {
-    const scrollEvent = new CustomEvent("scrollToSection", {
-      detail: "section3",
-    });
-    window.dispatchEvent(scrollEvent);
+  const navigate = useNavigate();
+  const { userType, setUserType, setToken } = useContext(UserContext);
+
+  const handleLogout = () => {
+    setToken(null);
+    setUserType(null);
+    navigate('/login');
   };
 
-  const { userType } = useContext(UserContext);
   return (
     <AppBar
       position="fixed"
       sx={{
-        top: "185px", // Adjust the top position based on the height of the Header
-        zIndex: 1100, // Ensure it's below the header but above the content
+        top: '185px',
+        zIndex: 1100,
       }}
     >
       <Toolbar
         sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "background.paper",
-          boxShadow: "none",
-          color: "primary.main",
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: 'background.paper',
+          boxShadow: 'none',
+          color: 'primary.main',
           gap: 10,
         }}
       >
@@ -35,7 +36,7 @@ const Navbar = () => {
           <>
             <Button
               color="inherit"
-              sx={{ fontWeight: "bold" }}
+              sx={{ fontWeight: 'bold' }}
               component={Link}
               to="/"
             >
@@ -43,7 +44,7 @@ const Navbar = () => {
             </Button>
             <Button
               color="inherit"
-              sx={{ fontWeight: "bold" }}
+              sx={{ fontWeight: 'bold' }}
               component={Link}
               to="/login"
             >
@@ -52,31 +53,24 @@ const Navbar = () => {
             <img
               src="/assets/images/logo.png"
               alt="Logo"
-              style={{ width: "80px" }}
+              style={{ width: '80px' }}
             />
             <Button
               color="inherit"
-              sx={{ fontWeight: "bold" }}
+              sx={{ fontWeight: 'bold' }}
               component={Link}
               to="/register"
             >
               Register
             </Button>
-            <Button
-              color="inherit"
-              sx={{ fontWeight: "bold" }}
-              onClick={handleScrollToSection3}
-            >
-              Contact Us
-            </Button>
           </>
         )}
 
-        {userType == "Citizen" &&
-        <>
-           <Button
+        {userType === 'Citizen' && (
+          <>
+            <Button
               color="inherit"
-              sx={{ fontWeight: "bold" }}
+              sx={{ fontWeight: 'bold' }}
               component={Link}
               to="/user"
             >
@@ -84,14 +78,23 @@ const Navbar = () => {
             </Button>
             <Button
               color="inherit"
-              sx={{ fontWeight: "bold" }}
+              sx={{ fontWeight: 'bold' }}
               component={Link}
               to="/user/services"
             >
               Apply for Service
             </Button>
-        </>
-        }
+            <Button
+              color="inherit"
+              sx={{ fontWeight: 'bold' }}
+              onClick={handleLogout}
+            >
+              Logout
+            </Button>
+          </>
+        )}
+
+        {/* Add similar blocks for 'Officer' and 'Admin' userTypes if needed */}
       </Toolbar>
     </AppBar>
   );

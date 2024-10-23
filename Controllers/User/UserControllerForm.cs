@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using ReactMvcApp.Models.Entities;
 
-namespace SocialWelfare.Controllers.User
+namespace ReactMvcApp.Controllers.User
 {
     public partial class UserController
     {

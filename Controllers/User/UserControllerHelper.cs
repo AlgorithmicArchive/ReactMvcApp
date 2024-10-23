@@ -1,18 +1,17 @@
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 
-namespace SocialWelfare.Controllers.User
+namespace ReactMvcApp.Controllers.User
 {
     public partial class UserController:Controller
     {
         [HttpPost]
         public IActionResult SetServiceForm([FromForm] IFormCollection form)
         {
-            int.TryParse(form["serviceId"].ToString(), out int serviceId);
+            int serviceId = Convert.ToInt32(form["serviceId"].ToString());
             HttpContext.Session.SetInt32("serviceId", serviceId);
             return Json(new { status = true, url = "/user/form" });
         }
-
         [HttpGet]
         public dynamic? GetUserDetails(){
             int? userId = HttpContext.Session.GetInt32("UserId");
@@ -33,15 +32,12 @@ namespace SocialWelfare.Controllers.User
 
             return details;
         }
-
-
         [HttpGet]
         public IActionResult GetDistricts()
         {
             var districts = dbcontext.Districts.ToList();
             return Json(new { status = true, districts });
         }
-
         [HttpGet]
         public IActionResult GetTehsils(string districtId)
         {
@@ -49,7 +45,6 @@ namespace SocialWelfare.Controllers.User
             var tehsils = dbcontext.Tehsils.Where(u => u.DistrictId == DistrictId).ToList();
             return Json(new { status = true, tehsils });
         }
-
         [HttpGet]
         public IActionResult GetBlocks(string districtId)
         {
@@ -57,7 +52,6 @@ namespace SocialWelfare.Controllers.User
             var blocks = dbcontext.Blocks.Where(u => u.DistrictId == DistrictId).ToList();
             return Json(new { status = true, blocks });
         }
-
         [HttpGet]
         public IActionResult GetPhases(string applicationId)
         {
@@ -87,7 +81,6 @@ namespace SocialWelfare.Controllers.User
 
             return Json(new { phase = JsonConvert.SerializeObject(phases) });
         }
-
         [HttpGet]
         public IActionResult GetServiceContent(){
              int? serviceId = HttpContext.Session.GetInt32("serviceId");
@@ -97,8 +90,6 @@ namespace SocialWelfare.Controllers.User
             }
             else  return Json(new{status=false,message="No Service Found"});
         }
-
-
         [HttpGet]
         public IActionResult GetAcknowledgement()
         {

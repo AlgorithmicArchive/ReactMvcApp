@@ -1,13 +1,12 @@
 import React from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, Radio, RadioGroup, FormControlLabel } from '@mui/material';
 import { Controller } from 'react-hook-form';
 
-export default function CustomSelectField({
+export default function CustomRadioButton({
   label,
   name,
   control,
   options = [],
-  placeholder = 'Select an option...',
   rules = {},
   errors,
 }) {
@@ -24,30 +23,26 @@ export default function CustomSelectField({
         control={control}
         rules={rules}
         render={({ field }) => (
-          <select
+          <RadioGroup
             {...field}
-            placeholder={placeholder}
-            style={{
-              padding: '10px',
-              fontSize: '16px',
-              border: '2px solid #48426D',
-              borderRadius: '5px',
-              outline: 'none',
-              transition: 'border-color 0.3s',
-              width: '100%',
-              backgroundColor: 'transparent',
-              color: '#48426D',
-            }}
+            row // Display radio buttons in a single line
+            onChange={(e) => field.onChange(e.target.value)}
+            sx={{ display: 'flex', flexDirection: 'row' }}
           >
-            <option value="" disabled>
-              {placeholder}
-            </option>
             {options.map((option, index) => (
-              <option key={index} value={option.value} style={{ color: '#000' }}>
-                {option.label}
-              </option>
+              <FormControlLabel
+                key={index}
+                value={option}
+                control={<Radio />}
+                label={option}
+                sx={{
+                  mr: 2,
+                  color: field.value === option ? '#3f51b5' : '#888',
+                  fontWeight: field.value === option ? 'bold' : 'normal',
+                }}
+              />
             ))}
-          </select>
+          </RadioGroup>
         )}
       />
 

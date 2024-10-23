@@ -1,26 +1,50 @@
-import { Box, Typography } from '@mui/material'
-import React from 'react'
-import CustomSelectField from '../../components/form/CustomSelectField'
-import { useForm } from 'react-hook-form';
+import { Box, Typography } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { GetServiceContent } from '../../assets/fetch'; // Assuming you have a function for fetching
+import DynamicStepForm from '../../components/form/DynamicStepForm'; // Import your dynamic step form component
 
 export default function Form() {
-  const {
-    handleSubmit,
-    control,
-    formState: { errors },
-  } = useForm();
+  const [serviceName, setServiceName] = useState('');
+  const [formElements, setFormElements] = useState([]);
+  const [serviceId, setServiceId] = useState(null);
+
+  useEffect(() => {
+    async function ServiceContent() {
+      try {
+        const result = await GetServiceContent();
+        if (result && result.status) {
+          setServiceName(result.serviceName);
+          setFormElements(JSON.parse(result.formElement)); // Parse formElements from JSON string
+          setServiceId(result.serviceId);
+        }
+      } catch (error) {
+        console.error('Error fetching service content:', error);
+      }
+    }
+    ServiceContent();
+  }, []);
+
   return (
     <Box
-    sx={{
-      display:'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      height:'100vh'
-    }}
-  >
-   <Box sx={{backgroundColor:'primary.main',padding:5,borderRadius:5}}>
-     <CustomSelectField  control={control} name="Demo" placeholder='Number Selection' label="Select Field" options={[{label:"First",value:1},{label:"Second",value:2},{label:"Third",value:3}]}/>
-   </Box>
-  </Box>
-  )
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '200vh',
+        padding: 3,
+      }}
+    >
+      <Typography variant="h4" sx={{ mb: 3 }}>
+        {serviceName || 'Loading...'}
+      </Typography>
+
+      {/* Render the dynamic step form if formElements are available */}
+      {formElements.length > 0 && (
+        <Box sx={{backgroundColor:'primary.main',width:'80%',padding:5,borderRadius:5}}>
+            <DynamicStepForm formConfig={formElements} serviceId={serviceId} />
+        </Box>
+      )}
+    </Box>
+  );
 }

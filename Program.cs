@@ -1,7 +1,9 @@
+using System.Text;
 using System.Text.Json.Serialization;
 using Encryption;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using ReactMvcApp.Models.Entities;
 using SendEmails;
 
@@ -24,7 +26,6 @@ builder.Services.AddControllers().AddNewtonsoftJson(options =>
     options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
 });
 
-
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowLocalhost",
@@ -37,15 +38,30 @@ builder.Services.AddCors(options =>
         });
 });
 
-
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(options =>
+// JWT Authentication Setup
+var jwtSecretKey = builder.Configuration.GetValue<string>("JWT:Secret");
+var key = Encoding.ASCII.GetBytes(jwtSecretKey!);
+builder.Services.AddAuthentication(options =>
 {
-    options.LoginPath = "/Home/Authentication";
-    options.AccessDeniedPath = "/Home/Unauthorized";
-    options.ExpireTimeSpan = TimeSpan.FromDays(30);
-    options.SlidingExpiration = true;
+    // Default authentication schemes
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["JWT:Issuer"],
+        ValidAudience = builder.Configuration["JWT:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(key)
+    };
 });
 
+// Authorization policies for different roles
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("CitizenPolicy", policy => policy.RequireRole("Citizen"))
     .AddPolicy("OfficerPolicy", policy => policy.RequireRole("Officer"));
@@ -75,7 +91,7 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles(new StaticFileOptions{
     OnPrepareResponse = ctx=>{
-        if(ctx.File.Name.EndsWith(".pdf",StringComparison.OrdinalIgnoreCase)){
+        if(ctx.File.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)){
             ctx.Context.Response.Headers.Append("Content-Disposition", "inline");
         }
     }
@@ -84,8 +100,8 @@ app.UseStaticFiles(new StaticFileOptions{
 app.UseRouting();
 app.UseCors("AllowLocalhost");
 
-
-app.UseAuthentication();  // Ensure authentication is used
+// Ensure both JWT and Cookie Authentication are used
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseSession();

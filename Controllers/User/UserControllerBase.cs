@@ -6,9 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using SendEmails;
 using ReactMvcApp.Models.Entities;
-using System.Reflection.Emit;
 
-namespace SocialWelfare.Controllers.User
+namespace ReactMvcApp.Controllers.User
 {
     [Authorize(Roles = "Citizen")]
     public partial class UserController(SocialWelfareDepartmentContext dbcontext, ILogger<UserController> logger, UserHelperFunctions _helper, EmailSender _emailSender, PdfService pdfService, IWebHostEnvironment webHostEnvironment) : Controller
@@ -29,12 +28,12 @@ namespace SocialWelfare.Controllers.User
             string Profile = JsonConvert.DeserializeObject<dynamic>(Citizen!.UserSpecificDetails)!.Profile;
             ViewData["UserType"] = "Citizen";
             ViewData["UserName"] = Citizen!.Username;
-            ViewData["Profile"]= Profile;
+            ViewData["Profile"] = Profile;
         }
 
         public IActionResult Index()
         {
-           var details = GetUserDetails();
+            var details = GetUserDetails();
             return View(details);
         }
 
@@ -43,13 +42,13 @@ namespace SocialWelfare.Controllers.User
             return View();
         }
 
-       public IActionResult GetServices(int page, int size)
+        public IActionResult GetServices(int page, int size)
         {
             // Fetch services from the database
             var services = dbcontext.Services.FromSqlRaw("SELECT * FROM Services WHERE Active=1;");
 
             // Define the columns for the frontend
-         var columns = new List<dynamic>
+            var columns = new List<dynamic>
             {
                 new { label = "S.No", value="sno" },
                 new { label = "Service Name",value="servicename" },
@@ -83,7 +82,7 @@ namespace SocialWelfare.Controllers.User
             // Pagination logic
             var pagedData = data.Skip(page * size).Take(size).ToList();
 
-            return Json(new { status = true, data = pagedData,columns,totalCount = data.Count });
+            return Json(new { status = true, data = pagedData, columns, totalCount = data.Count });
         }
 
 
@@ -138,7 +137,7 @@ namespace SocialWelfare.Controllers.User
             return View();
         }
 
-        public IActionResult GetApplicationStatus(int start=0, int length=10, string type = "")
+        public IActionResult GetApplicationStatus(int start = 0, int length = 10, string type = "")
         {
             int? userId = HttpContext.Session.GetInt32("UserId");
             List<Application> applications = [];
@@ -161,16 +160,18 @@ namespace SocialWelfare.Controllers.User
             int index = 1;
             foreach (var item in applications)
             {
-                var firstButton = new{
+                var firstButton = new
+                {
                     function = "CreateTimeLine",
                     parameters = new[] { item.ApplicationId },
-                    buttonText="View"
+                    buttonText = "View"
                 };
-                
-                 var secondButton = new{
+
+                var secondButton = new
+                {
                     function = "EditForm",
                     parameters = new[] { item.ApplicationId },
-                    buttonText="Edit Form"
+                    buttonText = "Edit Form"
                 };
 
                 List<dynamic> data =

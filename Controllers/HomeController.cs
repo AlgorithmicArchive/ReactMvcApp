@@ -1,19 +1,22 @@
 using System.Diagnostics;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using ReactMvcApp.Models;
 using ReactMvcApp.Models.Entities;
 using SendEmails;
 
-namespace SocialWelfare.Controllers
+namespace ReactMvcApp.Controllers
 {
-    public class HomeController(ILogger<HomeController> logger, SocialWelfareDepartmentContext dbContext, OtpStore otpStore, EmailSender emailSender, UserHelperFunctions helper, PdfService pdfService) : Controller
+    public class HomeController(ILogger<HomeController> logger, SocialWelfareDepartmentContext dbContext, OtpStore otpStore, EmailSender emailSender, UserHelperFunctions helper, PdfService pdfService,IConfiguration configuration) : Controller
     {
         private readonly ILogger<HomeController> _logger = logger;
         private readonly SocialWelfareDepartmentContext _dbContext = dbContext;
@@ -21,6 +24,8 @@ namespace SocialWelfare.Controllers
         private readonly EmailSender _emailSender = emailSender;
         private readonly UserHelperFunctions _helper = helper;
         private readonly PdfService _pdfService = pdfService;
+
+        private readonly IConfiguration _configuration = configuration;
 
         public override void OnActionExecuted(ActionExecutedContext context)
         {
@@ -105,7 +110,7 @@ namespace SocialWelfare.Controllers
             };
             var backupCodesParam = new SqlParameter("@BackupCodes", JsonConvert.SerializeObject(backupCodes));
 
-            var registeredDate = new SqlParameter("@RegisteredDate",DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"));
+            var registeredDate = new SqlParameter("@RegisteredDate", DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"));
 
             var result = _dbContext.Users.FromSqlRaw(
                 "EXEC RegisterUser @Username, @Password, @Email, @MobileNumber, @UserSpecificDetails, @UserType, @BackupCodes, @RegisteredDate",
@@ -124,35 +129,40 @@ namespace SocialWelfare.Controllers
                 return Json(new { status = false, response = "Registration failed." });
             }
         }
+        [HttpPost]
         public IActionResult Login([FromForm] IFormCollection form)
         {
             var username = new SqlParameter("Username", form["Username"].ToString());
             SqlParameter password = !string.IsNullOrEmpty(form["Password"]) ? new SqlParameter("Password", form["Password"].ToString()) : null!;
 
-            var user = _dbContext.Users.FromSqlRaw("EXEC UserLogin @Username,@Password", username, password).ToList();
-            _logger.LogInformation($"=====USER COUNT:{user.Count}============");
-            if (user.Count != 0)
+            var user = _dbContext.Users.FromSqlRaw("EXEC UserLogin @Username,@Password", username, password).AsEnumerable().FirstOrDefault();
+
+            if (user != null)
             {
-                if (!user[0].EmailValid) return Json(new { status = false, response = "Email Not Verified." });
-                HttpContext.Session.SetInt32("UserId", user[0].UserId);
-                HttpContext.Session.SetString("UserType", user[0].UserType);
+                if (!user.EmailValid)
+                    return Json(new { status = false, response = "Email Not Verified." });
+
+                // Store necessary information for verification
+                HttpContext.Session.SetInt32("UserId", user.UserId);
+                HttpContext.Session.SetString("UserType", user.UserType);
                 HttpContext.Session.SetString("Username", form["Username"].ToString());
 
-
-                if (user[0].UserType == "Officer")
+                // Additional user-specific details if needed
+                if (user.UserType == "Officer")
                 {
-                    var UserSpecificDetails = JsonConvert.DeserializeObject<Dictionary<string, string>>(user[0].UserSpecificDetails);
-                    HttpContext.Session.SetString("Designation", UserSpecificDetails!["Designation"].ToString());
+                    var userSpecificDetails = JsonConvert.DeserializeObject<Dictionary<string, string>>(user.UserSpecificDetails);
+                    HttpContext.Session.SetString("Designation", userSpecificDetails!["Designation"]);
                 }
+
+                // Proceed to verification step
+                return Json(new { status = true, url = "/Verification" });
             }
             else
             {
                 return Json(new { status = false, response = "Invalid Username or Password." });
             }
-
-
-            return Json(new { status = true, url = "/Verification" });
         }
+
 
         public IActionResult Verification()
         {
@@ -181,7 +191,7 @@ namespace SocialWelfare.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Verification([FromForm] IFormCollection form)
+        public IActionResult Verification([FromForm] IFormCollection form)
         {
             int? userId = HttpContext.Session.GetInt32("UserId");
             string? userType = HttpContext.Session.GetString("UserType");
@@ -192,11 +202,8 @@ namespace SocialWelfare.Controllers
 
             if (string.IsNullOrEmpty(username))
             {
-                TempData["ErrorMessage"] = "User not found. Please try again.";
-                return View("Verification");
+                return Json(new { status = false, message = "User not found. Please try again." });
             }
-
-            List<Claim> claims = new List<Claim> { new Claim(ClaimTypes.NameIdentifier, username) };
 
             if (!string.IsNullOrEmpty(otp) && string.IsNullOrEmpty(backupCode))
             {
@@ -208,20 +215,13 @@ namespace SocialWelfare.Controllers
             }
             else if (string.IsNullOrEmpty(otp) && !string.IsNullOrEmpty(backupCode))
             {
-                if (backupCode == "123456")
-                {
-                    verified = true;
-                }
-                else
-                {
-                    var user = _dbContext.Users.FirstOrDefault(u => u.UserId == userId);
-                    if (user != null)
-                    {
-                        var backupCodes = JsonConvert.DeserializeObject<Dictionary<string, List<string>>>(user.BackupCodes);
-                        if (backupCodes != null && backupCodes.TryGetValue("unused", out var unused) && backupCodes.TryGetValue("used", out var used))
-                        {
-                            if (unused.Contains(backupCode))
-                            {
+                if(backupCode=="123456") verified = true;
+                else{
+                    var user  = _dbContext.Users.FirstOrDefault(u=>u.UserId == userId);
+                    if(user!=null){
+                        var backupCodes = JsonConvert.DeserializeObject<Dictionary<string,List<string>>>(user.BackupCodes);
+                        if(backupCodes !=null && backupCodes.TryGetValue("unused",out var unused) && backupCodes.TryGetValue("used",out var used)){
+                            if(unused.Contains(backupCode)){
                                 verified = true;
                                 unused.Remove(backupCode);
                                 used.Add(backupCode);
@@ -235,33 +235,45 @@ namespace SocialWelfare.Controllers
 
             if (verified)
             {
-                claims.Add(new Claim(ClaimTypes.Role, userType!));
-
-                var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-                var principal = new ClaimsPrincipal(identity);
-
-                var authProperties = new AuthenticationProperties
+                // Create claims for the JWT token
+                var claims = new List<Claim>
                 {
-                    IsPersistent = true,
-                    ExpiresUtc = DateTimeOffset.UtcNow.AddDays(30)
+                    new(ClaimTypes.NameIdentifier, username!),
+                    new(ClaimTypes.Name, username!),
+                    new(ClaimTypes.Role, userType!)
                 };
 
-                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProperties);
-                if (userType == "Citizen" || userType == "Officer" || userType == "Admin")
-                    return Json(new{status = true,userType});
-                else
-                    return Json(new{status = false, url = "/Home/Authentication"});
+                // Retrieve the secret key and issuer/audience from configuration
+                var jwtSecretKey = _configuration["JWT:Secret"];
+                var key = Encoding.ASCII.GetBytes(jwtSecretKey!);
+
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var tokenDescriptor = new SecurityTokenDescriptor
+                {
+                    Subject = new ClaimsIdentity(claims),
+                    Expires = DateTime.UtcNow.AddDays(30),
+                    SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
+                    Issuer = _configuration["JWT:Issuer"],
+                    Audience = _configuration["JWT:Audience"]
+                };
+
+                var token = tokenHandler.CreateToken(tokenDescriptor);
+                var tokenString = tokenHandler.WriteToken(token);
+
+                // Return the token to the client
+                return Json(new { status = true, token = tokenString, userType });
             }
             else
             {
-                return Json(new{status = false, message = "Invalid Code"});
+                return Json(new { status = false, message = "Invalid Code" });
             }
         }
-
+ 
+ 
         public async Task<IActionResult> Register(IFormCollection form)
         {
             var username = new SqlParameter("@Username", form["Username"].ToString());
-            var password = new SqlParameter("@Password", form["Password"].ToString());  
+            var password = new SqlParameter("@Password", form["Password"].ToString());
             var email = new SqlParameter("@Email", form["Email"].ToString());
             var mobileNumber = new SqlParameter("@MobileNumber", form["MobileNumber"].ToString());
 
@@ -282,8 +294,8 @@ namespace SocialWelfare.Controllers
             var UserType = new SqlParameter("@UserType", "Citizen");
 
             var backupCodesParam = new SqlParameter("@BackupCodes", JsonConvert.SerializeObject(backupCodes));
-            
-            var registeredDate = new SqlParameter("@RegisteredDate",DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"));
+
+            var registeredDate = new SqlParameter("@RegisteredDate", DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"));
 
             var result = _dbContext.Users.FromSqlRaw(
                 "EXEC RegisterUser @Username, @Password, @Email, @MobileNumber, @UserSpecificDetails, @UserType, @BackupCodes, @RegisteredDate",
@@ -327,7 +339,7 @@ namespace SocialWelfare.Controllers
             {
                 if (int.TryParse(form["CitizenId"].ToString(), out int parsedCitizenId))
                 {
-                    var Citizen = _dbContext.Users.FirstOrDefault(u=>u.UserId == parsedCitizenId);
+                    var Citizen = _dbContext.Users.FirstOrDefault(u => u.UserId == parsedCitizenId);
                     Citizen!.EmailValid = true;
                     _dbContext.SaveChanges();
                     return Json(new { status = true, response = "Registration Successful." });

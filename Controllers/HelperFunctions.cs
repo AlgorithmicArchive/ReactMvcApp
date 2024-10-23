@@ -1,8 +1,8 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using ReactMvcApp.Controllers.User;
 using ReactMvcApp.Models.Entities;
-using SocialWelfare.Controllers.User;
 
 public class UserHelperFunctions
 {
@@ -245,7 +245,6 @@ public class UserHelperFunctions
         codesSet.CopyTo(codesArray);
         return codesArray;
     }
-
 
 }
 

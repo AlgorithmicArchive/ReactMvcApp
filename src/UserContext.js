@@ -9,12 +9,28 @@ export const UserProvider = ({ children }) => {
     return savedUserType ? JSON.parse(savedUserType) : null;
   });
 
+  const [token, setToken] = useState(() => {
+    return localStorage.getItem('token') || null;
+  });
+
   useEffect(() => {
-    localStorage.setItem('userType', JSON.stringify(userType));
+    if (userType) {
+      localStorage.setItem('userType', JSON.stringify(userType));
+    } else {
+      localStorage.removeItem('userType');
+    }
   }, [userType]);
 
+  useEffect(() => {
+    if (token) {
+      localStorage.setItem('token', token);
+    } else {
+      localStorage.removeItem('token');
+    }
+  }, [token]);
+
   return (
-    <UserContext.Provider value={{ userType, setUserType }}>
+    <UserContext.Provider value={{ userType, setUserType, token, setToken }}>
       {children}
     </UserContext.Provider>
   );

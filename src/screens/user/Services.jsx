@@ -1,7 +1,7 @@
 import { Box } from '@mui/material'
 import React, { useState } from 'react'
 import CustomTable from '../../components/CustomTable'
-import { fetchData } from '../../assets/fetch'
+import { fetchData, SetServiceId } from '../../assets/fetch'
 import { useNavigate } from 'react-router-dom'
 import LoadingSpinner from '../../components/LoadingSpinner'
 
@@ -14,8 +14,7 @@ export default function Services() {
       formdata.append('serviceId',parameters[0]);
       try {
         setLoading(true)
-        const response = await fetch('/User/SetServiceForm',{method:'POST',body:formdata});
-        const result = await response.json();
+        const result = await SetServiceId(formdata);
         navigate(result.url)
       } catch (error) {
         
