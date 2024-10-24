@@ -19,6 +19,13 @@ module.exports = {
           },
         },
       },
+      {
+        test: /\.css$/, // Add this rule for CSS files
+        use: [
+          'style-loader', // Injects CSS into the DOM
+          'css-loader'    // Interprets @import and url() like import/require()
+        ],
+      },
     ],
   },
   resolve: {
@@ -26,8 +33,8 @@ module.exports = {
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: path.resolve(__dirname, 'wwwroot/index.html'), // Update path to point to the correct location
-      filename: 'index.html', // Output location relative to the output directory
+      template: path.resolve(__dirname, 'wwwroot/index.html'),
+      filename: 'index.html',
     }),
   ],
   mode: 'development',

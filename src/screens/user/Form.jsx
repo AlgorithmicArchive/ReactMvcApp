@@ -31,11 +31,11 @@ export default function Form() {
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        height: '200vh',
+        height: '150vh',
         padding: 3,
       }}
     >
-      <Typography variant="h4" sx={{ mb: 3 }}>
+      <Typography variant="h4" sx={{ mb: 3,width:'80%',textAlign:'center' }}>
         {serviceName || 'Loading...'}
       </Typography>
 

@@ -175,6 +175,7 @@ export default function HomeScreen() {
                 control={control}
                 placeholder="Enter your full name"
                 rules={{ required: 'Full Name is required' }}
+                errors={errors}
               />
               <CustomInputField
                 label="Email"
@@ -183,6 +184,7 @@ export default function HomeScreen() {
                 type="email"
                 placeholder="Enter your email"
                 rules={{ required: 'Email is required' }}
+                errors={errors}
               />
               <CustomTextarea
                 label="Message"

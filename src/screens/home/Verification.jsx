@@ -121,6 +121,7 @@ export default function Verification() {
             type="text"
             control={control}
             rules={{ required: "OTP is required." }}
+            errors={errors}
           />
           <CustomButton
             text="Submit"
@@ -152,6 +153,7 @@ export default function Verification() {
             type="text"
             control={control}
             rules={{ required: "Backup Code is required." }}
+            errors={errors}
           />
           <CustomButton
             text="Submit"

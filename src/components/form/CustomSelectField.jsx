@@ -10,6 +10,7 @@ export default function CustomSelectField({
   placeholder = 'Select an option...',
   rules = {},
   errors,
+  onChange, // Accept the onChange prop
 }) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', mb: 2 }}>
@@ -27,10 +28,15 @@ export default function CustomSelectField({
           <select
             {...field}
             placeholder={placeholder}
+            onChange={(e) => {
+              const value = e.target.value;
+              field.onChange(value); // Update react-hook-form value
+              if (onChange) onChange(value); // Call custom onChange handler if provided
+            }}
             style={{
               padding: '10px',
               fontSize: '16px',
-              border: '2px solid #48426D',
+              border: errors[name] ? '2px solid red' : '2px solid #48426D',
               borderRadius: '5px',
               outline: 'none',
               transition: 'border-color 0.3s',
@@ -52,7 +58,7 @@ export default function CustomSelectField({
       />
 
       {/* Display error below the field */}
-      {errors[name] && (
+      {errors?.[name] && (
         <Typography variant="body2" sx={{ color: 'red', mt: 1 }}>
           {errors[name].message}
         </Typography>

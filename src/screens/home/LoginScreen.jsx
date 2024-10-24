@@ -87,6 +87,7 @@ export default function LoginScreen() {
               control={control}
               placeholder="Enter your username"
               rules={{ required: 'Username is required' }}
+              errors={errors}
             />
 
             {/* Password Field */}
@@ -103,6 +104,7 @@ export default function LoginScreen() {
                   message: 'Password must be at least 6 characters',
                 },
               }}
+              errors={errors}
             />
 
            {/* Submit Button */}

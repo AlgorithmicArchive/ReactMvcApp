@@ -329,6 +329,10 @@
       "PackagePath": "staticwebassets/lib/jquery/dist/jquery.min.map"
     },
     {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/2ab52b12.jpg",
+      "PackagePath": "staticwebassets/uploads/2ab52b12.jpg"
+    },
+    {
       "Id": "obj/Debug/net8.0/staticwebassets/msbuild.ReactMvcApp.Microsoft.AspNetCore.StaticWebAssets.props",
       "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
     },

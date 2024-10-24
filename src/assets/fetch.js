@@ -1,5 +1,5 @@
 import axiosInstance from '../axiosConfig'; // Adjust the path as needed
-
+import axios from 'axios';
 
 export async function Login(formData) {
   try {
@@ -61,3 +61,61 @@ export async function GetServiceContent() {
     throw error;
   }
 }
+
+export const fetchDistricts = async (setDistrictOptions) => {
+  try {
+    const response = await axios.get("/Base/GetDistricts");
+    const { status, districts } = response.data;
+    if (status) {
+      const formattedDistricts = districts.map((district) => ({
+        label: district.districtName,
+        value: district.districtId,
+      }));
+      setDistrictOptions(formattedDistricts);
+    } else {
+      alert("Failed to load districts.");
+    }
+  } catch (error) {
+    console.error("Error fetching districts:", error);
+  }
+};
+
+export const fetchTehsils = async (districtId,setTehsilOptions) => {
+  try {
+    const response = await axios.get(
+      `/Base/GetTeshilForDistrict?districtId=${districtId}`
+    );
+    const { status, tehsils } = response.data;
+    if (status) {
+      const formattedTehsils = tehsils.map((tehsil) => ({
+        label: tehsil.tehsilName,
+        value: tehsil.tehsilId,
+      }));
+      setTehsilOptions(formattedTehsils);
+    } else {
+      alert("Failed to load tehsils.");
+    }
+  } catch (error) {
+    console.error("Error fetching tehsils:", error);
+  }
+};
+
+export const fetchBlocks = async (districtId,setBlockOptions) => {
+  try {
+    const response = await axios.get(
+      `/Base/GetBlockForDistrict?districtId=${districtId}`
+    );
+    const { status, blocks } = response.data;
+    if (status) {
+      const formattedBlocks = blocks.map((block) => ({
+        label: block.blockName,
+        value: block.blockId,
+      }));
+      setBlockOptions(formattedBlocks);
+    } else {
+      alert("Failed to load blocks.");
+    }
+  } catch (error) {
+    console.error("Error fetching blocks:", error);
+  }
+};

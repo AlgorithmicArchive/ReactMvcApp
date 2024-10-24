@@ -1,85 +1,119 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import CustomInputField from "./CustomInputField";
 import CustomSelectField from "./CustomSelectField";
 import CustomFileSelector from "./CustomFileSelector";
 import CustomCheckbox from "./CustomCheckBox";
 import CustomRadioButton from "./CustomRadioButton";
+import CustomDateInput from "./CustomDateInput";
 import axios from "axios";
-import validationFunctionsList from "../../assets/formvalidations";
+import {
+  validationFunctionsList,
+  CapitalizeAlphabets,
+} from "../../assets/formvalidations";
 import { Typography } from "@mui/material";
 import CustomButton from "../CustomButton";
+import axiosInstance from "../../axiosConfig";
+import { fetchBlocks, fetchDistricts, fetchTehsils } from "../../assets/fetch";
 
 const DynamicStepForm = ({ formConfig, serviceId }) => {
   const {
     control,
     handleSubmit,
     setValue,
-    getValues,
     formState: { errors },
-  } = useForm();
+  } = useForm({
+    mode: "onChange",
+  });
+
   const [step, setStep] = useState(0);
   const [applicationId, setApplicationId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [districtOptions, setDistrictOptions] = useState([]);
+  const [tehsilOptions, setTehsilOptions] = useState([]);
+  const [blockOptions, setBlockOptions] = useState([]);
 
-  // API endpoints for each step (adjust these endpoints as needed)
+  const [selectedDistrict, setSelectedDistrict] = useState(0);
+
   const apiEndpoints = [
-    "/InsertGeneralDetails",
-    "/InsertAddressDetails",
-    "/InsertBankDetails",
-    "/InsertDocuments",
+    "/User/InsertGeneralDetails",
+    "/User/InsertAddressDetails",
+    "/User/InsertBankDetails",
+    "/User/InsertDocuments",
   ];
 
-  // Asynchronous validation runner
+  // Fetch districts from the API
+  useEffect(() => {
+    fetchDistricts(setDistrictOptions);
+  }, []);
+
+  // Fetch Tehsils and Blocks when the district changes
+  useEffect(() => {
+    if (selectedDistrict) {
+      fetchTehsils(selectedDistrict,setTehsilOptions);
+      fetchBlocks(selectedDistrict,setBlockOptions);
+    }
+  }, [selectedDistrict]);
+
+ 
+
   const runValidations = async (field, value) => {
     if (!Array.isArray(field.validationFunctions)) return true;
 
     for (const validationFn of field.validationFunctions) {
-      const validate = validationFunctionsList[validationFn];
-      if (validate) {
-        const error = await validate(field, value || '');
+      const fun = validationFunctionsList[validationFn];
+      if (typeof fun !== "function") continue;
 
-        // Conditionally update value for specific validations
-        if (validationFn === 'CapitalizeAlphabets' && !error) {
-          setValue(field.name, value.toUpperCase(), { shouldValidate: true });
-        } else if (error) {
-          return error; // Return the first error encountered
-        }
+      try {
+        const error = await fun(field, value || "");
+        if (error !== true) return error;
+      } catch (err) {
+        return "Validation failed due to an unexpected error.";
       }
     }
-    return true; // No errors found
+
+    return true;
   };
 
-  // Handle form submission
   const onSubmit = async (data) => {
     try {
       setIsSubmitting(true);
       const formData = new FormData();
+      const serviceSpecific = {}; // Object to store form-specific fields
 
-      // Add form fields to FormData
       Object.keys(data).forEach((key) => {
-        formData.append(key, data[key]);
+        // Find the field configuration
+        const fieldConfig = formConfig[step].fields.find(
+          (field) => field.name === key
+        );
+
+        // Check if the field is form-specific
+        if (fieldConfig && fieldConfig.isFormSpecific) {
+          // Add to ServiceSpecific object
+          serviceSpecific[key] = data[key];
+        } else {
+          // Add to FormData as usual
+          formData.append(key, data[key]);
+        }
       });
 
-      // Include ApplicationId and serviceId in subsequent requests
+      // Add the serialized ServiceSpecific object to FormData
+      if (Object.keys(serviceSpecific).length > 0) {
+        formData.append("ServiceSpecific", JSON.stringify(serviceSpecific));
+      }
+
       if (applicationId) formData.append("ApplicationId", applicationId);
       if (serviceId) formData.append("ServiceId", serviceId);
 
-      // Determine current endpoint based on step
       const endpoint = apiEndpoints[step];
 
-      // Make an API call to submit data
-      const response = await axios.post(endpoint, formData, {
+      const response = await axiosInstance.post(endpoint, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
       const { status, ApplicationId } = response.data;
-
       if (status) {
-        // Store the ApplicationId for subsequent steps
         if (!applicationId) setApplicationId(ApplicationId);
-
-        // Move to the next step if submission is successful
         if (step < formConfig.length - 1) {
           setStep((prev) => prev + 1);
         } else {
@@ -89,19 +123,12 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
         alert("Submission failed. Please check your input.");
       }
     } catch (error) {
-      console.error("Error during form submission:", error);
       alert("An error occurred while submitting the form. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Handle form errors
-  const handleErrors = (errors) => {
-    console.log("Validation Errors:", errors);
-  };
-
-  // Dynamic field rendering
   const renderField = (field) => {
     const {
       type,
@@ -110,15 +137,20 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
       options = [],
       placeholder,
       accept,
+      maxLength,
     } = field;
+
+    const handleTransformation = (e) => {
+      if (field.transformationFunctions?.includes("CapitalizeAlphabets")) {
+        const transformedValue = CapitalizeAlphabets(field, e.target.value);
+        setValue(field.name, transformedValue, { shouldValidate: true });
+      }
+    };
 
     // Render fields based on type
     switch (type) {
       case "text":
       case "email":
-      case "date":
-      case "number":
-      case "password":
         return (
           <CustomInputField
             key={name}
@@ -127,33 +159,66 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
             type={type}
             control={control}
             placeholder={placeholder}
+            maxLength={maxLength}
             rules={{
-              required:'This field is required',
-              validate: (value) => runValidations(field, value),
+              validate: async (value) => {
+                const error = await runValidations(field, value);
+                return error === true || error === "" ? true : error;
+              },
+            }}
+            onChange={handleTransformation}
+            errors={errors}
+          />
+        );
+      case "date":
+        return (
+          <CustomDateInput
+            key={name}
+            label={label}
+            name={name}
+            control={control}
+            rules={{
+              validate: async (value) => {
+                const error = await runValidations(field, value);
+                return error === true || error === "" ? true : error;
+              },
             }}
             errors={errors}
           />
         );
-
       case "select":
+        // Check if the field is related to 'district', 'tehsil', or 'block' and use the fetched options
+        let selectOptions = options.map((option) => ({
+          label: option,
+          value: option,
+        }));
+
+        if (name.toLowerCase().includes("district")) {
+          selectOptions = districtOptions;
+        } else if (name.toLowerCase().includes("tehsil")) {
+          selectOptions = tehsilOptions;
+        } else if (name.toLowerCase().includes("block")) {
+          selectOptions = blockOptions;
+        }
+
+        selectOptions = [{ label: "Select Option", value: "" }, ...selectOptions];
         return (
           <CustomSelectField
             key={name}
             label={label}
             name={name}
             control={control}
-            options={options.map((option) => ({
-              label: option,
-              value: option,
-            }))}
+            options={selectOptions}
             placeholder={placeholder}
             rules={{
               validate: (value) => runValidations(field, value),
             }}
+            onChange={(value) => {
+              setSelectedDistrict(value); // Custom handler to update selected district
+            }}
             errors={errors}
           />
         );
-
       case "file":
         return (
           <CustomFileSelector
@@ -168,7 +233,6 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
             errors={errors}
           />
         );
-
       case "checkbox":
         return (
           <CustomCheckbox
@@ -182,7 +246,6 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
             errors={errors}
           />
         );
-
       case "radio":
         return (
           <CustomRadioButton
@@ -197,7 +260,6 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
             errors={errors}
           />
         );
-
       default:
         return null;
     }
@@ -209,12 +271,28 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
         {formConfig[step].section}
       </Typography>
 
-      {/* Render fields for the current step */}
-      {formConfig[step].fields.map((field) => renderField(field))}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "16px",
+        }}
+      >
+        {formConfig[step].fields.map((field) => (
+          <div
+            key={field.name}
+            style={{
+              flex: "1 1 calc(50% - 16px)", // Two columns
+              minWidth: "200px", // Minimum width for proper alignment
+            }}
+          >
+            {renderField(field)}
+          </div>
+        ))}
+      </div>
 
       <div
-        className="step-buttons"
-        style={{ display: "flex", justifyContent: "center" }}
+        style={{ display: "flex", justifyContent: "center", marginTop: "20px" }}
       >
         {step > 0 && (
           <CustomButton
@@ -225,7 +303,6 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
         )}
         <CustomButton
           text={step < formConfig.length - 1 ? "Next" : "Submit"}
-          onClick={() => {}}
           type="submit"
           disabled={isSubmitting}
           bgColor="background.paper"

@@ -1,161 +1,124 @@
-const validationFunctionsList = {
-    notEmpty,
-    onlyAlphabets,
-    onlyDigits,
-    specificLength,
-    isAgeGreaterThan,
-    isEmailValid,
-    isDateWithinRange,
-    CapitalizeAlphabets,
-    duplicateAccountNumber,
-    validateFile,
-  };
-  
-  function setErrorSpan(id, msg) {
-    if (!$("#" + id + "Msg").length && msg.length != 0) {
-      $("#" + id).after(`<span id="${id}Msg" class="errorMsg">${msg}</span>`);
-    } else if (msg.length != 0) {
-      $("#" + id + "Msg").empty();
-      $("#" + id + "Msg").text(msg);
-    } else {
-      $("#" + id + "Msg").remove();
-    }
+// formvalidations.js
+
+// Validation functions
+
+export function notEmpty(field, value) {
+  if (value === "") {
+    return "This field is required.";
   }
-  
-  function attachValidation(field, validationFunctions) {
-    const name = field.type == "radio" ? field.name + "Name" : field.name;
-    $(document).on("input blur change", "#" + name, function () {
-      for (let i = 0; i < validationFunctions.length; i++) {
-        let msg = validationFunctions[i](field, $("#" + name).val());
-        if (msg.length != 0) return;
-      }
-    });
+  return true;
+}
+
+export function onlyAlphabets(field, value) {
+  if (!/^[A-Za-z .']+$/.test(value)) {
+    return "Please use letters (a-z, A-Z) and special characters (. and ') only.";
   }
-  
-  function notEmpty(field, value) {
-    const name = field.type == "radio" ? field.name + "Name" : field.name;
-    let msg = "";
-    if (($("#" + name).is("select") && value == "Please Select") || value == "") {
-      msg = "This field is required.";
-    }
-    setErrorSpan(name, msg);
-    return msg;
+  return true;
+}
+
+export function onlyDigits(field, value) {
+  if (!/^\d+$/.test(value)) {
+    return "Please enter only digits.";
   }
-  
-  function onlyAlphabets(field, value) {
-    let msg = "";
-    if (!/^[A-Za-z .']+$/.test(value)) {
-      msg =
-        "Please use letters (a-z, A-Z) and special characters (. and ') only.";
-    }
-    setErrorSpan(field.name, msg);
-    return msg;
+  return true;
+}
+
+export function specificLength(field, value) {
+  if (value.length !== field.maxLength) {
+    return `This must be exactly ${field.maxLength} characters long.`;
   }
-  
-  function onlyDigits(field, value) {
-    let msg = "";
-    if (!/^\d+$/.test(value)) {
-      msg = "Please enter only digits";
-    }
-    setErrorSpan(field.name, msg);
-    return msg;
+  return true;
+}
+
+export function isAgeGreaterThan(field, value) {
+  const currentDate = new Date();
+  const compareDate = new Date(
+    currentDate.getFullYear() - field.maxLength,
+    currentDate.getMonth(),
+    currentDate.getDate()
+  );
+  const inputDate = new Date(value);
+
+  if (inputDate > compareDate) {
+    return `Age should be greater than ${field.maxLength}.`;
   }
-  
-  function specificLength(filed, value) {
-    let msg = "";
-    if (value.length != filed.maxLength) {
-      msg = `This must be exactly ${filed.maxLength} characters long.`;
-    }
-    setErrorSpan(filed.name, msg);
-    return msg;
+  return true;
+}
+
+export function isEmailValid(field, value) {
+  if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value)) {
+    return "Invalid Email Address.";
   }
-  
-  function isAgeGreaterThan(field, value) {
-    let msg = "";
-    const currentDate = new Date();
-    const compareDate = new Date(
-      currentDate.getFullYear() - field.maxLength,
-      currentDate.getMonth(),
-      currentDate.getDate()
-    );
-    const inputDate = new Date(value);
-  
-    if (inputDate > compareDate) {
-      msg = `Age shold be greater than ${field.maxLength}`;
-    }
-    setErrorSpan(field.name, msg);
-    return msg;
+  return true;
+}
+
+export function isDateWithinRange(field, value) {
+  const dateOfMarriage = new Date(value);
+  const currentDate = new Date();
+
+  const minDate = new Date(currentDate);
+  minDate.setMonth(currentDate.getMonth() + parseInt(field.minLength));
+
+  const maxDate = new Date(currentDate);
+  maxDate.setMonth(currentDate.getMonth() + parseInt(field.maxLength));
+
+  if (dateOfMarriage < minDate || dateOfMarriage > maxDate) {
+    return `The date should be between ${field.minLength} to ${field.maxLength} months from current date.`;
   }
-  
-  function isEmailValid(field, value) {
-    let msg = "";
-    if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value)) {
-      msg = "Invalid Email Address.";
-    }
-    setErrorSpan(field.name, msg);
-    return msg;
-  }
-  
-  function isDateWithinRange(field, value) {
-    let msg = "";
-    const dateOfMarriage = new Date(value);
-    var currentDate = new Date();
-  
-    var minDate = new Date(currentDate);
-    minDate.setMonth(currentDate.getMonth() + parseInt(field.minLength));
-  
-    var maxDate = new Date(currentDate);
-    maxDate.setMonth(currentDate.getMonth() + parseInt(field.maxLength));
-  
-    if (dateOfMarriage >= minDate && dateOfMarriage <= maxDate) {
-      setErrorSpan(field.name, "");
-    } else {
-      setErrorSpan(
-        field.name,
-        `The range should be between ${field.minLength} to ${field.maxLength} months from current date.`
-      );
-    }
-    return msg;
-  }
-  
-  async function duplicateAccountNumber(id, value, applicationId) {
-    let msg = "";
-    const res = await fetch(
-      "/Base/IsDuplicateAccNo?accNo=" + value + "&applicationId=" + applicationId
-    );
+  return true;
+}
+
+export async function duplicateAccountNumber(field, value) {
+  try {
+    const res = await fetch(`/Base/IsDuplicateAccNo?accNo=${value}&applicationId=${field.applicationId}`);
     const data = await res.json();
     if (data.status) {
-      msg = "Application with this account number already exists.";
+      return "Application with this account number already exists.";
     }
-    setErrorSpan(id, msg);
-    return msg;
+    return true;
+  } catch (error) {
+    console.error("Error in duplicateAccountNumber:", error);
+    return "Validation failed due to a server error.";
   }
-  
-  async function  validateFile(field,value) {
-    const id = field.name;
-    const fileInput = $(`#${id}`)[0]; // Get the actual DOM element
-    const file = fileInput.files[0]; // Get the first selected file
+}
+
+export async function validateFile(field, value) {
+  try {
     const formData = new FormData();
-    if(field.accept.includes(".jpg"))
-      formData.append('fileType','image');
-    else if(field.accept.includes(".pdf"))
-      formData.append('fileType','pdf');
-  
-    formData.append('file',file);
-    const res = await fetch("/Base/Validate",{method:'POST',body:formData})  ;
+
+    if (field.accept.includes(".jpg")) formData.append("fileType", "image");
+    else if (field.accept.includes(".pdf")) formData.append("fileType", "pdf");
+
+    formData.append("file", value);
+
+    const res = await fetch("/Base/Validate", { method: "POST", body: formData });
     const data = await res.json();
-    if(!data.isValid) setErrorSpan(field.name,data.errorMessage);
-    return data.errorMessage;
+    if (!data.isValid) {
+      return data.errorMessage;
+    }
+    return true;
+  } catch (error) {
+    console.error("Error in validateFile:", error);
+    return "File validation failed due to a server error.";
   }
-  
-  function CapitalizeAlphabets(field, value) {
-    let msg = "";
-    $("#" + field.name).on("input", function (event) {
-      var input = $(this);
-      var cursorPosition = input[0].selectionStart;
-      var capital = input.val().toUpperCase();
-      input.val(capital);
-      input[0].setSelectionRange(cursorPosition, cursorPosition);
-    });
-    return msg;
-  }
+}
+
+// Transformation Function
+
+export function CapitalizeAlphabets(field, value) {
+  return value.toUpperCase();
+}
+
+// Mapping of Validation Functions
+
+export const validationFunctionsList = {
+  notEmpty,
+  onlyAlphabets,
+  onlyDigits,
+  specificLength,
+  isAgeGreaterThan,
+  isEmailValid,
+  isDateWithinRange,
+  duplicateAccountNumber,
+  validateFile,
+};

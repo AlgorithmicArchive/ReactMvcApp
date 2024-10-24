@@ -22,6 +22,7 @@ export default function CustomRadioButton({
         name={name}
         control={control}
         rules={rules}
+        defaultValue={options[0]} // Set the first option as the default
         render={({ field }) => (
           <RadioGroup
             {...field}
@@ -33,12 +34,23 @@ export default function CustomRadioButton({
               <FormControlLabel
                 key={index}
                 value={option}
-                control={<Radio />}
+                control={
+                  <Radio
+                    sx={{
+                      color: '#888', // Default color
+                      '&.Mui-checked': {
+                        color: '#48426D', // Selected color
+                      },
+                    }}
+                  />
+                }
                 label={option}
                 sx={{
                   mr: 2,
-                  color: field.value === option ? '#3f51b5' : '#888',
                   fontWeight: field.value === option ? 'bold' : 'normal',
+                  '& .MuiTypography-root': {
+                    color: field.value === option ? '#48426D' : '#48426D', // Change text color
+                  },
                 }}
               />
             ))}
