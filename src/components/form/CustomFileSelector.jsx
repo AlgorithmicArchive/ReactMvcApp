@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// CustomFileSelector.jsx
+import React, { useState, useEffect, useRef } from "react";
 import { Box, Typography } from "@mui/material";
 import { Controller } from "react-hook-form";
 import CustomButton from "../CustomButton";
@@ -12,6 +13,7 @@ export default function CustomFileSelector({
 }) {
   const [preview, setPreview] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
+  const fileInputRef = useRef(null);
 
   if (!control) {
     console.error(
@@ -20,18 +22,34 @@ export default function CustomFileSelector({
     return null;
   }
 
+  useEffect(() => {
+    if (preview) {
+      console.log("Image Preview:", preview);
+    }
+  }, [preview]);
+
+  useEffect(() => {
+    if (selectedFile) {
+      console.log("Selected File:", selectedFile.name);
+    }
+  }, [selectedFile]);
+
   const handleFileChange = (event, onChange) => {
     const file = event.target.files[0];
-    setSelectedFile(file || null); // Set to null if no file is selected
+    setSelectedFile(file);
     onChange(file);
 
-    // Show preview for image files
     if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onloadend = () => setPreview(reader.result);
       reader.readAsDataURL(file);
     } else {
       setPreview(null);
+      if (file) {
+        console.log("Selected File:", selectedFile);
+      } else {
+        console.log("No file selected.");
+      }
     }
   };
 
@@ -58,22 +76,22 @@ export default function CustomFileSelector({
               accept={accept}
               onChange={(e) => handleFileChange(e, field.onChange)}
               style={{ display: "none" }}
-              id={name}
+              ref={fileInputRef}
+              aria-labelledby={`${name}-label`}
             />
             <Box sx={{ display: "flex", gap: 3, alignItems: "center" }}>
-              <label htmlFor={name}>
-                <CustomButton
-                  component="span"
-                  text="Choose File"
-                  bgColor="background.paper"
-                  color="primary.main"
-                  onClick={() => document.getElementById(name).click()}
-                />
-              </label>
+              <CustomButton
+                component="span"
+                text="Choose File"
+                bgColor="background.paper"
+                color="primary.main"
+                onClick={() => fileInputRef.current.click()}
+                aria-label={`Choose file for ${label}`}
+              />
 
-              {/* Show image preview if the file is an image */}
-              {preview && (
-                <Box sx={{ }}>
+              {/* Show image preview if the file is an image, else show file name */}
+              {preview ? (
+                <Box>
                   <img
                     src={preview}
                     alt="Preview"
@@ -85,7 +103,11 @@ export default function CustomFileSelector({
                     }}
                   />
                 </Box>
-              )}
+              ) : selectedFile ? (
+                <Typography variant="body2" sx={{ color:'background.default',border:'2px solid #48426D',padding:2,borderRadius:5 }}>
+                  {selectedFile.name}
+                </Typography>
+              ) : null}
             </Box>
 
             {error && (

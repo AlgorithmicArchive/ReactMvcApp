@@ -57,48 +57,81 @@ namespace ReactMvcApp.Controllers.User
                 ApplicationId
             });
         }
-        public IActionResult InsertAddressDetails([FromForm] IFormCollection form)
+
+        public IActionResult InsertPresentAddressDetails([FromForm] IFormCollection form)
+        {
+            try
+            {
+                var applicationId = new SqlParameter("@ApplicationId", form["ApplicationId"].ToString());
+
+                // Extract Present Address Parameters
+                var presentAddressParams = helper.GetAddressParameters(form, "Present");
+
+                List<Address>? presentAddress = null;
+                int? presentAddressId = null;
+
+                if (presentAddressParams != null)
+                {
+                    presentAddress = [.. dbcontext.Addresses.FromSqlRaw("EXEC CheckAndInsertAddress @DistrictId, @TehsilId, @BlockId, @HalqaPanchayatName, @VillageName, @WardName, @Pincode, @AddressDetails", presentAddressParams)];
+
+                    if (presentAddress != null && presentAddress.Count > 0)
+                    {
+                        presentAddressId = presentAddress[0].AddressId;
+                        helper.UpdateApplication("PresentAddressId", presentAddressId.ToString()!, applicationId);
+                    }
+                }
+
+                return Json(new
+                {
+                    status = true,
+                    ApplicationId = form["ApplicationId"].ToString(),
+                    PresentAddressId = presentAddressId
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public IActionResult InsertPermanentAddressDetails([FromForm] IFormCollection form)
         {
             try
             {
                 var applicationId = new SqlParameter("@ApplicationId", form["ApplicationId"].ToString());
                 string? sameAsPresent = form["SameAsPresent"];
 
-                var presentAddressParams = helper.GetAddressParameters(form, "Present");
+                // Extract Permanent Address Parameters
                 var permanentAddressParams = helper.GetAddressParameters(form, "Permanent");
 
-                List<Address>? presentAddress = null;
                 List<Address>? permanentAddress = null;
-                int? presentAddressId = null;
                 int? permanentAddressId = null;
 
-                if (presentAddressParams != null)
+                if (permanentAddressParams != null)
                 {
-                    presentAddress = dbcontext.Addresses
-                        .FromSqlRaw("EXEC CheckAndInsertAddress @DistrictId,@TehsilId,@BlockId,@HalqaPanchayatName,@VillageName,@WardName,@Pincode,@AddressDetails", presentAddressParams)
-                        .ToList();
-
-                    if (presentAddress != null && presentAddress.Count > 0)
+                    if (string.IsNullOrEmpty(sameAsPresent))
                     {
-                        presentAddressId = presentAddress[0].AddressId;
-                        helper.UpdateApplication("PresentAddressId", presentAddressId.ToString()!, applicationId);
+                        // Insert Permanent Address Separately
+                        permanentAddress = [.. dbcontext.Addresses.FromSqlRaw("EXEC CheckAndInsertAddress @DistrictId, @TehsilId, @BlockId, @HalqaPanchayatName, @VillageName, @WardName, @Pincode, @AddressDetails", permanentAddressParams)];
 
-                        if (string.IsNullOrEmpty(sameAsPresent))
+                        if (permanentAddress != null && permanentAddress.Count > 0)
                         {
-                            permanentAddress = dbcontext.Addresses
-                                .FromSqlRaw("EXEC CheckAndInsertAddress @DistrictId,@TehsilId,@BlockId,@HalqaPanchayatName,@VillageName,@WardName,@Pincode,@AddressDetails", permanentAddressParams!)
-                                .ToList();
-
-                            if (permanentAddress != null && permanentAddress.Count > 0)
-                            {
-                                permanentAddressId = permanentAddress[0].AddressId;
-                                helper.UpdateApplication("PermanentAddressId", permanentAddressId.ToString()!, applicationId);
-                            }
+                            permanentAddressId = permanentAddress[0].AddressId;
+                            helper.UpdateApplication("PermanentAddressId", permanentAddressId.ToString()!, applicationId);
+                        }
+                    }
+                    else
+                    {
+                        // If "Same As Present" is checked, fetch PresentAddressId
+                        var presentAddressIdStr = form["PresentAddressId"].ToString();
+                        if(!string.IsNullOrEmpty(presentAddressIdStr))
+                        {
+                            permanentAddressId = Convert.ToInt32(presentAddressIdStr);
+                            helper.UpdateApplication("PermanentAddressId", Convert.ToInt32(presentAddressIdStr).ToString()!, applicationId);
                         }
                         else
                         {
-                            permanentAddressId = presentAddressId;
-                            helper.UpdateApplication("PermanentAddressId", presentAddressId.ToString()!, applicationId);
+                            return Json(new { status = false, message = "Invalid PresentAddressId." });
                         }
                     }
                 }
@@ -107,7 +140,6 @@ namespace ReactMvcApp.Controllers.User
                 {
                     status = true,
                     ApplicationId = form["ApplicationId"].ToString(),
-                    PresentAddressId = presentAddressId,
                     PermanentAddressId = permanentAddressId
                 });
             }
@@ -116,6 +148,7 @@ namespace ReactMvcApp.Controllers.User
                 return Json(new { status = false, message = ex.Message });
             }
         }
+
         public IActionResult InsertBankDetails([FromForm] IFormCollection form)
         {
             var ApplicationId = new SqlParameter("@ApplicationId", form["ApplicationId"].ToString());
@@ -131,33 +164,17 @@ namespace ReactMvcApp.Controllers.User
 
             helper.UpdateApplication("BankDetails", JsonConvert.SerializeObject(bankDetails), ApplicationId);
 
-            return Json(new { status = true, ApplicationId = form["ApplicationId"].ToString() });
+            return Json(new { status = true, ApplicationId = form["ApplicationId"].ToString(),bankDetails });
         }
         public async Task<IActionResult> InsertDocuments([FromForm] IFormCollection form)
         {
             var applicationId = form["ApplicationId"].ToString();
-            if (string.IsNullOrEmpty(applicationId))
-            {
-                return Json(new{message="ApplicationId is missing"});
-            }
-            _logger.LogInformation("------------- INSERT DOCUMENT DOWN 1-------------------");
-
-            if (!int.TryParse(form["ServiceId"].ToString(), out int serviceId))
-            {
-                return Json(new { message = "ServiceId is missing or invalid" });
-            }
-            _logger.LogInformation("------------- INSERT DOCUMENT DOWN 2-------------------");
-
-            if (!int.TryParse(form["AccessCode"].ToString(), out int accessCode))
-            {
-                return Json(new { message = "AccessCode is missing or invalid" });
-            }
-            _logger.LogInformation("------------- INSERT DOCUMENT DOWN 3-------------------");
+            int serviceId = Convert.ToInt32(form["ServiceId"].ToString());
+            int accessCode = Convert.ToInt32(form["AccessCode"].ToString());
 
             var labels = JsonConvert.DeserializeObject<string[]>(form["labels"].ToString()) ?? [];
             var docs = new List<Document>();
             var addedLabels = new HashSet<string>();
-            _logger.LogInformation("------------- INSERT DOCUMENT DOWN 4-------------------");
 
             foreach (var label in labels)
             {
@@ -166,7 +183,7 @@ namespace ReactMvcApp.Controllers.User
                     var file = form.Files[$"{label}File"];
                     if (file == null)
                     {
-                        return Json(new{message=$"{label}File is missing"});
+                        return Json(new { message = $"{label}File is missing" });
                     }
 
                     var doc = new Document
@@ -178,20 +195,17 @@ namespace ReactMvcApp.Controllers.User
                     docs.Add(doc);
                 }
             }
-            _logger.LogInformation("------------- INSERT DOCUMENT DOWN 5-------------------");
 
             var documents = JsonConvert.SerializeObject(docs);
-            var service = dbcontext.Services.FirstOrDefault(service=>service.ServiceId == serviceId);
+            var service = dbcontext.Services.FirstOrDefault(service => service.ServiceId == serviceId);
             var workForceOfficers = JsonConvert.DeserializeObject<List<dynamic>>(service!.WorkForceOfficers!) ?? [];
-            
+
             if (workForceOfficers.Count == 0)
             {
-                return Json(new{message="No workforce officers available"});
+                return Json(new { message = "No workforce officers available" });
             }
-            _logger.LogInformation("------------- INSERT DOCUMENT DOWN 6-------------------");
 
             string officer = workForceOfficers[0]!.Designation;
-            _logger.LogInformation($"-----------OFFICER: {officer} ACCESSCODE: {accessCode}-------------------------");
             var newPhase = new CurrentPhase
             {
                 ApplicationId = applicationId,
@@ -203,13 +217,11 @@ namespace ReactMvcApp.Controllers.User
                 CanPull = false,
             };
             dbcontext.CurrentPhases.Add(newPhase);
-            _logger.LogInformation("------------- INSERT DOCUMENT DOWN 8-------------------");
 
 
             var recordCount = await dbcontext.RecordCounts
                 .FirstOrDefaultAsync(rc => rc.ServiceId == serviceId && rc.Officer == officer && rc.AccessCode == accessCode);
-          
-            _logger.LogInformation("------------- INSERT DOCUMENT DOWN 9-------------------");
+
 
             if (recordCount != null)
             {
@@ -228,7 +240,6 @@ namespace ReactMvcApp.Controllers.User
             }
 
             await dbcontext.SaveChangesAsync();
-            _logger.LogInformation("------------- INSERT DOCUMENT DOWN 10-------------------");
 
             // Consolidate UpdateApplication calls
             var updates = new Dictionary<string, string>
@@ -280,7 +291,7 @@ namespace ReactMvcApp.Controllers.User
             {
                 await emailSender.SendEmail(email, "Acknowledgement", $"Your Application with Reference Number {applicationId} has been sent to {officer} at {DateTime.Now:dd MMM yyyy hh:mm tt}");
             }
-            HttpContext.Session.SetString("ApplicationId",applicationId);
+            HttpContext.Session.SetString("ApplicationId", applicationId);
             return Json(new { status = true, ApplicationId = applicationId, complete = true });
         }
         public async Task<IActionResult> UpdateGeneralDetails([FromForm] IFormCollection form)
@@ -383,10 +394,10 @@ namespace ReactMvcApp.Controllers.User
 
             UpdateRecordCounts(recordsCount!, pendingCount: 1, pendingWithCitizenCount: -1);
 
-           string Officer = workForceOfficers[0].Designation;
+            string Officer = workForceOfficers[0].Designation;
 
             var CurrentPhase = dbcontext.CurrentPhases.FirstOrDefault(cur => cur.ApplicationId == form["ApplicationId"] && cur.Officer == Officer);
-            CurrentPhase!.ReceivedOn =DateTime.Now.ToString("dd MMM yyyy hh:mm tt");
+            CurrentPhase!.ReceivedOn = DateTime.Now.ToString("dd MMM yyyy hh:mm tt");
             CurrentPhase.ActionTaken = "Pending";
             CurrentPhase.Remarks = string.Empty;
             CurrentPhase.CanPull = false;

@@ -28,11 +28,11 @@ export default function Form() {
     <Box
       sx={{
         display: 'flex',
+        justifyContent:'center',
+        alignItems:'center',
         flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '150vh',
         padding: 3,
+        marginTop:'100px'
       }}
     >
       <Typography variant="h4" sx={{ mb: 3,width:'80%',textAlign:'center' }}>
