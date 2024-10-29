@@ -3,7 +3,7 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import HomeScreen from '../screens/home/HomeScreen';
 import LoginScreen from '../screens/home/LoginScreen';
-import RegisterScreen from '../screens/home/RegisterScreen';
+import RegisterScreen from '../screens/home/Registration';
 import Verification from '../screens/home/Verification';
 import UserHome from '../screens/user/UserHome';
 import Services from '../screens/user/Services';
@@ -11,6 +11,8 @@ import UserLayout from '../screens/user/UserLayout';
 import Form from '../screens/user/Form';
 import ProtectedRoute from '../ProtectedRoute'; // Import the ProtectedRoute component
 import Unauthorized from '../screens/Unauthorized'; // Create this component
+import OfficerRegisterScreen from '../screens/home/OfficerRegisterScreen';
+import Acknowledgement from '../screens/user/Acknowledgement';
 
 const RoutesComponent = () => {
   return (
@@ -19,7 +21,8 @@ const RoutesComponent = () => {
       <Route path="/" element={<HomeScreen />} />
       <Route path="/login" element={<LoginScreen />} />
       <Route path="/verification" element={<Verification />} />
-      {/* <Route path="/register" element={<RegisterScreen />} /> */}
+      <Route path="/register" element={<RegisterScreen />} />
+      <Route path="/officerRegistration" element={<OfficerRegisterScreen/>} />
 
       {/* Unauthorized Route */}
       <Route path="/unauthorized" element={<Unauthorized />} />
@@ -30,6 +33,7 @@ const RoutesComponent = () => {
           <Route index element={<UserHome />} />
           <Route path="services" element={<Services />} />
           <Route path="form" element={<Form />} />
+          <Route path='acknowledge' element={<Acknowledgement/>}/>
         </Route>
       </Route>
     </Routes>

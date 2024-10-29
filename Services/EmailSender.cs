@@ -10,7 +10,7 @@ namespace SendEmails
         protected readonly EmailSettings _emailSettings = emailSettings.Value;
         protected readonly ILogger<EmailSender> _logger = logger;
 
-        public async Task SendEmail(string email, string Subject, string message)
+    public async Task SendEmail(string email, string Subject, string message)
         {
             try
             {

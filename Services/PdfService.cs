@@ -15,7 +15,7 @@ public class PdfService(IWebHostEnvironment webHostEnvironment)
         string path = Path.Combine(_webHostEnvironment.WebRootPath, "files", ApplicationId.Replace("/", "_") + "SanctionLetter.pdf");
         Directory.CreateDirectory(Path.GetDirectoryName(path) ?? string.Empty);
 
-        string emblem = Path.Combine(_webHostEnvironment.WebRootPath, "resources", "emblem.png");
+        string emblem = Path.Combine(_webHostEnvironment.WebRootPath, "assets","images", "emblem.png");
         Image image = new Image(ImageDataFactory.Create(emblem))
                         .ScaleToFit(50, 50)        // Resize the image (optional)
                         .SetHorizontalAlignment(HorizontalAlignment.CENTER);  // Center align the image
@@ -61,7 +61,7 @@ public class PdfService(IWebHostEnvironment webHostEnvironment)
         string path = Path.Combine(_webHostEnvironment.WebRootPath, "files", ApplicationId.Replace("/", "_") + "Acknowledgement.pdf");
         Directory.CreateDirectory(Path.GetDirectoryName(path) ?? string.Empty);
 
-        string emblem = Path.Combine(_webHostEnvironment.WebRootPath, "resources", "emblem.png");
+        string emblem = Path.Combine(_webHostEnvironment.WebRootPath, "assets","images", "emblem.png");
         Image image = new Image(ImageDataFactory.Create(emblem))
                         .ScaleToFit(50, 50)        // Resize the image (optional)
                         .SetHorizontalAlignment(HorizontalAlignment.CENTER);  // Center align the image

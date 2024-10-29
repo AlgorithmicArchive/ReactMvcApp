@@ -1,7 +1,6 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using ReactMvcApp.Controllers.User;
 using ReactMvcApp.Models.Entities;
 
 public class UserHelperFunctions
@@ -18,12 +17,12 @@ public class UserHelperFunctions
     }
 
 
-    public async Task<string> GetFilePath(IFormFile? docFile,string folder="uploads")
+    public async Task<string> GetFilePath(IFormFile? docFile, string folder = "uploads")
     {
         string docPath = "";
         string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, folder);
         string shortGuid = Guid.NewGuid().ToString("N")[..8];
-     
+
         string fileExtension = Path.GetExtension(docFile?.FileName)!;
         string uniqueName = shortGuid + fileExtension;
 
@@ -33,7 +32,7 @@ public class UserHelperFunctions
             Directory.CreateDirectory(uploadsFolder);
         }
 
-       if (docFile != null && docFile.Length > 0)
+        if (docFile != null && docFile.Length > 0)
         {
             _logger.LogInformation($"----File:{docFile?.FileName} Extension:{Path.GetExtension(docFile?.FileName)}-------");
             try
@@ -45,7 +44,7 @@ public class UserHelperFunctions
                     await docFile!.CopyToAsync(stream);
                 }
 
-                docPath = "/"+folder+"/" + uniqueName;
+                docPath = "/" + folder + "/" + uniqueName;
             }
             catch (Exception ex)
             {
@@ -76,13 +75,13 @@ public class UserHelperFunctions
         return $"{startYear}-{endYear}";
     }
 
-    public string GenerateApplicationId(int districtId, SocialWelfareDepartmentContext dbcontext, ILogger<UserController> _logger)
+    public string GenerateApplicationId(int districtId, SocialWelfareDepartmentContext dbcontext)
     {
         string? districtShort = dbcontext.Districts.FirstOrDefault(u => u.DistrictId == districtId)?.DistrictShort;
 
         string financialYear = GetCurrentFinancialYear();
 
-        var result = dbcontext.ApplicationPerDistricts.FirstOrDefault(a=>a.DistrictId==districtId && a.FinancialYear==financialYear);
+        var result = dbcontext.ApplicationPerDistricts.FirstOrDefault(a => a.DistrictId == districtId && a.FinancialYear == financialYear);
 
         int countPerDistrict = result?.CountValue ?? 0;
 
@@ -134,68 +133,42 @@ public class UserHelperFunctions
         dbcontext.Database.ExecuteSqlRaw("EXEC UpdateApplication @ColumnName,@ColumnValue,@ApplicationId", columnNameParam, columnValueParam, applicationId);
     }
 
-    public void UpdateApplicationHistory(string applicationId, string actionTaker, string actionTaken, string remarks, string updateObject = "", string File = "")
+   public void UpdateApplicationHistory(int serviceId, string applicationId, int takenBy, string actionTaken, string remarks, string file = "")
     {
-        // Search for an existing history record
-        var historyRecord = dbcontext.ApplicationsHistories.FirstOrDefault(u => u.ApplicationId == applicationId);
-
-        var newAction = new
+        // Create a new history record
+        var newHistory = new ApplicationsHistory
         {
-            ActionTaker = actionTaker,
+            ServiceId = serviceId,
+            ApplicationId = applicationId,
             ActionTaken = actionTaken,
-            Remarks = remarks,
-            DateTime = DateTime.Now.ToString("dd MMM yyyy hh:mm tt"),
-            UpdateObject = JsonConvert.DeserializeObject<dynamic>(updateObject),
-            File
+            TakenBy = takenBy,
+            File = file,
+            TakenAt = DateTime.Now.ToString("dd MMM yyyy hh:mm tt") // Format DateTime as per requirements
         };
 
-        if (historyRecord == null)
-        {
-            // No result was returned, insert a new record with the initial history action
-            var newHistory = new ApplicationsHistory
-            {
-                ApplicationId = applicationId,
-                History = JsonConvert.SerializeObject(new List<object> { newAction })
-            };
-
-            // Add the new record to the database
-            dbcontext.ApplicationsHistories.Add(newHistory);
-            dbcontext.SaveChanges();
-
-        }
-        else
-        {
-            // Result was found, update the History property
-            var history = JsonConvert.DeserializeObject<List<object>>(historyRecord.History) ?? new List<object>();
-
-            // Add the new action to the history
-            history.Add(newAction);
-
-            // Serialize the updated history back to JSON
-            historyRecord.History = JsonConvert.SerializeObject(history);
-
-            // Save the changes to the database
-            dbcontext.SaveChanges();
-
-        }
+        // Add the new history record to the database
+        dbcontext.ApplicationsHistories.Add(newHistory);
+        dbcontext.SaveChanges();
     }
 
 
-    public User GetOfficerDetails(string Designation, string AccessLevel, int AccessCode)
+
+    public User? GetOfficerDetails(string designation, string accessLevel, int accessCode)
     {
         var officer = dbcontext.Users
-        .AsEnumerable()
-        .FirstOrDefault(x =>
-        {
-            var details = JsonConvert.DeserializeObject<dynamic>(x.UserSpecificDetails);
-            return details?.Designation == Designation
-                && details?.AccessLevel == AccessLevel
-                && details?.AccessCode == AccessCode;
-        });
+            .Join(
+                dbcontext.OfficerDetails,
+                u => u.UserId,
+                o => o.OfficerId,
+                (u, o) => new { User = u, OfficerDetail = o }
+            )
+            .Where(joined => joined.OfficerDetail.Role == designation
+                          && joined.OfficerDetail.AccessLevel == accessLevel
+                          && joined.OfficerDetail.AccessCode == accessCode)
+            .Select(joined => joined.User) // Select only the User
+            .FirstOrDefault(); // Get the first match or null if none found
 
-
-
-        return officer!;
+        return officer; // Returns a User or null
     }
     public (Application UserDetails, AddressJoin PreAddressDetails, AddressJoin PerAddressDetails, dynamic ServiceSpecific, dynamic BankDetails) GetUserDetailsAndRelatedData(string applicationId)
     {

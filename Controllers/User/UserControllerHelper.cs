@@ -52,35 +52,35 @@ namespace ReactMvcApp.Controllers.User
             var blocks = dbcontext.Blocks.Where(u => u.DistrictId == DistrictId).ToList();
             return Json(new { status = true, blocks });
         }
-        [HttpGet]
-        public IActionResult GetPhases(string applicationId)
-        {
-            int? phaseId = Convert.ToInt32(dbcontext.Applications.FirstOrDefault(app => app.ApplicationId == applicationId)!.Phase);
-            var phases = new List<dynamic>();
+        // [HttpGet]
+        // public IActionResult GetPhases(string applicationId)
+        // {
+        //     int? phaseId = Convert.ToInt32(dbcontext.Applications.FirstOrDefault(app => app.ApplicationId == applicationId)!.Phase);
+        //     var phases = new List<dynamic>();
 
-            _logger.LogInformation($"---------- PHASE ID: {phaseId}");
-            // Traverse the linked list of phases
-            while (phaseId != 0)
-            {
-                var currentPhase = dbcontext.CurrentPhases.FirstOrDefault(cur => cur.PhaseId == phaseId);
-                if (currentPhase == null)
-                    break;
+        //     _logger.LogInformation($"---------- PHASE ID: {phaseId}");
+        //     // Traverse the linked list of phases
+        //     while (phaseId != 0)
+        //     {
+        //         var currentPhase = dbcontext.CurrentPhases.FirstOrDefault(cur => cur.PhaseId == phaseId);
+        //         if (currentPhase == null)
+        //             break;
 
-                phases.Add(new
-                {
-                    currentPhase.ReceivedOn,
-                    currentPhase.Officer,
-                    currentPhase.ActionTaken,
-                    currentPhase.Remarks
-                });
+        //         phases.Add(new
+        //         {
+        //             currentPhase.ReceivedOn,
+        //             currentPhase.Officer,
+        //             currentPhase.ActionTaken,
+        //             currentPhase.Remarks
+        //         });
 
-                if(currentPhase!.ActionTaken == "Pending") break;
-                // Move to the next phase
-                phaseId = currentPhase.Next;
-            }
+        //         if(currentPhase!.ActionTaken == "Pending") break;
+        //         // Move to the next phase
+        //         phaseId = currentPhase.Next;
+        //     }
 
-            return Json(new { phase = JsonConvert.SerializeObject(phases) });
-        }
+        //     return Json(new { phase = JsonConvert.SerializeObject(phases) });
+        // }
         [HttpGet]
         public IActionResult GetServiceContent(){
              int? serviceId = HttpContext.Session.GetInt32("serviceId");
@@ -93,19 +93,19 @@ namespace ReactMvcApp.Controllers.User
         [HttpGet]
         public IActionResult GetAcknowledgement()
         {
-            var details = FetchAcknowledgementDetails();
-            return Json(details);
+            var result = FetchAcknowledgementDetails();
+            return Json(result);
         }
 
         // Private helper method to get the acknowledgement details
-        private Dictionary<string, string> FetchAcknowledgementDetails()
+        private dynamic FetchAcknowledgementDetails()
         {
             var ApplicationId = HttpContext.Session.GetString("ApplicationId");
 
-            // Handle the case when ApplicationId is null or empty
+            string path = "/files/"+ ApplicationId!.Replace("/", "_") + "Acknowledgement.pdf";
             if (string.IsNullOrEmpty(ApplicationId))
             {
-                return new Dictionary<string, string>(); // Return an empty dictionary
+                return new {}; // Return an empty dictionary
             }
 
             var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails) = helper.GetUserDetailsAndRelatedData(ApplicationId!);
@@ -128,7 +128,7 @@ namespace ReactMvcApp.Controllers.User
                 ["PERMANENT ADDRESS"] = $"{perAddressDetails.Address}, TEHSIL: {perAddressDetails.Tehsil}, DISTRICT: {perAddressDetails.District}, PIN CODE: {perAddressDetails.Pincode}"
             };
 
-            return details;
+            return new{details,path};
         }
 
     }

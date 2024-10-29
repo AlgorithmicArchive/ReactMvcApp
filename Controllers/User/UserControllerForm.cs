@@ -24,7 +24,7 @@ namespace ReactMvcApp.Controllers.User
 
             int.TryParse(ServiceSpecific!["District"], out int districtId);
             int.TryParse(form["ServiceId"].ToString(), out int serviceId);
-            string ApplicationId = helper.GenerateApplicationId(districtId, dbcontext, _logger);
+            string ApplicationId = helper.GenerateApplicationId(districtId, dbcontext);
             IFormFile? photographFile = form.Files["ApplicantImage"];
             _logger.LogInformation($"===============Received file: {photographFile?.FileName} with size: {photographFile?.Length}===========");
             string? photographPath = await helper.GetFilePath(photographFile);
@@ -72,7 +72,7 @@ namespace ReactMvcApp.Controllers.User
 
                 if (presentAddressParams != null)
                 {
-                    presentAddress = [.. dbcontext.Addresses.FromSqlRaw("EXEC CheckAndInsertAddress @DistrictId, @TehsilId, @BlockId, @HalqaPanchayatName, @VillageName, @WardName, @Pincode, @AddressDetails", presentAddressParams)];
+                    presentAddress = dbcontext.Addresses.FromSqlRaw("EXEC CheckAndInsertAddress @DistrictId, @TehsilId, @BlockId, @HalqaPanchayatName, @VillageName, @WardName, @Pincode, @AddressDetails", presentAddressParams).ToList();
 
                     if (presentAddress != null && presentAddress.Count > 0)
                     {
@@ -112,7 +112,7 @@ namespace ReactMvcApp.Controllers.User
                     if (string.IsNullOrEmpty(sameAsPresent))
                     {
                         // Insert Permanent Address Separately
-                        permanentAddress = [.. dbcontext.Addresses.FromSqlRaw("EXEC CheckAndInsertAddress @DistrictId, @TehsilId, @BlockId, @HalqaPanchayatName, @VillageName, @WardName, @Pincode, @AddressDetails", permanentAddressParams)];
+                        permanentAddress = dbcontext.Addresses.FromSqlRaw("EXEC CheckAndInsertAddress @DistrictId, @TehsilId, @BlockId, @HalqaPanchayatName, @VillageName, @WardName, @Pincode, @AddressDetails", permanentAddressParams).ToList();
 
                         if (permanentAddress != null && permanentAddress.Count > 0)
                         {
@@ -124,7 +124,7 @@ namespace ReactMvcApp.Controllers.User
                     {
                         // If "Same As Present" is checked, fetch PresentAddressId
                         var presentAddressIdStr = form["PresentAddressId"].ToString();
-                        if(!string.IsNullOrEmpty(presentAddressIdStr))
+                        if (!string.IsNullOrEmpty(presentAddressIdStr))
                         {
                             permanentAddressId = Convert.ToInt32(presentAddressIdStr);
                             helper.UpdateApplication("PermanentAddressId", Convert.ToInt32(presentAddressIdStr).ToString()!, applicationId);
@@ -164,7 +164,7 @@ namespace ReactMvcApp.Controllers.User
 
             helper.UpdateApplication("BankDetails", JsonConvert.SerializeObject(bankDetails), ApplicationId);
 
-            return Json(new { status = true, ApplicationId = form["ApplicationId"].ToString(),bankDetails });
+            return Json(new { status = true, ApplicationId = form["ApplicationId"].ToString(), bankDetails });
         }
         public async Task<IActionResult> InsertDocuments([FromForm] IFormCollection form)
         {
@@ -197,63 +197,24 @@ namespace ReactMvcApp.Controllers.User
             }
 
             var documents = JsonConvert.SerializeObject(docs);
-            var service = dbcontext.Services.FirstOrDefault(service => service.ServiceId == serviceId);
-            var workForceOfficers = JsonConvert.DeserializeObject<List<dynamic>>(service!.WorkForceOfficers!) ?? [];
-
-            if (workForceOfficers.Count == 0)
-            {
-                return Json(new { message = "No workforce officers available" });
-            }
-
-            string officer = workForceOfficers[0]!.Designation;
-            var newPhase = new CurrentPhase
-            {
-                ApplicationId = applicationId,
-                ReceivedOn = DateTime.Now.ToString("dd MMM yyyy hh:mm tt"),
-                Officer = workForceOfficers[0].Designation,
-                AccessCode = accessCode,
-                ActionTaken = "Pending",
-                Remarks = "",
-                CanPull = false,
-            };
-            dbcontext.CurrentPhases.Add(newPhase);
+            var workFlow = dbcontext.WorkFlows.FirstOrDefault(w => w.ServiceId == serviceId && w.SequenceOrder == 1);
+            int officerId = dbcontext.Users
+            .Join(
+                dbcontext.OfficerDetails,
+                u => u.UserId,
+                od => od.OfficerId,
+                (u, od) => new { u, od }
+            )
+            .Join(
+                dbcontext.WorkFlows,
+                combined => combined.od.Role,
+                wf => wf.Role,
+                (combined, wf) => new { combined.u, wf }
+            )
+            .Where(x => x.wf.ServiceId == serviceId)
+            .ToList()[0].u.UserId;
 
 
-            var recordCount = await dbcontext.RecordCounts
-                .FirstOrDefaultAsync(rc => rc.ServiceId == serviceId && rc.Officer == officer && rc.AccessCode == accessCode);
-
-
-            if (recordCount != null)
-            {
-                recordCount.Pending++;
-            }
-
-            else
-            {
-                dbcontext.RecordCounts.Add(new RecordCount
-                {
-                    ServiceId = serviceId,
-                    Officer = officer,
-                    AccessCode = accessCode,
-                    Pending = 1
-                });
-            }
-
-            await dbcontext.SaveChangesAsync();
-
-            // Consolidate UpdateApplication calls
-            var updates = new Dictionary<string, string>
-            {
-                { "Phase", JsonConvert.SerializeObject(newPhase.PhaseId) },
-                { "Documents", documents },
-                { "ApplicationStatus", "Initiated" },
-                { "SubmissionDate", DateTime.Now.ToString("dd MMM yyyy hh:mm tt") }
-            };
-
-            foreach (var update in updates)
-            {
-                helper.UpdateApplication(update.Key, update.Value, new SqlParameter("@ApplicationId", applicationId));
-            }
 
             if (!form.ContainsKey("returnToEdit"))
             {
@@ -276,21 +237,26 @@ namespace ReactMvcApp.Controllers.User
                     ["PRESENT ADDRESS"] = $"{preAddressDetails.Address}, TEHSIL: {preAddressDetails.Tehsil}, DISTRICT: {preAddressDetails.District}, PIN CODE: {preAddressDetails.Pincode}",
                     ["PERMANENT ADDRESS"] = $"{perAddressDetails.Address}, TEHSIL: {perAddressDetails.Tehsil}, DISTRICT: {perAddressDetails.District}, PIN CODE: {perAddressDetails.Pincode}"
                 };
-                helper.UpdateApplicationHistory(applicationId, "Citizen", "Application Submitted.", "NULL");
                 _pdfService.CreateAcknowledgement(details, userDetails.ApplicationId);
             }
             else
             {
                 helper.UpdateApplication("EditList", "[]", new SqlParameter("@ApplicationId", applicationId));
-                helper.UpdateApplicationHistory(applicationId, "Citizen", $"Edited and returned to {officer}", "NULL");
             }
 
             var email = dbcontext.Applications.FirstOrDefault(u => u.ApplicationId == applicationId)?.Email;
 
             if (!string.IsNullOrWhiteSpace(email))
             {
-                await emailSender.SendEmail(email, "Acknowledgement", $"Your Application with Reference Number {applicationId} has been sent to {officer} at {DateTime.Now:dd MMM yyyy hh:mm tt}");
+                await emailSender.SendEmail(email, "Acknowledgement", $"Your Application with Reference Number {applicationId} has been sent to {workFlow!.Role} at {DateTime.Now.ToString("dd MMM yyyy hh:mm tt")}");
             }
+
+
+
+            _ = dbcontext.Database.ExecuteSqlRaw("EXEC InsertApplicationHistory @ServiceId,@ApplicationId,@ActionTaken,@TakenBy,@File,@TakenAt", new SqlParameter("@ServiceId", serviceId), new SqlParameter("@ApplicationId", applicationId), new SqlParameter("@ActionTaken", "Pending"), new SqlParameter("@TakenBy",officerId), new SqlParameter("@File", ""), new SqlParameter("@TakenAt", DateTime.Now.ToString("dd MMM yyyy hh:mm tt")));
+            _ = dbcontext.Database.ExecuteSqlRaw("EXEC InsertApplicationStatus @ServiceId,@ApplicationId,@Status,@CurrentlyWith,@LastUpdated", new SqlParameter("@ServiceId", serviceId), new SqlParameter("@ApplicationId", applicationId), new SqlParameter("@Status", "Pending"), new SqlParameter("@CurrentlyWith",officerId), new SqlParameter("@LastUpdated", DateTime.Now.ToString("dd MMM yyyy hh:mm tt")));
+
+
             HttpContext.Session.SetString("ApplicationId", applicationId);
             return Json(new { status = true, ApplicationId = applicationId, complete = true });
         }
@@ -381,62 +347,62 @@ namespace ReactMvcApp.Controllers.User
 
             return Json(new { status = true, ApplicationId = form["ApplicationId"].ToString() });
         }
-        public IActionResult UpdateEditList([FromForm] IFormCollection form)
-        {
+        // public IActionResult UpdateEditList([FromForm] IFormCollection form)
+        // {
 
-            var workForceOfficers = JsonConvert.DeserializeObject<List<dynamic>>(form["workForceOfficers"].ToString());
-            int serviceId = Convert.ToInt32(form["serviceId"].ToString());
-            int accessCode = Convert.ToInt32(form["District"]);
-            string officerDesignation = workForceOfficers![0].Designation;
+        //     var workForceOfficers = JsonConvert.DeserializeObject<List<dynamic>>(form["workForceOfficers"].ToString());
+        //     int serviceId = Convert.ToInt32(form["serviceId"].ToString());
+        //     int accessCode = Convert.ToInt32(form["District"]);
+        //     string officerDesignation = workForceOfficers![0].Designation;
 
-            var recordsCount = dbcontext.RecordCounts
-              .FirstOrDefault(rc => rc.ServiceId == serviceId && rc.Officer == officerDesignation && rc.AccessCode == accessCode);
+        //     var recordsCount = dbcontext.RecordCounts
+        //       .FirstOrDefault(rc => rc.ServiceId == serviceId && rc.Officer == officerDesignation && rc.AccessCode == accessCode);
 
-            UpdateRecordCounts(recordsCount!, pendingCount: 1, pendingWithCitizenCount: -1);
+        //     UpdateRecordCounts(recordsCount!, pendingCount: 1, pendingWithCitizenCount: -1);
 
-            string Officer = workForceOfficers[0].Designation;
+        //     string Officer = workForceOfficers[0].Designation;
 
-            var CurrentPhase = dbcontext.CurrentPhases.FirstOrDefault(cur => cur.ApplicationId == form["ApplicationId"] && cur.Officer == Officer);
-            CurrentPhase!.ReceivedOn = DateTime.Now.ToString("dd MMM yyyy hh:mm tt");
-            CurrentPhase.ActionTaken = "Pending";
-            CurrentPhase.Remarks = string.Empty;
-            CurrentPhase.CanPull = false;
+        //     var CurrentPhase = dbcontext.CurrentPhases.FirstOrDefault(cur => cur.ApplicationId == form["ApplicationId"] && cur.Officer == Officer);
+        //     CurrentPhase!.ReceivedOn = DateTime.Now.ToString("dd MMM yyyy hh:mm tt");
+        //     CurrentPhase.ActionTaken = "Pending";
+        //     CurrentPhase.Remarks = string.Empty;
+        //     CurrentPhase.CanPull = false;
 
-            dbcontext.SaveChanges();
+        //     dbcontext.SaveChanges();
 
-            helper.UpdateApplication("EditList", "[]", new SqlParameter("@ApplicationId", form["ApplicationId"].ToString()));
-            helper.UpdateApplicationHistory(form["ApplicationId"].ToString(), "Citizen", "Edited and returned to " + workForceOfficers[0].Designation, "NULL");
-
-
-            return Json(new { status = true });
-        }
+        //     helper.UpdateApplication("EditList", "[]", new SqlParameter("@ApplicationId", form["ApplicationId"].ToString()));
+        //     helper.UpdateApplicationHistory(form["ApplicationId"].ToString(), "Citizen", "Edited and returned to " + workForceOfficers[0].Designation, "NULL");
 
 
-        private static void UpdateRecordCounts(RecordCount recordsCount, int pendingCount = 0, int pendingWithCitizenCount = 0, int forwardCount = 0, int returnCount = 0, int sanctionCount = 0, int rejectCount = 0)
-        {
-            if (recordsCount == null) return;
-            recordsCount.Pending += pendingCount;
-            recordsCount.PendingWithCitizen += pendingWithCitizenCount;
-            recordsCount.Forward += forwardCount;
-            recordsCount.Return += returnCount;
-            recordsCount.Sanction += sanctionCount;
-            recordsCount.Reject += rejectCount;
-        }
+        //     return Json(new { status = true });
+        // }
 
-        public IActionResult IncompleteApplication(string ApplicationId, string DistrictId)
-        {
-            var ApplicationIdParam = new SqlParameter("@ApplicationId", ApplicationId);
-            int? serviceId = dbcontext.Applications.FirstOrDefault(app => app.ApplicationId == ApplicationId)!.ServiceId;
-            int accessCode = Convert.ToInt32(DistrictId);
-            var workForceOfficer = JsonConvert.DeserializeObject<List<dynamic>>(dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId)!.WorkForceOfficers!);
-            string officerDesignation = workForceOfficer![0]["Designation"];
-            var recordsCount = dbcontext.RecordCounts
-              .FirstOrDefault(rc => rc.ServiceId == serviceId && rc.Officer == officerDesignation && rc.AccessCode == accessCode);
-            UpdateRecordCounts(recordsCount!, pendingCount: 1);
-            helper.UpdateApplication("ApplicationStatus", "Initiated", ApplicationIdParam);
-            helper.UpdateApplicationHistory(ApplicationId, "Citizen", "Application Submitted.", "NULL");
-            return Json(new { status = true });
-        }
+
+        // private static void UpdateRecordCounts(RecordCount recordsCount, int pendingCount = 0, int pendingWithCitizenCount = 0, int forwardCount = 0, int returnCount = 0, int sanctionCount = 0, int rejectCount = 0)
+        // {
+        //     if (recordsCount == null) return;
+        //     recordsCount.Pending += pendingCount;
+        //     recordsCount.PendingWithCitizen += pendingWithCitizenCount;
+        //     recordsCount.Forward += forwardCount;
+        //     recordsCount.Return += returnCount;
+        //     recordsCount.Sanction += sanctionCount;
+        //     recordsCount.Reject += rejectCount;
+        // }
+
+        // public IActionResult IncompleteApplication(string ApplicationId, string DistrictId)
+        // {
+        //     var ApplicationIdParam = new SqlParameter("@ApplicationId", ApplicationId);
+        //     int? serviceId = dbcontext.Applications.FirstOrDefault(app => app.ApplicationId == ApplicationId)!.ServiceId;
+        //     int accessCode = Convert.ToInt32(DistrictId);
+        //     var workForceOfficer = JsonConvert.DeserializeObject<List<dynamic>>(dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId)!.WorkForceOfficers!);
+        //     string officerDesignation = workForceOfficer![0]["Designation"];
+        //     var recordsCount = dbcontext.RecordCounts
+        //       .FirstOrDefault(rc => rc.ServiceId == serviceId && rc.Officer == officerDesignation && rc.AccessCode == accessCode);
+        //     UpdateRecordCounts(recordsCount!, pendingCount: 1);
+        //     helper.UpdateApplication("ApplicationStatus", "Initiated", ApplicationIdParam);
+        //     helper.UpdateApplicationHistory(ApplicationId, "Citizen", "Application Submitted.", "NULL");
+        //     return Json(new { status = true });
+        // }
 
     }
 }

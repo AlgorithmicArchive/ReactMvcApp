@@ -1,123 +1,124 @@
-// CustomFileSelector.jsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { Box, Typography } from "@mui/material";
 import { Controller } from "react-hook-form";
 import CustomButton from "../CustomButton";
 
-export default function CustomFileSelector({
-  label,
-  name,
-  control,
-  accept = "",
-  rules = {},
-}) {
-  const [preview, setPreview] = useState(null);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const fileInputRef = useRef(null);
+const CustomFileSelector = forwardRef(
+  ({ label, name, control, accept = "", rules = {} }, ref) => {
+    const [preview, setPreview] = useState(null);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const fileInputRef = useRef(null);
 
-  if (!control) {
-    console.error(
-      "CustomFileSelector requires a valid control prop from react-hook-form."
-    );
-    return null;
-  }
-
-  useEffect(() => {
-    if (preview) {
-      console.log("Image Preview:", preview);
+    if (!control) {
+      console.error(
+        "CustomFileSelector requires a valid control prop from react-hook-form."
+      );
+      return null;
     }
-  }, [preview]);
 
-  useEffect(() => {
-    if (selectedFile) {
-      console.log("Selected File:", selectedFile.name);
-    }
-  }, [selectedFile]);
+    const handleFileChange = (event, onChange) => {
+      const file = event.target.files[0];
+      setSelectedFile(file);
+      onChange(file);
 
-  const handleFileChange = (event, onChange) => {
-    const file = event.target.files[0];
-    setSelectedFile(file);
-    onChange(file);
-
-    if (file && file.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onloadend = () => setPreview(reader.result);
-      reader.readAsDataURL(file);
-    } else {
-      setPreview(null);
-      if (file) {
-        console.log("Selected File:", selectedFile);
+      if (file && file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onloadend = () => setPreview(reader.result);
+        reader.readAsDataURL(file);
       } else {
-        console.log("No file selected.");
+        setPreview(null);
       }
-    }
-  };
+    };
 
-  return (
-    <Box sx={{ display: "flex", flexDirection: "column", mb: 2 }}>
-      {label && (
-        <Typography
-          sx={{ fontWeight: "bold", mb: 1, color: "background.default" }}
-        >
-          {label}
-        </Typography>
-      )}
+    // Expose functions to parent via ref
+    useImperativeHandle(ref, () => ({
+      triggerFileInput: () => {
+        fileInputRef.current?.click();
+      },
+      setSelectedFile:(newFile)=>{
+        setSelectedFile(newFile)
+      },
+      setPreview: (newPreview) => {
+        setPreview(newPreview);
+      },
+    }));
 
-      {/* File Input Field with Controller */}
-      <Controller
-        name={name}
-        control={control}
-        rules={rules}
-        render={({ field, fieldState: { error } }) => (
-          <Box>
-            {/* Hidden file input */}
-            <input
-              type="file"
-              accept={accept}
-              onChange={(e) => handleFileChange(e, field.onChange)}
-              style={{ display: "none" }}
-              ref={fileInputRef}
-              aria-labelledby={`${name}-label`}
-            />
-            <Box sx={{ display: "flex", gap: 3, alignItems: "center" }}>
-              <CustomButton
-                component="span"
-                text="Choose File"
-                bgColor="background.paper"
-                color="primary.main"
-                onClick={() => fileInputRef.current.click()}
-                aria-label={`Choose file for ${label}`}
-              />
-
-              {/* Show image preview if the file is an image, else show file name */}
-              {preview ? (
-                <Box>
-                  <img
-                    src={preview}
-                    alt="Preview"
-                    style={{
-                      width: "100px",
-                      height: "100px",
-                      objectFit: "cover",
-                      borderRadius: "5px",
-                    }}
-                  />
-                </Box>
-              ) : selectedFile ? (
-                <Typography variant="body2" sx={{ color:'background.default',border:'2px solid #48426D',padding:2,borderRadius:5 }}>
-                  {selectedFile.name}
-                </Typography>
-              ) : null}
-            </Box>
-
-            {error && (
-              <Typography variant="body2" sx={{ color: "red", mt: 1 }}>
-                {error.message}
-              </Typography>
-            )}
-          </Box>
+    return (
+      <Box sx={{ display: "flex", flexDirection: "column", mb: 2 }}>
+        {label && (
+          <Typography
+            sx={{ fontWeight: "bold", mb: 1, color: "background.default" }}
+          >
+            {label}
+          </Typography>
         )}
-      />
-    </Box>
-  );
-}
+
+        {/* File Input Field with Controller */}
+        <Controller
+          name={name}
+          control={control}
+          rules={rules}
+          render={({ field, fieldState: { error } }) => (
+            <Box>
+              {/* Hidden file input */}
+              <input
+                type="file"
+                accept={accept}
+                onChange={(e) => handleFileChange(e, field.onChange)}
+                style={{ display: "none" }}
+                ref={fileInputRef}
+                aria-labelledby={`${name}-label`}
+              />
+              <Box sx={{ display: "flex", gap: 3, alignItems: "center" }}>
+                <CustomButton
+                  component="span"
+                  text="Choose File"
+                  bgColor="background.paper"
+                  color="primary.main"
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label={`Choose file for ${label}`}
+                />
+
+                {/* Show image preview if the file is an image, else show file name */}
+                {preview ? (
+                  <Box>
+                    <img
+                      src={preview}
+                      alt="Preview"
+                      style={{
+                        width: "100px",
+                        height: "100px",
+                        objectFit: "cover",
+                        borderRadius: "5px",
+                      }}
+                    />
+                  </Box>
+                ) : selectedFile ? (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "background.default",
+                      border: "2px solid #48426D",
+                      padding: 2,
+                      borderRadius: 5,
+                    }}
+                  >
+                    {selectedFile.name}
+                  </Typography>
+                ) : null}
+              </Box>
+
+              {error && (
+                <Typography variant="body2" sx={{ color: "red", mt: 1 }}>
+                  {error.message}
+                </Typography>
+              )}
+            </Box>
+          )}
+        />
+      </Box>
+    );
+  }
+);
+
+export default CustomFileSelector;

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ReactMvcApp.Models.Entities;
 using SendEmails;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +22,11 @@ builder.Services.AddDbContext<SocialWelfareDepartmentContext>(options =>
     );
 });
 
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtection-Keys")))
+    .SetApplicationName("ReactMvcApp"); // Set a unique application name to prevent key conflicts
+
+
 builder.Services.AddControllers().AddNewtonsoftJson(options =>
 {
     options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
@@ -28,15 +34,14 @@ builder.Services.AddControllers().AddNewtonsoftJson(options =>
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowLocalhost",
-        builder =>
-        {
-            builder.AllowAnyHeader()
-                   .AllowAnyMethod()
-                   .AllowCredentials()
-                   .WithOrigins("http://localhost:8081"); // Change to your frontend URL if necessary
-        });
+    options.AddPolicy("AllowAll", builder =>
+    {
+        builder.AllowAnyOrigin()   // Allow any origin (use AllowSpecificOrigins for specific origins)
+               .AllowAnyMethod()   // Allow any HTTP method (GET, POST, etc.)
+               .AllowAnyHeader();  // Allow any headers
+    });
 });
+
 
 // JWT Authentication Setup
 var jwtSecretKey = builder.Configuration.GetValue<string>("JWT:Secret");
@@ -89,16 +94,20 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 app.UseHttpsRedirection();
-app.UseStaticFiles(new StaticFileOptions{
-    OnPrepareResponse = ctx=>{
-        if(ctx.File.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)){
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
+        if (ctx.File.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
             ctx.Context.Response.Headers.Append("Content-Disposition", "inline");
         }
     }
 });
 
 app.UseRouting();
-app.UseCors("AllowLocalhost");
+app.UseCors("AllowAll");
 
 // Ensure both JWT and Cookie Authentication are used
 app.UseAuthentication();

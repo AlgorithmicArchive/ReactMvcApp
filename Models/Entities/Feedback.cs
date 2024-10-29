@@ -14,6 +14,4 @@ public partial class Feedback
     public string Message { get; set; } = null!;
 
     public decimal SubmittedAt { get; set; }
-
-    public virtual User User { get; set; } = null!;
 }

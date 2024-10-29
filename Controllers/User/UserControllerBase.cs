@@ -25,7 +25,7 @@ namespace ReactMvcApp.Controllers.User
             base.OnActionExecuted(context);
             int? userId = HttpContext.Session.GetInt32("UserId");
             var Citizen = dbcontext.Users.FirstOrDefault(u => u.UserId == userId);
-            string Profile = JsonConvert.DeserializeObject<dynamic>(Citizen!.UserSpecificDetails)!.Profile;
+            string Profile = Citizen!.Profile;
             ViewData["UserType"] = "Citizen";
             ViewData["UserName"] = Citizen!.Username;
             ViewData["Profile"] = Profile;
@@ -309,7 +309,7 @@ namespace ReactMvcApp.Controllers.User
         [HttpGet]
         public IActionResult GetFile(string? filePath)
         {
-            var fullPath = Path.Combine(_webHostEnvironment.WebRootPath, "resources", "dummyDocs", filePath!);
+            var fullPath = Path.Combine(_webHostEnvironment.WebRootPath, "assets", "dummyDocs", filePath!);
             if (!System.IO.File.Exists(fullPath))
             {
                 return NotFound();

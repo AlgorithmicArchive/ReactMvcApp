@@ -9,27 +9,29 @@ public partial class Service
 
     public string ServiceName { get; set; } = null!;
 
-    public string? ServiceNameShort { get; set; }
+    public string? NameShort { get; set; }
 
     public string Department { get; set; } = null!;
 
     public string? FormElement { get; set; }
 
-    public string? WorkForceOfficers { get; set; }
-
     public int? Amount { get; set; }
 
-    public string? UpdateColumn { get; set; }
+    public string? OfficerEditableField { get; set; }
 
-    public string? LetterUpdateDetails { get; set; }
-
-    public decimal CreatedAt { get; set; }
+    public string CreatedAt { get; set; } = null!;
 
     public bool Active { get; set; }
 
+    public virtual ICollection<ApplicationStatus> ApplicationStatuses { get; set; } = new List<ApplicationStatus>();
+
     public virtual ICollection<Application> Applications { get; set; } = new List<Application>();
+
+    public virtual ICollection<ApplicationsCount> ApplicationsCounts { get; set; } = new List<ApplicationsCount>();
+
+    public virtual ICollection<ApplicationsHistory> ApplicationsHistories { get; set; } = new List<ApplicationsHistory>();
 
     public virtual ICollection<BankFile> BankFiles { get; set; } = new List<BankFile>();
 
-    public virtual ICollection<RecordCount> RecordCounts { get; set; } = new List<RecordCount>();
+    public virtual ICollection<WorkFlow> WorkFlows { get; set; } = new List<WorkFlow>();
 }

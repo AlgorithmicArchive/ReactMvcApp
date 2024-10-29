@@ -1,6 +1,5 @@
-// DynamicStepForm.jsx
 import React, { useState, useEffect, useRef } from "react";
-import { useForm } from "react-hook-form";
+import { useController, useForm } from "react-hook-form";
 import CustomInputField from "./CustomInputField";
 import CustomSelectField from "./CustomSelectField";
 import CustomFileSelector from "./CustomFileSelector";
@@ -11,13 +10,15 @@ import {
   validationFunctionsList,
   CapitalizeAlphabets,
 } from "../../assets/formvalidations";
-import { Typography,Box } from "@mui/material";
+import { Typography, Box } from "@mui/material";
 import CustomButton from "../CustomButton";
 import axiosInstance from "../../axiosConfig";
 import { fetchBlocks, fetchDistricts, fetchTehsils } from "../../assets/fetch";
 import Row from "../grid/Row";
 import Col from "../grid/Col";
 import Container from "../grid/Container";
+import { useNavigate } from "react-router-dom";
+import { dummyDataList, insertDummyData } from "../../assets/dummyData";
 
 const DynamicStepForm = ({ formConfig, serviceId }) => {
   const {
@@ -33,7 +34,7 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
 
   const [step, setStep] = useState(0);
   const [ApplicationId, setApplicationId] = useState(null);
-  const [PreAddressId,setPreAddressId] = useState(null);
+  const [PreAddressId, setPreAddressId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [districtOptions, setDistrictOptions] = useState([]);
   const [tehsilOptions, setTehsilOptions] = useState([]);
@@ -41,7 +42,10 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
   const [appliedDistrict, setAppliedDistrict] = useState(0);
   const [selectedDistrict, setSelectedDistrict] = useState(0);
 
-  const sameAsPresent = watch('SameAsPresent');
+  const navigate = useNavigate();
+  const sameAsPresent = watch("SameAsPresent");
+  const formTopRef = useRef(null);
+  const fileInputRefs = useRef({}); // To store refs for file selectors
 
   const apiEndpoints = [
     "/User/InsertGeneralDetails",
@@ -51,10 +55,10 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
     "/User/InsertDocuments",
   ];
 
-  // Initialize the ref
-  const formTopRef = useRef(null);
+  useEffect(() => {
+    console.log("fileInputRefs:", fileInputRefs.current);
+  }, [fileInputRefs]);
 
-  // Fetch districts from the API
   useEffect(() => {
     fetchDistricts(setDistrictOptions);
   }, []);
@@ -77,36 +81,35 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
   // Handle 'SameAsPresent' checkbox functionality
   useEffect(() => {
     if (sameAsPresent) {
-      // When checkbox is checked, copy present address to permanent address
       const presentAddress = {
-        PermanentAddress: getValues('PresentAddress') || '',
-        PermanentDistrict: getValues('PresentDistrict') || '',
-        PermanentTehsil: getValues('PresentTehsil') || '',
-        PermanentBlock: getValues('PresentBlock') || '',
-        PermanentPanchayatMuncipality: getValues('PresentPanchayatMuncipality') || '',
-        PermanentVillage: getValues('PresentVillage') || '',
-        PermanentWard: getValues('PresentWard') || '',
-        PermanentPincode: getValues('PresentPincode') || '',
+        PermanentAddress: getValues("PresentAddress") || "",
+        PermanentDistrict: getValues("PresentDistrict") || "",
+        PermanentTehsil: getValues("PresentTehsil") || "",
+        PermanentBlock: getValues("PresentBlock") || "",
+        PermanentPanchayatMuncipality:
+          getValues("PresentPanchayatMuncipality") || "",
+        PermanentVillage: getValues("PresentVillage") || "",
+        PermanentWard: getValues("PresentWard") || "",
+        PermanentPincode: getValues("PresentPincode") || "",
       };
 
       Object.entries(presentAddress).forEach(([field, value]) => {
         setValue(field, value, { shouldValidate: true, shouldDirty: true });
       });
     } else {
-      // When checkbox is unchecked, clear permanent address fields
       const permanentFields = [
-        'PermanentAddress',
-        'PermanentDistrict',
-        'PermanentTehsil',
-        'PermanentBlock',
-        'PermanentPanchayatMuncipality',
-        'PermanentVillage',
-        'PermanentWard',
-        'PermanentPincode',
+        "PermanentAddress",
+        "PermanentDistrict",
+        "PermanentTehsil",
+        "PermanentBlock",
+        "PermanentPanchayatMuncipality",
+        "PermanentVillage",
+        "PermanentWard",
+        "PermanentPincode",
       ];
 
-      permanentFields.forEach(field => {
-        setValue(field, '', { shouldValidate: true, shouldDirty: true });
+      permanentFields.forEach((field) => {
+        setValue(field, "", { shouldValidate: true, shouldDirty: true });
       });
     }
   }, [sameAsPresent, setValue, getValues]);
@@ -132,51 +135,63 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
   const onSubmit = async (data) => {
     try {
       setIsSubmitting(true);
+
       const formData = new FormData();
-      const serviceSpecific = {}; // Object to store form-specific fields
+      const serviceSpecific = {};
+
+      const currentStepFields = formConfig[step].fields.map(
+        (field) => field.name
+      );
 
       Object.keys(data).forEach((key) => {
-        const fieldConfig = formConfig[step].fields.find(
-          (field) => field.name === key
-        );
-        if (fieldConfig && fieldConfig.isFormSpecific) {
-          serviceSpecific[key] = data[key];
-        } else {
-          formData.append(key, data[key]);
+        if (currentStepFields.includes(key)) {
+          const fieldConfig = formConfig[step].fields.find(
+            (field) => field.name === key
+          );
+
+          if (fieldConfig && fieldConfig.isFormSpecific) {
+            serviceSpecific[key] = data[key];
+          } else {
+            formData.append(key, data[key]);
+          }
         }
       });
 
-      // Add the serialized ServiceSpecific object to FormData
       if (Object.keys(serviceSpecific).length > 0) {
         formData.append("ServiceSpecific", JSON.stringify(serviceSpecific));
       }
 
-      if (step == 4) {
-        const labels = [...new Set(formConfig[step].fields.map(item => item.label.split(" ").join("")))];
-        formData.append('labels', JSON.stringify(labels));
-        formData.append('AccessCode', appliedDistrict);
+      if (step === 4) {
+        const labels = [
+          ...new Set(
+            formConfig[step].fields.map((item) =>
+              item.label.split(" ").join("")
+            )
+          ),
+        ];
+        formData.append("labels", JSON.stringify(labels));
+        formData.append("AccessCode", appliedDistrict);
       }
 
       if (ApplicationId) formData.append("ApplicationId", ApplicationId);
-      if(PreAddressId) formData.append('PresentAddressId',PreAddressId);
+      if (PreAddressId) formData.append("PresentAddressId", PreAddressId);
       if (serviceId) formData.append("ServiceId", serviceId);
 
       const endpoint = apiEndpoints[step];
 
-      console.log("End Point",endpoint,"Form Data",formData);
       const response = await axiosInstance.post(endpoint, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      const { status, applicationId,presentAddressId } = response.data;
-      // const status = true;
+      const { status, applicationId, presentAddressId } = response.data;
       if (status) {
         if (!ApplicationId) setApplicationId(applicationId);
-        if(!PreAddressId)setPreAddressId(presentAddressId);
+        if (!PreAddressId) setPreAddressId(presentAddressId);
         if (step < formConfig.length - 1) {
           setStep((prev) => prev + 1);
-        } else {  
+        } else {
           alert("Form submitted successfully!");
+          navigate("/user/acknowledgement");
         }
       } else {
         alert("Submission failed. Please check your input.");
@@ -207,7 +222,6 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
       }
     };
 
-    // Render fields based on type
     switch (type) {
       case "text":
       case "email":
@@ -247,7 +261,6 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
           />
         );
       case "select":
-        // Check if the field is related to 'district', 'tehsil', or 'block' and use the fetched options
         let selectOptions = options.map((option) => ({
           label: option,
           value: option,
@@ -261,7 +274,10 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
           selectOptions = blockOptions;
         }
 
-        selectOptions = [{ label: "Select Option", value: "" }, ...selectOptions];
+        selectOptions = [
+          { label: "Select Option", value: "" },
+          ...selectOptions,
+        ];
         return (
           <CustomSelectField
             key={name}
@@ -274,9 +290,10 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
               validate: (value) => runValidations(field, value),
             }}
             onChange={(value) => {
+              console.log("HERE");
               if (name === "District") setAppliedDistrict(value);
-              if (name.toLowerCase().includes('district'))
-                setSelectedDistrict(value); // Custom handler to update selected district
+              if (name.toLowerCase().includes("district"))
+                setSelectedDistrict(value);
             }}
             errors={errors}
           />
@@ -289,6 +306,7 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
             name={name}
             control={control}
             accept={accept}
+            ref={(el) => (fileInputRefs.current[name] = el)}
             rules={{
               validate: (value) => runValidations(field, value),
             }}
@@ -329,14 +347,44 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <Box ref={formTopRef}>
-        <Typography variant="h4" sx={{ color: "background.paper", mb: 5, textAlign: 'center' }}>
+      <Box>
+        <Typography
+          variant="h4"
+          sx={{ color: "background.paper", mb: 5, textAlign: "center" }}
+        >
           {formConfig[step].section}
         </Typography>
+        <Box
+          sx={{
+            width:'max-content',
+            margin:'0 auto'
+          }}
+        >
+          <CustomButton
+            text="Insert Dummy Data"
+            onClick={() =>
+              insertDummyData(
+                setValue,
+                setSelectedDistrict,
+                formConfig,
+                step,
+                fileInputRefs
+              )
+            }
+            type="button"
+            bgColor="secondary.main"
+            color="background.paper"
+          />
+        </Box>
+
         <Container maxWidth="xl">
           <Row sx={{ flex: 1 }}>
             {formConfig[step].fields.map((field) => (
-              <Col md={step == 3 || step == 4 || field.type == "checkbox" ? 12 : 6} xs={12} key={field.name}>
+              <Col
+                md={step === 3 || field.type === "checkbox" ? 12 : 6}
+                xs={12}
+                key={field.name}
+              >
                 {renderField(field)}
               </Col>
             ))}
@@ -344,7 +392,12 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
         </Container>
       </Box>
       <div
-        style={{ display: "flex", justifyContent: "center", marginTop: "20px", gap: 5 }}
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          marginTop: "20px",
+          gap: 5,
+        }}
       >
         {step > 0 && (
           <CustomButton

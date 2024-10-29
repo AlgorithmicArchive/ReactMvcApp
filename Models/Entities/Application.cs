@@ -45,11 +45,11 @@ public partial class Application
 
     public string SubmissionDate { get; set; } = null!;
 
+    public virtual ICollection<ApplicationStatus> ApplicationStatuses { get; set; } = new List<ApplicationStatus>();
+
     public virtual ICollection<ApplicationsHistory> ApplicationsHistories { get; set; } = new List<ApplicationsHistory>();
 
     public virtual User Citizen { get; set; } = null!;
-
-    public virtual ICollection<CurrentPhase> CurrentPhases { get; set; } = new List<CurrentPhase>();
 
     public virtual Service Service { get; set; } = null!;
 }

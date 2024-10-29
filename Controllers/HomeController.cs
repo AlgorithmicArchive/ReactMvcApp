@@ -54,55 +54,22 @@ namespace ReactMvcApp.Controllers
             return View();
         }
 
-        public IActionResult OfficerRegistration()
-        {
-            return View();
-        }
-
         [HttpPost]
         public async Task<IActionResult> OfficerRegistration([FromForm] IFormCollection form)
         {
+            var fullName = new SqlParameter("@Name",form["fullName"].ToString());
             var username = new SqlParameter("@Username", form["Username"].ToString());
             var password = new SqlParameter("@Password", form["Password"].ToString());
             var email = new SqlParameter("@Email", form["Email"].ToString());
             var mobileNumber = new SqlParameter("@MobileNumber", form["MobileNumber"].ToString());
-            var designation = form["designation"].ToString();
+            var designation = new SqlParameter("@Role",form["designation"].ToString());
+            var accessLevel = new SqlParameter("@AccessLevel",form["accessLevel"].ToString());
+            var accessCode = new SqlParameter("@AccessCode",Convert.ToInt32(form["accessCode"].ToString()));
+            var profile = new SqlParameter("@Profile","/assets/images/profile.jpg");
+           
 
-            int? divisionCode = null;
-            int? districtCode = null;
-
-            var OfficersDesignations = _dbContext.OfficersDesignations.FirstOrDefault(des => des.Designation == designation);
-            string? AccessLevel = OfficersDesignations!.AccessLevel;
-
-            var UserSpecificDetails = new Dictionary<string, dynamic>
-            {
-                { "Profile", "" },
-                { "Designation", designation },
-                { "AccessLevel", AccessLevel! }
-            };
-
-            switch (AccessLevel)
-            {
-                case "Tehsil":
-                case "District":
-                    UserSpecificDetails.Add("AccessCode", Convert.ToInt32(form[AccessLevel].ToString()));
-                    break;
-
-                case "Division":
-                    districtCode = Convert.ToInt32(form["District"].ToString());
-                    divisionCode = _dbContext.Districts.FirstOrDefault(d => d.DistrictId == districtCode)?.Division;
-                    UserSpecificDetails.Add("AccessCode", divisionCode!);
-                    break;
-
-                case "State":
-                    UserSpecificDetails.Add("AccessCode", 0);
-                    break;
-            }
-
-            UserSpecificDetails.Add("valid", false);
-
-            var UserType = new SqlParameter("@UserType", designation.Contains("Admin") ? "Admin" : "Officer");
-            var UserSpecificParam = new SqlParameter("@UserSpecificDetails", JsonConvert.SerializeObject(UserSpecificDetails));
+            var UserType = new SqlParameter("@UserType", form["designation"].ToString().Contains("Admin") ? "Admin" : "Officer");
+          
             var backupCodes = new
             {
                 unused = _helper.GenerateUniqueRandomCodes(10, 8),
@@ -113,12 +80,14 @@ namespace ReactMvcApp.Controllers
             var registeredDate = new SqlParameter("@RegisteredDate", DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"));
 
             var result = _dbContext.Users.FromSqlRaw(
-                "EXEC RegisterUser @Username, @Password, @Email, @MobileNumber, @UserSpecificDetails, @UserType, @BackupCodes, @RegisteredDate",
-                username, password, email, mobileNumber, UserSpecificParam, UserType, backupCodesParam, registeredDate
+                "EXEC RegisterUser @Name, @Username, @Password, @Email, @MobileNumber,@Profile, @UserType, @BackupCodes, @RegisteredDate",
+                fullName,username, password, email, mobileNumber,profile, UserType, backupCodesParam, registeredDate
             ).ToList();
 
             if (result.Count > 0)
             {
+                var userId = new SqlParameter("@OfficerId",result[0].UserId);
+                await _dbContext.Database.ExecuteSqlRawAsync("EXEC InsertOfficerDetail @OfficerId,@Role,@AccessLevel,@AccessCode",userId,designation,accessLevel,accessCode);
                 string otp = GenerateOTP(6);
                 _otpStore.StoreOtp("registration", otp);
                 await _emailSender.SendEmail(form["Email"].ToString(), "OTP For Registration.", otp);
@@ -132,14 +101,14 @@ namespace ReactMvcApp.Controllers
         [HttpPost]
         public IActionResult Login([FromForm] IFormCollection form)
         {
-            var username = new SqlParameter("Username", form["Username"].ToString());
-            SqlParameter password = !string.IsNullOrEmpty(form["Password"]) ? new SqlParameter("Password", form["Password"].ToString()) : null!;
+            var username = new SqlParameter("Username", form["username"].ToString());
+            SqlParameter password = !string.IsNullOrEmpty(form["password"]) ? new SqlParameter("Password", form["password"].ToString()) : null!;
 
             var user = _dbContext.Users.FromSqlRaw("EXEC UserLogin @Username,@Password", username, password).AsEnumerable().FirstOrDefault();
 
             if (user != null)
             {
-                if (!user.EmailValid)
+                if (!user.IsEmailValid)
                     return Json(new { status = false, response = "Email Not Verified." });
 
                 // Store necessary information for verification
@@ -150,8 +119,8 @@ namespace ReactMvcApp.Controllers
                 // Additional user-specific details if needed
                 if (user.UserType == "Officer")
                 {
-                    var userSpecificDetails = JsonConvert.DeserializeObject<Dictionary<string, string>>(user.UserSpecificDetails);
-                    HttpContext.Session.SetString("Designation", userSpecificDetails!["Designation"]);
+                    string designation = _dbContext.OfficerDetails.FirstOrDefault(o=>o.OfficerId == user.UserId)!.Role;
+                    HttpContext.Session.SetString("Designation", designation);
                 }
 
                 // Proceed to verification step
@@ -272,11 +241,13 @@ namespace ReactMvcApp.Controllers
  
         public async Task<IActionResult> Register(IFormCollection form)
         {
+            var fullName = new SqlParameter("@Name",form["fullName"].ToString());
             var username = new SqlParameter("@Username", form["Username"].ToString());
             var password = new SqlParameter("@Password", form["Password"].ToString());
             var email = new SqlParameter("@Email", form["Email"].ToString());
             var mobileNumber = new SqlParameter("@MobileNumber", form["MobileNumber"].ToString());
-
+            var profile = new SqlParameter("@Profile","/assets/images/profile.jpg");
+            
             var unused = _helper.GenerateUniqueRandomCodes(10, 8);
             var backupCodes = new
             {
@@ -284,22 +255,13 @@ namespace ReactMvcApp.Controllers
                 used = Array.Empty<string>()
             };
 
-            var UserSpecificDetails = new
-            {
-                Profile = ""
-            };
-
-            var UserSpecificParam = new SqlParameter("@UserSpecificDetails", JsonConvert.SerializeObject(UserSpecificDetails));
-
             var UserType = new SqlParameter("@UserType", "Citizen");
-
             var backupCodesParam = new SqlParameter("@BackupCodes", JsonConvert.SerializeObject(backupCodes));
-
             var registeredDate = new SqlParameter("@RegisteredDate", DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"));
 
-            var result = _dbContext.Users.FromSqlRaw(
-                "EXEC RegisterUser @Username, @Password, @Email, @MobileNumber, @UserSpecificDetails, @UserType, @BackupCodes, @RegisteredDate",
-                username, password, email, mobileNumber, UserSpecificParam, UserType, backupCodesParam, registeredDate
+             var result = _dbContext.Users.FromSqlRaw(
+                "EXEC RegisterUser @Name, @Username, @Password, @Email, @MobileNumber,@Profile, @UserType, @BackupCodes, @RegisteredDate",
+                fullName,username, password, email, mobileNumber,profile, UserType, backupCodesParam, registeredDate
             ).ToList();
 
 
@@ -332,21 +294,19 @@ namespace ReactMvcApp.Controllers
         {
             string otpUser = form["otp"].ToString();
             string otpCache = _otpStore.RetrieveOtp("registration")!;
-            _logger.LogInformation($"Citizen ID : {form["CitizenId"].ToString()}");
-            _logger.LogInformation($"OTP CACHE: {otpCache}  OTP USER: {otpUser}");
 
             if (otpCache == otpUser)
             {
-                if (int.TryParse(form["CitizenId"].ToString(), out int parsedCitizenId))
+                if (int.TryParse(form["UserId"].ToString(), out int parsedUserId))
                 {
-                    var Citizen = _dbContext.Users.FirstOrDefault(u => u.UserId == parsedCitizenId);
-                    Citizen!.EmailValid = true;
+                    var User = _dbContext.Users.FirstOrDefault(u => u.UserId == parsedUserId);
+                    User!.IsEmailValid = true;
                     _dbContext.SaveChanges();
                     return Json(new { status = true, response = "Registration Successful." });
                 }
                 else
                 {
-                    return Json(new { status = false, response = "Invalid Citizen ID." });
+                    return Json(new { status = false, response = "Invalid User ID." });
                 }
             }
             else

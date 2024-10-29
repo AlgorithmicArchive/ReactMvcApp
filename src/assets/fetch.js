@@ -119,3 +119,37 @@ export const fetchBlocks = async (districtId,setBlockOptions) => {
     console.error("Error fetching blocks:", error);
   }
 };
+
+export async function fetchDesignation(setDesignations,setAccessLevelMap){
+  try {
+    const response = await axios.get('/Home/GetDesignations');
+    const {status,designations} = response.data;
+    if(status){
+      // Create an object with designation.designation as the key and designation.accessLevel as the value
+      const designationObject = designations.reduce((acc, designation) => {
+        acc[designation.designation] = designation.accessLevel;
+        return acc;
+      }, {});
+      let Designations = designations.map(designation=>({
+        label:designation.designation,
+        value:designation.designation
+      }));
+      Designations = [{ label: "Select Option", value: "" }, ...Designations];
+      setDesignations(Designations);
+      setAccessLevelMap(designationObject)
+    }
+  } catch (error) {
+    console.log("Error",error);
+  }
+}
+
+
+export async function fetchAcknowledgement() {
+  try {
+    const response = await axiosInstance.get("/User/GetAcknowledgement");
+    console.log(response.data);
+    return response.data.path
+  } catch (error) {
+    console.log("Error",error);
+  }
+}
