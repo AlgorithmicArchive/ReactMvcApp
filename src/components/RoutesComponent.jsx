@@ -13,6 +13,11 @@ import ProtectedRoute from '../ProtectedRoute'; // Import the ProtectedRoute com
 import Unauthorized from '../screens/Unauthorized'; // Create this component
 import OfficerRegisterScreen from '../screens/home/OfficerRegisterScreen';
 import Acknowledgement from '../screens/user/Acknowledgement';
+import Initiated from '../screens/user/Initiated';
+import Incomplete from '../screens/user/Incomplete';
+import OfficerLayout from '../screens/officer/OfficerLayout';
+import OfficerHome from '../screens/officer/OfficerHome';
+import Reports from '../screens/officer/Reports';
 
 const RoutesComponent = () => {
   return (
@@ -29,11 +34,19 @@ const RoutesComponent = () => {
 
       {/* Protected Routes */}
       <Route element={<ProtectedRoute requiredRoles={['Citizen']} />}>
-        <Route path="/user" element={<UserLayout />}>
+        <Route path="/user/home" element={<UserLayout />}>
           <Route index element={<UserHome />} />
           <Route path="services" element={<Services />} />
           <Route path="form" element={<Form />} />
           <Route path='acknowledge' element={<Acknowledgement/>}/>
+          <Route path="initiated" element={<Initiated/>}/>
+          <Route path='incomplete' element={<Incomplete/>} />
+        </Route>
+      </Route>
+      <Route element={<ProtectedRoute requiredRoles={['Officer']} />}>
+        <Route path="/officer/home" element={<OfficerLayout />}>
+          <Route index element={<OfficerHome />} />
+          <Route path='reports' element={<Reports />} />
         </Route>
       </Route>
     </Routes>

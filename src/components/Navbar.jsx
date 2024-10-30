@@ -1,34 +1,50 @@
-import React, { useContext } from 'react';
-import { AppBar, Toolbar, Typography, Button } from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom';
-import { UserContext } from '../UserContext';
+import React, { useContext, useState } from "react";
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  Menu,
+  MenuItem,
+} from "@mui/material";
+import { Link, useNavigate } from "react-router-dom";
+import { UserContext } from "../UserContext";
 
 const Navbar = () => {
   const navigate = useNavigate();
   const { userType, setUserType, setToken } = useContext(UserContext);
+  const [anchorEl, setAnchorEl] = useState(null);
 
   const handleLogout = () => {
     setToken(null);
     setUserType(null);
-    navigate('/login');
+    navigate("/login");
+  };
+
+  const handleDropdownClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleDropdownClose = () => {
+    setAnchorEl(null);
   };
 
   return (
     <AppBar
       position="fixed"
       sx={{
-        top: '185px',
+        top: "185px",
         zIndex: 1100,
       }}
     >
       <Toolbar
         sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: 'background.paper',
-          boxShadow: 'none',
-          color: 'primary.main',
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "background.paper",
+          boxShadow: "none",
+          color: "primary.main",
           gap: 10,
         }}
       >
@@ -36,7 +52,7 @@ const Navbar = () => {
           <>
             <Button
               color="inherit"
-              sx={{ fontWeight: 'bold' }}
+              sx={{ fontWeight: "bold" }}
               component={Link}
               to="/"
             >
@@ -44,7 +60,7 @@ const Navbar = () => {
             </Button>
             <Button
               color="inherit"
-              sx={{ fontWeight: 'bold' }}
+              sx={{ fontWeight: "bold" }}
               component={Link}
               to="/login"
             >
@@ -53,11 +69,11 @@ const Navbar = () => {
             <img
               src="/assets/images/logo.png"
               alt="Logo"
-              style={{ width: '80px' }}
+              style={{ width: "80px" }}
             />
             <Button
               color="inherit"
-              sx={{ fontWeight: 'bold' }}
+              sx={{ fontWeight: "bold" }}
               component={Link}
               to="/register"
             >
@@ -66,19 +82,19 @@ const Navbar = () => {
           </>
         )}
 
-        {userType === 'Citizen' && (
+        {userType === "Citizen" && (
           <>
             <Button
               color="inherit"
-              sx={{ fontWeight: 'bold' }}
+              sx={{ fontWeight: "bold" }}
               component={Link}
-              to="/user"
+              to="/user/home"
             >
               Home
             </Button>
             <Button
               color="inherit"
-              sx={{ fontWeight: 'bold' }}
+              sx={{ fontWeight: "bold" }}
               component={Link}
               to="/user/services"
             >
@@ -86,7 +102,73 @@ const Navbar = () => {
             </Button>
             <Button
               color="inherit"
-              sx={{ fontWeight: 'bold' }}
+              sx={{ fontWeight: "bold" }}
+              onClick={handleDropdownClick}
+            >
+              Application Status
+            </Button>
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleDropdownClose}
+            >
+              <MenuItem onClick={() => navigate("/user/initiated")}>
+                Initiated Applications
+              </MenuItem>
+              <MenuItem onClick={() => navigate("/user/incomplete")}>
+                Incomplet Applications
+              </MenuItem>
+            </Menu>
+            <Button
+              color="inherit"
+              sx={{ fontWeight: "bold" }}
+              onClick={handleLogout}
+            >
+              Logout
+            </Button>
+          </>
+        )}
+
+        {userType === "Officer" && (
+          <>
+            <Button
+              color="inherit"
+              sx={{ fontWeight: "bold" }}
+              component={Link}
+              to="/officer/home"
+            >
+              Home
+            </Button>
+            <Button
+              color="inherit"
+              sx={{ fontWeight: "bold" }}
+              component={Link}
+              to="/officer/reports"
+            >
+              Reports
+            </Button>
+            <Button
+              color="inherit"
+              sx={{ fontWeight: "bold" }}
+              onClick={handleDropdownClick}
+            >
+              DSC Management
+            </Button>
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleDropdownClose}
+            >
+              <MenuItem onClick={() => navigate("/officer/registerDSC")}>
+                Register DSC
+              </MenuItem>
+              <MenuItem onClick={() => navigate("/officer/unregisterDSC")}>
+                Unregister DSC
+              </MenuItem>
+            </Menu>
+            <Button
+              color="inherit"
+              sx={{ fontWeight: "bold" }}
               onClick={handleLogout}
             >
               Logout

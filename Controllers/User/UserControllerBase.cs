@@ -37,11 +37,6 @@ namespace ReactMvcApp.Controllers.User
             return View(details);
         }
 
-        public dynamic ServicesList()
-        {
-            return View();
-        }
-
         public IActionResult GetServices(int page, int size)
         {
             // Fetch services from the database
@@ -84,7 +79,6 @@ namespace ReactMvcApp.Controllers.User
 
             return Json(new { status = true, data = pagedData, columns, totalCount = data.Count });
         }
-
 
         public IActionResult ServiceForm(string? ApplicationId, bool? returnToEdit)
         {
@@ -132,30 +126,23 @@ namespace ReactMvcApp.Controllers.User
             return View(ApplicationDetails);
         }
 
-        public IActionResult ApplicationStatus()
-        {
-            return View();
-        }
-
-        public IActionResult GetApplicationStatus(int start = 0, int length = 10, string type = "")
+        public IActionResult GetInitiatedApplications(int page,int size)
         {
             int? userId = HttpContext.Session.GetInt32("UserId");
             List<Application> applications = [];
 
-            bool Incomplete = type == "Incomplete";
-
-            if (type == "ApplicationStatus")
-                applications = dbcontext.Applications.Where(u => u.CitizenId == userId && u.ApplicationStatus != "Incomplete").ToList();
-            else if (type == "Incomplete")
-                applications = dbcontext.Applications.Where(u => u.CitizenId == userId && u.ApplicationStatus == "Incomplete").ToList();
-
-
-            var columns = new List<dynamic>{
-                new{title = "S.No."},
-                new{title = "Reference Number"},
-                new{title = "Applicant Name"},
-                new{title = "Action"},
+           
+            applications = dbcontext.Applications.Where(u => u.CitizenId == userId && u.ApplicationStatus != "Incomplete").ToList();
+           
+            var columns = new List<dynamic>
+            {
+                new { label = "S.No", value="sno" },
+                new { label = "Reference Number",value="referenceNumber" },
+                new { label = "Applicant Name", value="applicantName" },
+                new { label = "Action",value="button" }
             };
+
+
             List<dynamic> Applications = [];
             int index = 1;
             foreach (var item in applications)
@@ -174,26 +161,20 @@ namespace ReactMvcApp.Controllers.User
                     buttonText = "Edit Form"
                 };
 
-                List<dynamic> data =
-                [
-                    index,
-                    item.ApplicationId,
-                    item.ApplicantName,
-                   !Incomplete?JsonConvert.SerializeObject(firstButton):JsonConvert.SerializeObject(secondButton)
-                ];
+                var cell = new {
+                    sno =index,
+                    referenceNumber = item.ApplicationId,
+                    applicantName = item.ApplicantName,
+                    button = firstButton
+                };
 
-                Applications.Add(data);
+                Applications.Add(cell);
                 index++;
             }
-            var obj = new
-            {
-                columns,
-                data = Applications.AsEnumerable().Skip(start).Take(length),
-                recordsTotal = Applications.Count,
-                recordsFiltered = Applications.AsEnumerable().Skip(start).Take(length).ToList().Count,
-            };
 
-            return Json(new { status = true, obj });
+            var pagedData = Applications.Skip(page * size).Take(size).ToList();
+
+            return Json(new { status = true,data=pagedData,columns,totalCount=Applications.Count  });
         }
 
         public IActionResult IncompleteApplications()

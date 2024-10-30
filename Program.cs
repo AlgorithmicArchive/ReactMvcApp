@@ -122,7 +122,8 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
+
 // Add this line to handle fallback routing for React
-app.MapFallbackToController("Index", "Home");
+app.MapFallbackToController("Index","Home");
 
 app.Run();

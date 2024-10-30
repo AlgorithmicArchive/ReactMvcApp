@@ -43,10 +43,10 @@ export default function Verification() {
         setUserType(response.userType);
         const url =
           response.userType === "Admin"
-            ? "/admin"
+            ? "/admin/home"
             : response.userType === "Officer"
-            ? "/officer"
-            : "/user";
+            ? "/officer/home"
+            : "/user/home";
         navigate(url);
       } else {
         // Handle verification failure

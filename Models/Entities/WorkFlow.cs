@@ -23,7 +23,7 @@ public partial class WorkFlow
 
     public bool CanSanction { get; set; }
 
-    public int CanReject { get; set; }
+    public bool CanReject { get; set; }
 
     public virtual Service Service { get; set; } = null!;
 }

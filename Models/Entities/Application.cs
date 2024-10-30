@@ -39,8 +39,6 @@ public partial class Application
 
     public string EditList { get; set; } = null!;
 
-    public int Phase { get; set; }
-
     public string ApplicationStatus { get; set; } = null!;
 
     public string SubmissionDate { get; set; } = null!;

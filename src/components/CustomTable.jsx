@@ -5,7 +5,7 @@ import {
   Paper, Typography, CircularProgress, Button
 } from '@mui/material';
 
-const CustomTable = ({ title, fetchData, initialRowsPerPage = 10, url, buttonActionHandler }) => {
+const CustomTable = ({ title, fetchData, initialRowsPerPage = 10, url, buttonActionHandler,params }) => {
   const [order, setOrder] = useState('asc');
   const [orderBy, setOrderBy] = useState(''); // Initially no orderBy
   const [page, setPage] = useState(0);
@@ -14,12 +14,13 @@ const CustomTable = ({ title, fetchData, initialRowsPerPage = 10, url, buttonAct
   const [loading, setLoading] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
   const [columns, setColumns] = useState([]);
+  
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const result = await fetchData(page, rowsPerPage, url);
+        const result = await fetchData(page, rowsPerPage, url,params);
         setData(result.data);
         setTotalCount(result.totalCount);
         setColumns(result.columns); // Expected to be an array of objects with 'label' and 'value' properties
@@ -65,7 +66,7 @@ const CustomTable = ({ title, fetchData, initialRowsPerPage = 10, url, buttonAct
   };
 
   return (
-    <Paper sx={{padding:5}}>
+    <Paper sx={{padding:5,border:'2px solid',borderColor:'primary.main',width:'100%'}}>
       <Typography variant="h6" component="div" sx={{ p: 2, color: 'primary.main' }}>
         {title}
       </Typography>

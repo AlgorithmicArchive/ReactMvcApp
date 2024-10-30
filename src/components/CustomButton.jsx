@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '@mui/material';
 
-export default function CustomButton({ text = 'Click Me', onClick = null, bgColor='primary.main', color='background.paper', type="button",disabled=false }) {
+export default function CustomButton({ text = 'Click Me', onClick = null, bgColor='primary.main', color='background.paper', type="button",disabled=false,width=null }) {
   return (
     <Button
       variant="contained"
@@ -12,6 +12,8 @@ export default function CustomButton({ text = 'Click Me', onClick = null, bgColo
         backgroundColor: bgColor,
         color: color,
         fontWeight: 'bold',
+        width:width,
+        height:'50%'
       }}
     >
       {text}

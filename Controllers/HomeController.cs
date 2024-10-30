@@ -16,7 +16,7 @@ using SendEmails;
 
 namespace ReactMvcApp.Controllers
 {
-    public class HomeController(ILogger<HomeController> logger, SocialWelfareDepartmentContext dbContext, OtpStore otpStore, EmailSender emailSender, UserHelperFunctions helper, PdfService pdfService,IConfiguration configuration) : Controller
+    public class HomeController(ILogger<HomeController> logger, SocialWelfareDepartmentContext dbContext, OtpStore otpStore, EmailSender emailSender, UserHelperFunctions helper, PdfService pdfService, IConfiguration configuration) : Controller
     {
         private readonly ILogger<HomeController> _logger = logger;
         private readonly SocialWelfareDepartmentContext _dbContext = dbContext;
@@ -46,7 +46,6 @@ namespace ReactMvcApp.Controllers
         public IActionResult Index()
         {
             return View();
-
         }
 
         public IActionResult Authentication()
@@ -57,19 +56,19 @@ namespace ReactMvcApp.Controllers
         [HttpPost]
         public async Task<IActionResult> OfficerRegistration([FromForm] IFormCollection form)
         {
-            var fullName = new SqlParameter("@Name",form["fullName"].ToString());
+            var fullName = new SqlParameter("@Name", form["fullName"].ToString());
             var username = new SqlParameter("@Username", form["Username"].ToString());
             var password = new SqlParameter("@Password", form["Password"].ToString());
             var email = new SqlParameter("@Email", form["Email"].ToString());
             var mobileNumber = new SqlParameter("@MobileNumber", form["MobileNumber"].ToString());
-            var designation = new SqlParameter("@Role",form["designation"].ToString());
-            var accessLevel = new SqlParameter("@AccessLevel",form["accessLevel"].ToString());
-            var accessCode = new SqlParameter("@AccessCode",Convert.ToInt32(form["accessCode"].ToString()));
-            var profile = new SqlParameter("@Profile","/assets/images/profile.jpg");
-           
+            var designation = new SqlParameter("@Role", form["designation"].ToString());
+            var accessLevel = new SqlParameter("@AccessLevel", form["accessLevel"].ToString());
+            var accessCode = new SqlParameter("@AccessCode", Convert.ToInt32(form["accessCode"].ToString()));
+            var profile = new SqlParameter("@Profile", "/assets/images/profile.jpg");
+
 
             var UserType = new SqlParameter("@UserType", form["designation"].ToString().Contains("Admin") ? "Admin" : "Officer");
-          
+
             var backupCodes = new
             {
                 unused = _helper.GenerateUniqueRandomCodes(10, 8),
@@ -81,13 +80,13 @@ namespace ReactMvcApp.Controllers
 
             var result = _dbContext.Users.FromSqlRaw(
                 "EXEC RegisterUser @Name, @Username, @Password, @Email, @MobileNumber,@Profile, @UserType, @BackupCodes, @RegisteredDate",
-                fullName,username, password, email, mobileNumber,profile, UserType, backupCodesParam, registeredDate
+                fullName, username, password, email, mobileNumber, profile, UserType, backupCodesParam, registeredDate
             ).ToList();
 
             if (result.Count > 0)
             {
-                var userId = new SqlParameter("@OfficerId",result[0].UserId);
-                await _dbContext.Database.ExecuteSqlRawAsync("EXEC InsertOfficerDetail @OfficerId,@Role,@AccessLevel,@AccessCode",userId,designation,accessLevel,accessCode);
+                var userId = new SqlParameter("@OfficerId", result[0].UserId);
+                await _dbContext.Database.ExecuteSqlRawAsync("EXEC InsertOfficerDetail @OfficerId,@Role,@AccessLevel,@AccessCode", userId, designation, accessLevel, accessCode);
                 string otp = GenerateOTP(6);
                 _otpStore.StoreOtp("registration", otp);
                 await _emailSender.SendEmail(form["Email"].ToString(), "OTP For Registration.", otp);
@@ -119,7 +118,7 @@ namespace ReactMvcApp.Controllers
                 // Additional user-specific details if needed
                 if (user.UserType == "Officer")
                 {
-                    string designation = _dbContext.OfficerDetails.FirstOrDefault(o=>o.OfficerId == user.UserId)!.Role;
+                    string designation = _dbContext.OfficerDetails.FirstOrDefault(o => o.OfficerId == user.UserId)!.Role;
                     HttpContext.Session.SetString("Designation", designation);
                 }
 
@@ -184,13 +183,17 @@ namespace ReactMvcApp.Controllers
             }
             else if (string.IsNullOrEmpty(otp) && !string.IsNullOrEmpty(backupCode))
             {
-                if(backupCode=="123456") verified = true;
-                else{
-                    var user  = _dbContext.Users.FirstOrDefault(u=>u.UserId == userId);
-                    if(user!=null){
-                        var backupCodes = JsonConvert.DeserializeObject<Dictionary<string,List<string>>>(user.BackupCodes);
-                        if(backupCodes !=null && backupCodes.TryGetValue("unused",out var unused) && backupCodes.TryGetValue("used",out var used)){
-                            if(unused.Contains(backupCode)){
+                if (backupCode == "123456") verified = true;
+                else
+                {
+                    var user = _dbContext.Users.FirstOrDefault(u => u.UserId == userId);
+                    if (user != null)
+                    {
+                        var backupCodes = JsonConvert.DeserializeObject<Dictionary<string, List<string>>>(user.BackupCodes);
+                        if (backupCodes != null && backupCodes.TryGetValue("unused", out var unused) && backupCodes.TryGetValue("used", out var used))
+                        {
+                            if (unused.Contains(backupCode))
+                            {
                                 verified = true;
                                 unused.Remove(backupCode);
                                 used.Add(backupCode);
@@ -237,17 +240,17 @@ namespace ReactMvcApp.Controllers
                 return Json(new { status = false, message = "Invalid Code" });
             }
         }
- 
- 
+
+
         public async Task<IActionResult> Register(IFormCollection form)
         {
-            var fullName = new SqlParameter("@Name",form["fullName"].ToString());
+            var fullName = new SqlParameter("@Name", form["fullName"].ToString());
             var username = new SqlParameter("@Username", form["Username"].ToString());
             var password = new SqlParameter("@Password", form["Password"].ToString());
             var email = new SqlParameter("@Email", form["Email"].ToString());
             var mobileNumber = new SqlParameter("@MobileNumber", form["MobileNumber"].ToString());
-            var profile = new SqlParameter("@Profile","/assets/images/profile.jpg");
-            
+            var profile = new SqlParameter("@Profile", "/assets/images/profile.jpg");
+
             var unused = _helper.GenerateUniqueRandomCodes(10, 8);
             var backupCodes = new
             {
@@ -259,10 +262,10 @@ namespace ReactMvcApp.Controllers
             var backupCodesParam = new SqlParameter("@BackupCodes", JsonConvert.SerializeObject(backupCodes));
             var registeredDate = new SqlParameter("@RegisteredDate", DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"));
 
-             var result = _dbContext.Users.FromSqlRaw(
-                "EXEC RegisterUser @Name, @Username, @Password, @Email, @MobileNumber,@Profile, @UserType, @BackupCodes, @RegisteredDate",
-                fullName,username, password, email, mobileNumber,profile, UserType, backupCodesParam, registeredDate
-            ).ToList();
+            var result = _dbContext.Users.FromSqlRaw(
+               "EXEC RegisterUser @Name, @Username, @Password, @Email, @MobileNumber,@Profile, @UserType, @BackupCodes, @RegisteredDate",
+               fullName, username, password, email, mobileNumber, profile, UserType, backupCodesParam, registeredDate
+           ).ToList();
 
 
             if (result.Count != 0)

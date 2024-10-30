@@ -55,9 +55,6 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
     "/User/InsertDocuments",
   ];
 
-  useEffect(() => {
-    console.log("fileInputRefs:", fileInputRefs.current);
-  }, [fileInputRefs]);
 
   useEffect(() => {
     fetchDistricts(setDistrictOptions);

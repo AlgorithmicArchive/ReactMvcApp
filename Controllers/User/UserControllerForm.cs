@@ -197,6 +197,10 @@ namespace ReactMvcApp.Controllers.User
             }
 
             var documents = JsonConvert.SerializeObject(docs);
+
+            helper.UpdateApplication("Documents",documents,new SqlParameter("@ApplicationId",applicationId));
+            helper.UpdateApplication("ApplicationStatus","Inititated",new SqlParameter("@ApplicationId",applicationId));
+
             var workFlow = dbcontext.WorkFlows.FirstOrDefault(w => w.ServiceId == serviceId && w.SequenceOrder == 1);
             int officerId = dbcontext.Users
             .Join(

@@ -21,12 +21,12 @@ export async function Validate(formData) {
   }
 }
 
-export const fetchData = async (page, rowsPerPage, URL) => {
+export const fetchData = async (page, rowsPerPage, URL,params) => {
   try {
     const url = `${URL}?page=${page}&size=${rowsPerPage}`;
 
-    const response = await axiosInstance.get(url);
-
+    console.log(url,params);
+    const response = await axiosInstance.get(url,{params:params});
     return {
       data: response.data.data,
       totalCount: response.data.totalCount,
@@ -147,9 +147,13 @@ export async function fetchDesignation(setDesignations,setAccessLevelMap){
 export async function fetchAcknowledgement() {
   try {
     const response = await axiosInstance.get("/User/GetAcknowledgement");
-    console.log(response.data);
-    return response.data.path
+    const { path } = response.data;
+
+    // Ensure that the path includes the protocol
+    const completePath = path.startsWith('http') ? path : `http://localhost:5004${path}`;
+    console.log('Complete PDF Path:', completePath);
+    return completePath;
   } catch (error) {
-    console.log("Error",error);
+    console.error("Error fetching PDF path:", error);
   }
 }
