@@ -18,6 +18,7 @@ import Incomplete from '../screens/user/Incomplete';
 import OfficerLayout from '../screens/officer/OfficerLayout';
 import OfficerHome from '../screens/officer/OfficerHome';
 import Reports from '../screens/officer/Reports';
+import UserDetails from '../screens/officer/UserDetails';
 
 const RoutesComponent = () => {
   return (
@@ -34,8 +35,8 @@ const RoutesComponent = () => {
 
       {/* Protected Routes */}
       <Route element={<ProtectedRoute requiredRoles={['Citizen']} />}>
-        <Route path="/user/home" element={<UserLayout />}>
-          <Route index element={<UserHome />} />
+        <Route path="/user" element={<UserLayout />}>
+          <Route path='home' element={<UserHome />} />
           <Route path="services" element={<Services />} />
           <Route path="form" element={<Form />} />
           <Route path='acknowledge' element={<Acknowledgement/>}/>
@@ -44,9 +45,10 @@ const RoutesComponent = () => {
         </Route>
       </Route>
       <Route element={<ProtectedRoute requiredRoles={['Officer']} />}>
-        <Route path="/officer/home" element={<OfficerLayout />}>
-          <Route index element={<OfficerHome />} />
+        <Route path="/officer" element={<OfficerLayout />}>
+          <Route path='home' element={<OfficerHome />} />
           <Route path='reports' element={<Reports />} />
+          <Route path='userDetails' element={<UserDetails/>}/>
         </Route>
       </Route>
     </Routes>

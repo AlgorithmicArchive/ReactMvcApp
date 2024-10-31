@@ -222,7 +222,7 @@ namespace ReactMvcApp.Controllers.User
 
             if (!form.ContainsKey("returnToEdit"))
             {
-                var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails) = helper.GetUserDetailsAndRelatedData(applicationId);
+                var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails,Documents) = helper.GetUserDetailsAndRelatedData(applicationId);
                 int districtCode = Convert.ToInt32(serviceSpecific["District"]);
                 string appliedDistrict = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == districtCode)?.DistrictName.ToUpper()!;
 

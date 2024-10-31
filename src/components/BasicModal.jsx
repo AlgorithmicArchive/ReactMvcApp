@@ -16,16 +16,16 @@ const style = {
   p: 4,
 };
 
-const BasicModal = ({ open, handleClose,Title,table,pdf }) => {
+const BasicModal = ({ open, handleClose,Title,table,pdf,handleActionButton }) => {
   return (
     <Modal open={open} onClose={handleClose}>
-      <Box sx={style}>
+      <Box sx={[style,{maxHeight:'600px',overflowY:'scroll'}]}>
         <Typography variant="h6" component="h2">
           {Title}
         </Typography>
         <Box sx={{ mt: 2 }}>
-          {table!=null && <CustomTable fetchData={fetchData} url={table.url} params={table.params}/>}
-          {pdf!=null && <PdfViewer/>}
+          {table!=null && <CustomTable fetchData={fetchData} url={table.url} params={table.params} buttonActionHandler={handleActionButton}/>}
+          {pdf!=null && <PdfViewer pdfUrl={pdf}/>}
         </Box>
         <Button variant="outlined" onClick={handleClose} sx={{ mt: 2 }}>
           Close

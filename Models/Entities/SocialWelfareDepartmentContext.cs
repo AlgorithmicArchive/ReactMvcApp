@@ -59,7 +59,7 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     public virtual DbSet<WorkFlow> WorkFlows { get; set; }
 
-    public virtual DbSet<AddressJoin> AddressJoins { get; set; }
+    
     public virtual DbSet<BankFileModel> BankFileModels { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -67,7 +67,6 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<AddressJoin>().HasNoKey();
         modelBuilder.Entity<BankFileModel>().HasNoKey();
         
         modelBuilder.Entity<Address>(entity =>

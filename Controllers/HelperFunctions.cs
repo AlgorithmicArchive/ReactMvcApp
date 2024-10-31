@@ -170,29 +170,24 @@ public class UserHelperFunctions
 
         return officer; // Returns a User or null
     }
-    public (Application UserDetails, AddressJoin PreAddressDetails, AddressJoin PerAddressDetails, dynamic ServiceSpecific, dynamic BankDetails) GetUserDetailsAndRelatedData(string applicationId)
+    public (Application UserDetails, AddressJoin PreAddressDetails, AddressJoin PerAddressDetails, dynamic ServiceSpecific, dynamic BankDetails,dynamic Documents) GetUserDetailsAndRelatedData(string applicationId)
     {
         var userDetails = dbcontext.Applications.FirstOrDefault(u => u.ApplicationId == applicationId);
 
-        if (userDetails == null)
-        {
-            throw new Exception("User details not found");
-        }
-
-        var preAddressDetails = dbcontext.Set<AddressJoin>()
-            .FromSqlRaw("EXEC GetAddressDetails @AddressId", new SqlParameter("@AddressId", userDetails.PresentAddressId))
-            .ToList()
+        var PreAddressId = new SqlParameter("@AddressId", userDetails!.PresentAddressId);
+        var preAddressDetails = dbcontext.Database.SqlQuery<AddressJoin>($"EXEC GetAddressDetails @AddressId = {PreAddressId}")
+            .AsEnumerable()
             .FirstOrDefault();
 
-        var perAddressDetails = dbcontext.Set<AddressJoin>()
-            .FromSqlRaw("EXEC GetAddressDetails @AddressId", new SqlParameter("@AddressId", userDetails.PermanentAddressId))
-            .ToList()
+        var PerAddressId = new SqlParameter("@AddressId", userDetails.PermanentAddressId);
+        var perAddressDetails = dbcontext.Database.SqlQuery<AddressJoin>($"EXEC GetAddressDetails @AddressId = {PerAddressId}")
+            .AsEnumerable()
             .FirstOrDefault();
 
-        var serviceSpecific = JsonConvert.DeserializeObject<dynamic>(userDetails.ServiceSpecific);
+        var serviceSpecific = JsonConvert.DeserializeObject<Dictionary<string, string>>(userDetails.ServiceSpecific);
         var bankDetails = JsonConvert.DeserializeObject<dynamic>(userDetails.BankDetails);
-
-        return (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails)!;
+        var documents = JsonConvert.DeserializeObject<dynamic>(userDetails.Documents);
+        return (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails,documents)!;
     }
 
     public string[] GenerateUniqueRandomCodes(int numberOfCodes, int codeLength)

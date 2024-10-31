@@ -24,8 +24,6 @@ export async function Validate(formData) {
 export const fetchData = async (page, rowsPerPage, URL,params) => {
   try {
     const url = `${URL}?page=${page}&size=${rowsPerPage}`;
-
-    console.log(url,params);
     const response = await axiosInstance.get(url,{params:params});
     return {
       data: response.data.data,

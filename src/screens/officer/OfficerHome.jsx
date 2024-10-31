@@ -5,11 +5,22 @@ import CustomSelectField from "../../components/form/CustomSelectField";
 import { useForm } from "react-hook-form";
 import CustomButton from "../../components/CustomButton";
 import StatusCountCard from "../../components/StatusCountCard";
+import BasicModal from "../../components/BasicModal";
+import { useNavigate } from "react-router-dom";
 
 export default function OfficerHome() {
   const [services, setServices] = useState([]); // Initialize as an empty array
   const [serviceId,setServieId] = useState();
   const [countList, setCountList] = useState([]);
+  const [table,setTable] = useState(null);
+  const [open, setOpen] = useState(false);
+
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+
+  const navigate = useNavigate();
+
+
   const {
     control,
     formState: { errors },
@@ -41,7 +52,7 @@ export default function OfficerHome() {
     try {
       setServieId(data.Service);
       const response = await axiosInstance.get("/Officer/GetApplicationsCount", {
-        params: { ServiceId: serviceId },
+        params: { ServiceId: data.Service },
       });
       
       // Set the count list from response
@@ -56,9 +67,15 @@ export default function OfficerHome() {
     console.log(`Card clicked: ${statusName}`);
     if (statusName == "Pending") 
         {
-          const response = await axiosInstance.get('/Officer/GetApplications',{params:{ServiceId:serviceId,type:"Pending"}})
+          handleOpen();
+          setTable({url:'/Officer/GetApplications',params:{ServiceId:serviceId,type:"Pending"}});
         }
   };
+
+  const handleActionButton=(functionName,parameters)=>{
+    const applicationId = parameters[0];
+    navigate('/officer/userDetails',{state:{applicationId:applicationId}});
+  }
 
   return (
     <Container
@@ -114,6 +131,14 @@ export default function OfficerHome() {
           />
         ))}
       </Box>
+      <BasicModal
+        open={open}
+        handleClose={handleClose}
+        Title={"Application List"}
+        pdf={null}
+        table={table}
+        handleActionButton={handleActionButton}
+      />
     </Container>
   );
 }

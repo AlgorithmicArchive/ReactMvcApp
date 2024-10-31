@@ -87,8 +87,8 @@ namespace ReactMvcApp.Controllers.User
                 var cell = new
                 {
                     sno = index,
-                    receivedOn = item.TakenAt,
-                    officer = item.Role,
+                    receivedOn = item.ActionTakenAt,
+                    officer = item.Designation,
                     actionTaken = item.ActionTaken,
                     remarks = item.Remarks
                 };
@@ -128,7 +128,7 @@ namespace ReactMvcApp.Controllers.User
                 return new { }; // Return an empty dictionary
             }
 
-            var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails) = helper.GetUserDetailsAndRelatedData(ApplicationId!);
+            var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails,docs) = helper.GetUserDetailsAndRelatedData(ApplicationId!);
             int districtCode = Convert.ToInt32(serviceSpecific["District"]);
             string AppliedDistrict = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == districtCode)?.DistrictName ?? "Unknown District";
 

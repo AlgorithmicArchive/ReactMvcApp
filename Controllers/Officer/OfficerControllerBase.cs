@@ -11,6 +11,9 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SendEmails;
 using ReactMvcApp.Models.Entities;
+using Azure;
+using System.Text.RegularExpressions;
+using System.Globalization;
 
 namespace ReactMvcApp.Controllers.Officer
 {
@@ -67,7 +70,6 @@ namespace ReactMvcApp.Controllers.Officer
             return officer!;
         }
 
-
         [HttpGet]
         public IActionResult GetServiceList()
         {
@@ -86,13 +88,17 @@ namespace ReactMvcApp.Controllers.Officer
         [HttpGet]
         public IActionResult GetApplicationsCount(int ServiceId)
         {
+            _logger.LogInformation($"----------------Service Id: {ServiceId}-------------------------");
+
 
             var officer = GetOfficerDetails();
 
             var authorities = dbcontext.WorkFlows.FirstOrDefault(wf => wf.ServiceId == ServiceId && wf.Role == officer!.Role);
-            
-            var TakenBy = new SqlParameter("@TakenBy",officer!.UserId);
-            var serviceId = new SqlParameter("@ServiceId",ServiceId);
+
+            _logger.LogInformation($"----------------Authorities: {authorities!.CanForward}-------------------------");
+
+            var TakenBy = new SqlParameter("@TakenBy", officer!.UserId);
+            var serviceId = new SqlParameter("@ServiceId", ServiceId);
 
             var counts = dbcontext.Database
                 .SqlQuery<StatusCounts>(
@@ -120,15 +126,108 @@ namespace ReactMvcApp.Controllers.Officer
             return Json(new { countList });
         }
 
-        public IActionResult GetApplications(int ServiceId, string type)
+        public IActionResult GetApplications(int ServiceId, string type, int page, int size)
         {
             var officer = GetOfficerDetails();
-            var OfficerId = new SqlParameter("@TakenBy",officer!.UserId);
-            var ActionTaken = new SqlParameter("@ActionTaken",type);
-            var serviceId = new SqlParameter("@ServiceId",ServiceId);
-            var applications = dbcontext.Applications.FromSqlRaw("EXEC GetFilteredApplications @OfficerId @ActionTaken @ServiceId",OfficerId,ActionTaken,serviceId).ToList();
-            return Json(new {applications});
+
+            var OfficerId = new SqlParameter("@OfficerId", officer.UserId);
+            var ActionTaken = new SqlParameter("@ActionTaken", type);
+            var serviceId = new SqlParameter("@ServiceId", ServiceId);
+
+            var applications = dbcontext.Applications
+                .FromSqlRaw("EXEC GetFilteredApplications @OfficerId, @ActionTaken, @ServiceId", OfficerId, ActionTaken, serviceId)
+                .AsEnumerable().Skip(page * size).Take(size).ToList();
+
+            dynamic? Applications = null;
+
+            switch (type)
+            {
+                case "Pending":
+                    Applications = GetPendingApplications(applications);
+                    break;
+            }
+
+            return Json(new { data = Applications!.data, columns = Applications.columns, totalCount = Applications.totalCount });
         }
+
+        private static string FormatKey(string key)
+        {
+            // Insert spaces before uppercase letters, then capitalize each word
+            string result = Regex.Replace(key, "([a-z])([A-Z])", "$1 $2");
+            return CultureInfo.CurrentCulture.TextInfo.ToTitleCase(result);
+        }
+
+        public IActionResult GetUserDetails(string applicationId)
+        {
+            var officerDetails = GetOfficerDetails();
+            var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails, documents) = helper.GetUserDetailsAndRelatedData(applicationId);
+            var generalDetails = new List<KeyValuePair<string, object>>
+            {
+                new("Reference Number", userDetails.ApplicationId),
+                new("Applicant Name", userDetails.ApplicantName),
+                new("Applicant Image", userDetails.ApplicantImage),
+                new("Email", userDetails.Email),
+                new("Mobile Number", userDetails.MobileNumber),
+                new("Parentage", userDetails.RelationName + $"({userDetails.Relation})"),
+                new("Date Of Birth", userDetails.DateOfBirth),
+                new("Category", userDetails.Category),
+                new("Submission Date", userDetails.SubmissionDate)
+            };
+
+            foreach (var kvp in serviceSpecific!)
+            {
+                string key = kvp.Key;
+                string value = kvp.Value;
+                bool isDigitOnly = value.All(char.IsDigit);
+                if (!isDigitOnly)
+                {
+                    generalDetails.Insert(8, new KeyValuePair<string, object>(FormatKey(key), value));
+                }
+            }
+
+            var presentAddressDetails = new List<KeyValuePair<string, object>>{
+                new("Address",preAddressDetails.Address!),
+                new("District",preAddressDetails.District!),
+                new("Tehsil",preAddressDetails.Tehsil!),
+                new("Block",preAddressDetails.Block!),
+                new("Panchayat/Muncipality",preAddressDetails.PanchayatMuncipality!),
+                new("Village",preAddressDetails.Village!),
+                new("Ward",preAddressDetails.Ward!),
+                new("Pincode",preAddressDetails.Pincode!),
+            };
+
+            var permanentAddressDetails = new List<KeyValuePair<string, object>>{
+                new("Address",perAddressDetails.Address!),
+                new("District",perAddressDetails.District!),
+                new("Tehsil",perAddressDetails.Tehsil!),
+                new("Block",perAddressDetails.Block!),
+                new("Panchayat/Muncipality",perAddressDetails.PanchayatMuncipality!),
+                new("Village",perAddressDetails.Village!),
+                new("Ward",perAddressDetails.Ward!),
+                new("Pincode",perAddressDetails.Pincode!),
+            };
+
+            var BankDetails = new List<KeyValuePair<string, object>>{
+                new("Bank Name",bankDetails.BankName),
+                new("Branch Name",bankDetails.BranchName),
+                new("IFSC Code",bankDetails.IfscCode),
+                new("Account Number",bankDetails.AccountNumber),
+            };
+
+            var applicationHistory = dbcontext.Database.SqlQuery<ApplicationsHistoryModal>($"EXEC GetApplicationsHistory @ApplicationId = {new SqlParameter("@ApplicationId",applicationId)}").AsEnumerable().ToList();
+            var columns = new List<dynamic>{
+                new {label="S.No.",value="sno"},
+                new {label="Designation",value="designation"},
+                new {label="Action Taken",value="actionTaken"},
+                new {label="Remarks",value="remarks"},
+                new {label="Taken On",value="takenOn"},
+            };
+            List<dynamic> data = [];
+
+
+            return Json(new { generalDetails, presentAddressDetails, permanentAddressDetails, BankDetails, documents,applicationHistory });
+        }
+
 
 
         // public async Task<IActionResult> GetApplicationsList(string ServiceId)
