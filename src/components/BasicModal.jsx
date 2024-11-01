@@ -20,7 +20,7 @@ const BasicModal = ({ open, handleClose,Title,table,pdf,handleActionButton }) =>
   return (
     <Modal open={open} onClose={handleClose}>
       <Box sx={[style,{maxHeight:'600px',overflowY:'scroll'}]}>
-        <Typography variant="h6" component="h2">
+        <Typography variant="h6" component="h2" sx={{textAlign:'center'}}>
           {Title}
         </Typography>
         <Box sx={{ mt: 2 }}>

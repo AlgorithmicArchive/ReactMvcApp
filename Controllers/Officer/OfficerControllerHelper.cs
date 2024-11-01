@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using ReactMvcApp.Models.Entities;
 
@@ -67,9 +69,40 @@ namespace ReactMvcApp.Controllers.Officer
 
 
 
-            return new {columns,data,totalCount = data.Count};
+            return new { columns, data, totalCount = data.Count };
         }
-    
-        
+
+        public IActionResult GetApplicationHistory(string applicationId, int page, int size)
+        {
+            var applicationHistory = dbcontext.Database.SqlQuery<ApplicationsHistoryModal>($"EXEC GetApplicationsHistory @ApplicationId = {new SqlParameter("@ApplicationId", applicationId)}").AsEnumerable().Skip(page * size).Take(size).ToList();
+            var columns = new List<dynamic>{
+                new {label="S.No.",value="sno"},
+                new {label="Designation",value="designation"},
+                new {label="Action Taken",value="actionTaken"},
+                new {label="Remarks",value="remarks"},
+                new {label="Taken On/Received On",value="takenOn"},
+            };
+            List<dynamic> data = [];
+            int index = 1;
+            foreach (var item in applicationHistory)
+            {
+                var cell = new
+                {
+                    sno = index,
+                    designation = item.Designation,
+                    actionTaken = item.ActionTaken,
+                    remarks = item.Remarks,
+                    takenOn = item.TakenAt
+                };
+                data.Add(cell);
+                index++;
+            }
+            return Json(new { columns,data,totalCount = data.Count });
+        }
+
+        public void ActionForward(int serviceId,string applicationId,int officerId,string remarks,IFormFile file){
+            
+        }
+
     }
 }

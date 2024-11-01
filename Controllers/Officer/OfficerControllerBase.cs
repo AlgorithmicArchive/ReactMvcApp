@@ -161,6 +161,7 @@ namespace ReactMvcApp.Controllers.Officer
         {
             var officerDetails = GetOfficerDetails();
             var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails, documents) = helper.GetUserDetailsAndRelatedData(applicationId);
+         
             var generalDetails = new List<KeyValuePair<string, object>>
             {
                 new("Reference Number", userDetails.ApplicationId),
@@ -214,18 +215,67 @@ namespace ReactMvcApp.Controllers.Officer
                 new("Account Number",bankDetails.AccountNumber),
             };
 
-            var applicationHistory = dbcontext.Database.SqlQuery<ApplicationsHistoryModal>($"EXEC GetApplicationsHistory @ApplicationId = {new SqlParameter("@ApplicationId",applicationId)}").AsEnumerable().ToList();
-            var columns = new List<dynamic>{
-                new {label="S.No.",value="sno"},
-                new {label="Designation",value="designation"},
-                new {label="Action Taken",value="actionTaken"},
-                new {label="Remarks",value="remarks"},
-                new {label="Taken On",value="takenOn"},
-            };
-            List<dynamic> data = [];
+            var permissions = dbcontext.WorkFlows.FirstOrDefault(wf => wf.ServiceId == userDetails.ServiceId && wf.Role == officerDetails.Role);
+            var workFlow = dbcontext.WorkFlows.Where(wf => wf.ServiceId == userDetails.ServiceId).ToList();
+            string nextOfficer = workFlow.FirstOrDefault(wf => wf.SequenceOrder == permissions!.SequenceOrder + 1)!.Role;
+            string previousOfficer = "";
+            if (permissions!.SequenceOrder > 1)
+                previousOfficer = workFlow.FirstOrDefault(wf => wf.SequenceOrder == permissions!.SequenceOrder - 1)!.Role ?? "";
+
+            List<dynamic> actionOptions = [];
+            if (permissions!.CanForward) actionOptions.Add(new { label = $"Forward to {nextOfficer}", value = "forward" });
+            if (permissions.CanReturn) actionOptions.Add(new { label = $"Return to {previousOfficer}", value = "return" });
+            if (permissions.CanReturnToEdit) actionOptions.Add(new { label = $"Return to Citizen", value = "returnToEdit" });
+            if (permissions.CanUpdate) actionOptions.Add(new { label = $"Update and Forward to {nextOfficer}", value = "updateAndForward" });
+            if (permissions.CanSanction) actionOptions.Add(new { label = $"Issue Sanction Letter", value = "sanction" });
+            actionOptions.Add(new { label = $"Reject", value = "reject" });
+
+            List<dynamic> editList = [];
+            HashSet<string> uniqueLabels = [];
+            var serviceContent = dbcontext.Services.FirstOrDefault(s=>s.ServiceId==userDetails.ServiceId);
+            var formElements = JsonConvert.DeserializeObject<dynamic>(serviceContent!.FormElement!);
+            var officerEditableField = JsonConvert.DeserializeObject<dynamic>(serviceContent.OfficerEditableField!);
+
+            foreach (var section in formElements!)
+            {
+                foreach (var element in section.fields)
+                {
+                    if (element.name != "District" && uniqueLabels.Add((string)element.label))
+                    {
+                        // Only add to editList if label was successfully added to uniqueLabels
+                        editList.Add(new { label = element.label, value = element.name });
+                    }
+                }
+            }
 
 
-            return Json(new { generalDetails, presentAddressDetails, permanentAddressDetails, BankDetails, documents,applicationHistory });
+
+            return Json(new { generalDetails, presentAddressDetails, permanentAddressDetails, BankDetails, documents, actionOptions, editList,officerEditableField });
+        }
+
+        [HttpPost]
+        public IActionResult HandleAction([FromForm] IFormCollection form){
+            var officer = GetOfficerDetails();
+            int serviceId = Convert.ToInt32(form["serviceId"].ToString());
+            string applicationId = form["applicationId"].ToString();
+            string action = form["action"].ToString();
+            string remarks = form["remarks"].ToString();    
+            string editList,editableField;
+            IFormFile? file = null;
+            if(action == "returnToEdit") editList = form["editList"].ToString();
+            else if(action == "updateAndForward") editableField = form["editableField"].ToString();
+            else if(action == "forward") file = form.Files["forwarFile"];
+            switch (action)
+            {
+                case "forward":
+                    ActionForward(serviceId,applicationId,officer.UserId,remarks,file!);
+                    break;
+                default:
+                    break;
+            }
+
+
+            return View(new{});
         }
 
 

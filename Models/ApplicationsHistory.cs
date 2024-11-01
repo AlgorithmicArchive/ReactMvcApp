@@ -4,5 +4,5 @@ public class ApplicationsHistoryModal
     public string? ActionTaken { get; set; }      // Maps to ActionTaken in ApplicationsHistory
     public string? Remarks { get; set; }          // Maps to Remarks in ApplicationsHistory
     public string? File { get; set; }
-    public string? ActionTakenAt { get; set; }    // Maps to TakenAt in ApplicationsHistory
+    public string? TakenAt { get; set; }    // Maps to TakenAt in ApplicationsHistory
 }

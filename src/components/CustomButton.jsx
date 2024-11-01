@@ -13,6 +13,7 @@ export default function CustomButton({ text = 'Click Me', onClick = null, bgColo
         color: color,
         fontWeight: 'bold',
         width:width,
+        margin:'0 auto'
       }}
     >
       {text}

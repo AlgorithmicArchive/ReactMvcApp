@@ -87,7 +87,7 @@ namespace ReactMvcApp.Controllers.User
                 var cell = new
                 {
                     sno = index,
-                    receivedOn = item.ActionTakenAt,
+                    receivedOn = item.TakenAt,
                     officer = item.Designation,
                     actionTaken = item.ActionTaken,
                     remarks = item.Remarks

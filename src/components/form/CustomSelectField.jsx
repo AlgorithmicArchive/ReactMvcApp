@@ -10,8 +10,8 @@ const CustomSelectField = forwardRef(({
   placeholder = 'Select an option...',
   rules = {},
   errors,
+  onChange, // Add onChange prop
 }, ref) => {
-
   const selectFieldRef = useRef(null);
 
   useImperativeHandle(ref, () => ({
@@ -43,7 +43,8 @@ const CustomSelectField = forwardRef(({
               value={field.value || ''}
               onChange={(e) => {
                 const value = e.target.value;
-                field.onChange(value);
+                field.onChange(value); // Update react-hook-form state
+                if (onChange) onChange(value); // Call parent onChange if provided
               }}
               style={{
                 padding: '10px',

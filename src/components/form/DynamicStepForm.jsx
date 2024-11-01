@@ -7,7 +7,7 @@ import CustomCheckbox from "./CustomCheckBox";
 import CustomRadioButton from "./CustomRadioButton";
 import CustomDateInput from "./CustomDateInput";
 import {
-  validationFunctionsList,
+  runValidations,
   CapitalizeAlphabets,
 } from "../../assets/formvalidations";
 import { Typography, Box } from "@mui/material";
@@ -111,23 +111,7 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
     }
   }, [sameAsPresent, setValue, getValues]);
 
-  const runValidations = async (field, value) => {
-    if (!Array.isArray(field.validationFunctions)) return true;
 
-    for (const validationFn of field.validationFunctions) {
-      const fun = validationFunctionsList[validationFn];
-      if (typeof fun !== "function") continue;
-
-      try {
-        const error = await fun(field, value || "");
-        if (error !== true) return error;
-      } catch (err) {
-        return "Validation failed due to an unexpected error.";
-      }
-    }
-
-    return true;
-  };
 
   const onSubmit = async (data) => {
     try {
@@ -256,7 +240,7 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
             }}
             errors={errors}
           />
-        );
+            );
       case "select":
         let selectOptions = options.map((option) => ({
           label: option,
