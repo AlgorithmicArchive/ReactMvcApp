@@ -40,7 +40,8 @@ export default function OfficerRegisterScreen() {
       formData.append(key, value);
     });
     formData.append('accessLevel',accessLevelMap[selectedDesignation])
-    formData.append('accessCode',data['District']);
+    formData.append('accessCode',accessLevelMap[selectedDesignation]!="State"?data['District']:0);
+    console.log(accessLevelMap[selectedDesignation]);
     const response = await axios.post('/Home/OfficerRegistration',formData);
     const {status,userId} = response.data
     if(status) {

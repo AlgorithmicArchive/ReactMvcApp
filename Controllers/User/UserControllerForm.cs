@@ -198,8 +198,8 @@ namespace ReactMvcApp.Controllers.User
 
             var documents = JsonConvert.SerializeObject(docs);
 
-            helper.UpdateApplication("Documents",documents,new SqlParameter("@ApplicationId",applicationId));
-            helper.UpdateApplication("ApplicationStatus","Inititated",new SqlParameter("@ApplicationId",applicationId));
+            helper.UpdateApplication("Documents", documents, new SqlParameter("@ApplicationId", applicationId));
+            helper.UpdateApplication("ApplicationStatus", "Inititated", new SqlParameter("@ApplicationId", applicationId));
 
             var workFlow = dbcontext.WorkFlows.FirstOrDefault(w => w.ServiceId == serviceId && w.SequenceOrder == 1);
             int officerId = dbcontext.Users
@@ -222,7 +222,7 @@ namespace ReactMvcApp.Controllers.User
 
             if (!form.ContainsKey("returnToEdit"))
             {
-                var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails,Documents) = helper.GetUserDetailsAndRelatedData(applicationId);
+                var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails, Documents) = helper.GetUserDetailsAndRelatedData(applicationId);
                 int districtCode = Convert.ToInt32(serviceSpecific["District"]);
                 string appliedDistrict = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == districtCode)?.DistrictName.ToUpper()!;
 
@@ -257,8 +257,33 @@ namespace ReactMvcApp.Controllers.User
 
 
 
-            _ = dbcontext.Database.ExecuteSqlRaw("EXEC InsertApplicationHistory @ServiceId,@ApplicationId,@ActionTaken,@TakenBy,@File,@TakenAt", new SqlParameter("@ServiceId", serviceId), new SqlParameter("@ApplicationId", applicationId), new SqlParameter("@ActionTaken", "Pending"), new SqlParameter("@TakenBy",officerId), new SqlParameter("@File", ""), new SqlParameter("@TakenAt", DateTime.Now.ToString("dd MMM yyyy hh:mm tt")));
-            _ = dbcontext.Database.ExecuteSqlRaw("EXEC InsertApplicationStatus @ServiceId,@ApplicationId,@Status,@CurrentlyWith,@LastUpdated", new SqlParameter("@ServiceId", serviceId), new SqlParameter("@ApplicationId", applicationId), new SqlParameter("@Status", "Pending"), new SqlParameter("@CurrentlyWith",officerId), new SqlParameter("@LastUpdated", DateTime.Now.ToString("dd MMM yyyy hh:mm tt")));
+            _ = dbcontext.Database.ExecuteSqlRaw("EXEC InsertApplicationHistory @ServiceId,@ApplicationId,@ActionTaken,@TakenBy,@File,@TakenAt", new SqlParameter("@ServiceId", serviceId), new SqlParameter("@ApplicationId", applicationId), new SqlParameter("@ActionTaken", "Pending"), new SqlParameter("@TakenBy", officerId), new SqlParameter("@File", ""), new SqlParameter("@TakenAt", DateTime.Now.ToString("dd MMM yyyy hh:mm tt")));
+            _ = dbcontext.Database.ExecuteSqlRaw("EXEC InsertApplicationStatus @ServiceId,@ApplicationId,@Status,@CurrentlyWith,@LastUpdated", new SqlParameter("@ServiceId", serviceId), new SqlParameter("@ApplicationId", applicationId), new SqlParameter("@Status", "Pending"), new SqlParameter("@CurrentlyWith", officerId), new SqlParameter("@LastUpdated", DateTime.Now.ToString("dd MMM yyyy hh:mm tt")));
+           
+            var applicationCount = dbcontext.ApplicationsCounts
+    .FirstOrDefault(ac => ac.ServiceId == serviceId && ac.OfficerId == officerId && ac.Status == "Pending");
+
+            var currentDate = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
+
+            if (applicationCount != null)
+            {
+                applicationCount.Count++;
+                applicationCount.LastUpdated = currentDate;
+            }
+            else
+            {
+                var newApplicationCount = new ApplicationsCount
+                {
+                    ServiceId = serviceId,
+                    OfficerId = officerId,
+                    Status = "Pending",
+                    Count = 1,
+                    LastUpdated = currentDate
+                };
+                dbcontext.ApplicationsCounts.Add(newApplicationCount);
+            }
+
+            await dbcontext.SaveChangesAsync();
 
 
             HttpContext.Session.SetString("ApplicationId", applicationId);

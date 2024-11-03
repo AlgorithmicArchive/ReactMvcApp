@@ -76,7 +76,7 @@ const CustomTable = ({ title, fetchData, initialRowsPerPage = 10, url, buttonAct
             <TableRow sx={{backgroundColor:'primary.main',border: '2px solid #F0C38E'}}>
               {columns.map(({ label, value },index) => (
                 <TableCell
-                  key={value}
+                  key={index}
                   sortDirection={orderBy === value ? order : false}
                   sx={{ color: 'background.paper', borderRight: index === columns.length - 1 ? 'none' : '2px solid #312C51',fontWeight:'bold' }}
                 >
@@ -107,12 +107,10 @@ const CustomTable = ({ title, fetchData, initialRowsPerPage = 10, url, buttonAct
             ) : (
               data.map((row, rowIndex) => (
                 <TableRow key={rowIndex} sx={{ border: '2px solid #F0C38E' }}>
-                  {columns.map(({ value }) => {
-                    // Check if the field is 'button' to handle the button specifically
+                  {columns.map(({ value },columnIndex) => {
                     if (value === 'button' && row[value]) {
-                      // Render a button dynamically based on the "button" property
                       return (
-                        <TableCell key={value} sx={{ color: 'background.paper' }}>
+                        <TableCell key={columnIndex} sx={{ color: 'background.paper' }}>
                           <Button
                             variant="contained"
                             color="primary"
@@ -126,9 +124,8 @@ const CustomTable = ({ title, fetchData, initialRowsPerPage = 10, url, buttonAct
                         </TableCell>
                       );
                     }
-                    // Render other fields normally
                     return (
-                      <TableCell key={value} sx={{ color: 'primary.main', borderRight: '2px solid #F0C38E' }}>
+                      <TableCell key={columnIndex} sx={{ color: 'primary.main', borderRight: '2px solid #F0C38E' }}>
                         {typeof row[value] === 'object' ? JSON.stringify(row[value]) : row[value]}
                       </TableCell>
                     );

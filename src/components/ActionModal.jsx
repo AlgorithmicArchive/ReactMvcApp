@@ -6,6 +6,7 @@ import CustomButton from "./CustomButton";
 import CustomCheckbox from "./form/CustomCheckBox";
 import CustomDateInput from "./form/CustomDateInput";
 import { runValidations } from "../assets/formvalidations";
+import CustomFileSelector from "./form/CustomFileSelector";
 
 // Modal style
 const style = {
@@ -28,6 +29,7 @@ const ActionModal = ({
   actionOptions,
   editList,
   editableField,
+  currentOfficer,
   errors,
 }) => {
   const [selectedAction, setSelectedAction] = useState("");
@@ -111,6 +113,17 @@ const ActionModal = ({
                      errors={errors}
                     />
                 </Box>
+            }
+            {selectedAction=="forward" && currentOfficer=="District Social Welfare Officer" &&
+              <CustomFileSelector
+                key={'forwardFile'}
+                label={'Certificate By TSWO'}
+                name={'forwardFile'}
+                control={control}
+                accept={'.pdf'}
+                rules={{required:'This field is required'}}
+                errors={errors}
+              />
             }
             <CustomInputField
               name={"remarks"}

@@ -110,11 +110,9 @@ export function CapitalizeAlphabets(field, value) {
 }
 
 export const runValidations = async (field, value) => {
-  console.log(field,value);
   if (!Array.isArray(field.validationFunctions)) return true;
 
   for (const validationFn of field.validationFunctions) {
-    console.log(validationFn);
     const fun = validationFunctionsList[validationFn];
     if (typeof fun !== "function") continue;
 

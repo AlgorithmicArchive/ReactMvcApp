@@ -88,14 +88,9 @@ namespace ReactMvcApp.Controllers.Officer
         [HttpGet]
         public IActionResult GetApplicationsCount(int ServiceId)
         {
-            _logger.LogInformation($"----------------Service Id: {ServiceId}-------------------------");
-
-
             var officer = GetOfficerDetails();
 
             var authorities = dbcontext.WorkFlows.FirstOrDefault(wf => wf.ServiceId == ServiceId && wf.Role == officer!.Role);
-
-            _logger.LogInformation($"----------------Authorities: {authorities!.CanForward}-------------------------");
 
             var TakenBy = new SqlParameter("@TakenBy", officer!.UserId);
             var serviceId = new SqlParameter("@ServiceId", ServiceId);
@@ -161,7 +156,7 @@ namespace ReactMvcApp.Controllers.Officer
         {
             var officerDetails = GetOfficerDetails();
             var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails, documents) = helper.GetUserDetailsAndRelatedData(applicationId);
-         
+
             var generalDetails = new List<KeyValuePair<string, object>>
             {
                 new("Reference Number", userDetails.ApplicationId),
@@ -215,9 +210,11 @@ namespace ReactMvcApp.Controllers.Officer
                 new("Account Number",bankDetails.AccountNumber),
             };
 
+            int serviceId = userDetails.ServiceId;
             var permissions = dbcontext.WorkFlows.FirstOrDefault(wf => wf.ServiceId == userDetails.ServiceId && wf.Role == officerDetails.Role);
             var workFlow = dbcontext.WorkFlows.Where(wf => wf.ServiceId == userDetails.ServiceId).ToList();
-            string nextOfficer = workFlow.FirstOrDefault(wf => wf.SequenceOrder == permissions!.SequenceOrder + 1)!.Role;
+            
+            string nextOfficer = workFlow.FirstOrDefault(wf => wf.SequenceOrder == permissions!.SequenceOrder + 1)?.Role ?? "";
             string previousOfficer = "";
             if (permissions!.SequenceOrder > 1)
                 previousOfficer = workFlow.FirstOrDefault(wf => wf.SequenceOrder == permissions!.SequenceOrder - 1)!.Role ?? "";
@@ -228,11 +225,12 @@ namespace ReactMvcApp.Controllers.Officer
             if (permissions.CanReturnToEdit) actionOptions.Add(new { label = $"Return to Citizen", value = "returnToEdit" });
             if (permissions.CanUpdate) actionOptions.Add(new { label = $"Update and Forward to {nextOfficer}", value = "updateAndForward" });
             if (permissions.CanSanction) actionOptions.Add(new { label = $"Issue Sanction Letter", value = "sanction" });
-            actionOptions.Add(new { label = $"Reject", value = "reject" });
+            if(permissions.CanReject)
+                actionOptions.Add(new { label = $"Rejected", value = "reject" });
 
             List<dynamic> editList = [];
             HashSet<string> uniqueLabels = [];
-            var serviceContent = dbcontext.Services.FirstOrDefault(s=>s.ServiceId==userDetails.ServiceId);
+            var serviceContent = dbcontext.Services.FirstOrDefault(s => s.ServiceId == userDetails.ServiceId);
             var formElements = JsonConvert.DeserializeObject<dynamic>(serviceContent!.FormElement!);
             var officerEditableField = JsonConvert.DeserializeObject<dynamic>(serviceContent.OfficerEditableField!);
 
@@ -250,33 +248,79 @@ namespace ReactMvcApp.Controllers.Officer
 
 
 
-            return Json(new { generalDetails, presentAddressDetails, permanentAddressDetails, BankDetails, documents, actionOptions, editList,officerEditableField });
+            return Json(new { serviceId,generalDetails, presentAddressDetails, permanentAddressDetails, BankDetails, documents, actionOptions, editList, officerEditableField,currentOfficer = permissions.Role });
         }
 
         [HttpPost]
-        public IActionResult HandleAction([FromForm] IFormCollection form){
+        public async Task<IActionResult> HandleAction([FromForm] IFormCollection form)
+        {
+            // Extracting officer details
             var officer = GetOfficerDetails();
-            int serviceId = Convert.ToInt32(form["serviceId"].ToString());
+            int officerId = officer.UserId;
+            string officerDesignation = officer.Role!;
+
+            // Parsing form data
+            int serviceId = Convert.ToInt32(form["serviceId"]);
             string applicationId = form["applicationId"].ToString();
             string action = form["action"].ToString();
-            string remarks = form["remarks"].ToString();    
-            string editList,editableField;
+            string remarks = form["remarks"].ToString();
             IFormFile? file = null;
-            if(action == "returnToEdit") editList = form["editList"].ToString();
-            else if(action == "updateAndForward") editableField = form["editableField"].ToString();
-            else if(action == "forward") file = form.Files["forwarFile"];
-            switch (action)
+            string filePath = "";
+            string actionTaken = "";
+            string accessLevel = "";
+            int accessCode = 0;
+
+            // Deserialize ServiceSpecific JSON to extract access level and code
+            var details = dbcontext.Applications
+                .Where(app => app.ApplicationId == applicationId)
+                .Select(app => app.ServiceSpecific)
+                .FirstOrDefault();
+
+            if (details != null)
             {
-                case "forward":
-                    ActionForward(serviceId,applicationId,officer.UserId,remarks,file!);
-                    break;
-                default:
-                    break;
+                var serviceSpecific = JsonConvert.DeserializeObject<Dictionary<string, string>>(details);
+                if (serviceSpecific != null && serviceSpecific.TryGetValue("District", out var districtCode))
+                {
+                    accessLevel = "District";
+                    accessCode = Convert.ToInt32(districtCode);
+                }
             }
 
+            // Action-based logic for handling file upload and setting actionTaken
+            switch (action)
+            {
+                case "returnToEdit":
+                    string editList = form["editList"].ToString();
+                    ActionReturnToEdit(serviceId,applicationId,officer.UserId,remarks,filePath);
+                    break;
 
-            return View(new{});
+                case "updateAndForward":
+                    string editableField = form["editableField"].ToString();
+                    actionTaken = "Forwarded";
+                    break;
+
+                case "forward":
+                    file = form.Files["forwardFile"];
+                    filePath = file != null ? await helper.GetFilePath(file) : "";
+                    ActionForward(serviceId,applicationId,officer.UserId,officer.Role!,remarks,filePath,accessLevel,accessCode);
+                    break;
+
+                case "reject":
+                    ActionReturn(serviceId,applicationId,officer.UserId,officerDesignation,remarks,filePath,accessLevel,accessCode);
+                    break;
+
+                case "sanction":
+                    ActionSanction(serviceId,applicationId,officer.UserId,remarks,filePath);
+                    break;
+
+                default:
+                    return BadRequest("Invalid action specified.");
+            }
+
+           
+            return Json(new { status = true, message = $"{actionTaken} action processed successfully." });
         }
+
 
 
 

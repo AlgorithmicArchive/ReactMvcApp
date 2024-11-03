@@ -1,54 +1,54 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 import CustomButton from './CustomButton';
 
-// Set the local worker source
 pdfjs.GlobalWorkerOptions.workerSrc = '/js/pdf.worker.min.js';
 
 const PdfViewer = ({ pdfUrl }) => {
-  const [numPages, setNumPages] = React.useState(null);
-  const [error, setError] = React.useState(null);
+  const [numPages, setNumPages] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    // Reset error and page count on retry
+    setError(null);
+    setNumPages(null);
+  }, [retryCount]);
 
   const onDocumentLoadSuccess = ({ numPages }) => {
     setNumPages(numPages);
-    setError(null); // Clear any previous errors
+    setError(null);
   };
 
   const onDocumentLoadError = (error) => {
     console.error('Failed to load PDF document:', error);
-    setError('Failed to load PDF document. Please try again.');
-  };
-
-  const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = pdfUrl;
-    link.download = 'Acknowledgement.pdf';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (retryCount < 3) {
+      setRetryCount(retryCount + 1); // Retry up to 3 times
+    } else {
+      setError('Failed to load PDF document. Please try again.');
+    }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center',marginTop:'50px',gap:5 }}>
-
-      <CustomButton text='Export PDF' onClick={handleDownload}/>
-
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '50px', gap: 5 }}>
+      <CustomButton text="Export PDF" onClick={() => window.open(pdfUrl, '_blank')} />
       {error ? (
         <p style={{ color: 'red' }}>{error}</p>
       ) : (
-        <Document 
-          file={pdfUrl} 
-          onLoadSuccess={onDocumentLoadSuccess} 
+        <Document
+          file={pdfUrl}
+          onLoadSuccess={onDocumentLoadSuccess}
           onLoadError={onDocumentLoadError}
+          key={retryCount}
         >
           {Array.from(new Array(numPages), (el, index) => (
             <Page
               key={`page_${index + 1}`}
               pageNumber={index + 1}
-              renderTextLayer={true}
-              renderAnnotationLayer={true}
+              renderTextLayer
+              renderAnnotationLayer
             />
           ))}
         </Document>

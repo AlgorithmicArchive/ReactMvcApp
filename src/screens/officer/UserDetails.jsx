@@ -1,12 +1,12 @@
 import { Box, Container, Typography } from "@mui/material";
 import React, { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import axiosInstance from "../../axiosConfig";
 import Row from "../../components/grid/Row";
 import Col from "../../components/grid/Col";
 import BasicModal from "../../components/BasicModal";
 import CustomTable from "../../components/CustomTable";
-import { fetchData } from "../../assets/fetch";
+import { fetchData, SetServiceId } from "../../assets/fetch";
 import { useForm } from "react-hook-form";
 import ActionModal from "../../components/ActionModal";
 import CustomButton from "../../components/CustomButton";
@@ -20,18 +20,20 @@ export default function UserDetails() {
   const [actionOptions, setActionOptions] = useState([]);
   const [editList, setEditList] = useState([]);
   const [editableField, setEditableField] = useState(null);
+  const [currentOfficer,setCurrentOfficer] = useState('');
   const location = useLocation();
   const { applicationId } = location.state || {};
+  const [serviceId, setServiceID] = useState(0);
 
   const {
     control,
     formState: { errors },
     handleSubmit,
-  } = useForm({mode:'onChange'});
+  } = useForm({ mode: "onChange" });
   const [pdf, setPdf] = useState(null);
   const [open, setOpen] = useState(false);
   const [actionOpen, setActionOpen] = useState(false);
-
+  const navigate = useNavigate();
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
@@ -43,8 +45,27 @@ export default function UserDetails() {
     handleOpen();
   };
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     console.log("Form Data", data);
+    console.log(applicationId, serviceId);
+
+    const formData = new FormData();
+
+    for (const [key, value] of Object.entries(data)) {
+      if (value instanceof FileList) {
+        formData.append(key, value[0]);
+      } else {
+        formData.append(key, value);
+      }
+    }
+    formData.append("serviceId", serviceId);
+    formData.append("applicationId", applicationId);
+
+    const response = await axiosInstance.post(
+      "/Officer/HandleAction",
+      formData
+    );
+    if (response.data.status) navigate("/officer/home");
   };
 
   useEffect(() => {
@@ -61,6 +82,8 @@ export default function UserDetails() {
       setActionOptions(response.data.actionOptions);
       setEditList(response.data.editList);
       setEditableField(response.data.officerEditableField);
+      setServiceID(response.data.serviceId);
+      setCurrentOfficer(response.data.currentOfficer);
     }
     fetchUserDetail();
   }, []);
@@ -259,6 +282,7 @@ export default function UserDetails() {
         actionOptions={actionOptions}
         editList={editList}
         editableField={editableField}
+        currentOfficer={currentOfficer}
         errors={errors}
       />
       <BasicModal

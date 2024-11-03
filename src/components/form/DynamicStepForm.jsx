@@ -172,7 +172,7 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
           setStep((prev) => prev + 1);
         } else {
           alert("Form submitted successfully!");
-          navigate("/user/acknowledgement");
+          navigate("/user/acknowledge");
         }
       } else {
         alert("Submission failed. Please check your input.");
