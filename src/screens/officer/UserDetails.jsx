@@ -46,21 +46,25 @@ export default function UserDetails() {
   };
 
   const onSubmit = async (data) => {
-    console.log("Form Data", data);
-    console.log(applicationId, serviceId);
 
     const formData = new FormData();
-
     for (const [key, value] of Object.entries(data)) {
       if (value instanceof FileList) {
         formData.append(key, value[0]);
-      } else {
+      }else if(key=="editableField"){
+        formData.append("editableField",JSON.stringify({serviceSpeicific:editableField.isFormSpecific??false,name:editableField.name,value:value}))
+      }
+      else if(key=="editList"){
+        formData.append(key,JSON.stringify(value));
+      }
+       else {
         formData.append(key, value);
       }
     }
     formData.append("serviceId", serviceId);
     formData.append("applicationId", applicationId);
 
+    console.log(formData);
     const response = await axiosInstance.post(
       "/Officer/HandleAction",
       formData

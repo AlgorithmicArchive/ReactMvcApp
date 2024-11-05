@@ -6,29 +6,29 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using SendEmails;
 using ReactMvcApp.Models.Entities;
+using System.Security.Claims;
 
 namespace ReactMvcApp.Controllers.User
 {
     [Authorize(Roles = "Citizen")]
-    public partial class UserController(SocialWelfareDepartmentContext dbcontext, ILogger<UserController> logger, UserHelperFunctions _helper, EmailSender _emailSender, PdfService pdfService, IWebHostEnvironment webHostEnvironment) : Controller
+    public partial class UserController(SocialWelfareDepartmentContext dbcontext, ILogger<UserController> logger, UserHelperFunctions helper, EmailSender emailSender, PdfService pdfService, IWebHostEnvironment webHostEnvironment) : Controller
     {
         protected readonly SocialWelfareDepartmentContext dbcontext = dbcontext;
         protected readonly ILogger<UserController> _logger = logger;
-        protected readonly UserHelperFunctions helper = _helper;
-        protected readonly EmailSender emailSender = _emailSender;
-
+        protected readonly UserHelperFunctions helper = helper;
+        protected readonly EmailSender emailSender = emailSender;
         protected readonly PdfService _pdfService = pdfService;
         private readonly IWebHostEnvironment _webHostEnvironment = webHostEnvironment;
 
         public override void OnActionExecuted(ActionExecutedContext context)
         {
             base.OnActionExecuted(context);
-            int? userId = HttpContext.Session.GetInt32("UserId");
-            var Citizen = dbcontext.Users.FirstOrDefault(u => u.UserId == userId);
-            string Profile = Citizen!.Profile;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var citizen = dbcontext.Users.FirstOrDefault(u => u.UserId.ToString() == userIdClaim);
+
             ViewData["UserType"] = "Citizen";
-            ViewData["UserName"] = Citizen!.Username;
-            ViewData["Profile"] = Profile;
+            ViewData["UserName"] = citizen?.Username;
+            ViewData["Profile"] = citizen?.Profile;
         }
 
         public IActionResult Index()
@@ -52,7 +52,7 @@ namespace ReactMvcApp.Controllers.User
             };
 
             // Prepare the data list
-            List<dynamic> data = [];
+            var data = new List<dynamic>();
             int index = 1;
 
             foreach (var item in services)
@@ -83,104 +83,110 @@ namespace ReactMvcApp.Controllers.User
         public IActionResult ServiceForm(string? ApplicationId, bool? returnToEdit)
         {
             object? ApplicationDetails = null;
-            if (ApplicationId == null)
+            var serviceIdClaim = User.FindFirst("ServiceId")?.Value;
+
+            if (ApplicationId == null && serviceIdClaim != null)
             {
-                int? serviceId = HttpContext.Session.GetInt32("serviceId");
+                var serviceId = int.Parse(serviceIdClaim);
                 var serviceContent = dbcontext.Services.FirstOrDefault(u => u.ServiceId == serviceId);
-                ApplicationDetails = new
-                {
-                    serviceContent
-                };
+                ApplicationDetails = new { serviceContent };
             }
             else
             {
                 var generalDetails = dbcontext.Applications.FirstOrDefault(u => u.ApplicationId == ApplicationId);
-                var PresentAddressId = generalDetails!.PresentAddressId ?? "";
-                var PermanentAddressId = generalDetails.PermanentAddressId ?? "";
+                var PresentAddressId = generalDetails?.PresentAddressId ?? "";
+                var PermanentAddressId = generalDetails?.PermanentAddressId ?? "";
                 var preAddressDetails = dbcontext.Set<AddressJoin>().FromSqlRaw("EXEC GetAddressDetails @AddressId", new SqlParameter("@AddressId", PresentAddressId)).ToList();
                 var perAddressDetails = dbcontext.Set<AddressJoin>().FromSqlRaw("EXEC GetAddressDetails @AddressId", new SqlParameter("@AddressId", PermanentAddressId)).ToList();
-                var serviceContent = dbcontext.Services.FirstOrDefault(u => u.ServiceId == generalDetails.ServiceId);
+                var serviceContent = dbcontext.Services.FirstOrDefault(u => u.ServiceId == generalDetails!.ServiceId);
 
-                if (returnToEdit != null && (bool)returnToEdit)
+                ApplicationDetails = new
                 {
-                    ApplicationDetails = new
-                    {
-                        returnToEdit,
-                        serviceContent,
-                        generalDetails,
-                        preAddressDetails,
-                        perAddressDetails
-                    };
-                }
-                else
-                {
-                    ApplicationDetails = new
-                    {
-                        serviceContent,
-                        generalDetails,
-                        preAddressDetails,
-                        perAddressDetails
-                    };
-                }
+                    returnToEdit,
+                    serviceContent,
+                    generalDetails,
+                    preAddressDetails,
+                    perAddressDetails
+                };
             }
             return View(ApplicationDetails);
         }
 
-        public IActionResult GetInitiatedApplications(int page,int size)
+        public IActionResult GetInitiatedApplications(int page, int size)
         {
-            int? userId = HttpContext.Session.GetInt32("UserId");
-            List<Application> applications = [];
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-           
-            applications = dbcontext.Applications.Where(u => u.CitizenId == userId && u.ApplicationStatus != "Incomplete").ToList();
-           
+            // Ensure that you filter by the correct "Initiated" status
+            var applications = dbcontext.Applications
+                                        .Where(u => u.CitizenId.ToString() == userIdClaim && u.ApplicationStatus == "Initiated")
+                                        .ToList();
+
+            // Initialize columns
             var columns = new List<dynamic>
             {
-                new { label = "S.No", value="sno" },
-                new { label = "Reference Number",value="referenceNumber" },
-                new { label = "Applicant Name", value="applicantName" },
-                new { label = "Action",value="button" }
+                new { label = "S.No", value = "sno" },
+                new { label = "Reference Number", value = "referenceNumber" },
+                new { label = "Applicant Name", value = "applicantName" },
+                new { label = "Currently With Officer", value = "withOfficer" },
+                new { label = "Status", value = "status" },
+                new { label = "Action", value = "button" }
             };
 
-
-            List<dynamic> Applications = [];
+            // Correctly initialize data list
+            List<dynamic> data = new List<dynamic>();
             int index = 1;
-            foreach (var item in applications)
+
+            foreach (var application in applications)
             {
-                var firstButton = new
+                var applicationStatus = dbcontext.ApplicationStatuses
+                                                .FirstOrDefault(status => status.ApplicationId == application.ApplicationId);
+
+                if (applicationStatus != null)
                 {
-                    function = "CreateTimeLine",
-                    parameters = new[] { item.ApplicationId },
-                    buttonText = "View"
-                };
+                    // Fetch officerRole safely and handle if no officer is found
+                    var officer = dbcontext.OfficerDetails
+                                           .FirstOrDefault(od => od.OfficerId == applicationStatus.CurrentlyWith);
+                    string officerRole = officer?.Role ?? "Unknown";
 
-                var secondButton = new
-                {
-                    function = "EditForm",
-                    parameters = new[] { item.ApplicationId },
-                    buttonText = "Edit Form"
-                };
+                    // Add extra button if status is "ReturnToEdit"
+                    if (applicationStatus.Status == "ReturnToEdit")
+                    {
+                        if (!columns.Any(c => c.value == "buttonExtra"))
+                        {
+                            columns.Add(new { label = "Extra Actions", value = "buttonExtra" });
+                        }
+                    }
 
-                var cell = new {
-                    sno =index,
-                    referenceNumber = item.ApplicationId,
-                    applicantName = item.ApplicantName,
-                    button = firstButton
-                };
+                    var button = new { function = "CreateTimeLine", parameters = new[] { application.ApplicationId }, buttonText = "View" };
+                    var button2 = new { function = "EditForm", parameters = new[] { application.ApplicationId }, buttonText = "Edit Form" };
+                    dynamic buttonExtra = applicationStatus.Status == "ReturnToEdit" ? button2 : (object)"NO Action";
 
-                Applications.Add(cell);
-                index++;
+                    var cell = new
+                    {
+                        sno = index,
+                        referenceNumber = application.ApplicationId,
+                        applicantName = application.ApplicantName,
+                        withOfficer = officerRole,
+                        status = applicationStatus.Status == "ReturnToEdit" ? "Returned For Edition" : applicationStatus.Status,
+                        button,
+                        buttonExtra
+                    };
+
+                    data.Add(cell); // Add the cell to the data list
+                    index++;
+                }
             }
 
-            var pagedData = Applications.Skip(page * size).Take(size).ToList();
+            // Ensure size is positive for pagination
+            var pagedData = data.Skip(page * Math.Max(size, 1)).Take(size).ToList();
 
-            return Json(new { status = true,data=pagedData,columns,totalCount=Applications.Count  });
+            return Json(new { status = true, data = pagedData, columns, totalCount = data.Count });
         }
 
         public IActionResult IncompleteApplications()
         {
-            int? userId = HttpContext.Session.GetInt32("UserId");
-            var applications = dbcontext.Applications.Where(u => u.CitizenId == userId && u.ApplicationStatus == "Incomplete").ToList();
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var applications = dbcontext.Applications.Where(u => u.CitizenId.ToString() == userIdClaim && u.ApplicationStatus == "Incomplete").ToList();
 
             return View(applications);
         }
@@ -188,11 +194,12 @@ namespace ReactMvcApp.Controllers.User
         public IActionResult EditForm(string ApplicationId)
         {
             var generalDetails = dbcontext.Applications.FirstOrDefault(u => u.ApplicationId == ApplicationId);
-            var PresentAddressId = generalDetails!.PresentAddressId ?? "";
-            var PermanentAddressId = generalDetails.PermanentAddressId ?? "";
+            var PresentAddressId = generalDetails?.PresentAddressId ?? "";
+            var PermanentAddressId = generalDetails?.PermanentAddressId ?? "";
             var preAddressDetails = dbcontext.Set<AddressJoin>().FromSqlRaw("EXEC GetAddressDetails @AddressId", new SqlParameter("@AddressId", PresentAddressId)).ToList();
             var perAddressDetails = dbcontext.Set<AddressJoin>().FromSqlRaw("EXEC GetAddressDetails @AddressId", new SqlParameter("@AddressId", PermanentAddressId)).ToList();
-            var serviceContent = dbcontext.Services.FirstOrDefault(u => u.ServiceId == generalDetails.ServiceId);
+            var serviceContent = dbcontext.Services.FirstOrDefault(u => u.ServiceId == generalDetails!.ServiceId);
+
             var ApplicationDetails = new
             {
                 serviceContent,
@@ -214,56 +221,40 @@ namespace ReactMvcApp.Controllers.User
         [HttpGet]
         public IActionResult Acknowledgement()
         {
-            var details = FetchAcknowledgementDetails(); // Use the new helper method here
+            var details = FetchAcknowledgementDetails();
             return View(details);
         }
 
         public IActionResult GetApplications(string serviceId)
         {
-            int? userId = HttpContext.Session.GetInt32("UserId");
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             int ServiceId = Convert.ToInt32(serviceId);
-            var applications = dbcontext.Applications.Where(u => u.CitizenId == userId && u.ServiceId == ServiceId).ToList();
+            var applications = dbcontext.Applications.Where(u => u.CitizenId.ToString() == userIdClaim && u.ServiceId == ServiceId).ToList();
 
-            var Ids = new List<string>();
-
-            foreach (var application in applications)
-            {
-                Ids.Add(application.ApplicationId);
-            }
+            var Ids = applications.Select(application => application.ApplicationId).ToList();
 
             return Json(new { status = true, Ids });
         }
+
         public IActionResult GetServiceNames()
         {
             var services = dbcontext.Services.ToList();
 
-            var ServiceList = new List<dynamic>();
-
-            foreach (var service in services)
+            var ServiceList = services.Select(service => new
             {
-                var obj = new
-                {
-                    service.ServiceId,
-                    service.ServiceName
-                };
-                ServiceList.Add(obj);
-            }
+                service.ServiceId,
+                service.ServiceName
+            }).ToList();
 
             return Json(new { status = true, ServiceList });
         }
-
-        public IActionResult Feedback()
-        {
-            return View();
-        }
-
         [HttpPost]
         public IActionResult Feedback([FromForm] IFormCollection form)
         {
-            int? userId = HttpContext.Session.GetInt32("UserId");
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             string? message = form["message"].ToString();
 
-            var UserId = new SqlParameter("@UserId", userId);
+            var UserId = new SqlParameter("@UserId", userIdClaim);
             var Message = new SqlParameter("@Message", message);
             SqlParameter ServiceRelated;
             string serviceValue = form["service"].ToString();
@@ -286,11 +277,12 @@ namespace ReactMvcApp.Controllers.User
 
             return RedirectToAction("Index");
         }
-
         [HttpGet]
         public IActionResult GetFile(string? filePath)
         {
-            var fullPath = Path.Combine(_webHostEnvironment.WebRootPath, "assets", "dummyDocs", filePath!);
+            var fullPath = _webHostEnvironment.WebRootPath + filePath!;
+            _logger.LogInformation($"-----------WEB HOST Path : {_webHostEnvironment.WebRootPath}----------------");
+            _logger.LogInformation($"-----------Full Path : {fullPath}----------------");
             if (!System.IO.File.Exists(fullPath))
             {
                 return NotFound();

@@ -4,6 +4,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using ReactMvcApp.Models.Entities;
+using System.Security.Claims;
 
 namespace ReactMvcApp.Controllers.User
 {
@@ -28,8 +29,9 @@ namespace ReactMvcApp.Controllers.User
             IFormFile? photographFile = form.Files["ApplicantImage"];
             _logger.LogInformation($"===============Received file: {photographFile?.FileName} with size: {photographFile?.Length}===========");
             string? photographPath = await helper.GetFilePath(photographFile);
-            int? userId = HttpContext.Session.GetInt32("UserId");
 
+            // Retrieve userId from JWT token
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             var ApplicationIdParam = new SqlParameter("@ApplicationId", ApplicationId);
             var ServiceIdParam = new SqlParameter("@ServiceId", serviceId);
@@ -166,6 +168,7 @@ namespace ReactMvcApp.Controllers.User
 
             return Json(new { status = true, ApplicationId = form["ApplicationId"].ToString(), bankDetails });
         }
+
         public async Task<IActionResult> InsertDocuments([FromForm] IFormCollection form)
         {
             var applicationId = form["ApplicationId"].ToString();
@@ -199,26 +202,16 @@ namespace ReactMvcApp.Controllers.User
             var documents = JsonConvert.SerializeObject(docs);
 
             helper.UpdateApplication("Documents", documents, new SqlParameter("@ApplicationId", applicationId));
-            helper.UpdateApplication("ApplicationStatus", "Inititated", new SqlParameter("@ApplicationId", applicationId));
-
+            helper.UpdateApplication("ApplicationStatus", "Initiated", new SqlParameter("@ApplicationId", applicationId));
+            helper.UpdateApplication("SubmissionDate", DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"), new SqlParameter("@ApplicationId", applicationId));
             var workFlow = dbcontext.WorkFlows.FirstOrDefault(w => w.ServiceId == serviceId && w.SequenceOrder == 1);
+
+            // Get the officerId based on serviceId and workflow
             int officerId = dbcontext.Users
-            .Join(
-                dbcontext.OfficerDetails,
-                u => u.UserId,
-                od => od.OfficerId,
-                (u, od) => new { u, od }
-            )
-            .Join(
-                dbcontext.WorkFlows,
-                combined => combined.od.Role,
-                wf => wf.Role,
-                (combined, wf) => new { combined.u, wf }
-            )
-            .Where(x => x.wf.ServiceId == serviceId)
-            .ToList()[0].u.UserId;
-
-
+                .Join(dbcontext.OfficerDetails, u => u.UserId, od => od.OfficerId, (u, od) => new { u, od })
+                .Join(dbcontext.WorkFlows, combined => combined.od.Role, wf => wf.Role, (combined, wf) => new { combined.u, wf })
+                .Where(x => x.wf.ServiceId == serviceId)
+                .ToList()[0].u.UserId;
 
             if (!form.ContainsKey("returnToEdit"))
             {
@@ -255,13 +248,12 @@ namespace ReactMvcApp.Controllers.User
                 await emailSender.SendEmail(email, "Acknowledgement", $"Your Application with Reference Number {applicationId} has been sent to {workFlow!.Role} at {DateTime.Now.ToString("dd MMM yyyy hh:mm tt")}");
             }
 
-
-
+            // Insert into application history and status tables
             _ = dbcontext.Database.ExecuteSqlRaw("EXEC InsertApplicationHistory @ServiceId,@ApplicationId,@ActionTaken,@TakenBy,@File,@TakenAt", new SqlParameter("@ServiceId", serviceId), new SqlParameter("@ApplicationId", applicationId), new SqlParameter("@ActionTaken", "Pending"), new SqlParameter("@TakenBy", officerId), new SqlParameter("@File", ""), new SqlParameter("@TakenAt", DateTime.Now.ToString("dd MMM yyyy hh:mm tt")));
             _ = dbcontext.Database.ExecuteSqlRaw("EXEC InsertApplicationStatus @ServiceId,@ApplicationId,@Status,@CurrentlyWith,@LastUpdated", new SqlParameter("@ServiceId", serviceId), new SqlParameter("@ApplicationId", applicationId), new SqlParameter("@Status", "Pending"), new SqlParameter("@CurrentlyWith", officerId), new SqlParameter("@LastUpdated", DateTime.Now.ToString("dd MMM yyyy hh:mm tt")));
-           
+
             var applicationCount = dbcontext.ApplicationsCounts
-    .FirstOrDefault(ac => ac.ServiceId == serviceId && ac.OfficerId == officerId && ac.Status == "Pending");
+                .FirstOrDefault(ac => ac.ServiceId == serviceId && ac.OfficerId == officerId && ac.Status == "Pending");
 
             var currentDate = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
 
@@ -285,24 +277,23 @@ namespace ReactMvcApp.Controllers.User
 
             await dbcontext.SaveChangesAsync();
 
-
-            HttpContext.Session.SetString("ApplicationId", applicationId);
+            // Removed session handling since JWT is now used
+            // HttpContext.Session.SetString("ApplicationId", applicationId);
             return Json(new { status = true, ApplicationId = applicationId, complete = true });
         }
+
         public async Task<IActionResult> UpdateGeneralDetails([FromForm] IFormCollection form)
         {
-
             string ApplicationId = form["ApplicationId"].ToString();
             var parameters = new List<SqlParameter>();
             var applicationIdParameter = new SqlParameter("@ApplicationId", ApplicationId);
             parameters.Add(applicationIdParameter);
+
             foreach (var key in form.Keys)
             {
-                SqlParameter parameter;
-                if (key == "ApplicationId")
-                    continue;
+                if (key == "ApplicationId") continue;
 
-                parameter = new SqlParameter($"@{key}", form[key].ToString());
+                var parameter = new SqlParameter($"@{key}", form[key].ToString());
                 parameters.Add(parameter);
             }
 
@@ -312,12 +303,14 @@ namespace ReactMvcApp.Controllers.User
                 var parameter = new SqlParameter($"@{file.Name}", path);
                 parameters.Add(parameter);
             }
+
             var sqlParams = string.Join(", ", parameters.Select(p => p.ParameterName + "=" + p.ParameterName));
             var sqlQuery = $"EXEC UpdateApplicationColumns {sqlParams}";
-            // Execute SQL command
             dbcontext.Database.ExecuteSqlRaw(sqlQuery, parameters.ToArray());
+
             return Json(new { status = true, ApplicationId });
         }
+
         public IActionResult UpdateAddressDetails([FromForm] IFormCollection form)
         {
             string ApplicationId = form["ApplicationId"].ToString();
@@ -329,28 +322,22 @@ namespace ReactMvcApp.Controllers.User
 
             foreach (var key in form.Keys)
             {
-                // Skip keys that are not relevant to address update
-                if (key == "ApplicationId" || key == "PresentAddressId" || key == "PermanentAddressId")
-                    continue;
+                if (key == "ApplicationId" || key == "PresentAddressId" || key == "PermanentAddressId") continue;
 
-                // Create SqlParameter for present address
                 if (!key.StartsWith("Permanent"))
                 {
                     presentAddressParams.Add(new SqlParameter($"@{key.Replace("Present", "")}", form[key].ToString()));
                 }
-                // Create SqlParameter for permanent address
                 else
                 {
                     permanentAddressParams.Add(new SqlParameter($"@{key.Replace("Permanent", "")}", form[key].ToString()));
                 }
             }
 
-            // Execute SQL command for present address update
             var presentSqlParams = string.Join(", ", presentAddressParams.Select(p => p.ParameterName + "=" + p.ParameterName));
             var presentSqlQuery = $"EXEC CheckAndUpdateAddress {presentSqlParams}";
             dbcontext.Database.ExecuteSqlRaw(presentSqlQuery, presentAddressParams.ToArray());
 
-            // Execute SQL command for permanent address update if different
             if (form["PresentAddressId"].ToString() != form["PermanentAddressId"].ToString())
             {
                 var permSqlParams = string.Join(", ", permanentAddressParams.Select(p => p.ParameterName + "=" + p.ParameterName));
@@ -360,6 +347,7 @@ namespace ReactMvcApp.Controllers.User
 
             return Json(new { status = true, ApplicationId });
         }
+
         public IActionResult UpdateBankDetails([FromForm] IFormCollection form)
         {
             var ApplicationId = new SqlParameter("@ApplicationId", form["ApplicationId"].ToString());
@@ -376,62 +364,5 @@ namespace ReactMvcApp.Controllers.User
 
             return Json(new { status = true, ApplicationId = form["ApplicationId"].ToString() });
         }
-        // public IActionResult UpdateEditList([FromForm] IFormCollection form)
-        // {
-
-        //     var workForceOfficers = JsonConvert.DeserializeObject<List<dynamic>>(form["workForceOfficers"].ToString());
-        //     int serviceId = Convert.ToInt32(form["serviceId"].ToString());
-        //     int accessCode = Convert.ToInt32(form["District"]);
-        //     string officerDesignation = workForceOfficers![0].Designation;
-
-        //     var recordsCount = dbcontext.RecordCounts
-        //       .FirstOrDefault(rc => rc.ServiceId == serviceId && rc.Officer == officerDesignation && rc.AccessCode == accessCode);
-
-        //     UpdateRecordCounts(recordsCount!, pendingCount: 1, pendingWithCitizenCount: -1);
-
-        //     string Officer = workForceOfficers[0].Designation;
-
-        //     var CurrentPhase = dbcontext.CurrentPhases.FirstOrDefault(cur => cur.ApplicationId == form["ApplicationId"] && cur.Officer == Officer);
-        //     CurrentPhase!.ReceivedOn = DateTime.Now.ToString("dd MMM yyyy hh:mm tt");
-        //     CurrentPhase.ActionTaken = "Pending";
-        //     CurrentPhase.Remarks = string.Empty;
-        //     CurrentPhase.CanPull = false;
-
-        //     dbcontext.SaveChanges();
-
-        //     helper.UpdateApplication("EditList", "[]", new SqlParameter("@ApplicationId", form["ApplicationId"].ToString()));
-        //     helper.UpdateApplicationHistory(form["ApplicationId"].ToString(), "Citizen", "Edited and returned to " + workForceOfficers[0].Designation, "NULL");
-
-
-        //     return Json(new { status = true });
-        // }
-
-
-        // private static void UpdateRecordCounts(RecordCount recordsCount, int pendingCount = 0, int pendingWithCitizenCount = 0, int forwardCount = 0, int returnCount = 0, int sanctionCount = 0, int rejectCount = 0)
-        // {
-        //     if (recordsCount == null) return;
-        //     recordsCount.Pending += pendingCount;
-        //     recordsCount.PendingWithCitizen += pendingWithCitizenCount;
-        //     recordsCount.Forward += forwardCount;
-        //     recordsCount.Return += returnCount;
-        //     recordsCount.Sanction += sanctionCount;
-        //     recordsCount.Reject += rejectCount;
-        // }
-
-        // public IActionResult IncompleteApplication(string ApplicationId, string DistrictId)
-        // {
-        //     var ApplicationIdParam = new SqlParameter("@ApplicationId", ApplicationId);
-        //     int? serviceId = dbcontext.Applications.FirstOrDefault(app => app.ApplicationId == ApplicationId)!.ServiceId;
-        //     int accessCode = Convert.ToInt32(DistrictId);
-        //     var workForceOfficer = JsonConvert.DeserializeObject<List<dynamic>>(dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId)!.WorkForceOfficers!);
-        //     string officerDesignation = workForceOfficer![0]["Designation"];
-        //     var recordsCount = dbcontext.RecordCounts
-        //       .FirstOrDefault(rc => rc.ServiceId == serviceId && rc.Officer == officerDesignation && rc.AccessCode == accessCode);
-        //     UpdateRecordCounts(recordsCount!, pendingCount: 1);
-        //     helper.UpdateApplication("ApplicationStatus", "Initiated", ApplicationIdParam);
-        //     helper.UpdateApplicationHistory(ApplicationId, "Citizen", "Application Submitted.", "NULL");
-        //     return Json(new { status = true });
-        // }
-
     }
 }

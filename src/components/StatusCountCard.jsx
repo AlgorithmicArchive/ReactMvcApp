@@ -15,7 +15,7 @@ const StatusCountCard = ({ statusName, count, bgColor, textColor, onClick }) => 
       }}
       onClick={onClick} // Attach onClick handler
     >
-      <CardContent>
+      <CardContent sx={{display:'flex',flexDirection:'column',justifyContent:'space-between',height:'100%'}}>
         <Typography variant="h6" component="div" gutterBottom color={textColor} sx={{fontSize:36}}>
           {statusName}
         </Typography>

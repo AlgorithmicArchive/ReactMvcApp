@@ -11,6 +11,7 @@ export default function CustomDateInput({
   control,
   rules = {},
   placeholder = 'DD MMM YYYY',
+  defaultDate = null, // Add a defaultDate prop
 }) {
   // Helper function to format the date
   const formatDate = (date) => {
@@ -19,7 +20,7 @@ export default function CustomDateInput({
 
   // Helper function to parse the date
   const parseDate = (value) => {
-    return parse(value, 'dd MMM yyyy', new Date());
+    return value ? parse(value, 'dd MMM yyyy', new Date()) : null;
   };
 
   // Custom input component with forwardRef and onChange
@@ -55,12 +56,12 @@ export default function CustomDateInput({
       <Controller
         name={name}
         control={control}
-        defaultValue={null}
+        defaultValue={defaultDate ? formatDate(defaultDate) : null} // Use defaultDate if provided
         rules={rules}
         render={({ field, fieldState: { error } }) => (
           <>
             <DatePicker
-              selected={field.value ? parseDate(field.value) : null}
+              selected={field.value ? parseDate(field.value) : defaultDate} // Set defaultDate if no value
               onChange={(date) => {
                 const formattedDate = formatDate(date);
                 field.onChange(formattedDate);

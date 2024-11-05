@@ -126,7 +126,7 @@ export const dummyDataList = [
   {
     District: "5",
     ApplicantName: getRandomName(indianWomenNames).toUpperCase(),
-    ApplicantImage: "formImage.jpg",
+    ApplicantImage: "/assets/dummyDocs/formImage.jpg",
     DateOfBirth: "23 JUL 2000",
     MobileNumber: "9127282373",
     Email: "randomizerweb129@gmail.com",
@@ -163,43 +163,43 @@ export const dummyDataList = [
   }, // Step 4
   {
     IdentityProofEnclosure: "Driving Licence",
-    IdentityProofFile: "DummyPDF.pdf",
+    IdentityProofFile: "/assets/dummyDocs/DummyPDF.pdf",
 
     AddressProofEnclosure: "Voter Card (Both Sides)",
-    AddressProofFile: "DummyPDF.pdf",
+    AddressProofFile: "/assets/dummyDocs/DummyPDF.pdf",
 
     RationCardEnclosure: "Ration Card (Inner & Outter Both)",
-    RationCardFile: "DummyPDF.pdf",
+    RationCardFile: "/assets/dummyDocs/DummyPDF.pdf",
 
     EducationQualificationCertificateEnclosure:
       "Education Qualification Certificate",
-    EducationQualificationCertificateFile: "DummyPDF.pdf",
+    EducationQualificationCertificateFile: "/assets/dummyDocs/DummyPDF.pdf",
 
     ProofofDateofBirthEnclosure: "Birth Certificate issued by School",
-    ProofofDateofBirthFile: "DummyPDF.pdf",
+    ProofofDateofBirthFile: "/assets/dummyDocs/DummyPDF.pdf",
 
     AadharCardEnclosure: "Aadhar Card (Both Sides)",
-    AadharCardFile: "DummyPDF.pdf",
+    AadharCardFile: "/assets/dummyDocs/DummyPDF.pdf",
 
     DomicileCertificateEnclosure: "Domicile Certificate",
-    DomicileCertificateFile: "DummyPDF.pdf",
+    DomicileCertificateFile: "/assets/dummyDocs/DummyPDF.pdf",
 
     BankPassbookEnclosure: "Bank Passbook",
-    BankPassbookFile: "DummyPDF.pdf",
+    BankPassbookFile: "/assets/dummyDocs/DummyPDF.pdf",
 
     MarriageCardEnclosure: "Marriage Card",
-    MarriageCardFile: "DummyPDF.pdf",
+    MarriageCardFile: "/assets/dummyDocs/DummyPDF.pdf",
 
     AffidavitdulyattestedbytheJudicialMagistrateFirstClassEnclosure:
       "Affidavit duly attested by the Judicial Magistrate First Class",
-    AffidavitdulyattestedbytheJudicialMagistrateFirstClassFile: "DummyPDF.pdf",
+    AffidavitdulyattestedbytheJudicialMagistrateFirstClassFile: "/assets/dummyDocs/DummyPDF.pdf",
 
     ConsentFormforAadharSeedingoftheBankAccountEnclosure:
       "Consent Form for Aadhar Seeding of the Bank Account",
-    ConsentFormforAadharSeedingoftheBankAccountFile: "DummyPDF.pdf",
+    ConsentFormforAadharSeedingoftheBankAccountFile: "/assets/dummyDocs/DummyPDF.pdf",
 
     OtherEnclosure: "Other",
-    OtherFile: "DummyPDF.pdf",
+    OtherFile: "/assets/dummyDocs/DummyPDF.pdf",
   }, // Step 5
 ];
 

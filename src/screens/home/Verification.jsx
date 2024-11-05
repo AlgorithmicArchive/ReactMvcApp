@@ -1,11 +1,11 @@
-import { Container, Typography, Button, Box, TextField } from "@mui/material";
+import { Container, Typography, Button, Box } from "@mui/material";
 import React, { useContext, useState } from "react";
 import CustomInputField from "../../components/form/CustomInputField";
 import { useForm } from "react-hook-form";
 import CustomButton from "../../components/CustomButton";
-import { UserContext } from "../../UserContext";
 import { useNavigate } from "react-router-dom";
 import { Validate } from "../../assets/fetch";
+import { UserContext } from "../../UserContext";
 
 export default function Verification() {
   const [selectedOption, setSelectedOption] = useState(null);
@@ -16,7 +16,7 @@ export default function Verification() {
     formState: { errors },
   } = useForm();
 
-  const { setUserType, setToken } = useContext(UserContext);
+  const {setVerified} = useContext(UserContext);
   const navigate = useNavigate();
 
   // Handle option selection
@@ -36,18 +36,15 @@ export default function Verification() {
       const response = await Validate(formData);
 
       if (response.status) {
+        setVerified(true);
         // **Store the JWT token**
-        setToken(response.token);
-
-        // Navigate to the appropriate page
-        setUserType(response.userType);
         const url =
           response.userType === "Admin"
             ? "/admin/home"
             : response.userType === "Officer"
             ? "/officer/home"
             : "/user/home";
-        navigate(url);
+          navigate(url);
       } else {
         // Handle verification failure
         console.error("Verification failed:", response.message);

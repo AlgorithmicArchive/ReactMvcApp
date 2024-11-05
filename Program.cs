@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using ReactMvcApp.Models.Entities;
 using SendEmails;
 using Microsoft.AspNetCore.DataProtection;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -64,17 +65,36 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = builder.Configuration["JWT:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(key)
     };
+
+    // Add event to check token validation
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = context =>
+        {
+            // You can log or inspect the validated claims here
+            var claimsIdentity = context.Principal!.Identity as ClaimsIdentity;
+            if (claimsIdentity != null)
+            {
+                var username = claimsIdentity.FindFirst(ClaimTypes.Name)?.Value;
+                Console.WriteLine($"JWT Token validated for user: {username}");
+            }
+            return Task.CompletedTask;
+        },
+        OnAuthenticationFailed = context =>
+        {
+            Console.WriteLine($"Authentication failed: {context.Exception.Message}");
+            return Task.CompletedTask;
+        }
+    };
 });
+
 
 // Authorization policies for different roles
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("CitizenPolicy", policy => policy.RequireRole("Citizen"))
-    .AddPolicy("OfficerPolicy", policy => policy.RequireRole("Officer"));
+    .AddPolicy("OfficerPolicy", policy => policy.RequireRole("Officer"))
+    .AddPolicy("AdminPolicy",policy=>policy.RequireRole("Admin"));
 
-builder.Services.AddSession(option =>
-{
-    option.IdleTimeout = TimeSpan.FromMinutes(30);
-});
 
 builder.Services.AddTransient<IEmailSender, EmailSender>();
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
@@ -112,8 +132,6 @@ app.UseCors("AllowAll");
 // Ensure both JWT and Cookie Authentication are used
 app.UseAuthentication();
 app.UseAuthorization();
-
-app.UseSession();
 
 // Map SignalR hub route
 app.MapHub<ProgressHub>("/progressHub");

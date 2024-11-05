@@ -10,16 +10,15 @@ import { useNavigate } from "react-router-dom";
 
 export default function OfficerHome() {
   const [services, setServices] = useState([]); // Initialize as an empty array
-  const [serviceId,setServieId] = useState();
+  const [serviceId, setServieId] = useState();
   const [countList, setCountList] = useState([]);
-  const [table,setTable] = useState(null);
+  const [table, setTable] = useState(null);
   const [open, setOpen] = useState(false);
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
   const navigate = useNavigate();
-
 
   const {
     control,
@@ -51,10 +50,13 @@ export default function OfficerHome() {
   const handleRecords = async (data) => {
     try {
       setServieId(data.Service);
-      const response = await axiosInstance.get("/Officer/GetApplicationsCount", {
-        params: { ServiceId: data.Service },
-      });
-      
+      const response = await axiosInstance.get(
+        "/Officer/GetApplicationsCount",
+        {
+          params: { ServiceId: data.Service },
+        }
+      );
+
       // Set the count list from response
       setCountList(response.data.countList);
     } catch (error) {
@@ -63,27 +65,30 @@ export default function OfficerHome() {
   };
 
   // Handle card click
-  const handleCardClick = async(statusName) => {
+  const handleCardClick = async (statusName) => {
     console.log(`Card clicked: ${statusName}`);
-    if (statusName == "Pending") 
-        {
-          handleOpen();
-          setTable({url:'/Officer/GetApplications',params:{ServiceId:serviceId,type:"Pending"}});
-        }
+
+    handleOpen();
+    setTable({
+      url: "/Officer/GetApplications",
+      params: { ServiceId: serviceId, type: statusName },
+    });
   };
 
-  const handleActionButton=(functionName,parameters)=>{
+  const handleActionButton = (functionName, parameters) => {
     const applicationId = parameters[0];
-    navigate('/officer/userDetails',{state:{applicationId:applicationId}});
-  }
+    navigate("/officer/userDetails", {
+      state: { applicationId: applicationId },
+    });
+  };
 
   return (
     <Container
       sx={{
         width: "100vw",
         height: "100vh",
-        display: 'flex',
-        flexDirection: 'column',
+        display: "flex",
+        flexDirection: "column",
         gap: 2,
         marginTop: "12vh",
       }}
@@ -119,17 +124,24 @@ export default function OfficerHome() {
           width={"50%"}
         />
       </Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-evenly', marginTop: '50px' }}>
-        {countList && countList.map((item, index) => (
-          <StatusCountCard
-            key={index}
-            statusName={item.label}
-            count={item.count}
-            bgColor={item.bgColor}
-            textColor={item.textColor}
-            onClick={() => handleCardClick(item.label)} // Pass the onClick handler
-          />
-        ))}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-evenly",
+          marginTop: "50px",
+        }}
+      >
+        {countList &&
+          countList.map((item, index) => (
+            <StatusCountCard
+              key={index}
+              statusName={item.label}
+              count={item.count}
+              bgColor={item.bgColor}
+              textColor={item.textColor}
+              onClick={() => handleCardClick(item.label)} // Pass the onClick handler
+            />
+          ))}
       </Box>
       <BasicModal
         open={open}

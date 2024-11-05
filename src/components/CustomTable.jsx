@@ -1,34 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
-  Table, TableBody, TableCell, TableContainer,
-  TableHead, TablePagination, TableRow, TableSortLabel,
-  Paper, Typography, CircularProgress, Button
-} from '@mui/material';
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TablePagination,
+  TableRow,
+  TableSortLabel,
+  Paper,
+  Typography,
+  CircularProgress,
+  Button,
+} from "@mui/material";
 
-const CustomTable = ({ title, fetchData, initialRowsPerPage = 10, url, buttonActionHandler,params }) => {
-  const [order, setOrder] = useState('asc');
-  const [orderBy, setOrderBy] = useState(''); // Initially no orderBy
+const CustomTable = ({
+  title,
+  fetchData,
+  initialRowsPerPage = 10,
+  url,
+  buttonActionHandler,
+  params,
+}) => {
+  const [order, setOrder] = useState("asc");
+  const [orderBy, setOrderBy] = useState(""); // Initially no orderBy
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(initialRowsPerPage);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
   const [columns, setColumns] = useState([]);
-  
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const result = await fetchData(page, rowsPerPage, url,params);
+        const result = await fetchData(page, rowsPerPage, url, params);
         setData(result.data);
         setTotalCount(result.totalCount);
         setColumns(result.columns); // Expected to be an array of objects with 'label' and 'value' properties
-        if (orderBy === '' && result.columns.length > 0) {
+        if (orderBy === "" && result.columns.length > 0) {
           setOrderBy(result.columns[0].value); // Use 'value' instead of transforming label
         }
       } catch (error) {
-        console.error('Failed to fetch data:', error);
+        console.error("Failed to fetch data:", error);
       }
       setLoading(false);
     };
@@ -38,8 +53,8 @@ const CustomTable = ({ title, fetchData, initialRowsPerPage = 10, url, buttonAct
 
   // Sorting logic (client-side sorting)
   const handleRequestSort = (property) => {
-    const isAscending = orderBy === property && order === 'asc';
-    setOrder(isAscending ? 'desc' : 'asc');
+    const isAscending = orderBy === property && order === "asc";
+    setOrder(isAscending ? "desc" : "asc");
     setOrderBy(property);
 
     // Perform client-side sorting of the data
@@ -66,28 +81,54 @@ const CustomTable = ({ title, fetchData, initialRowsPerPage = 10, url, buttonAct
   };
 
   return (
-    <Paper sx={{padding:5,border:'2px solid',borderColor:'primary.main',width:'100%'}}>
-      <Typography variant="h6" component="div" sx={{ p: 2, color: 'primary.main' }}>
+    <Paper
+      sx={{
+        padding: 5,
+        border: "2px solid",
+        borderColor: "primary.main",
+        width: "100%",
+      }}
+    >
+      <Typography
+        variant="h6"
+        component="div"
+        sx={{ p: 2, color: "primary.main" }}
+      >
         {title}
       </Typography>
       <TableContainer>
-        <Table aria-label="dynamic table" >
+        <Table aria-label="dynamic table">
           <TableHead>
-            <TableRow sx={{backgroundColor:'primary.main',border: '2px solid #F0C38E'}}>
-              {columns.map(({ label, value },index) => (
+            <TableRow
+              sx={{
+                backgroundColor: "primary.main",
+                border: "2px solid #F0C38E",
+              }}
+            >
+              {columns.map(({ label, value }, index) => (
                 <TableCell
                   key={index}
                   sortDirection={orderBy === value ? order : false}
-                  sx={{ color: 'background.paper', borderRight: index === columns.length - 1 ? 'none' : '2px solid #312C51',fontWeight:'bold' }}
+                  sx={{
+                    color: "background.paper",
+                    borderRight:
+                      index === columns.length - 1
+                        ? "none"
+                        : "2px solid #312C51",
+                    fontWeight: "bold",
+                  }}
                 >
                   <TableSortLabel
                     active={orderBy === value}
-                    direction={orderBy === value ? order : 'asc'}
+                    direction={orderBy === value ? order : "asc"}
                     onClick={() => handleRequestSort(value)}
                     sx={{
-                      color: orderBy === value ? 'background.default' : 'background.paper',
-                      '&.Mui-active': {
-                        color: 'background.paper',
+                      color:
+                        orderBy === value
+                          ? "background.default"
+                          : "background.paper",
+                      "&.Mui-active": {
+                        color: "background.paper",
                       },
                     }}
                   >
@@ -100,23 +141,39 @@ const CustomTable = ({ title, fetchData, initialRowsPerPage = 10, url, buttonAct
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={columns.length} align="center" sx={{ color: 'primary.main' }}>
+                <TableCell
+                  colSpan={columns.length}
+                  align="center"
+                  sx={{ color: "primary.main" }}
+                >
                   <CircularProgress />
                 </TableCell>
               </TableRow>
             ) : (
               data.map((row, rowIndex) => (
-                <TableRow key={rowIndex} sx={{ border: '2px solid #F0C38E' }}>
-                  {columns.map(({ value },columnIndex) => {
-                    if (value === 'button' && row[value]) {
+                <TableRow key={rowIndex} sx={{ border: "2px solid #F0C38E" }}>
+                  {columns.map(({ value }, columnIndex) => {
+                    if (
+                      value.includes("button") &&
+                      typeof row[value] != "string"
+                    ) {
                       return (
-                        <TableCell key={columnIndex} sx={{ color: 'background.paper' }}>
+                        <TableCell
+                          key={columnIndex}
+                          sx={{ color: "background.paper" }}
+                        >
                           <Button
                             variant="contained"
                             color="primary"
-                            sx={{fontWeight:'bold',color:'background.paper'}}
+                            sx={{
+                              fontWeight: "bold",
+                              color: "background.paper",
+                            }}
                             onClick={() =>
-                              buttonActionHandler(row[value].function, row[value].parameters)
+                              buttonActionHandler(
+                                row[value].function,
+                                row[value].parameters
+                              )
                             }
                           >
                             {row[value].buttonText}
@@ -125,8 +182,16 @@ const CustomTable = ({ title, fetchData, initialRowsPerPage = 10, url, buttonAct
                       );
                     }
                     return (
-                      <TableCell key={columnIndex} sx={{ color: 'primary.main', borderRight: '2px solid #F0C38E' }}>
-                        {typeof row[value] === 'object' ? JSON.stringify(row[value]) : row[value]}
+                      <TableCell
+                        key={columnIndex}
+                        sx={{
+                          color: "primary.main",
+                          borderRight: "2px solid #F0C38E",
+                        }}
+                      >
+                        {typeof row[value] === "object"
+                          ? JSON.stringify(row[value])
+                          : row[value]}
                       </TableCell>
                     );
                   })}
@@ -144,7 +209,7 @@ const CustomTable = ({ title, fetchData, initialRowsPerPage = 10, url, buttonAct
         page={page}
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
-        sx={{ color: 'primary.main' }}
+        sx={{ color: "primary.main" }}
       />
     </Paper>
   );

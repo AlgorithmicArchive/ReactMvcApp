@@ -55,7 +55,6 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
     "/User/InsertDocuments",
   ];
 
-
   useEffect(() => {
     fetchDistricts(setDistrictOptions);
   }, []);
@@ -110,8 +109,6 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
       });
     }
   }, [sameAsPresent, setValue, getValues]);
-
-
 
   const onSubmit = async (data) => {
     try {
@@ -240,7 +237,7 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
             }}
             errors={errors}
           />
-            );
+        );
       case "select":
         let selectOptions = options.map((option) => ({
           label: option,
@@ -337,8 +334,8 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
         </Typography>
         <Box
           sx={{
-            width:'max-content',
-            margin:'0 auto'
+            width: "max-content",
+            margin: "0 auto",
           }}
         >
           <CustomButton

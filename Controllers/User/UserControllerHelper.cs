@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.CodeAnalysis.Differencing;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
+using System.Security.Claims;
 
 namespace ReactMvcApp.Controllers.User
 {
@@ -10,19 +13,33 @@ namespace ReactMvcApp.Controllers.User
         public IActionResult SetServiceForm([FromForm] IFormCollection form)
         {
             int serviceId = Convert.ToInt32(form["serviceId"].ToString());
-            HttpContext.Session.SetInt32("serviceId", serviceId);
+
             return Json(new { status = true, url = "/user/form" });
         }
+
         [HttpGet]
         public dynamic? GetUserDetails()
         {
-            int? userId = HttpContext.Session.GetInt32("UserId");
-            int initiated = dbcontext.Applications.Where(u => u.CitizenId == userId && u.ApplicationStatus == "Initiated").ToList().Count;
-            int incomplete = dbcontext.Applications.Where(u => u.CitizenId == userId && u.ApplicationStatus == "Incomplete").ToList().Count;
-            int sanctioned = dbcontext.Applications.Where(u => u.CitizenId == userId && u.ApplicationStatus == "Sanctioned" || u.ApplicationStatus == "Dispatched").ToList().Count;
-            var userDetails = dbcontext.Users.FirstOrDefault(u => u.UserId == userId);
+            // Retrieve userId from JWT token
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
+            if (userId == null)
+            {
+                return null; // Handle case where userId is not available
+            }
 
+            int initiated = dbcontext.Applications
+                .Where(u => u.CitizenId.ToString() == userId && u.ApplicationStatus == "Initiated")
+                .Count();
+            int incomplete = dbcontext.Applications
+                .Where(u => u.CitizenId.ToString() == userId && u.ApplicationStatus == "Incomplete")
+                .Count();
+            int sanctioned = dbcontext.Applications
+                .Where(u => u.CitizenId.ToString() == userId &&
+                           (u.ApplicationStatus == "Sanctioned" || u.ApplicationStatus == "Dispatched"))
+                .Count();
+
+            var userDetails = dbcontext.Users.FirstOrDefault(u => u.UserId.ToString() == userId);
 
             var details = new
             {
@@ -34,12 +51,14 @@ namespace ReactMvcApp.Controllers.User
 
             return details;
         }
+
         [HttpGet]
         public IActionResult GetDistricts()
         {
             var districts = dbcontext.Districts.ToList();
             return Json(new { status = true, districts });
         }
+
         [HttpGet]
         public IActionResult GetTehsils(string districtId)
         {
@@ -47,6 +66,7 @@ namespace ReactMvcApp.Controllers.User
             var tehsils = dbcontext.Tehsils.Where(u => u.DistrictId == DistrictId).ToList();
             return Json(new { status = true, tehsils });
         }
+
         [HttpGet]
         public IActionResult GetBlocks(string districtId)
         {
@@ -63,15 +83,13 @@ namespace ReactMvcApp.Controllers.User
                 return BadRequest("ApplicationId is required.");
             }
 
-            // Create the SQL parameter
             var parameter = new SqlParameter("@ApplicationId", ApplicationId);
 
-            // Use SqlQuery<T>() with the parameterized query
             var history = await dbcontext.Database
                                          .SqlQuery<ApplicationsHistoryModal>($"EXEC GetApplicationsHistory @ApplicationId = {parameter}")
                                          .ToListAsync();
 
-             var columns = new List<dynamic>
+            var columns = new List<dynamic>
             {
                 new { label = "S.No", value="sno" },
                 new { label = "Receive On",value="receivedOn" },
@@ -80,36 +98,34 @@ namespace ReactMvcApp.Controllers.User
                 new { label = "Remarks",value="remarks" }
             };
 
-            List<dynamic> data = [];
-            int index = 1;
-            foreach (var item in history)
+            var data = history.Select((item, index) => new
             {
-                var cell = new
-                {
-                    sno = index,
-                    receivedOn = item.TakenAt,
-                    officer = item.Designation,
-                    actionTaken = item.ActionTaken,
-                    remarks = item.Remarks
-                };
-                data.Add(cell);
-                index++;
-            }
+                sno = index + 1,
+                receivedOn = item.TakenAt,
+                officer = item.Designation,
+                actionTaken = item.ActionTaken == "ReturnToEdit" ? "Returned for Edition" : item.ActionTaken,
+                remarks = item.Remarks
+            }).ToList();
 
-            return Json(new {status=true, data ,columns,totalCount=data.Count });
+            return Json(new { status = true, data, columns, totalCount = data.Count });
         }
 
         [HttpGet]
-        public IActionResult GetServiceContent()
+        public IActionResult GetServiceContent(int serviceId)
         {
-            int? serviceId = HttpContext.Session.GetInt32("serviceId");
+            // Retrieve the serviceId from the JWT claims or other mechanisms if necessary.
             var service = dbcontext.Services.FirstOrDefault(ser => ser.ServiceId == serviceId);
+
             if (service != null)
             {
                 return Json(new { status = true, service.ServiceName, service.FormElement, service.ServiceId });
             }
-            else return Json(new { status = false, message = "No Service Found" });
+            else
+            {
+                return Json(new { status = false, message = "No Service Found" });
+            }
         }
+
         [HttpGet]
         public IActionResult GetAcknowledgement()
         {
@@ -117,20 +133,21 @@ namespace ReactMvcApp.Controllers.User
             return Json(result);
         }
 
-        // Private helper method to get the acknowledgement details
         private dynamic FetchAcknowledgementDetails()
         {
-            var ApplicationId = HttpContext.Session.GetString("ApplicationId");
+            // Retrieve ApplicationId from JWT claim
+            var applicationId = User.FindFirst("ApplicationId")?.Value;
 
-            string path = "/files/" + ApplicationId!.Replace("/", "_") + "Acknowledgement.pdf";
-            if (string.IsNullOrEmpty(ApplicationId))
+            if (string.IsNullOrEmpty(applicationId))
             {
                 return new { }; // Return an empty dictionary
             }
 
-            var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails,docs) = helper.GetUserDetailsAndRelatedData(ApplicationId!);
+            string path = "/files/" + applicationId.Replace("/", "_") + "Acknowledgement.pdf";
+
+            var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails, docs) = helper.GetUserDetailsAndRelatedData(applicationId);
             int districtCode = Convert.ToInt32(serviceSpecific["District"]);
-            string AppliedDistrict = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == districtCode)?.DistrictName ?? "Unknown District";
+            string appliedDistrict = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == districtCode)?.DistrictName ?? "Unknown District";
 
             var details = new Dictionary<string, string>
             {
@@ -138,7 +155,7 @@ namespace ReactMvcApp.Controllers.User
                 ["APPLICANT NAME"] = userDetails.ApplicantName,
                 ["PARENTAGE"] = userDetails.RelationName + $" ({userDetails.Relation.ToUpper()})",
                 ["MOTHER NAME"] = serviceSpecific["MotherName"],
-                ["APPLIED DISTRICT"] = AppliedDistrict.ToUpper(),
+                ["APPLIED DISTRICT"] = appliedDistrict.ToUpper(),
                 ["BANK NAME"] = bankDetails["BankName"],
                 ["ACCOUNT NUMBER"] = bankDetails["AccountNumber"],
                 ["IFSC CODE"] = bankDetails["IfscCode"],
@@ -151,5 +168,37 @@ namespace ReactMvcApp.Controllers.User
             return new { details, path };
         }
 
+        public IActionResult GetEditForm(string applicationId)
+        {
+            var application = dbcontext.Applications.FirstOrDefault(app => app.ApplicationId == applicationId);
+            var editList = JsonConvert.DeserializeObject<string[]>(application!.EditList);
+            var serviceSpecific = JsonConvert.DeserializeObject<dynamic>(application.ServiceSpecific);
+            var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == application.ServiceId);
+            var formElements = JsonConvert.DeserializeObject<dynamic>(service!.FormElement!);
+            List<dynamic> EditFields = [];
+            foreach (var element in formElements!)
+            {
+                var fields = element.fields;
+                foreach (var field in fields)
+                {
+                    string fieldName = field.name.ToString();
+                    string value = "";
+                    if (editList!.Contains(fieldName))
+                    {
+                        if (application.GetType().GetProperty(fieldName) != null)
+                            value = application.GetType().GetProperty(fieldName)!.GetValue(application)!.ToString()!;
+                        else
+                            value = serviceSpecific![fieldName];
+
+                        field["value"] = value;
+                        EditFields.Add(field);
+                    }
+                }
+            }
+
+
+
+            return Json(new { EditFields });
+        }
     }
 }

@@ -102,8 +102,9 @@ const ActionModal = ({
                     <CustomDateInput
                      key={editableField.name}
                      label={editableField.label}
-                     name={editableField.name}
+                     name={"editableField"}
                      control={control}
+                     defaultDate={editableField.value}
                      rules={{
                        validate: async (value) => {
                          const error = await runValidations(editableField, value);

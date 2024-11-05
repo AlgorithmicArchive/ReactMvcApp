@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { useForm } from 'react-hook-form';
 import { Box, Typography, Container } from '@mui/material';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -7,6 +7,7 @@ import CustomInputField from '../../components/form/CustomInputField';
 import CustomButton from '../../components/CustomButton';
 import { Login } from '../../assets/fetch'; // Assuming the Login function is in this file
 import { useNavigate } from 'react-router-dom';
+import { UserContext } from '../../UserContext';
 
 // Define a validation schema using Yup
 const schema = yup.object().shape({
@@ -23,7 +24,9 @@ export default function LoginScreen() {
     resolver: yupResolver(schema),
   });
 
+  const { setUserType, setToken,setProfile,setUsername,setVerified } = useContext(UserContext);
   const navigate = useNavigate();
+
 
   // Handle form submission
   const onSubmit = async (data) => {
@@ -35,8 +38,14 @@ export default function LoginScreen() {
 
     try {
       const response = await Login(formData); // Call the Login function
-      console.log(response);
-      if(response.status) navigate('/Verification'); 
+      if(response.status){
+        setToken(response.token);
+        setUserType(response.userType);
+        setProfile(response.profile);
+        setUsername(response.username);
+        setVerified(false);
+        navigate('/Verification'); 
+      } 
     } catch (error) {
       console.error('Login failed:', error);
     }

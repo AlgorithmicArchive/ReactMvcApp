@@ -3,20 +3,29 @@ import { Container, Typography } from "@mui/material";
 import CustomTable from "../../components/CustomTable";
 import { fetchData } from "../../assets/fetch";
 import BasicModal from "../../components/BasicModal";
-import axiosInstance from "../../axiosConfig";
+import { useNavigate } from "react-router-dom";
 
 export default function Initiated() {
   const [open, setOpen] = useState(false);
-  const [table,setTable] = useState(null)
+  const [table, setTable] = useState(null);
 
   // Toggle modal state
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
-
+  const navigate = useNavigate();
   const handleButtonAction = async (functionName, parameters) => {
-    handleOpen();
     const applicationId = parameters[0];
-    setTable({url:'/User/GetApplicationHistory',params:{ApplicationId:applicationId}});
+    if (functionName == "CreateTimeLine") {
+      handleOpen();
+      setTable({
+        url: "/User/GetApplicationHistory",
+        params: { ApplicationId: applicationId },
+      });
+    } else if (functionName == "EditForm") {
+      navigate("/user/editform", {
+        state: { applicationId: applicationId },
+      });
+    }
   };
 
   return (

@@ -1,30 +1,33 @@
-import axiosInstance from '../axiosConfig'; // Adjust the path as needed
-import axios from 'axios';
+import axiosInstance from "../axiosConfig"; // Adjust the path as needed
+import axios from "axios";
 
 export async function Login(formData) {
   try {
-    const response = await fetch('/Home/Login', {method:"POST",body:formData});
+    const response = await fetch("/Home/Login", {
+      method: "POST",
+      body: formData,
+    });
     return response.json();
   } catch (error) {
-    console.error('Login failed:', error);
+    console.error("Login failed:", error);
     throw error;
   }
 }
 
 export async function Validate(formData) {
   try {
-    const response = await fetch('/Home/Verification', {method:"POST",body:formData});
-    return response.json();
+    const response = await axiosInstance.post("/Home/Verification", formData);
+    return response.data; // Return response data directly, no need to parse
   } catch (error) {
-    console.error('Verification failed:', error);
+    console.error("Verification failed:", error);
     throw error;
   }
 }
 
-export const fetchData = async (page, rowsPerPage, URL,params) => {
+export const fetchData = async (page, rowsPerPage, URL, params) => {
   try {
     const url = `${URL}?page=${page}&size=${rowsPerPage}`;
-    const response = await axiosInstance.get(url,{params:params});
+    const response = await axiosInstance.get(url, { params: params });
     return {
       data: response.data.data,
       totalCount: response.data.totalCount,
@@ -33,7 +36,7 @@ export const fetchData = async (page, rowsPerPage, URL,params) => {
       pageSize: rowsPerPage,
     };
   } catch (error) {
-    console.error('Error while fetching data:', error);
+    console.error("Error while fetching data:", error);
     throw error;
   }
 };
@@ -41,21 +44,23 @@ export const fetchData = async (page, rowsPerPage, URL,params) => {
 export async function SetServiceId(formData) {
   try {
     // Make POST request to the desired endpoint with formData as the body
-    const response = await axiosInstance.post('/User/SetServiceForm', formData);
+    const response = await axiosInstance.post("/User/SetServiceForm", formData);
     return response.data;
   } catch (error) {
     // Handle error
-    console.error('Error setting service ID:', error);
+    console.error("Error setting service ID:", error);
     throw error;
   }
 }
 
-export async function GetServiceContent() {
+export async function GetServiceContent(ServiceId) {
   try {
-    const response = await axiosInstance.get('/User/GetServiceContent');
+    const response = await axiosInstance.get("/User/GetServiceContent", {
+      params: { ServiceId },
+    });
     return response.data;
   } catch (error) {
-    console.error('Error getting service content:', error);
+    console.error("Error getting service content:", error);
     throw error;
   }
 }
@@ -78,7 +83,7 @@ export const fetchDistricts = async (setDistrictOptions) => {
   }
 };
 
-export const fetchTehsils = async (districtId,setTehsilOptions) => {
+export const fetchTehsils = async (districtId, setTehsilOptions) => {
   try {
     const response = await axios.get(
       `/Base/GetTeshilForDistrict?districtId=${districtId}`
@@ -98,7 +103,7 @@ export const fetchTehsils = async (districtId,setTehsilOptions) => {
   }
 };
 
-export const fetchBlocks = async (districtId,setBlockOptions) => {
+export const fetchBlocks = async (districtId, setBlockOptions) => {
   try {
     const response = await axios.get(
       `/Base/GetBlockForDistrict?districtId=${districtId}`
@@ -118,29 +123,28 @@ export const fetchBlocks = async (districtId,setBlockOptions) => {
   }
 };
 
-export async function fetchDesignation(setDesignations,setAccessLevelMap){
+export async function fetchDesignation(setDesignations, setAccessLevelMap) {
   try {
-    const response = await axios.get('/Home/GetDesignations');
-    const {status,designations} = response.data;
-    if(status){
+    const response = await axios.get("/Home/GetDesignations");
+    const { status, designations } = response.data;
+    if (status) {
       // Create an object with designation.designation as the key and designation.accessLevel as the value
       const designationObject = designations.reduce((acc, designation) => {
         acc[designation.designation] = designation.accessLevel;
         return acc;
       }, {});
-      let Designations = designations.map(designation=>({
-        label:designation.designation,
-        value:designation.designation
+      let Designations = designations.map((designation) => ({
+        label: designation.designation,
+        value: designation.designation,
       }));
       Designations = [{ label: "Select Option", value: "" }, ...Designations];
       setDesignations(Designations);
-      setAccessLevelMap(designationObject)
+      setAccessLevelMap(designationObject);
     }
   } catch (error) {
-    console.log("Error",error);
+    console.log("Error", error);
   }
 }
-
 
 export async function fetchAcknowledgement() {
   try {
@@ -148,8 +152,10 @@ export async function fetchAcknowledgement() {
     const { path } = response.data;
 
     // Ensure that the path includes the protocol
-    const completePath = path.startsWith('http') ? path : `http://localhost:5004${path}`;
-    console.log('Complete PDF Path:', completePath);
+    const completePath = path.startsWith("http")
+      ? path
+      : `http://localhost:5004${path}`;
+    console.log("Complete PDF Path:", completePath);
     return completePath;
   } catch (error) {
     console.error("Error fetching PDF path:", error);

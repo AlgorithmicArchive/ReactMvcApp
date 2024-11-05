@@ -1,10 +1,16 @@
-import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import { Box, Typography } from "@mui/material";
 import { Controller } from "react-hook-form";
 import CustomButton from "../CustomButton";
 
 const CustomFileSelector = forwardRef(
-  ({ label, name, control, accept = "", rules = {} }, ref) => {
+  ({ label, name, control, accept = "", value = "", rules = {} }, ref) => {
     const [preview, setPreview] = useState(null);
     const [selectedFile, setSelectedFile] = useState(null);
     const fileInputRef = useRef(null);
@@ -15,6 +21,13 @@ const CustomFileSelector = forwardRef(
       );
       return null;
     }
+
+    // useEffect to set the preview when the value prop changes
+    useEffect(() => {
+      if (value !== "" && name === "ApplicantImage") {
+        setPreview(value); // Set the preview to the value passed via props
+      }
+    }, [value, name]); // Run only when `value` or `name` changes
 
     const handleFileChange = (event, onChange) => {
       const file = event.target.files[0];
@@ -35,8 +48,8 @@ const CustomFileSelector = forwardRef(
       triggerFileInput: () => {
         fileInputRef.current?.click();
       },
-      setSelectedFile:(newFile)=>{
-        setSelectedFile(newFile)
+      setSelectedFile: (newFile) => {
+        setSelectedFile(newFile);
       },
       setPreview: (newPreview) => {
         setPreview(newPreview);
@@ -44,7 +57,17 @@ const CustomFileSelector = forwardRef(
     }));
 
     return (
-      <Box sx={{ display: "flex", flexDirection: "column", mb: 2 }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          mb: 2,
+          border: "2px solid",
+          borderColor: "background.default",
+          borderRadius: 3,
+          padding: 3,
+        }}
+      >
         {label && (
           <Typography
             sx={{ fontWeight: "bold", mb: 1, color: "background.default" }}
@@ -58,6 +81,7 @@ const CustomFileSelector = forwardRef(
           name={name}
           control={control}
           rules={rules}
+          defaultValue={value}
           render={({ field, fieldState: { error } }) => (
             <Box>
               {/* Hidden file input */}
@@ -69,7 +93,14 @@ const CustomFileSelector = forwardRef(
                 ref={fileInputRef}
                 aria-labelledby={`${name}-label`}
               />
-              <Box sx={{ display: "flex", gap: 3, alignItems: "center" }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  width: "max-content",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
                 <CustomButton
                   component="span"
                   text="Choose File"
