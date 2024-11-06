@@ -1,18 +1,22 @@
-import React, { useContext } from 'react';
-import { useForm } from 'react-hook-form';
-import { Box, Typography, Container } from '@mui/material';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
-import CustomInputField from '../../components/form/CustomInputField';
-import CustomButton from '../../components/CustomButton';
-import { Login } from '../../assets/fetch'; // Assuming the Login function is in this file
-import { useNavigate } from 'react-router-dom';
-import { UserContext } from '../../UserContext';
+import React, { useContext, useState } from "react";
+import { useForm } from "react-hook-form";
+import { Box, Typography, Container } from "@mui/material";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import CustomInputField from "../../components/form/CustomInputField";
+import CustomButton from "../../components/CustomButton";
+import { Login } from "../../assets/fetch"; // Assuming the Login function is in this file
+import { useNavigate } from "react-router-dom";
+import { UserContext } from "../../UserContext";
+import LoadingSpinner from "../../components/LoadingSpinner";
 
 // Define a validation schema using Yup
 const schema = yup.object().shape({
-  username: yup.string().required('Username is required'),
-  password: yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
+  username: yup.string().required("Username is required"),
+  password: yup
+    .string()
+    .min(6, "Password must be at least 6 characters")
+    .required("Password is required"),
 });
 
 export default function LoginScreen() {
@@ -24,9 +28,10 @@ export default function LoginScreen() {
     resolver: yupResolver(schema),
   });
 
-  const { setUserType, setToken,setProfile,setUsername,setVerified } = useContext(UserContext);
+  const { setUserType, setToken, setProfile, setUsername, setVerified } =
+    useContext(UserContext);
   const navigate = useNavigate();
-
+  const [loading, setLoading] = useState(false);
 
   // Handle form submission
   const onSubmit = async (data) => {
@@ -35,32 +40,35 @@ export default function LoginScreen() {
     Object.entries(data).forEach(([key, value]) => {
       formData.append(key, value);
     });
-
+    setLoading(true);
     try {
       const response = await Login(formData); // Call the Login function
-      if(response.status){
+      if (response.status) {
         setToken(response.token);
         setUserType(response.userType);
         setProfile(response.profile);
         setUsername(response.username);
         setVerified(false);
-        navigate('/Verification'); 
-      } 
+        navigate("/Verification");
+      }
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error("Login failed:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Box sx={{ backgroundColor: 'background.default' }}>
+    <Box sx={{ backgroundColor: "background.default" }}>
+      {loading && <LoadingSpinner />}
       <Box
         sx={{
-          width: '100vw',
-          height: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
+          width: "100vw",
+          height: "90vh",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
           gap: 3,
         }}
       >
@@ -68,7 +76,7 @@ export default function LoginScreen() {
           maxWidth="sm"
           sx={{
             mt: 5,
-            bgcolor: 'primary.main',
+            bgcolor: "primary.main",
             p: 4,
             borderRadius: 5,
             boxShadow: 20,
@@ -79,23 +87,28 @@ export default function LoginScreen() {
             component="h1"
             sx={{
               mb: 3,
-              textAlign: 'center',
-              color: 'background.paper',
-              fontWeight: 'bold',
+              textAlign: "center",
+              color: "background.paper",
+              fontWeight: "bold",
             }}
           >
             Login
           </Typography>
 
           {/* Form */}
-          <Box component="form" noValidate autoComplete="off" onSubmit={handleSubmit(onSubmit)}>
+          <Box
+            component="form"
+            noValidate
+            autoComplete="off"
+            onSubmit={handleSubmit(onSubmit)}
+          >
             {/* Username Field */}
             <CustomInputField
               label="Username"
               name="username"
               control={control}
               placeholder="Enter your username"
-              rules={{ required: 'Username is required' }}
+              rules={{ required: "Username is required" }}
               errors={errors}
             />
 
@@ -107,21 +120,21 @@ export default function LoginScreen() {
               type="password"
               placeholder="Enter your password"
               rules={{
-                required: 'Password is required',
+                required: "Password is required",
                 minLength: {
                   value: 6,
-                  message: 'Password must be at least 6 characters',
+                  message: "Password must be at least 6 characters",
                 },
               }}
               errors={errors}
             />
 
-           {/* Submit Button */}
-            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+            {/* Submit Button */}
+            <Box sx={{ display: "flex", justifyContent: "center" }}>
               <CustomButton
-                text='Login'
-                bgColor='background.paper'
-                color='primary.main'
+                text="Login"
+                bgColor="background.paper"
+                color="primary.main"
                 onClick={handleSubmit(onSubmit)} // Use handleSubmit here
                 type="submit" // Set type to "submit" for correct form behavior
               />

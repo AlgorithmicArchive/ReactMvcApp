@@ -58,13 +58,7 @@ const Navbar = () => {
   };
 
   return (
-    <AppBar
-      position="fixed"
-      sx={{
-        top: "185px",
-        zIndex: 1100,
-      }}
-    >
+    <AppBar position="fixed" sx={{ top: "185px", zIndex: 1100 }}>
       <Toolbar
         sx={{
           display: "flex",
@@ -112,9 +106,13 @@ const Navbar = () => {
 
         {userType === "Citizen" && (
           <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-            {/* Central buttons for Citizen */}
             <Box
-              sx={{ display: "flex", justifyContent: "center",gap:10, flexGrow: 1 }}
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                gap: 10,
+                flexGrow: 1,
+              }}
             >
               <Button
                 color="inherit"
@@ -135,46 +133,59 @@ const Navbar = () => {
               <Button
                 color="inherit"
                 sx={{ fontWeight: "bold" }}
-                onClick={handleStatusMenuClick} // Application Status handler
+                onClick={handleStatusMenuClick}
               >
                 Application Status
               </Button>
-              {/* Menu for Application Status */}
               <Menu
-                anchorEl={statusAnchorEl} // Ensure anchorEl is valid
+                anchorEl={statusAnchorEl}
                 open={Boolean(statusAnchorEl)}
                 onClose={handleStatusMenuClose}
               >
-                <MenuItem onClick={() => navigate("/user/initiated")}>
+                <MenuItem
+                  onClick={() => {
+                    navigate("/user/initiated");
+                    handleStatusMenuClose(); // Close menu after selection
+                  }}
+                >
                   Initiated Applications
                 </MenuItem>
-                <MenuItem onClick={() => navigate("/user/incomplete")}>
+                <MenuItem
+                  onClick={() => {
+                    navigate("/user/incomplete");
+                    handleStatusMenuClose(); // Close menu after selection
+                  }}
+                >
                   Incomplete Applications
                 </MenuItem>
               </Menu>
             </Box>
 
-            {/* Right-side profile image with dropdown menu */}
-            <Box sx={{ marginLeft: "auto", display: "flex", gap: 5, alignItems: "center" }}>
+            <Box
+              sx={{
+                marginLeft: "auto",
+                display: "flex",
+                gap: 5,
+                alignItems: "center",
+              }}
+            >
               <Typography sx={{ color: "primary.main", fontWeight: "bold" }}>
                 {username}
               </Typography>
-              <IconButton
-                onClick={handleProfileMenuClick} // Profile menu handler
-                sx={{ p: 0 }}
-              >
-                <Avatar
-                  alt={username}
-                  src={profile || "/default-avatar.png"} // Ensure avatar URL or default
-                />
+              <IconButton onClick={handleProfileMenuClick} sx={{ p: 0 }}>
+                <Avatar alt={username} src={profile || "/default-avatar.png"} />
               </IconButton>
-              {/* Menu for Profile and Logout */}
               <Menu
-                anchorEl={profileAnchorEl} // Ensure anchorEl is valid for profile menu
+                anchorEl={profileAnchorEl}
                 open={Boolean(profileAnchorEl)}
                 onClose={handleProfileMenuClose}
               >
-                <MenuItem onClick={() => navigate("/profile")}>
+                <MenuItem
+                  onClick={() => {
+                    navigate("/profile");
+                    handleProfileMenuClose(); // Close menu after selection
+                  }}
+                >
                   Profile
                 </MenuItem>
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>
@@ -185,9 +196,13 @@ const Navbar = () => {
 
         {userType === "Officer" && (
           <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-            {/* Central buttons for Officer */}
             <Box
-              sx={{ display: "flex", justifyContent: "center",gap:10, flexGrow: 1 }}
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                gap: 10,
+                flexGrow: 1,
+              }}
             >
               <Button
                 color="inherit"
@@ -208,46 +223,59 @@ const Navbar = () => {
               <Button
                 color="inherit"
                 sx={{ fontWeight: "bold" }}
-                onClick={handleStatusMenuClick} // DSC Management handler
+                onClick={handleStatusMenuClick}
               >
                 DSC Management
               </Button>
-              {/* Menu for Officer-specific actions */}
               <Menu
                 anchorEl={statusAnchorEl}
                 open={Boolean(statusAnchorEl)}
                 onClose={handleStatusMenuClose}
               >
-                <MenuItem onClick={() => navigate("/officer/registerDSC")}>
+                <MenuItem
+                  onClick={() => {
+                    navigate("/officer/registerDSC");
+                    handleStatusMenuClose(); // Close menu after selection
+                  }}
+                >
                   Register DSC
                 </MenuItem>
-                <MenuItem onClick={() => navigate("/officer/unregisterDSC")}>
+                <MenuItem
+                  onClick={() => {
+                    navigate("/officer/unregisterDSC");
+                    handleStatusMenuClose(); // Close menu after selection
+                  }}
+                >
                   Unregister DSC
                 </MenuItem>
               </Menu>
             </Box>
 
-            {/* Right-side profile image with dropdown menu */}
-            <Box sx={{ marginLeft: "auto", display: "flex", gap: 5, alignItems: "center" }}>
+            <Box
+              sx={{
+                marginLeft: "auto",
+                display: "flex",
+                gap: 5,
+                alignItems: "center",
+              }}
+            >
               <Typography sx={{ color: "primary.main", fontWeight: "bold" }}>
                 {username}
               </Typography>
-              <IconButton
-                onClick={handleProfileMenuClick}
-                sx={{ p: 0 }}
-              >
-                <Avatar
-                  alt={username}
-                  src={profile || "/default-avatar.png"} // Profile image
-                />
+              <IconButton onClick={handleProfileMenuClick} sx={{ p: 0 }}>
+                <Avatar alt={username} src={profile || "/default-avatar.png"} />
               </IconButton>
-              {/* Menu for Profile and Logout */}
               <Menu
                 anchorEl={profileAnchorEl}
                 open={Boolean(profileAnchorEl)}
                 onClose={handleProfileMenuClose}
               >
-                <MenuItem onClick={() => navigate("/profile")}>
+                <MenuItem
+                  onClick={() => {
+                    navigate("/profile");
+                    handleProfileMenuClose(); // Close menu after selection
+                  }}
+                >
                   Profile
                 </MenuItem>
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>
@@ -258,9 +286,13 @@ const Navbar = () => {
 
         {userType === "Admin" && (
           <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-            {/* Central buttons for Admin */}
             <Box
-              sx={{ display: "flex", justifyContent: "center",gap:10, flexGrow: 1 }}
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                gap: 10,
+                flexGrow: 1,
+              }}
             >
               <Button
                 color="inherit"
@@ -281,46 +313,59 @@ const Navbar = () => {
               <Button
                 color="inherit"
                 sx={{ fontWeight: "bold" }}
-                onClick={handleStatusMenuClick} // Admin Actions handler
+                onClick={handleStatusMenuClick}
               >
                 Admin Actions
               </Button>
-              {/* Menu for Admin-specific actions */}
               <Menu
                 anchorEl={statusAnchorEl}
                 open={Boolean(statusAnchorEl)}
                 onClose={handleStatusMenuClose}
               >
-                <MenuItem onClick={() => navigate("/admin/reports")}>
+                <MenuItem
+                  onClick={() => {
+                    navigate("/admin/reports");
+                    handleStatusMenuClose(); // Close menu after selection
+                  }}
+                >
                   View Reports
                 </MenuItem>
-                <MenuItem onClick={() => navigate("/admin/settings")}>
+                <MenuItem
+                  onClick={() => {
+                    navigate("/admin/settings");
+                    handleStatusMenuClose(); // Close menu after selection
+                  }}
+                >
                   Settings
                 </MenuItem>
               </Menu>
             </Box>
 
-            {/* Right-side profile image with dropdown menu */}
-            <Box sx={{ marginLeft: "auto", display: "flex", gap: 5, alignItems: "center" }}>
+            <Box
+              sx={{
+                marginLeft: "auto",
+                display: "flex",
+                gap: 5,
+                alignItems: "center",
+              }}
+            >
               <Typography sx={{ color: "primary.main", fontWeight: "bold" }}>
                 {username}
               </Typography>
-              <IconButton
-                onClick={handleProfileMenuClick}
-                sx={{ p: 0 }}
-              >
-                <Avatar
-                  alt={username}
-                  src={profile || "/default-avatar.png"} // Profile image
-                />
+              <IconButton onClick={handleProfileMenuClick} sx={{ p: 0 }}>
+                <Avatar alt={username} src={profile || "/default-avatar.png"} />
               </IconButton>
-              {/* Menu for Profile and Logout */}
               <Menu
                 anchorEl={profileAnchorEl}
                 open={Boolean(profileAnchorEl)}
                 onClose={handleProfileMenuClose}
               >
-                <MenuItem onClick={() => navigate("/profile")}>
+                <MenuItem
+                  onClick={() => {
+                    navigate("/profile");
+                    handleProfileMenuClose(); // Close menu after selection
+                  }}
+                >
                   Profile
                 </MenuItem>
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>

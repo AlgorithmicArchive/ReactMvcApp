@@ -87,8 +87,7 @@ export default function EditForm() {
     }
   };
 
-  const onSubmit = (data) => {
-    console.log(data);
+  const onSubmit = async(data) => {
   };
 
   const CapitalizeAlphabets = (field, value) => {

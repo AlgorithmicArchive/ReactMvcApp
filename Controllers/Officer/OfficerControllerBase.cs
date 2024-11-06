@@ -108,7 +108,7 @@ namespace ReactMvcApp.Controllers.Officer
             if (authorities.CanSanction)
                 countList.Add(new { label = "Sanctioned", count = counts!.SanctionCount, bgColor = "#81C784", textColor = "#1B5E20" });
 
-            return Json(new { countList });
+            return Json(new { countList, canSanction = authorities.CanSanction });
         }
 
         public IActionResult GetApplications(int ServiceId, string type, int page, int size)
@@ -116,19 +116,24 @@ namespace ReactMvcApp.Controllers.Officer
             var officer = GetOfficerDetails();
 
             var OfficerId = new SqlParameter("@OfficerId", officer.UserId);
-            var ActionTaken = new SqlParameter("@ActionTaken", type);
+            var ActionTaken = new SqlParameter("@ActionTaken", (type == "Approve" || type == "Pool") ? "Pending" : type);
             var serviceId = new SqlParameter("@ServiceId", ServiceId);
 
             var applications = dbcontext.Applications
                 .FromSqlRaw("EXEC GetFilteredApplications @OfficerId, @ActionTaken, @ServiceId", OfficerId, ActionTaken, serviceId)
                 .AsEnumerable().Skip(page * size).Take(size).ToList();
 
-            dynamic? Applications = null;
-
+            dynamic? Applications;
             switch (type)
             {
                 case "Pending":
-                    Applications = GetPendingApplications(applications);
+                    Applications = GetPendingApplications(applications, ServiceId);
+                    break;
+                case "Approve":
+                    Applications = GetApproveApplications(applications, ServiceId);
+                    break;
+                case "Pool":
+                    Applications = GetPoolApplications(applications, ServiceId);
                     break;
                 case "Forwarded":
                     Applications = GetForwardApplications(applications);
@@ -288,7 +293,7 @@ namespace ReactMvcApp.Controllers.Officer
             switch (action)
             {
                 case "returnToEdit":
-                     _logger.LogInformation($"-------------Officer ID: {officerId}-----------------");
+                    _logger.LogInformation($"-------------Officer ID: {officerId}-----------------");
                     string editList = form["editList"].ToString();
                     helper.UpdateApplication("EditList", editList, new SqlParameter("@ApplicationId", applicationId));
                     ActionReturnToEdit(serviceId, applicationId, officerId, remarks, filePath);

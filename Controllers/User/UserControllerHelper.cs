@@ -200,5 +200,10 @@ namespace ReactMvcApp.Controllers.User
 
             return Json(new { EditFields });
         }
+
+        public static bool HasProperty<T>(string propertyName)
+        {
+            return typeof(T).GetProperty(propertyName) != null;
+        }
     }
 }

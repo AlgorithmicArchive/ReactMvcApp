@@ -12,24 +12,34 @@ import {
   Typography,
   CircularProgress,
   Button,
+  Checkbox,
+  IconButton,
 } from "@mui/material";
+import { PictureAsPdf, GridOn, TableView } from "@mui/icons-material";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 const CustomTable = ({
-  title,
+  title = "Table", // Default title if none provided
   fetchData,
   initialRowsPerPage = 10,
   url,
   buttonActionHandler,
   params,
+  showCheckbox = false,
+  onSelectionChange,
+  fieldToReturn = "",
 }) => {
   const [order, setOrder] = useState("asc");
-  const [orderBy, setOrderBy] = useState(""); // Initially no orderBy
+  const [orderBy, setOrderBy] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(initialRowsPerPage);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
   const [columns, setColumns] = useState([]);
+  const [selectedRows, setSelectedRows] = useState([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -38,9 +48,9 @@ const CustomTable = ({
         const result = await fetchData(page, rowsPerPage, url, params);
         setData(result.data);
         setTotalCount(result.totalCount);
-        setColumns(result.columns); // Expected to be an array of objects with 'label' and 'value' properties
+        setColumns(result.columns);
         if (orderBy === "" && result.columns.length > 0) {
-          setOrderBy(result.columns[0].value); // Use 'value' instead of transforming label
+          setOrderBy(result.columns[0].value);
         }
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -51,33 +61,63 @@ const CustomTable = ({
     loadData();
   }, [page, rowsPerPage, orderBy, order, fetchData]);
 
-  // Sorting logic (client-side sorting)
   const handleRequestSort = (property) => {
     const isAscending = orderBy === property && order === "asc";
     setOrder(isAscending ? "desc" : "asc");
     setOrderBy(property);
-
-    // Perform client-side sorting of the data
     const sortedData = [...data].sort((a, b) => {
-      if (a[property] < b[property]) {
-        return isAscending ? 1 : -1;
-      }
-      if (a[property] > b[property]) {
-        return isAscending ? -1 : 1;
-      }
+      if (a[property] < b[property]) return isAscending ? 1 : -1;
+      if (a[property] > b[property]) return isAscending ? -1 : 1;
       return 0;
     });
     setData(sortedData);
   };
 
-  // Pagination logic
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
+  const handleChangePage = (event, newPage) => setPage(newPage);
 
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
+  };
+
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    const tableTitle = title || "Table";
+    doc.text(tableTitle, 10, 10);
+    doc.autoTable({
+      head: [columns.map((col) => col.label)],
+      body: data.map((row) => columns.map((col) => row[col.value] || "")),
+    });
+    doc.save(`${tableTitle}.pdf`);
+  };
+
+  const exportCSV = () => {
+    const csvContent = [
+      columns.map((col) => col.label).join(","),
+      ...data.map((row) =>
+        columns.map((col) => `"${row[col.value] || ""}"`).join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", `${title || "Table"}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportExcel = () => {
+    const worksheetData = [columns.map((col) => col.label)];
+    data.forEach((row) => {
+      worksheetData.push(columns.map((col) => row[col.value] || ""));
+    });
+
+    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, title || "Table");
+    XLSX.writeFile(workbook, `${title || "Table"}.xlsx`);
   };
 
   return (
@@ -96,6 +136,23 @@ const CustomTable = ({
       >
         {title}
       </Typography>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          marginBottom: "10px",
+        }}
+      >
+        <IconButton onClick={exportPDF} color="primary">
+          <PictureAsPdf />
+        </IconButton>
+        <IconButton onClick={exportCSV} color="primary">
+          <GridOn />
+        </IconButton>
+        <IconButton onClick={exportExcel} color="primary">
+          <TableView />
+        </IconButton>
+      </div>
       <TableContainer>
         <Table aria-label="dynamic table">
           <TableHead>
@@ -105,6 +162,28 @@ const CustomTable = ({
                 border: "2px solid #F0C38E",
               }}
             >
+              {showCheckbox && (
+                <TableCell padding="checkbox">
+                  <Checkbox
+                    color="default"
+                    indeterminate={
+                      selectedRows.length > 0 &&
+                      selectedRows.length < data.length
+                    }
+                    checked={
+                      data.length > 0 && selectedRows.length === data.length
+                    }
+                    onChange={(event) => {
+                      const newSelectedRows = event.target.checked ? data : [];
+                      setSelectedRows(newSelectedRows);
+                      const selectedFieldValues = newSelectedRows.map((row) =>
+                        fieldToReturn ? row[fieldToReturn] : row
+                      );
+                      onSelectionChange(selectedFieldValues);
+                    }}
+                  />
+                </TableCell>
+              )}
               {columns.map(({ label, value }, index) => (
                 <TableCell
                   key={index}
@@ -127,9 +206,7 @@ const CustomTable = ({
                         orderBy === value
                           ? "background.default"
                           : "background.paper",
-                      "&.Mui-active": {
-                        color: "background.paper",
-                      },
+                      "&.Mui-active": { color: "background.paper" },
                     }}
                   >
                     {label}
@@ -142,7 +219,7 @@ const CustomTable = ({
             {loading ? (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={columns.length + (showCheckbox ? 1 : 0)}
                   align="center"
                   sx={{ color: "primary.main" }}
                 >
@@ -152,10 +229,30 @@ const CustomTable = ({
             ) : (
               data.map((row, rowIndex) => (
                 <TableRow key={rowIndex} sx={{ border: "2px solid #F0C38E" }}>
+                  {showCheckbox && (
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        color="primary"
+                        checked={selectedRows.includes(row)}
+                        onChange={() => {
+                          const newSelectedRows = selectedRows.includes(row)
+                            ? selectedRows.filter(
+                                (selected) => selected !== row
+                              )
+                            : [...selectedRows, row];
+                          setSelectedRows(newSelectedRows);
+                          const selectedFieldValues = newSelectedRows.map(
+                            (row) => (fieldToReturn ? row[fieldToReturn] : row)
+                          );
+                          onSelectionChange(selectedFieldValues);
+                        }}
+                      />
+                    </TableCell>
+                  )}
                   {columns.map(({ value }, columnIndex) => {
                     if (
                       value.includes("button") &&
-                      typeof row[value] != "string"
+                      typeof row[value] !== "string"
                     ) {
                       return (
                         <TableCell

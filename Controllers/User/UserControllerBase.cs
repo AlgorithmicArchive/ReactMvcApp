@@ -191,23 +191,18 @@ namespace ReactMvcApp.Controllers.User
             return View(applications);
         }
 
-        public IActionResult EditForm(string ApplicationId)
+        public IActionResult EditForm([FromForm] IFormCollection form)
         {
-            var generalDetails = dbcontext.Applications.FirstOrDefault(u => u.ApplicationId == ApplicationId);
-            var PresentAddressId = generalDetails?.PresentAddressId ?? "";
-            var PermanentAddressId = generalDetails?.PermanentAddressId ?? "";
-            var preAddressDetails = dbcontext.Set<AddressJoin>().FromSqlRaw("EXEC GetAddressDetails @AddressId", new SqlParameter("@AddressId", PresentAddressId)).ToList();
-            var perAddressDetails = dbcontext.Set<AddressJoin>().FromSqlRaw("EXEC GetAddressDetails @AddressId", new SqlParameter("@AddressId", PermanentAddressId)).ToList();
-            var serviceContent = dbcontext.Services.FirstOrDefault(u => u.ServiceId == generalDetails!.ServiceId);
-
-            var ApplicationDetails = new
+            string applicationId = form["ApplicationId"].ToString();
+            foreach (var key in form.Keys)
             {
-                serviceContent,
-                generalDetails,
-                preAddressDetails,
-                perAddressDetails,
-            };
-            return View(ApplicationDetails);
+                bool hasProperty = HasProperty<Application>(key);
+                if (hasProperty && key != "ApplicationId") { 
+                    
+                }
+                var value = form[key];
+            }
+            return Json(new { });
         }
 
         public IActionResult UpdateRequest([FromForm] IFormCollection form)

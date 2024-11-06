@@ -157,6 +157,18 @@
       "PackagePath": "staticwebassets/js/site.js"
     },
     {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/js/vendors-node_modules_canvg_lib_index_es_js.bundle.js",
+      "PackagePath": "staticwebassets/js/vendors-node_modules_canvg_lib_index_es_js.bundle.js"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/js/vendors-node_modules_dompurify_dist_purify_js.bundle.js",
+      "PackagePath": "staticwebassets/js/vendors-node_modules_dompurify_dist_purify_js.bundle.js"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/js/vendors-node_modules_html2canvas_dist_html2canvas_js.bundle.js",
+      "PackagePath": "staticwebassets/js/vendors-node_modules_html2canvas_dist_html2canvas_js.bundle.js"
+    },
+    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/lib/bootstrap/LICENSE",
       "PackagePath": "staticwebassets/lib/bootstrap"
     },

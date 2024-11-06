@@ -3,19 +3,12 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using ReactMvcApp.Models.Entities;
 
-public class UserHelperFunctions
+public class UserHelperFunctions(IWebHostEnvironment webHostEnvironment, SocialWelfareDepartmentContext dbcontext, ILogger<UserHelperFunctions> logger)
 {
-    private readonly IWebHostEnvironment _webHostEnvironment;
-    private readonly SocialWelfareDepartmentContext dbcontext;
+    private readonly IWebHostEnvironment _webHostEnvironment = webHostEnvironment;
+    private readonly SocialWelfareDepartmentContext dbcontext = dbcontext;
 
-    private readonly ILogger<UserHelperFunctions> _logger;
-    public UserHelperFunctions(IWebHostEnvironment webHostEnvironment, SocialWelfareDepartmentContext dbcontext, ILogger<UserHelperFunctions> logger)
-    {
-        this.dbcontext = dbcontext;
-        _webHostEnvironment = webHostEnvironment;
-        _logger = logger;
-    }
-
+    private readonly ILogger<UserHelperFunctions> _logger = logger;
 
     public async Task<string> GetFilePath(IFormFile? docFile, string folder = "uploads")
     {
@@ -133,7 +126,7 @@ public class UserHelperFunctions
         dbcontext.Database.ExecuteSqlRaw("EXEC UpdateApplication @ColumnName,@ColumnValue,@ApplicationId", columnNameParam, columnValueParam, applicationId);
     }
 
-   public void UpdateApplicationHistory(int serviceId, string applicationId, int takenBy, string actionTaken, string remarks, string file = "")
+    public void UpdateApplicationHistory(int serviceId, string applicationId, int takenBy, string actionTaken, string remarks, string file = "")
     {
         // Create a new history record
         var newHistory = new ApplicationsHistory
@@ -150,7 +143,6 @@ public class UserHelperFunctions
         dbcontext.ApplicationsHistories.Add(newHistory);
         dbcontext.SaveChanges();
     }
-
 
 
     public User? GetOfficerDetails(string designation, string accessLevel, int accessCode)
@@ -170,7 +162,7 @@ public class UserHelperFunctions
 
         return officer; // Returns a User or null
     }
-    public (Application UserDetails, AddressJoin PreAddressDetails, AddressJoin PerAddressDetails, dynamic ServiceSpecific, dynamic BankDetails,dynamic Documents) GetUserDetailsAndRelatedData(string applicationId)
+    public (Application UserDetails, AddressJoin PreAddressDetails, AddressJoin PerAddressDetails, dynamic ServiceSpecific, dynamic BankDetails, dynamic Documents) GetUserDetailsAndRelatedData(string applicationId)
     {
         var userDetails = dbcontext.Applications.FirstOrDefault(u => u.ApplicationId == applicationId);
 
@@ -187,7 +179,7 @@ public class UserHelperFunctions
         var serviceSpecific = JsonConvert.DeserializeObject<Dictionary<string, string>>(userDetails.ServiceSpecific);
         var bankDetails = JsonConvert.DeserializeObject<dynamic>(userDetails.BankDetails);
         var documents = JsonConvert.DeserializeObject<dynamic>(userDetails.Documents);
-        return (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails,documents)!;
+        return (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails, documents)!;
     }
 
     public string[] GenerateUniqueRandomCodes(int numberOfCodes, int codeLength)
