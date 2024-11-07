@@ -59,52 +59,48 @@ export default function OfficerHome() {
     fetchServiceList();
   }, []);
 
-  useEffect(() => {
-    if (selectedValues.length > 0 && transferValue == "SanctionAll") {
-      handleSanction();
-    }
-  }, [selectedValues]);
-  const handleApprove = async (applicationId) => {
+  const handleApprove = async (applicationId, ids) => {
     const response = await axiosInstance.get("/Officer/SignPdf", {
       params: { ApplicationId: applicationId },
     });
     if (response.data.status) {
-      // Remove the sanctioned applicationId from selectedValues
-      setSelectedValues((prevValues) => prevValues.slice(1));
       const path =
         "/files/" + applicationId.replace(/\//g, "_") + "SanctionLetter.pdf";
       setPdf(path);
-      handleClose();
+      ids = ids.slice(1);
+      console.log(ids.length, ids.length > 0);
+      setSelectedValues(ids);
+      if (ids.length > 0) {
+        setTimeout(async () => {
+          await handleSanction(ids);
+        }, 1000);
+      } else {
+        console.log("Navigating to /officer/home");
+        window.location.reload();
+      }
     }
   };
+  const handleSanction = async (ids) => {
+    const applicationId = ids[0];
+    const formData = new FormData();
+    formData.append("serviceId", serviceId);
+    formData.append("applicationId", applicationId);
+    formData.append("action", "sanction");
+    formData.append("remarks", "Sanctioned");
 
-  const handleSanction = async () => {
-    if (selectedValues.length > 0) {
-      const applicationId = selectedValues[0];
-      const formData = new FormData();
-      formData.append("serviceId", serviceId);
-      formData.append("applicationId", applicationId);
-      formData.append("action", "sanction");
-      formData.append("remarks", "Sanctioned");
-
-      const response = await axiosInstance.post(
-        "/Officer/HandleAction",
-        formData
-      );
-      if (response.data.status) {
-        if (response.data.action === "sanction") {
-          handleOpen();
-          const path =
-            "/files/" +
-            applicationId.replace(/\//g, "_") +
-            "SanctionLetter.pdf";
-          setPdf(path);
-          setTable(null);
-          setHandleActionButton(() => () => handleApprove(applicationId));
-        }
+    const response = await axiosInstance.post(
+      "/Officer/HandleAction",
+      formData
+    );
+    if (response.data.status) {
+      if (response.data.action === "sanction") {
+        handleOpen();
+        const path =
+          "/files/" + applicationId.replace(/\//g, "_") + "SanctionLetter.pdf";
+        setPdf(path);
+        setTable(null);
+        setHandleActionButton(() => () => handleApprove(applicationId, ids));
       }
-    } else {
-      navigate("/officer/home");
     }
   };
 
@@ -255,7 +251,8 @@ export default function OfficerHome() {
         setTransferAction(transfer);
         break;
       case "SanctionAll":
-        handleSanction();
+        const ids = selectedValues;
+        await handleSanction(ids);
         break;
       default:
         console.error("Unknown transfer action:", transfer);

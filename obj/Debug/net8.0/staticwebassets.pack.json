@@ -125,8 +125,16 @@
       "PackagePath": "staticwebassets/files/JMU_2024-2025_1Acknowledgement.pdf"
     },
     {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/files/JMU_2024-2025_1SanctionLetter.pdf",
+      "PackagePath": "staticwebassets/files/JMU_2024-2025_1SanctionLetter.pdf"
+    },
+    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/files/JMU_2024-2025_2Acknowledgement.pdf",
       "PackagePath": "staticwebassets/files/JMU_2024-2025_2Acknowledgement.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/files/JMU_2024-2025_2SanctionLetter.pdf",
+      "PackagePath": "staticwebassets/files/JMU_2024-2025_2SanctionLetter.pdf"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/index.html",

@@ -691,6 +691,10 @@ namespace ReactMvcApp.Controllers.Officer
                 poolList.Remove(applicationId);
             }
 
+            lists!.PoolList = JsonConvert.SerializeObject(poolList);
+            dbcontext.Entry(lists).State = EntityState.Modified;
+            dbcontext.SaveChanges();
+
         }
 
         public void Sanction(string ApplicationId, string Officer)

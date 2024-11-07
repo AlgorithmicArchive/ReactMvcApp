@@ -147,6 +147,9 @@ namespace ReactMvcApp.Controllers.Officer
                 case "Rejected":
                     Applications = GetRejectReturnToEdit(applications);
                     break;
+                case "Sanctioned":
+                    Applications = GetRejectReturnToEdit(applications);
+                    break;
                 default:
                     return BadRequest($"Unknown application type: {type}");
             }
