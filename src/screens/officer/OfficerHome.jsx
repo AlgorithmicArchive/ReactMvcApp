@@ -1,19 +1,22 @@
 import React, { useEffect, useState } from "react";
 import { Box, Container, Typography } from "@mui/material";
 import axiosInstance from "../../axiosConfig";
-import CustomSelectField from "../../components/form/CustomSelectField";
 import { useForm } from "react-hook-form";
-import CustomButton from "../../components/CustomButton";
-import StatusCountCard from "../../components/StatusCountCard";
 import { useNavigate } from "react-router-dom";
 import CustomTable from "../../components/CustomTable";
 import { fetchData } from "../../assets/fetch";
+import ServiceSelectionForm from "../../components/ServiceSelectionForm";
+import StatusCountCard from "../../components/StatusCountCard";
+import CustomSelectField from "../../components/form/CustomSelectField";
+import CustomButton from "../../components/CustomButton";
+import BasicModal from "../../components/BasicModal";
 
 export default function OfficerHome() {
   const [services, setServices] = useState([]);
   const [serviceId, setServiceId] = useState();
   const [countList, setCountList] = useState([]);
   const [table, setTable] = useState(null);
+  const [pdf, setPdf] = useState(null);
   const [canSanction, setCanSanction] = useState(false);
   const [pendingList, setPendingList] = useState([]);
   const [approveList, setApproveList] = useState([]);
@@ -22,16 +25,105 @@ export default function OfficerHome() {
   const [transferOptions, setTransferOptions] = useState({});
   const [currentList, setCurrentList] = useState("Pending");
   const [transferAction, setTransferAction] = useState(null);
-  const [transferValue, setTransferValue] = useState(""); // New state for transfer select field
+  const [transferValue, setTransferValue] = useState(""); // State for transfer select field
+  const [open, setOpen] = useState(false);
+  const [modalButtonText, setModalButtonText] = useState("Approve");
+  const [handleActionButton, setHandleActionButton] = useState(() => () => {});
+
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
 
   const navigate = useNavigate();
-
   const {
     control,
     formState: { errors },
     handleSubmit,
-    reset, // use reset from react-hook-form
+    reset,
   } = useForm();
+
+  // Fetch service list on mount
+  useEffect(() => {
+    const fetchServiceList = async () => {
+      try {
+        const response = await axiosInstance.get("/Officer/GetServiceList");
+        const serviceList = response.data.serviceList.map((item) => ({
+          label: item.serviceName,
+          value: item.serviceId,
+        }));
+        setServices(serviceList);
+      } catch (error) {
+        console.error("Failed to fetch service list:", error);
+      }
+    };
+
+    fetchServiceList();
+  }, []);
+
+  useEffect(() => {
+    if (selectedValues.length > 0 && transferValue == "SanctionAll") {
+      handleSanction();
+    }
+  }, [selectedValues]);
+  const handleApprove = async (applicationId) => {
+    const response = await axiosInstance.get("/Officer/SignPdf", {
+      params: { ApplicationId: applicationId },
+    });
+    if (response.data.status) {
+      // Remove the sanctioned applicationId from selectedValues
+      setSelectedValues((prevValues) => prevValues.slice(1));
+      const path =
+        "/files/" + applicationId.replace(/\//g, "_") + "SanctionLetter.pdf";
+      setPdf(path);
+      handleClose();
+    }
+  };
+
+  const handleSanction = async () => {
+    if (selectedValues.length > 0) {
+      const applicationId = selectedValues[0];
+      const formData = new FormData();
+      formData.append("serviceId", serviceId);
+      formData.append("applicationId", applicationId);
+      formData.append("action", "sanction");
+      formData.append("remarks", "Sanctioned");
+
+      const response = await axiosInstance.post(
+        "/Officer/HandleAction",
+        formData
+      );
+      if (response.data.status) {
+        if (response.data.action === "sanction") {
+          handleOpen();
+          const path =
+            "/files/" +
+            applicationId.replace(/\//g, "_") +
+            "SanctionLetter.pdf";
+          setPdf(path);
+          setTable(null);
+          setHandleActionButton(() => () => handleApprove(applicationId));
+        }
+      }
+    } else {
+      navigate("/officer/home");
+    }
+  };
+
+  const handleRecords = async (data) => {
+    try {
+      console.log("Service", data);
+      setServiceId(data.Service);
+      const response = await axiosInstance.get(
+        "/Officer/GetApplicationsCount",
+        {
+          params: { ServiceId: data.Service },
+        }
+      );
+      setCountList(response.data.countList);
+      setCanSanction(response.data.canSanction);
+    } catch (error) {
+      console.error("Failed to fetch application counts:", error);
+    }
+  };
 
   const handleSelectionChange = (newSelectedRows) => {
     setSelectedValues(newSelectedRows);
@@ -46,19 +138,6 @@ export default function OfficerHome() {
   ) => {
     setSourceList((prev) => prev.filter((item) => !items.includes(item)));
     setTargetList((prev) => [...prev, ...items]);
-  };
-
-  const fetchServiceList = async () => {
-    try {
-      const response = await axiosInstance.get("/Officer/GetServiceList");
-      const serviceList = response.data.serviceList.map((item) => ({
-        label: item.serviceName,
-        value: item.serviceId,
-      }));
-      setServices(serviceList);
-    } catch (error) {
-      console.error("Failed to fetch service list:", error);
-    }
   };
 
   const updateList = async (serviceId, transfer, list) => {
@@ -79,20 +158,14 @@ export default function OfficerHome() {
     });
     setCountList(response.data.countList);
     setCanSanction(response.data.canSanction);
-
-    // Refresh the current list view after transfer
     handleCardClick(currentList);
   };
-
-  useEffect(() => {
-    fetchServiceList();
-  }, []);
 
   useEffect(() => {
     if (transferAction) {
       if (serviceId && transferAction) {
         const listToUpdate = selectedValues;
-        updateList(serviceId, transferAction, listToUpdate).then(refreshData); // Refresh data after updating
+        updateList(serviceId, transferAction, listToUpdate).then(refreshData);
       }
       setTransferAction(null);
       setSelectedValues([]);
@@ -101,23 +174,8 @@ export default function OfficerHome() {
     }
   }, [transferAction, serviceId]);
 
-  const handleRecords = async (data) => {
-    try {
-      setServiceId(data.Service);
-      const response = await axiosInstance.get(
-        "/Officer/GetApplicationsCount",
-        {
-          params: { ServiceId: data.Service },
-        }
-      );
-      setCountList(response.data.countList);
-      setCanSanction(response.data.canSanction);
-    } catch (error) {
-      console.error("Failed to fetch application counts:", error);
-    }
-  };
-
   const handleCardClick = async (statusName) => {
+    setCurrentList(statusName);
     if (statusName === "Pending" && canSanction) {
       const response = await axiosInstance.get("/Officer/GetApprovePoolList", {
         params: { serviceId },
@@ -129,14 +187,12 @@ export default function OfficerHome() {
     }
     setTable({
       url: "/Officer/GetApplications",
-      params: { ServiceId: serviceId, type: statusName },
+      params: {
+        ServiceId: serviceId,
+        type:
+          statusName == "Pending With Citizen" ? "ReturnToEdit" : statusName,
+      },
       key: Date.now(),
-    });
-  };
-
-  const handleActionButton = (functionName, parameters) => {
-    navigate("/officer/userDetails", {
-      state: { applicationId: parameters[0] },
     });
   };
 
@@ -198,6 +254,9 @@ export default function OfficerHome() {
         );
         setTransferAction(transfer);
         break;
+      case "SanctionAll":
+        handleSanction();
+        break;
       default:
         console.error("Unknown transfer action:", transfer);
         break;
@@ -231,37 +290,11 @@ export default function OfficerHome() {
         marginTop: "12vh",
       }}
     >
-      <Box
-        sx={{
-          backgroundColor: "primary.main",
-          padding: 1,
-          borderRadius: 5,
-          width: "50%",
-          margin: "0 auto",
-          display: "flex",
-          gap: 10,
-          alignItems: "center",
-          paddingRight: 2,
-          paddingLeft: 2,
-        }}
-      >
-        <CustomSelectField
-          control={control}
-          options={services}
-          label="Select Service"
-          name="Service"
-          rules={{ required: "This field is required" }}
-          errors={errors}
-        />
-        <CustomButton
-          type="submit"
-          onClick={handleSubmit(handleRecords)}
-          text="Get Records"
-          bgColor="background.default"
-          color="primary.main"
-          width="50%"
-        />
-      </Box>
+      <ServiceSelectionForm
+        services={services}
+        errors={errors}
+        onServiceSelect={handleRecords}
+      />
       <Box
         sx={{
           display: "flex",
@@ -302,10 +335,14 @@ export default function OfficerHome() {
                 <Typography
                   sx={{
                     backgroundColor:
-                      currentList === "Pending"
+                      currentList == "Pending"
                         ? "background.paper"
                         : "background.default",
-                    padding: 2,
+                    borderRadius: 5,
+                    paddingLeft: 2,
+                    paddingRight: 2,
+                    paddingTop: 1,
+                    paddingBottom: 1,
                     cursor: "pointer",
                   }}
                   onClick={() => handleListChange("Pending")}
@@ -315,10 +352,14 @@ export default function OfficerHome() {
                 <Typography
                   sx={{
                     backgroundColor:
-                      currentList === "Approve"
+                      currentList == "Approve"
                         ? "background.paper"
                         : "background.default",
-                    padding: 2,
+                    borderRadius: 5,
+                    paddingLeft: 2,
+                    paddingRight: 2,
+                    paddingTop: 1,
+                    paddingBottom: 1,
                     cursor: "pointer",
                   }}
                   onClick={() => handleListChange("Approve")}
@@ -328,10 +369,14 @@ export default function OfficerHome() {
                 <Typography
                   sx={{
                     backgroundColor:
-                      currentList === "Pool"
+                      currentList == "Pool"
                         ? "background.paper"
                         : "background.default",
-                    padding: 2,
+                    borderRadius: 5,
+                    paddingLeft: 2,
+                    paddingRight: 2,
+                    paddingTop: 1,
+                    paddingBottom: 1,
                     cursor: "pointer",
                   }}
                   onClick={() => handleListChange("Pool")}
@@ -346,8 +391,7 @@ export default function OfficerHome() {
                 options={transferOptions[currentList.toLowerCase()] || []}
                 rules={{ required: "This field is required." }}
                 errors={errors}
-                value={transferValue} // Set value to transferValue state
-                onChange={(e) => setTransferValue(e.target.value)} // Update transferValue state
+                value={transferValue}
               />
               <CustomButton
                 type="submit"
@@ -368,13 +412,27 @@ export default function OfficerHome() {
             fetchData={fetchData}
             url={table.url}
             params={table.params}
-            buttonActionHandler={handleActionButton}
-            showCheckbox={true}
+            title={currentList + " Table"}
+            buttonActionHandler={(fn, params) =>
+              navigate("/officer/userDetails", {
+                state: { applicationId: params[0] },
+              })
+            }
+            showCheckbox={canSanction}
             fieldToReturn="referenceNumber"
             onSelectionChange={handleSelectionChange}
           />
         )}
       </Box>
+      <BasicModal
+        open={open}
+        handleClose={handleClose}
+        Title={"Document"}
+        pdf={pdf}
+        table={table}
+        handleActionButton={handleActionButton}
+        buttonText={modalButtonText}
+      />
     </Container>
   );
 }

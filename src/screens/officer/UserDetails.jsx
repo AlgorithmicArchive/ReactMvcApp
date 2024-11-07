@@ -20,10 +20,12 @@ export default function UserDetails() {
   const [actionOptions, setActionOptions] = useState([]);
   const [editList, setEditList] = useState([]);
   const [editableField, setEditableField] = useState(null);
-  const [currentOfficer,setCurrentOfficer] = useState('');
+  const [currentOfficer, setCurrentOfficer] = useState("");
   const location = useLocation();
   const { applicationId } = location.state || {};
   const [serviceId, setServiceID] = useState(0);
+  const [modalButtonText, setModalButtonText] = useState("Approve");
+  const [handleActionButton, setHandleActionButton] = useState(() => () => {});
 
   const {
     control,
@@ -45,31 +47,71 @@ export default function UserDetails() {
     handleOpen();
   };
 
-  const onSubmit = async (data) => {
+  const handleRedirect = () => {
+    navigate("/officer/home");
+  };
 
+  const handleApprove = async () => {
+    const response = await axiosInstance.get("/Officer/SignPdf", {
+      params: { ApplicationId: applicationId },
+    });
+    if (response.data.status) {
+      const path =
+        "/files/" + applicationId.replace(/\//g, "_") + "SanctionLetter.pdf";
+      setPdf(path);
+      setModalButtonText("OK");
+      // Close the modal first
+      handleClose();
+
+      // Reopen the modal after a brief delay
+      setTimeout(() => {
+        handleOpen();
+        setHandleActionButton(() => handleRedirect);
+      }, 300); // Adjust delay time as needed
+    }
+  };
+
+  const onSubmit = async (data) => {
     const formData = new FormData();
     for (const [key, value] of Object.entries(data)) {
       if (value instanceof FileList) {
         formData.append(key, value[0]);
-      }else if(key=="editableField"){
-        formData.append("editableField",JSON.stringify({serviceSpeicific:editableField.isFormSpecific??false,name:editableField.name,value:value}))
-      }
-      else if(key=="editList"){
-        formData.append(key,JSON.stringify(value));
-      }
-       else {
+      } else if (key == "editableField") {
+        formData.append(
+          "editableField",
+          JSON.stringify({
+            serviceSpeicific: editableField.isFormSpecific ?? false,
+            name: editableField.name,
+            value: value,
+          })
+        );
+      } else if (key == "editList") {
+        formData.append(key, JSON.stringify(value));
+      } else {
         formData.append(key, value);
       }
     }
     formData.append("serviceId", serviceId);
     formData.append("applicationId", applicationId);
 
-    console.log(formData);
     const response = await axiosInstance.post(
       "/Officer/HandleAction",
       formData
     );
-    if (response.data.status) navigate("/officer/home");
+    if (response.data.status) {
+      console.log(response.data);
+      if (response.data.action == "sanction") {
+        handleOpen();
+        const path =
+          "/files/" +
+          response.data.applicationId.replace(/\//g, "_") +
+          "SanctionLetter.pdf";
+        setPdf(path);
+        setHandleActionButton(() => handleApprove);
+      } else {
+        navigate("/officer/home");
+      }
+    }
   };
 
   useEffect(() => {
@@ -295,7 +337,8 @@ export default function UserDetails() {
         Title={"Document"}
         pdf={pdf}
         table={null}
-        handleActionButton={() => {}}
+        handleActionButton={handleActionButton}
+        buttonText={modalButtonText}
       />
     </Container>
   );

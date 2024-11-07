@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-import 'react-pdf/dist/esm/Page/TextLayer.css';
-import CustomButton from './CustomButton';
+import React, { useState, useEffect } from "react";
+import { Document, Page, pdfjs } from "react-pdf";
+import "react-pdf/dist/esm/Page/AnnotationLayer.css";
+import "react-pdf/dist/esm/Page/TextLayer.css";
+import CustomButton from "./CustomButton";
 
-pdfjs.GlobalWorkerOptions.workerSrc = '/js/pdf.worker.min.js';
+pdfjs.GlobalWorkerOptions.workerSrc = "/js/pdf.worker.min.js";
 
 const PdfViewer = ({ pdfUrl }) => {
   const [numPages, setNumPages] = useState(null);
@@ -23,19 +23,30 @@ const PdfViewer = ({ pdfUrl }) => {
   };
 
   const onDocumentLoadError = (error) => {
-    console.error('Failed to load PDF document:', error);
+    console.error("Failed to load PDF document:", error);
     if (retryCount < 3) {
       setRetryCount(retryCount + 1); // Retry up to 3 times
     } else {
-      setError('Failed to load PDF document. Please try again.');
+      setError("Failed to load PDF document. Please try again.");
     }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '50px', gap: 5 }}>
-      <CustomButton text="Export PDF" onClick={() => window.open(pdfUrl, '_blank')} />
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        marginTop: "50px",
+        gap: 5,
+      }}
+    >
+      <CustomButton
+        text="Export PDF"
+        onClick={() => window.open(pdfUrl, "_blank")}
+      />
       {error ? (
-        <p style={{ color: 'red' }}>{error}</p>
+        <p style={{ color: "red" }}>{error}</p>
       ) : (
         <Document
           file={pdfUrl}
@@ -49,6 +60,7 @@ const PdfViewer = ({ pdfUrl }) => {
               pageNumber={index + 1}
               renderTextLayer
               renderAnnotationLayer
+              width={600}
             />
           ))}
         </Document>

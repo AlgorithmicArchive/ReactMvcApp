@@ -82,12 +82,12 @@ namespace ReactMvcApp.Controllers.Officer
 
                     if (!isDigitOnly && !addedColumns.Contains(key.ToLower()))
                     {
-                        // Insert the new key-value pair at a specific index, e.g., at index 3
-                        cell.Insert(3, new KeyValuePair<string, object>(key.ToLower(), value));
                         // Optionally, insert the new label into columns if needed, only if not already added
                         columns.Insert(3, new { label = key, value = key.ToLower() });
                         addedColumns.Add(key.ToLower()); // Add key to the set to prevent duplicates
                     }
+                    // Insert the new key-value pair at a specific index, e.g., at index 3
+                    cell.Insert(3, new KeyValuePair<string, object>(key.ToLower(), value));
                 }
 
                 // Convert cell back to a dictionary if you need it as a dictionary
@@ -159,11 +159,11 @@ namespace ReactMvcApp.Controllers.Officer
                     if (!isDigitOnly && !addedColumns.Contains(key.ToLower()))
                     {
                         // Insert the new key-value pair at a specific index, e.g., at index 3
-                        cell.Insert(6, new KeyValuePair<string, object>(key.ToLower(), value));
                         // Optionally, insert the new label into columns if needed, only if not already added
                         columns.Insert(6, new { label = key, value = key.ToLower() });
                         addedColumns.Add(key.ToLower()); // Add key to the set to prevent duplicates
                     }
+                    cell.Insert(6, new KeyValuePair<string, object>(key.ToLower(), value));
                 }
 
                 // Convert cell back to a dictionary if you need it as a dictionary
@@ -175,7 +175,6 @@ namespace ReactMvcApp.Controllers.Officer
             }
             return new { columns, data, totalCount = data.Count };
         }
-
         public dynamic GetPoolApplications(List<Application> applications, int serviceId)
         {
             var officer = GetOfficerDetails();
@@ -230,12 +229,12 @@ namespace ReactMvcApp.Controllers.Officer
                     if (!isDigitOnly && !addedColumns.Contains(key.ToLower()))
                     {
                         // Insert the new key-value pair into cell data
-                        cell.Insert(3, new KeyValuePair<string, object>(key.ToLower(), value));
 
                         // Add the dynamic column to poolColumns only if not already added
                         poolColumns.Insert(3, new { label = key, value = key.ToLower() });
                         addedColumns.Add(key.ToLower()); // Add key to set to prevent duplicates
                     }
+                    cell.Insert(3, new KeyValuePair<string, object>(key.ToLower(), value));
                 }
 
                 // Convert cell to dictionary for adding to data list
@@ -251,7 +250,7 @@ namespace ReactMvcApp.Controllers.Officer
             return new { columns = poolColumns, data, totalCount = data.Count };
         }
 
-        public dynamic GetForwardApplications(List<Application> applications)
+        public dynamic GetForwardReturnApplications(List<Application> applications)
         {
             var columns = new List<dynamic>
             {
@@ -313,6 +312,59 @@ namespace ReactMvcApp.Controllers.Officer
             }
 
 
+
+            return new { columns, data, totalCount = data.Count };
+        }
+
+        public dynamic GetRejectReturnToEdit(List<Application> applications)
+        {
+            var columns = new List<dynamic>
+            {
+                new { label = "S.No", value = "sno" },
+                new { label = "Reference Number", value = "referenceNumber" },
+                new { label = "Applicant Name", value = "applicantName" },
+                new { label = "Submission Date", value = "submissionDate" }
+            };
+
+            var data = new List<dynamic>();
+            int index = 1;
+            var addedColumns = new HashSet<string>(); // Track the keys already added to columns
+
+            foreach (var item in applications)
+            {
+                var serviceSpecific = JsonConvert.DeserializeObject<Dictionary<string, string>>(item.ServiceSpecific);
+                // Initialize cell as a list of key-value pairs
+                var cell = new List<KeyValuePair<string, object>>
+                {
+                    new("sno", index),
+                    new("referenceNumber", item.ApplicationId),
+                    new("applicantName", item.ApplicantName),
+                    new("submissionDate", item.SubmissionDate)
+                };
+                // Add service-specific fields dynamically to the columns and cell
+                foreach (var kvp in serviceSpecific!)
+                {
+                    string key = kvp.Key;
+                    string value = kvp.Value;
+                    bool isDigitOnly = value.All(char.IsDigit);
+
+                    if (!isDigitOnly)
+                    {
+                        if (!addedColumns.Contains(key.ToLower()))
+                        {
+                            columns.Insert(3, new { label = key, value = key.ToLower() });
+                            addedColumns.Add(key.ToLower()); // Add key to the set to prevent duplicates
+                        }
+                        cell.Insert(3, new KeyValuePair<string, object>(key.ToLower(), value));
+                    }
+                }
+
+                // Convert cell back to a dictionary if you need it as a dictionary
+                var cellDictionary = cell.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                data.Add(cellDictionary);
+
+                index++;
+            }
 
             return new { columns, data, totalCount = data.Count };
         }
@@ -432,6 +484,8 @@ namespace ReactMvcApp.Controllers.Officer
         }
         public void ActionSanction(int serviceId, string applicationId, int officerId, string remarks, string filePath)
         {
+            var officer = GetOfficerDetails();
+            Sanction(applicationId, officer.Role!);
             // Get the current date in the desired format
             string currentDate = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
 
@@ -443,6 +497,7 @@ namespace ReactMvcApp.Controllers.Officer
                                               new SqlParameter("@Remarks", remarks),
                                               new SqlParameter("@FilePath", filePath ?? (object)DBNull.Value), // Handle null FilePath
                                               new SqlParameter("@Date", currentDate));
+            helper.UpdateApplication("ApplicationStatus", "Sanctioned", new SqlParameter("@ApplicationId", applicationId));
         }
         public void ActionReturnToEdit(int serviceId, string applicationId, int officerId, string remarks, string filePath)
         {
@@ -517,7 +572,8 @@ namespace ReactMvcApp.Controllers.Officer
                     Pool = new[]
                     {
                         new { label = "Transfer to Approve", value = "PoolToApprove" },
-                        new { label = "Transfer to Inbox", value = "PoolToInbox" }
+                        new { label = "Transfer to Inbox", value = "PoolToInbox" },
+                        new { label = "Sanction Application(s)", value = "SanctionAll" }
                     }
                 }
             ];
@@ -615,5 +671,48 @@ namespace ReactMvcApp.Controllers.Officer
             return Json(new { success = true, message = "List updated successfully." });
         }
 
+        public void UpdatePool(string applicationId, int serviceId)
+        {
+            var officer = GetOfficerDetails();
+
+            var lists = dbcontext.ApplicationLists
+                .FirstOrDefault(al => al.ServiceId == serviceId && al.Officer == officer.Role && al.AccessLevel == officer.AccessLevel && al.AccessCode == officer.AccessCode);
+
+            List<string> poolList = [];
+
+            // If lists is not null, deserialize ApprovalList and PoolList
+            if (lists != null)
+            {
+                poolList = JsonConvert.DeserializeObject<List<string>>(lists.PoolList) ?? [];
+            }
+
+            if (poolList.Contains(applicationId))
+            {
+                poolList.Remove(applicationId);
+            }
+
+        }
+
+        public void Sanction(string ApplicationId, string Officer)
+        {
+            var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails, documents) = helper.GetUserDetailsAndRelatedData(ApplicationId);
+
+            var sanctionObject = new Dictionary<string, string>
+            {
+                ["NAME OF APPLICANT"] = userDetails.ApplicantName.ToUpper(),
+                ["DATE OF BIRTH"] = userDetails.DateOfBirth.ToString(),
+                ["FATHER/GUARDIAN NAME"] = userDetails.RelationName.ToUpper(),
+                ["MOTHER NAME"] = serviceSpecific!["MotherName"],
+                ["MOBILE/EMAIL"] = userDetails.MobileNumber.ToUpper() + "/" + userDetails.Email.ToUpper(),
+                ["DATE OF MARRIAGE"] = serviceSpecific["DateOfMarriage"],
+                ["BANK NAME/ BRANCH NAME"] = bankDetails!["BankName"] + "/" + bankDetails["BranchName"],
+                ["IFSC CODE/ ACCOUNT NUMBER"] = bankDetails["IfscCode"] + "/" + bankDetails["AccountNumber"],
+                ["AMOUNT SANCTIONED"] = "50000",
+                ["PRESENT ADDRESS"] = preAddressDetails.Address!.ToUpper() + ", TEHSIL: " + preAddressDetails.Tehsil + ", DISTRICT: " + preAddressDetails.District + ", PIN CODE: " + preAddressDetails.Pincode,
+                ["PERMANENT ADDRESS"] = perAddressDetails.Address!.ToUpper() + ", TEHSIL: " + perAddressDetails.Tehsil + ", DISTRICT: " + perAddressDetails.District + ", PIN CODE: " + perAddressDetails.Pincode,
+            };
+            UpdatePool(ApplicationId, userDetails.ServiceId);
+            _pdfService.CreateSanctionPdf(sanctionObject, Officer, ApplicationId);
+        }
     }
 }

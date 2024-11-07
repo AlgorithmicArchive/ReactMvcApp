@@ -146,9 +146,11 @@ export async function fetchDesignation(setDesignations, setAccessLevelMap) {
   }
 }
 
-export async function fetchAcknowledgement() {
+export async function fetchAcknowledgement(applicationId) {
   try {
-    const response = await axiosInstance.get("/User/GetAcknowledgement");
+    const response = await axiosInstance.get("/User/GetAcknowledgement", {
+      params: { ApplicationId: applicationId },
+    });
     const { path } = response.data;
 
     // Ensure that the path includes the protocol

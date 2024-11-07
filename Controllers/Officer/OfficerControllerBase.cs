@@ -100,11 +100,11 @@ namespace ReactMvcApp.Controllers.Officer
             if (authorities!.CanForward)
                 countList.Add(new { label = "Forwarded", count = counts!.ForwardCount, bgColor = "#64B5F6", textColor = "#0D47A1" });
             if (authorities.CanReturn)
-                countList.Add(new { label = "Returned", count = counts!.ReturnCount, bgColor = "#FF7043", textColor = "#B71C1C" });
+                countList.Add(new { label = "Returned", count = counts!.ReturnCount, bgColor = "#E0E0E0", textColor = "#212121" });
             if (authorities.CanReturnToEdit)
                 countList.Add(new { label = "Pending With Citizen", count = counts!.ReturnToEditCount, bgColor = "#CE93D8", textColor = "#4A148C" });
             if (authorities.CanReject)
-                countList.Add(new { label = "Rejected", count = counts!.RejectCount, bgColor = "#E0E0E0", textColor = "#212121" });
+                countList.Add(new { label = "Rejected", count = counts!.RejectCount, bgColor = "#FF7043", textColor = "#B71C1C" });
             if (authorities.CanSanction)
                 countList.Add(new { label = "Sanctioned", count = counts!.SanctionCount, bgColor = "#81C784", textColor = "#1B5E20" });
 
@@ -123,7 +123,7 @@ namespace ReactMvcApp.Controllers.Officer
                 .FromSqlRaw("EXEC GetFilteredApplications @OfficerId, @ActionTaken, @ServiceId", OfficerId, ActionTaken, serviceId)
                 .AsEnumerable().Skip(page * size).Take(size).ToList();
 
-            dynamic? Applications;
+            dynamic? Applications = null;
             switch (type)
             {
                 case "Pending":
@@ -136,7 +136,16 @@ namespace ReactMvcApp.Controllers.Officer
                     Applications = GetPoolApplications(applications, ServiceId);
                     break;
                 case "Forwarded":
-                    Applications = GetForwardApplications(applications);
+                    Applications = GetForwardReturnApplications(applications);
+                    break;
+                case "Returned":
+                    Applications = GetForwardReturnApplications(applications);
+                    break;
+                case "ReturnToEdit":
+                    Applications = GetRejectReturnToEdit(applications);
+                    break;
+                case "Rejected":
+                    Applications = GetRejectReturnToEdit(applications);
                     break;
                 default:
                     return BadRequest($"Unknown application type: {type}");
@@ -320,10 +329,12 @@ namespace ReactMvcApp.Controllers.Officer
                     ActionForward(serviceId, applicationId, officer.UserId, officer.Role!, remarks, filePath, accessLevel, accessCode);
                     break;
 
-                case "reject":
+                case "return":
                     ActionReturn(serviceId, applicationId, officer.UserId, officerDesignation, remarks, filePath, accessLevel, accessCode);
                     break;
-
+                case "reject":
+                    ActionReject(serviceId, applicationId, officer.UserId, remarks, filePath);
+                    break;
                 case "sanction":
                     ActionSanction(serviceId, applicationId, officer.UserId, remarks, filePath);
                     break;
@@ -332,7 +343,7 @@ namespace ReactMvcApp.Controllers.Officer
                     return BadRequest("Invalid action specified.");
             }
 
-            return Json(new { status = true, message = $"{actionTaken} action processed successfully." });
+            return Json(new { status = true, message = $"{actionTaken} action processed successfully.", applicationId, action });
         }
     }
 }

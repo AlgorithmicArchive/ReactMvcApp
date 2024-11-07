@@ -197,8 +197,9 @@ namespace ReactMvcApp.Controllers.User
             foreach (var key in form.Keys)
             {
                 bool hasProperty = HasProperty<Application>(key);
-                if (hasProperty && key != "ApplicationId") { 
-                    
+                if (hasProperty && key != "ApplicationId")
+                {
+
                 }
                 var value = form[key];
             }
@@ -213,12 +214,6 @@ namespace ReactMvcApp.Controllers.User
             return Json(new { status = true });
         }
 
-        [HttpGet]
-        public IActionResult Acknowledgement()
-        {
-            var details = FetchAcknowledgementDetails();
-            return View(details);
-        }
 
         public IActionResult GetApplications(string serviceId)
         {

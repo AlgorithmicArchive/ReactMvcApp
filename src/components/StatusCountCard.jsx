@@ -1,25 +1,44 @@
-import React from 'react';
-import { Card, CardContent, Typography } from '@mui/material';
+import React from "react";
+import { Card, CardContent, Typography } from "@mui/material";
 
 // Accept an onClick prop
-const StatusCountCard = ({ statusName, count, bgColor, textColor, onClick }) => {
+const StatusCountCard = ({
+  statusName,
+  count,
+  bgColor,
+  textColor,
+  onClick,
+}) => {
   return (
     <Card
       sx={{
         minWidth: 300,
-        minHeight:200,
-        margin: '10px',
-        padding: '10px',
+        minHeight: 200,
+        margin: "10px",
+        padding: "10px",
         backgroundColor: bgColor,
-        cursor: 'pointer',
+        cursor: "pointer",
       }}
       onClick={onClick} // Attach onClick handler
     >
-      <CardContent sx={{display:'flex',flexDirection:'column',justifyContent:'space-between',height:'100%'}}>
-        <Typography variant="h6" component="div" gutterBottom color={textColor} sx={{fontSize:36}}>
+      <CardContent
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          height: "100%",
+        }}
+      >
+        <Typography
+          variant="h6"
+          component="div"
+          gutterBottom
+          color={textColor}
+          sx={{ fontSize: 36 }}
+        >
           {statusName}
         </Typography>
-        <Typography variant="h4" color={textColor} sx={{fontSize:80}}>
+        <Typography variant="h4" color={textColor} sx={{ fontSize: 80 }}>
           {count}
         </Typography>
       </CardContent>

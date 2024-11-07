@@ -43,7 +43,12 @@ namespace ReactMvcApp.Controllers.User
 
             var details = new
             {
-                userDetails,
+                userDetails!.Name,
+                userDetails.Username,
+                userDetails.Profile,
+                userDetails.Email,
+                userDetails.MobileNumber,
+                userDetails.BackupCodes,
                 initiated,
                 incomplete,
                 sanctioned
@@ -127,16 +132,15 @@ namespace ReactMvcApp.Controllers.User
         }
 
         [HttpGet]
-        public IActionResult GetAcknowledgement()
+        public IActionResult GetAcknowledgement(string ApplicationId)
         {
-            var result = FetchAcknowledgementDetails();
+            var result = FetchAcknowledgementDetails(ApplicationId);
             return Json(result);
         }
 
-        private dynamic FetchAcknowledgementDetails()
+        private dynamic FetchAcknowledgementDetails(string applicationId)
         {
             // Retrieve ApplicationId from JWT claim
-            var applicationId = User.FindFirst("ApplicationId")?.Value;
 
             if (string.IsNullOrEmpty(applicationId))
             {
