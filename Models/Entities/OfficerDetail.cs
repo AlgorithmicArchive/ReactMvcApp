@@ -14,4 +14,6 @@ public partial class OfficerDetail
     public string AccessLevel { get; set; } = null!;
 
     public int AccessCode { get; set; }
+
+    public virtual User Officer { get; set; } = null!;
 }

@@ -15,6 +15,8 @@ public partial class ApplicationsHistory
 
     public int TakenBy { get; set; }
 
+    public string Remarks { get; set; } = null!;
+
     public string File { get; set; } = null!;
 
     public string TakenAt { get; set; } = null!;

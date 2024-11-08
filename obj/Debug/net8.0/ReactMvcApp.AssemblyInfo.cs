@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ReactMvcApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+23f14f67ddeb63755135403e2c7088651f7ef900")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b25a1c3f4c0af8c6061a7bdd0b0924fc90eb9702")]
 [assembly: System.Reflection.AssemblyProductAttribute("ReactMvcApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ReactMvcApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

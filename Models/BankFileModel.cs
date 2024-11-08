@@ -1,15 +1,14 @@
-public class BankFileModel
+public class BankFileData
 {
-    public string? ApplicationId { get; set; }
-    public string? UniqueID { get; set; }
+    public int ReferenceNumber { get; set; }
+    public string? UniqueId { get; set; }
     public string? DepartmentName { get; set; }
+    public string? DebitBankName { get; set; }
+    public string? DebitIFSC { get; set; }
     public string? DebitAccountNumber { get; set; }
     public string? Amount { get; set; }
-    public string? FileCreationDate { get; set; }
-    public string? DebitBankName { get; set; }
-    public string? DebitIfsc { get; set; }
     public string? ApplicantName { get; set; }
-    public string? IfscCode { get; set; }
-    public string? AccountNumber { get; set; }
-    public string? DateOfMarriage { get; set; }
+    public string? ApplicantIFSC { get; set; }
+    public string? ApplicantAccountNumber { get; set; }
+    public string? FileCreationDate { get; set; }
 }

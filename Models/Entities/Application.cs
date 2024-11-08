@@ -1,4 +1,7 @@
-﻿namespace ReactMvcApp.Models.Entities;
+﻿using System;
+using System.Collections.Generic;
+
+namespace ReactMvcApp.Models.Entities;
 
 public partial class Application
 {

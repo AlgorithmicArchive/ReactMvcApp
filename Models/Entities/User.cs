@@ -36,4 +36,6 @@ public partial class User
     public virtual ICollection<ApplicationsHistory> ApplicationsHistories { get; set; } = new List<ApplicationsHistory>();
 
     public virtual ICollection<Certificate> Certificates { get; set; } = new List<Certificate>();
+
+    public virtual ICollection<OfficerDetail> OfficerDetails { get; set; } = new List<OfficerDetail>();
 }
