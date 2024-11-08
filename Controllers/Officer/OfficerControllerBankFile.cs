@@ -157,7 +157,6 @@ namespace ReactMvcApp.Controllers.Officer
             int serviceIdInt = Convert.ToInt32(serviceId);
             int districtIdInt = Convert.ToInt32(districtId);
             var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceIdInt);
-            string staticAmount = service!.Amount.ToString()!;
             int? userId = HttpContext.Session.GetInt32("UserId");
 
             if (userId == null) return Unauthorized();

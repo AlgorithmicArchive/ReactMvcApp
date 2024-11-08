@@ -1,10 +1,10 @@
 // Container.jsx
-import React from 'react';
-import { Box } from '@mui/material';
+import React from "react";
+import { Box } from "@mui/material";
 
 const Container = ({ children, maxWidth = "lg", ...props }) => {
   const maxWidthValue = {
-    xs: '100%',
+    xs: "100%",
     sm: 600,
     md: 900,
     lg: 1200,
@@ -14,9 +14,9 @@ const Container = ({ children, maxWidth = "lg", ...props }) => {
   return (
     <Box
       sx={{
-        width: '100%',
+        width: "100%",
         maxWidth: maxWidthValue,
-        margin: '0 auto',
+        margin: "0 auto",
         padding: 2,
       }}
       {...props}

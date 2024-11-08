@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -18,18 +19,18 @@ namespace ReactMvcApp.Controllers.Admin
         public override void OnActionExecuted(ActionExecutedContext context)
         {
             base.OnActionExecuted(context);
-            int? userId = HttpContext.Session.GetInt32("UserId");
-            var Admin = dbcontext.Users.FirstOrDefault(u => u.UserId == userId);
-            string AdminDesignation = dbcontext.OfficerDetails.FirstOrDefault(od=>od.OfficerId==userId)!.Role;
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var Admin = dbcontext.Users.FirstOrDefault(u => u.UserId.ToString() == userId);
+            string AdminDesignation = dbcontext.OfficerDetails.FirstOrDefault(od => od.OfficerId.ToString() == userId)!.Role;
             string Profile = Admin!.Profile;
             ViewData["AdminType"] = AdminDesignation;
             ViewData["UserName"] = Admin!.Username;
             ViewData["Profile"] = Profile == "" ? "/resources/dummyDocs/formImage.jpg" : Profile;
         }
 
-         public OfficerDetailsModal GetOfficerDetails()
+        public OfficerDetailsModal GetOfficerDetails()
         {
-            int? userId = HttpContext.Session.GetInt32("UserId");
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             // Fetch the officer details
             var parameter = new SqlParameter("@UserId", userId);
             var officer = dbcontext.Database
@@ -40,7 +41,7 @@ namespace ReactMvcApp.Controllers.Admin
             return officer!;
         }
 
-          [HttpGet]
+        [HttpGet]
         public IActionResult GetServiceList()
         {
             var officer = GetOfficerDetails();
@@ -56,31 +57,116 @@ namespace ReactMvcApp.Controllers.Admin
         }
 
         [HttpGet]
-        public IActionResult GetApplicationsCount(int? ServiceId = null, int? OfficerId = null, int? DistrictId = null)
+        public IActionResult GetApplicationsCount(int? ServiceId = null, int? DistrictId = null)
         {
-            var officer = GetOfficerDetails();
+            var officerDetails = GetOfficerDetails();
 
-            var authorities = dbcontext.WorkFlows.FirstOrDefault(wf => wf.ServiceId == ServiceId && wf.Role == officer!.Role);
+            var authorities = dbcontext.WorkFlows.FirstOrDefault(wf => wf.ServiceId == ServiceId && wf.Role == officerDetails!.Role);
 
-            var TakenBy = new SqlParameter("@TakenBy", officer!.UserId);
-            var serviceId = new SqlParameter("@ServiceId", ServiceId);
-            var districtId = new SqlParameter("@DistrictId",DistrictId);
+            var districts = dbcontext.Districts
+            .Where(d => dbcontext.OfficerDetails
+                .Any(od => (od.AccessLevel == "Division" && od.AccessCode == d.Division) ||
+                            od.AccessLevel == "State"))
+            .Select(d => new
+            {
+                label = d.DistrictName,
+                value = d.DistrictId
+            })
+            .ToList();
 
+
+            var services = dbcontext.Services
+                .Select(s => new
+                {
+                    label = s.ServiceName,
+                    value = s.ServiceId
+                })
+                .ToList();
+
+            // Populate lists directly
+            List<dynamic> Districts = districts.Cast<dynamic>().ToList();
+            List<dynamic> Services = services.Cast<dynamic>().ToList();
+
+
+            var serviceIdParam = new SqlParameter("@ServiceId", (object)ServiceId! ?? DBNull.Value);
+            var districtIdParam = new SqlParameter("@DistrictId", (object)DistrictId! ?? DBNull.Value);
+            var accessLevelParam = new SqlParameter("@AccessLevel", officerDetails.AccessLevel);
+            var accessCodeParam = new SqlParameter("@AccessCode", officerDetails.AccessCode);
+
+            // Execute the stored procedure with parameters
             var counts = dbcontext.Database
-                .SqlQuery<StatusCounts>($"EXEC GetStatusCount_SA")
+                .SqlQueryRaw<StatusCountsSA>(
+                    "EXEC GetStatusCount_SA @ServiceId, @DistrictId, @AccessLevel, @AccessCode",
+                     serviceIdParam, districtIdParam, accessLevelParam, accessCodeParam)
                 .AsEnumerable()
                 .FirstOrDefault();
 
             List<dynamic> countList = [];
             countList.Add(new { label = "Total", count = counts!.TotalApplications, bgColor = "#F0C38E", textColor = "#312C51" });
             countList.Add(new { label = "Pending", count = counts!.PendingCount, bgColor = "#FFC107", textColor = "#000000" });
-            countList.Add(new { label = "Sanctioned", count = counts!.SanctionCount,bgColor = "#81C784", textColor = "#1B5E20"  });
+            countList.Add(new { label = "Sanctioned", count = counts!.SanctionCount, bgColor = "#81C784", textColor = "#1B5E20" });
             countList.Add(new { label = "Disbursed", count = counts!.DisbursedCount, bgColor = "#4CAF50", textColor = "#FFFFFF" });
-            countList.Add(new { label = "Pending With Citizen", count = counts!.ReturnToEditCount,  bgColor = "#CE93D8", textColor = "#4A148C" });
-            countList.Add(new { label = "Rejected", count = counts!.RejectCount, bgColor = "#E0E0E0", textColor = "#212121"  });
+            countList.Add(new { label = "Pending With Citizen", count = counts!.ReturnToEditCount, bgColor = "#CE93D8", textColor = "#4A148C" });
+            countList.Add(new { label = "Rejected", count = counts!.RejectCount, bgColor = "#FF7043", textColor = "#B71C1C" });
 
-            return Json(new { countList });
+            return Json(new { countList, Districts, Services });
         }
+
+        public IActionResult GetApplicationDetails(int? ServiceId = null, int? DistrictId = null, string? ApplicationStatus = null, int page = 0, int size = 10)
+        {
+            var officerDetails = GetOfficerDetails();
+            var serviceIdParam = new SqlParameter("@ServiceId", ServiceId ?? (object)DBNull.Value);
+            var districtIdParam = new SqlParameter("@DistrictId", DistrictId ?? (object)DBNull.Value);
+            var accessLevelParam = new SqlParameter("@AccessLevel", officerDetails.AccessLevel ?? (object)DBNull.Value);
+            var accessCodeParam = new SqlParameter("@AccessCode", officerDetails.AccessCode);
+            var appStatusParam = new SqlParameter("@ApplicationStatus", ApplicationStatus ?? (object)DBNull.Value);
+
+            var applications = dbcontext.Database
+                .SqlQueryRaw<ApplicationDetailsSA>(
+                    "EXEC GetApplications_SA @ServiceId, @DistrictId, @AccessLevel, @AccessCode, @ApplicationStatus",
+                     serviceIdParam, districtIdParam, accessLevelParam, accessCodeParam, appStatusParam)
+                .AsEnumerable()
+                .Skip(page * size)
+                .Take(size)
+                .ToList();
+
+            var columns = new List<dynamic>
+            {
+                new { label = "S.No", value = "sno" },
+                new { label = "Reference Number", value = "referenceNumber" },
+                new { label = "Applicant Name", value = "applicantName" },
+                new { label = "Submission Date", value = "submissionDate" },
+                new { label = "Applied District", value = "appliedDistrict" },
+                new { label = "Applied Service", value = "appliedService" },
+                new { label = "Currently With", value = "currentlyWith" },
+                new { label = "Status", value = "status" }
+            };
+
+            List<dynamic> data = [];
+            int index = 1;
+
+            foreach (var item in applications)
+            {
+                var cell = new
+                {
+                    sno = index,
+                    referenceNumber = item.ReferenceNumber,
+                    applicantName = item.ApplicantName,
+                    submissionDate = item.SubmissionDate,
+                    appliedDistrict = item.AppliedDistrict,
+                    appliedService = item.AppliedService,
+                    currentlyWith = item.CurrentlyWith,
+                    status = item.Status
+                };
+                data.Add(cell);
+                index++;
+            }
+
+
+
+            return Json(new { columns, data, totalCount = data.Count });
+        }
+
 
         // public IActionResult Dashboard()
         // {

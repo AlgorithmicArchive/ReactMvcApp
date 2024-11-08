@@ -404,6 +404,9 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
         modelBuilder.Entity<Service>(entity =>
         {
+            entity.Property(e => e.BankDetails)
+                .IsUnicode(false)
+                .HasDefaultValue("{}");
             entity.Property(e => e.CreatedAt)
                 .HasMaxLength(50)
                 .IsUnicode(false);

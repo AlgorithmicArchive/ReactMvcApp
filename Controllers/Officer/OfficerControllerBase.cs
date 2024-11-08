@@ -8,8 +8,6 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using SendEmails;
 using ReactMvcApp.Models.Entities;
-using System.Text.RegularExpressions;
-using System.Globalization;
 using System.Security.Claims;
 
 namespace ReactMvcApp.Controllers.Officer

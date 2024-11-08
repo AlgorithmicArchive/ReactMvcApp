@@ -1,105 +1,324 @@
-import { Box, Container, Typography } from '@mui/material'
-import React, { useEffect, useState } from 'react'
-import StatusCountCard from '../../components/StatusCountCard';
-import axiosInstance from '../../axiosConfig';
-import Chart from 'react-apexcharts';
-import { useForm } from 'react-hook-form';
-import CustomSelectField from '../../components/form/CustomSelectField';
+import { Box } from "@mui/material";
+import React, { useEffect, useState } from "react";
+import StatusCountCard from "../../components/StatusCountCard";
+import axiosInstance from "../../axiosConfig";
+import Chart from "react-apexcharts";
+import { useForm } from "react-hook-form";
+import CustomSelectField from "../../components/form/CustomSelectField";
+import Container from "../../components/grid/Container";
+import Row from "../../components/grid/Row";
+import Col from "../../components/grid/Col";
+import CustomButton from "../../components/CustomButton";
+import BasicModal from "../../components/BasicModal";
 
 export default function AdminHome() {
-  const [countList,setCountList] = useState();
-  const [chartOptions, setChartOptions] = useState({
+  const [countList, setCountList] = useState([]);
+  const [districts, setDistircts] = useState([]);
+  const [services, setServices] = useState([]);
+  const [table, setTable] = useState(null);
+  const [open, setOpen] = useState(false);
+
+  const handleOpen = () => {
+    setOpen(true);
+  };
+  const handleClose = () => {
+    setOpen(false);
+  };
+
+  const [barChartOptions, setBarChartOptions] = useState({
     chart: {
-      type: 'bar',
-      id: 'applications-bar-chart',
+      type: "bar",
+      id: "applications-bar-chart",
+    },
+    plotOptions: {
+      bar: {
+        distributed: true,
+      },
     },
     xaxis: {
-      categories: ['Total','Pending', 'Sanctioned', 'Disbursed', 'Pending With Citizen', 'Rejected'], // Labels for each bar
+      categories: [
+        "Total",
+        "Pending",
+        "Sanctioned",
+        "Disbursed",
+        "Pending With Citizen",
+        "Rejected",
+      ],
       labels: {
         style: {
-          colors: ['#F0C38E','#FFC107', '#81C784', '#4CAF50', '#CE93D8', '#E0E0E0'], // Individual colors for each label
-          fontSize: '12px', // Optional: change font size if needed
-          fontWeight:'bold'
+          colors: [
+            "#F0C38E",
+            "#FFC107",
+            "#81C784",
+            "#4CAF50",
+            "#CE93D8",
+            "#FF7043",
+          ],
+          fontSize: "12px",
+          fontWeight: "bold",
         },
       },
     },
     yaxis: {
       labels: {
         style: {
-          colors: '#F0C38E', // Color for Y-axis labels (you can specify an array for multiple series)
-          fontSize: '12px', // Optional: change font size if needed
+          colors: "#F0C38E",
+          fontSize: "12px",
         },
       },
     },
-    colors: ["#F0C38E","#FFC107", "#81C784", "#4CAF50", "#CE93D8", "#E0E0E0"], // Bar colors
+    colors: ["#F0C38E", "#FFC107", "#81C784", "#4CAF50", "#CE93D8", "#FF7043"],
     title: {
-      text: 'Applications Overview',
-      align: 'center',
+      text: "Applications Overview",
+      align: "center",
       style: {
-        color: '#F0C38E', // Custom color for the title text
-        fontSize: '18px', // Optional: change font size if needed
+        color: "#F0C38E",
+        fontSize: "18px",
+      },
+    },
+    legend: {
+      show: false,
+    },
+  });
+
+  const [pieChartOptions, setPieChartOptions] = useState({
+    chart: {
+      type: "pie",
+      id: "applications-pie-chart",
+    },
+    labels: [
+      "Total",
+      "Pending",
+      "Sanctioned",
+      "Disbursed",
+      "Pending With Citizen",
+      "Rejected",
+    ],
+    colors: ["#F0C38E", "#FFC107", "#81C784", "#4CAF50", "#CE93D8", "#FF7043"], // Set colors for each pie segment, which also affects legend markers
+    title: {
+      text: "Applications Overview",
+      align: "center",
+      style: {
+        color: "#F0C38E",
+        fontSize: "18px",
+      },
+    },
+    legend: {
+      position: "bottom",
+      labels: {
+        colors: [
+          "#F0C38E",
+          "#FFC107",
+          "#81C784",
+          "#4CAF50",
+          "#CE93D8",
+          "#FF7043",
+        ], // Colors for each legend text
+        useSeriesColors: true, // Use the pie chart colors for each legend label
+      },
+      markers: {
+        width: 12,
+        height: 12,
+        radius: 12,
+        offsetX: -5,
       },
     },
   });
-  const [chartSeries, setChartSeries] = useState([]);
-  const {control,formState:{errors}} = useForm();
-  useEffect(()=>{
-    const fetchCount = async () =>{
-      const response = await axiosInstance.get("/Admin/GetApplicationsCount");
+
+  const [barChartSeries, setBarChartSeries] = useState([]);
+  const [pieChartSeries, setPieChartSeries] = useState([]);
+
+  const {
+    control,
+    formState: { errors },
+    handleSubmit,
+    getValues,
+  } = useForm();
+
+  const fetchCount = async (
+    ServiceId = null,
+    Officer = null,
+    DistrictId = null
+  ) => {
+    try {
+      const response = await axiosInstance.get("/Admin/GetApplicationsCount", {
+        params: { ServiceId, Officer, DistrictId },
+      });
       const data = response.data;
-      console.log(data);
-      setCountList(response.data.countList);
-      setChartSeries([
+      setCountList(data.countList);
+      setDistircts(data.districts);
+      setServices(data.services);
+      setBarChartSeries([
         {
-          name: 'Applications',
-          data: [data.countList[0].count, data.countList[1].count, data.countList[2].count, data.countList[3].count, data.countList[4].count], // Map the fetched data
+          name: "Applications",
+          data: data.countList.map((item) => item.count),
         },
       ]);
+      setPieChartSeries(data.countList.map((item) => item.count));
+    } catch (error) {
+      console.error("Failed to fetch count data:", error);
     }
+  };
+  const handleRecords = (data) => {
+    fetchCount(data.service, data.officer, data.district);
+  };
+
+  useEffect(() => {
     fetchCount();
-  },[]);
+  }, []);
+
+  const handleCardClick = (statusName) => {
+    const applicationStatus =
+      statusName == "Total"
+        ? null
+        : statusName == "Pending With Citizen"
+        ? "ReturnToEdit"
+        : statusName;
+    const district = getValues("district") == "" ? null : getValues("district");
+    const service = getValues("service") == "" ? null : getValues("service");
+    setTable({
+      url: "/Admin/GetApplicationDetails",
+      params: {
+        ServiceId: service,
+        DistrictId: district,
+        applicationStatus,
+      },
+    });
+    handleOpen();
+  };
+
   return (
-    <Box  sx={{ width: '100%', height: '130vh', display: 'flex', justifyContent: 'center', alignItems: 'center',flexDirection:'column',gap:5,paddingRight:5,paddingLeft:5 }}>
-      <Box sx={{width:'60%',display:'flex',justifyContent:'space-evenly',backgroundColor:'primary.main',padding:3,borderRadius:3}}>
-      <CustomSelectField
-          label={'Select District'}
+    <Box
+      sx={{
+        width: "100%",
+        height: "150vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        flexDirection: "column",
+        gap: 5,
+        paddingRight: 5,
+        paddingLeft: 5,
+        paddingTop: 10,
+      }}
+    >
+      <Box
+        sx={{
+          width: "60%",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "primary.main",
+          borderRadius: 3,
+          padding: 3,
+          gap: 2,
+        }}
+      >
+        <CustomSelectField
+          label={"Select District"}
           name="district"
           control={control}
-          options={[]}
+          options={districts}
           errors={errors}
         />
         <CustomSelectField
-          label={'Select Service'}
+          label={"Select Service"}
           name="service"
           control={control}
-          options={[]}
+          options={services}
           errors={errors}
         />
-        <CustomSelectField
-          label={'Select Officer'}
-          name="officer"
-          control={control}
-          options={[]}
-          errors={errors}
+        <CustomButton
+          text="Get Records"
+          type="submit"
+          bgColor="background.paper"
+          color="primary.main"
+          onClick={handleSubmit(handleRecords)}
         />
       </Box>
-      <Box sx={{width:'80%',display: 'flex',justifyContent:'center',margin:'0 auto' }}>
-        {countList && countList.map((item, index) => (
-          <StatusCountCard
-            key={index}
-            statusName={item.label}
-            count={item.count}
-            bgColor={item.bgColor}
-            textColor={item.textColor}
-            onClick={() => handleCardClick(item.label)} // Pass the onClick handler
-          />
-        ))}
+
+      <Box
+        sx={{
+          width: "80%",
+          display: "flex",
+          justifyContent: "center",
+          margin: "0 auto",
+        }}
+      >
+        <Row>
+          {countList &&
+            countList.map((item, index) => (
+              <Col key={index} md={4} xs={12}>
+                <StatusCountCard
+                  statusName={item.label}
+                  count={item.count}
+                  bgColor={item.bgColor}
+                  textColor={item.textColor}
+                  onClick={() => handleCardClick(item.label)}
+                />
+              </Col>
+            ))}
+        </Row>
       </Box>
-      <Box sx={{border:'2px solid',borderColor:'primary.main',marginTop:10,padding:3,borderRadius:3}}>
-        {chartSeries.length > 0 && (
-          <Chart options={chartOptions} series={chartSeries} type='bar' width="500" />
-        )}
+
+      <Box
+        sx={{
+          display: "flex",
+          width: "100%",
+          height: "max-content",
+          gap: 5,
+          padding: 0,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Box
+          sx={{
+            border: "2px solid",
+            borderColor: "primary.main",
+            padding: 3,
+            borderRadius: 3,
+            backgroundColor: "background.paper",
+          }}
+        >
+          {barChartSeries.length > 0 && (
+            <Chart
+              options={barChartOptions}
+              series={barChartSeries}
+              type="bar"
+              width="600"
+            />
+          )}
+        </Box>
+        <Box
+          sx={{
+            border: "2px solid",
+            borderColor: "primary.main",
+            padding: 3,
+            borderRadius: 3,
+            backgroundColor: "background.paper",
+          }}
+        >
+          {pieChartSeries.length > 0 && (
+            <Chart
+              options={pieChartOptions}
+              series={pieChartSeries}
+              type="pie"
+              width="500"
+            />
+          )}
+        </Box>
       </Box>
+
+      <BasicModal
+        open={open}
+        handleClose={handleClose}
+        Title={"Applications"}
+        table={table}
+        pdf={null}
+        handleActionButton={() => {}}
+        buttonText=""
+      />
     </Box>
-  )
+  );
 }

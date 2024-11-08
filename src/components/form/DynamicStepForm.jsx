@@ -19,6 +19,7 @@ import Col from "../grid/Col";
 import Container from "../grid/Container";
 import { useNavigate } from "react-router-dom";
 import { dummyDataList, insertDummyData } from "../../assets/dummyData";
+import LoadingSpinner from "../LoadingSpinner";
 
 const DynamicStepForm = ({ formConfig, serviceId }) => {
   const {
@@ -41,6 +42,7 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
   const [blockOptions, setBlockOptions] = useState([]);
   const [appliedDistrict, setAppliedDistrict] = useState(0);
   const [selectedDistrict, setSelectedDistrict] = useState(0);
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
   const sameAsPresent = watch("SameAsPresent");
@@ -113,7 +115,7 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
   const onSubmit = async (data) => {
     try {
       setIsSubmitting(true);
-
+      setLoading(true);
       const formData = new FormData();
       const serviceSpecific = {};
 
@@ -180,6 +182,7 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
       console.log(error);
       alert("An error occurred while submitting the form. Please try again.");
     } finally {
+      setLoading(false);
       setIsSubmitting(false);
     }
   };
@@ -328,6 +331,7 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <Box>
+        {loading && <LoadingSpinner />}
         <Typography
           variant="h4"
           sx={{ color: "background.paper", mb: 5, textAlign: "center" }}

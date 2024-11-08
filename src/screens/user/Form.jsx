@@ -15,6 +15,7 @@ export default function Form() {
       try {
         const { ServiceId } = location.state || {};
         setServiceId(ServiceId);
+        setFormElements([]);
         const result = await GetServiceContent(ServiceId);
         if (result && result.status) {
           setServiceName(result.serviceName);

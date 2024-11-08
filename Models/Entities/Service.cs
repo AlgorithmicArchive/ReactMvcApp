@@ -9,15 +9,15 @@ public partial class Service
 
     public string ServiceName { get; set; } = null!;
 
-    public string? NameShort { get; set; }
+    public string NameShort { get; set; } = null!;
 
     public string Department { get; set; } = null!;
 
-    public string? FormElement { get; set; }
+    public string FormElement { get; set; } = null!;
 
-    public int? Amount { get; set; }
+    public string BankDetails { get; set; } = null!;
 
-    public string? OfficerEditableField { get; set; }
+    public string OfficerEditableField { get; set; } = null!;
 
     public string CreatedAt { get; set; } = null!;
 

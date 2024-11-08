@@ -182,11 +182,11 @@ const Navbar = () => {
               >
                 <MenuItem
                   onClick={() => {
-                    navigate("/profile");
+                    navigate("/settings");
                     handleProfileMenuClose(); // Close menu after selection
                   }}
                 >
-                  Profile
+                  Settings
                 </MenuItem>
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>
               </Menu>
@@ -272,11 +272,11 @@ const Navbar = () => {
               >
                 <MenuItem
                   onClick={() => {
-                    navigate("/profile");
+                    navigate("/settings");
                     handleProfileMenuClose(); // Close menu after selection
                   }}
                 >
-                  Profile
+                  Settings
                 </MenuItem>
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>
               </Menu>
@@ -305,17 +305,9 @@ const Navbar = () => {
               <Button
                 color="inherit"
                 sx={{ fontWeight: "bold" }}
-                component={Link}
-                to="/admin/manageUsers"
-              >
-                Manage Users
-              </Button>
-              <Button
-                color="inherit"
-                sx={{ fontWeight: "bold" }}
                 onClick={handleStatusMenuClick}
               >
-                Admin Actions
+                Reports
               </Button>
               <Menu
                 anchorEl={statusAnchorEl}
@@ -324,19 +316,19 @@ const Navbar = () => {
               >
                 <MenuItem
                   onClick={() => {
-                    navigate("/admin/reports");
+                    navigate("/admin/individual");
                     handleStatusMenuClose(); // Close menu after selection
                   }}
                 >
-                  View Reports
+                  Individual Report
                 </MenuItem>
                 <MenuItem
                   onClick={() => {
-                    navigate("/admin/settings");
+                    navigate("/admin/history");
                     handleStatusMenuClose(); // Close menu after selection
                   }}
                 >
-                  Settings
+                  History
                 </MenuItem>
               </Menu>
             </Box>
