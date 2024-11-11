@@ -7,9 +7,7 @@ import CustomButton from "./CustomButton";
 const ServiceSelectionForm = ({ services, errors, onServiceSelect }) => {
   const { control, handleSubmit } = useForm();
 
-  // Handle form submission and pass selected service to parent component
   const onSubmit = (data) => {
-    console.log("Service Component", data);
     onServiceSelect(data); // Pass the selected service ID to OfficerHome
   };
 
@@ -19,7 +17,6 @@ const ServiceSelectionForm = ({ services, errors, onServiceSelect }) => {
         backgroundColor: "primary.main",
         padding: 1,
         borderRadius: 5,
-        width: "50%",
         margin: "0 auto",
         display: "flex",
         gap: 10,

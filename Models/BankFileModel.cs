@@ -1,6 +1,6 @@
 public class BankFileData
 {
-    public int ReferenceNumber { get; set; }
+    public string? ReferenceNumber { get; set; }
     public string? UniqueId { get; set; }
     public string? DepartmentName { get; set; }
     public string? DebitBankName { get; set; }

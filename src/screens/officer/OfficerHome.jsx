@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Box, Container, Typography } from "@mui/material";
+import { Box, Container, Grid2, Typography } from "@mui/material";
 import axiosInstance from "../../axiosConfig";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import CustomTable from "../../components/CustomTable";
-import { fetchData } from "../../assets/fetch";
+import { fetchData, fetchServiceList } from "../../assets/fetch";
 import ServiceSelectionForm from "../../components/ServiceSelectionForm";
 import StatusCountCard from "../../components/StatusCountCard";
 import CustomSelectField from "../../components/form/CustomSelectField";
@@ -43,20 +43,7 @@ export default function OfficerHome() {
 
   // Fetch service list on mount
   useEffect(() => {
-    const fetchServiceList = async () => {
-      try {
-        const response = await axiosInstance.get("/Officer/GetServiceList");
-        const serviceList = response.data.serviceList.map((item) => ({
-          label: item.serviceName,
-          value: item.serviceId,
-        }));
-        setServices(serviceList);
-      } catch (error) {
-        console.error("Failed to fetch service list:", error);
-      }
-    };
-
-    fetchServiceList();
+    fetchServiceList(setServices);
   }, []);
 
   const handleApprove = async (applicationId, ids) => {
@@ -114,6 +101,9 @@ export default function OfficerHome() {
           params: { ServiceId: data.Service },
         }
       );
+      const countList = response.data.countList;
+      if ((countList.length = 3))
+        countList.push({ label: "", bgColor: "transparent" });
       setCountList(response.data.countList);
       setCanSanction(response.data.canSanction);
     } catch (error) {
@@ -171,25 +161,30 @@ export default function OfficerHome() {
   }, [transferAction, serviceId]);
 
   const handleCardClick = async (statusName) => {
-    setCurrentList(statusName);
-    if (statusName === "Pending" && canSanction) {
-      const response = await axiosInstance.get("/Officer/GetApprovePoolList", {
-        params: { serviceId },
+    if (statusName != "") {
+      setCurrentList(statusName);
+      if (statusName === "Pending" && canSanction) {
+        const response = await axiosInstance.get(
+          "/Officer/GetApprovePoolList",
+          {
+            params: { serviceId },
+          }
+        );
+        setPendingList(response.data.pendingList);
+        setApproveList(response.data.approveList);
+        setPoolList(response.data.poolList);
+        setTransferOptions(response.data.transferOptions[0]);
+      }
+      setTable({
+        url: "/Officer/GetApplications",
+        params: {
+          ServiceId: serviceId,
+          type:
+            statusName == "Pending With Citizen" ? "ReturnToEdit" : statusName,
+        },
+        key: Date.now(),
       });
-      setPendingList(response.data.pendingList);
-      setApproveList(response.data.approveList);
-      setPoolList(response.data.poolList);
-      setTransferOptions(response.data.transferOptions[0]);
     }
-    setTable({
-      url: "/Officer/GetApplications",
-      params: {
-        ServiceId: serviceId,
-        type:
-          statusName == "Pending With Citizen" ? "ReturnToEdit" : statusName,
-      },
-      key: Date.now(),
-    });
   };
 
   const handleTransfer = async (data) => {
@@ -277,14 +272,16 @@ export default function OfficerHome() {
   };
 
   return (
-    <Container
+    <Box
       sx={{
-        width: "100vw",
-        height: "100vh",
+        width: "100%",
+        height: "100%",
         display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
         flexDirection: "column",
-        gap: 2,
         marginTop: "12vh",
+        marginBottom: "5vh",
       }}
     >
       <ServiceSelectionForm
@@ -297,20 +294,24 @@ export default function OfficerHome() {
           display: "flex",
           justifyContent: "space-evenly",
           marginTop: "50px",
+          width: "100%",
         }}
       >
-        {countList.map((item, index) => (
-          <StatusCountCard
-            key={index}
-            statusName={item.label}
-            count={item.count}
-            bgColor={item.bgColor}
-            textColor={item.textColor}
-            onClick={() => handleCardClick(item.label)}
-          />
-        ))}
+        <Grid2 container spacing={0}>
+          {countList.map((item, index) => (
+            <Grid2 key={index} size={{ md: 4, xs: 12 }}>
+              <StatusCountCard
+                statusName={item.label}
+                count={item.count}
+                bgColor={item.bgColor}
+                textColor={item.textColor}
+                onClick={() => handleCardClick(item.label)}
+              />
+            </Grid2>
+          ))}
+        </Grid2>
       </Box>
-      <Box sx={{ marginTop: 5 }}>
+      <Box sx={{ width: "80%" }}>
         {canSanction &&
           (pendingList.length > 0 ||
             approveList.length > 0 ||
@@ -415,7 +416,12 @@ export default function OfficerHome() {
                 state: { applicationId: params[0] },
               })
             }
-            showCheckbox={canSanction}
+            showCheckbox={
+              canSanction &&
+              (currentList == "Pending" ||
+                currentList == "Approve" ||
+                currentList == "Pool")
+            }
             fieldToReturn="referenceNumber"
             onSelectionChange={handleSelectionChange}
           />
@@ -430,6 +436,6 @@ export default function OfficerHome() {
         handleActionButton={handleActionButton}
         buttonText={modalButtonText}
       />
-    </Container>
+    </Box>
   );
 }

@@ -8,6 +8,7 @@ using CsvHelper.Configuration;
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
+using System.Security.Claims;
 
 namespace ReactMvcApp.Controllers.Officer
 {
@@ -111,6 +112,7 @@ namespace ReactMvcApp.Controllers.Officer
 
         }
 
+
         // private async Task UpdateApplicationHistoryAsync(IEnumerable<BankFileModel> bankFileData, string officer, string fileName)
         // {
         //     // Get all the ApplicationIds from the bankFileData
@@ -157,18 +159,18 @@ namespace ReactMvcApp.Controllers.Officer
             int serviceIdInt = Convert.ToInt32(serviceId);
             int districtIdInt = Convert.ToInt32(districtId);
             var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceIdInt);
-            int? userId = HttpContext.Session.GetInt32("UserId");
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (userId == null) return Unauthorized();
 
-            var officer = await dbcontext.Users.FindAsync(userId);
+            var officer = await dbcontext.Users.FindAsync(Convert.ToInt32(userId));
             if (officer == null) return NotFound();
 
             var details = GetOfficerDetails();
             string officerDesignation = details?.Role!;
             int accessCode = Convert.ToInt32(details?.AccessCode);
 
-            var recordsCount = await dbcontext.ApplicationsCounts
+            var applicationsCount = await dbcontext.ApplicationsCounts
                 .FirstOrDefaultAsync(rc => rc.ServiceId == serviceIdInt && rc.OfficerId == details!.UserId && rc.Status == "Sanctioned");
 
             var bankFile = await dbcontext.BankFiles
@@ -177,7 +179,6 @@ namespace ReactMvcApp.Controllers.Officer
             var district = await dbcontext.Districts
                 .FirstOrDefaultAsync(d => d.DistrictId == districtIdInt);
 
-            if (district == null) return NotFound("District not found");
 
             // Ensure the exports directory exists
             string webRootPath = _webHostEnvironment.WebRootPath;
@@ -185,43 +186,16 @@ namespace ReactMvcApp.Controllers.Officer
 
             Directory.CreateDirectory(exportsFolder);
 
-            string fileName = bankFile?.FileName ?? $"{district.DistrictShort}_BankFile_{DateTime.Now:ddMMMyyyyhhmm}.csv";
+            string fileName = bankFile?.FileName ?? $"{district!.DistrictShort}_BankFile_{DateTime.Now:ddMMMyyyyhhmm}.csv";
             string filePath = Path.Combine(exportsFolder, fileName);
 
             // Notify the start of the process
             await hubContext.Clients.All.SendAsync("ReceiveProgress", 0);
 
-            string DistrictShort = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == districtIdInt)!.DistrictShort;
-            string MonthShort = DateTime.Now.ToString("MMMyyyy").ToUpper();
 
-            var uniqueId = dbcontext.UniqueIds.FirstOrDefault(u => u.District == DistrictShort && u.Month == MonthShort);
-
-            int count;
-
-            if (uniqueId != null)
-            {
-                uniqueId.Counter++;
-                count = uniqueId.Counter;
-            }
-            else
-            {
-                count = 1;
-                uniqueId = new UniqueId
-                {
-                    District = DistrictShort,
-                    Month = MonthShort,
-                    Counter = count
-                };
-                dbcontext.UniqueIds.Add(uniqueId);
-            }
-
-            await dbcontext.SaveChangesAsync();
-            string formattedNumber = count.ToString("D12");
-
-            string UniqueID = DistrictShort + MonthShort + formattedNumber;
             // Fetch data using the stored procedure
 
-            var bankFileData = dbcontext.Database.SqlQuery<BankFileData>($"").AsEnumerable().ToList();
+            var bankFileData = dbcontext.Database.SqlQuery<BankFileData>($"EXEC GetBankFileData @ServiceId = {new SqlParameter("@ServiceId", serviceIdInt)}, @FileCreationDate = {new SqlParameter("@FileCreationDate", DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"))}, @DistrictId = {new SqlParameter("@DistrictId", districtId)}").AsEnumerable().ToList();
 
             int totalRecords = bankFileData.Count;
             int batchSize = 1000; // Adjust the batch size as needed
@@ -248,6 +222,9 @@ namespace ReactMvcApp.Controllers.Officer
             // Notify completion
             await hubContext.Clients.All.SendAsync("ReceiveProgress", 100);
 
+            var sanctionCount = dbcontext.ApplicationsCounts.FirstOrDefault(ac => ac.ServiceId == serviceIdInt && ac.OfficerId.ToString() == userId && ac.Status == "Sanctioned");
+            sanctionCount!.Count -= totalRecords;
+
             if (bankFile == null)
             {
                 var newBankFile = new BankFile
@@ -273,6 +250,84 @@ namespace ReactMvcApp.Controllers.Officer
             return Json(new { filePath = $"/exports/{fileName}" });
         }
 
+        public IActionResult GetApplicationsForBank(string ServiceId, string DistrictId)
+        {
+            int serviceId = Convert.ToInt32(ServiceId);
+            int districtId = Convert.ToInt32(DistrictId);
+            _logger.LogInformation($"District Id: {districtId.GetType()} Service ID: {serviceId.GetType()}");
+
+            // Fetch applications with pagination applied directly
+            var applications = dbcontext.Applications
+                .FromSqlRaw("EXEC GetApplicationsForBank @DistrictId, @ServiceId",
+                            new SqlParameter("@DistrictId", districtId),
+                            new SqlParameter("@ServiceId", serviceId))
+                .ToList();
+
+            // Total count of applications
+            int totalCount = applications.Count;
+
+            // Apply pagination to the list
+            applications = applications.Skip(0).Take(10).ToList();
+
+            // Check if bank file is sent
+            var bankFile = dbcontext.BankFiles.FirstOrDefault(bf => bf.ServiceId == serviceId && bf.DistrictId == districtId);
+            var isBankFileSent = bankFile?.FileSent;
+
+            // Define columns
+            var columns = new List<dynamic>
+            {
+                new { label = "S.No", value = "sno" },
+                new { label = "Reference Number", value = "referenceNumber" },
+                new { label = "Applicant Name", value = "applicantName" },
+                new { label = "Submission Date", value = "submissionDate" },
+            };
+
+            // Track added columns to avoid duplicates
+            var addedColumns = new HashSet<string>();
+
+            // Initialize data list
+            List<dynamic> data = [];
+            int index = 1;
+
+            foreach (var item in applications)
+            {
+                // Deserialize ServiceSpecific JSON
+                var serviceSpecific = JsonConvert.DeserializeObject<Dictionary<string, string>>(item.ServiceSpecific);
+
+                // Initialize cell with predefined columns
+                var cell = new List<KeyValuePair<string, object>>
+                {
+                    new("sno", index),
+                    new("referenceNumber", item.ApplicationId),
+                    new("applicantName", item.ApplicantName),
+                    new("submissionDate", item.SubmissionDate),
+                };
+
+                // Add dynamic columns based on ServiceSpecific data
+                foreach (var kvp in serviceSpecific!)
+                {
+                    string key = kvp.Key;
+                    string value = kvp.Value;
+                    bool isDigitOnly = value.All(char.IsDigit);
+
+                    if (!isDigitOnly && addedColumns.Add(key.ToLower())) // Add column only if it's not already added
+                    {
+                        columns.Insert(3, new { label = key, value = key.ToLower() });
+                    }
+
+                    // Add cell data
+                    cell.Insert(3, new KeyValuePair<string, object>(key.ToLower(), value));
+                }
+
+                // Convert cell list to dictionary and add to data
+                var cellDictionary = cell.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                data.Add(cellDictionary);
+                index++;
+            }
+
+            // Return the JSON result
+            return Json(new { data, columns, totalCount, isBankFileSent });
+        }
 
 
         public IActionResult IsBankFile(string serviceId, string districtId)

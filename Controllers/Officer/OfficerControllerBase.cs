@@ -264,7 +264,7 @@ namespace ReactMvcApp.Controllers.Officer
                 }
             }
 
-            return Json(new { serviceId, generalDetails, presentAddressDetails, permanentAddressDetails, BankDetails, documents, actionOptions, editList, officerEditableField, currentOfficer = permissions.Role });
+            return Json(new { serviceId, generalDetails, presentAddressDetails, permanentAddressDetails, BankDetails, documents, actionOptions, editList, officerEditableField, currentOfficer = permissions.Role, canSanction = permissions.CanSanction });
         }
 
         [HttpPost]

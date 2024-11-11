@@ -1,11 +1,11 @@
-import React from 'react';
-import { Outlet } from 'react-router-dom';
-import { Container } from '@mui/material';
+import React from "react";
+import { Outlet } from "react-router-dom";
+import { Box } from "@mui/material";
 
 export default function OfficerLayout() {
   return (
-    <Container >
+    <Box>
       <Outlet />
-    </Container>
+    </Box>
   );
 }

@@ -93,7 +93,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("CitizenPolicy", policy => policy.RequireRole("Citizen"))
     .AddPolicy("OfficerPolicy", policy => policy.RequireRole("Officer"))
-    .AddPolicy("AdminPolicy",policy=>policy.RequireRole("Admin"));
+    .AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin"));
 
 
 builder.Services.AddTransient<IEmailSender, EmailSender>();
@@ -142,6 +142,6 @@ app.MapControllerRoute(
 
 
 // Add this line to handle fallback routing for React
-app.MapFallbackToController("Index","Home");
+app.MapFallbackToController("Index", "Home");
 
 app.Run();

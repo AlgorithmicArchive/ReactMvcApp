@@ -1,12 +1,10 @@
-import { Box } from "@mui/material";
+import { Box, Grid2 } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import StatusCountCard from "../../components/StatusCountCard";
 import axiosInstance from "../../axiosConfig";
 import Chart from "react-apexcharts";
 import { useForm } from "react-hook-form";
 import CustomSelectField from "../../components/form/CustomSelectField";
-import Container from "../../components/grid/Container";
-import Row from "../../components/grid/Row";
 import Col from "../../components/grid/Col";
 import CustomButton from "../../components/CustomButton";
 import BasicModal from "../../components/BasicModal";
@@ -245,10 +243,10 @@ export default function AdminHome() {
           margin: "0 auto",
         }}
       >
-        <Row>
+        <Grid2 container spacing={0}>
           {countList &&
             countList.map((item, index) => (
-              <Col key={index} md={4} xs={12}>
+              <Grid2 size={{ md: 4, xs: 12 }}>
                 <StatusCountCard
                   statusName={item.label}
                   count={item.count}
@@ -256,9 +254,9 @@ export default function AdminHome() {
                   textColor={item.textColor}
                   onClick={() => handleCardClick(item.label)}
                 />
-              </Col>
+              </Grid2>
             ))}
-        </Row>
+        </Grid2>
       </Box>
 
       <Box
@@ -272,42 +270,56 @@ export default function AdminHome() {
           alignItems: "center",
         }}
       >
-        <Box
+        <Grid2
+          container
+          spacing={5}
           sx={{
-            border: "2px solid",
-            borderColor: "primary.main",
-            padding: 3,
-            borderRadius: 3,
-            backgroundColor: "background.paper",
+            justifyContent: "center",
+            alignItems: "center",
           }}
+          width={"100%"}
         >
-          {barChartSeries.length > 0 && (
-            <Chart
-              options={barChartOptions}
-              series={barChartSeries}
-              type="bar"
-              width="600"
-            />
-          )}
-        </Box>
-        <Box
-          sx={{
-            border: "2px solid",
-            borderColor: "primary.main",
-            padding: 3,
-            borderRadius: 3,
-            backgroundColor: "background.paper",
-          }}
-        >
-          {pieChartSeries.length > 0 && (
-            <Chart
-              options={pieChartOptions}
-              series={pieChartSeries}
-              type="pie"
-              width="500"
-            />
-          )}
-        </Box>
+          <Grid2 spacing={{ xs: 12, md: 6 }} width={"40%"}>
+            <Box
+              sx={{
+                border: "2px solid",
+                borderColor: "primary.main",
+                padding: 3,
+                borderRadius: 3,
+                backgroundColor: "background.paper",
+              }}
+            >
+              {barChartSeries.length > 0 && (
+                <Chart
+                  options={barChartOptions}
+                  series={barChartSeries}
+                  type="bar"
+                  width="100%"
+                />
+              )}
+            </Box>
+          </Grid2>
+          <Grid2 spacing={{ xs: 12, md: 6 }} width={"40%"}>
+            <Box
+              sx={{
+                border: "2px solid",
+                borderColor: "primary.main",
+                padding: 3,
+                borderRadius: 3,
+                backgroundColor: "background.paper",
+              }}
+            >
+              {pieChartSeries.length > 0 && (
+                <Chart
+                  options={pieChartOptions}
+                  series={pieChartSeries}
+                  type="pie"
+                  width="100%"
+                />
+              )}
+            </Box>
+          </Grid2>
+        </Grid2>
       </Box>
 
       <BasicModal

@@ -111,7 +111,7 @@ namespace ReactMvcApp.Controllers
             SqlParameter password = !string.IsNullOrEmpty(form["password"]) ? new SqlParameter("Password", form["password"].ToString()) : null!;
 
             var user = _dbContext.Users.FromSqlRaw("EXEC UserLogin @Username,@Password", username, password).AsEnumerable().FirstOrDefault();
-
+            string designation = "";
             if (user != null)
             {
                 if (!user.IsEmailValid)
@@ -129,7 +129,7 @@ namespace ReactMvcApp.Controllers
                 // Include designation if applicable
                 if (user.UserType == "Officer")
                 {
-                    string designation = _dbContext.OfficerDetails.FirstOrDefault(o => o.OfficerId == user.UserId)?.Role!;
+                    designation = _dbContext.OfficerDetails.FirstOrDefault(o => o.OfficerId == user.UserId)?.Role!;
                     if (!string.IsNullOrEmpty(designation))
                     {
                         claims.Add(new Claim("Designation", designation));
@@ -154,7 +154,7 @@ namespace ReactMvcApp.Controllers
                 var tokenString = tokenHandler.WriteToken(token);
 
                 // Return the token and other required details to the client
-                return Json(new { status = true, token = tokenString, userType = user.UserType, profile = user.Profile, username = form["username"] });
+                return Json(new { status = true, token = tokenString, userType = user.UserType, profile = user.Profile, username = form["username"], designation });
             }
             else
             {

@@ -17,7 +17,7 @@ const StatusCountCard = ({
         margin: "10px",
         padding: "10px",
         backgroundColor: bgColor,
-        cursor: "pointer",
+        cursor: statusName != "" ? "pointer" : "default",
         borderRadius: 5,
       }}
       onClick={onClick} // Attach onClick handler

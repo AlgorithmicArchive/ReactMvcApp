@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import {
   AppBar,
   Toolbar,
@@ -23,11 +23,20 @@ const Navbar = () => {
     setProfile,
     username,
     profile,
+    designation,
   } = useContext(UserContext);
 
   // Separate anchor states for each menu
   const [statusAnchorEl, setStatusAnchorEl] = useState(null); // Application status anchor
   const [profileAnchorEl, setProfileAnchorEl] = useState(null); // Profile anchor
+  const [manageAnchorEl, setManageAnchorEl] = useState(null); // Manage Users anchor
+
+  // Reset anchor elements when userType changes to prevent invalid anchorEl
+  useEffect(() => {
+    setStatusAnchorEl(null);
+    setProfileAnchorEl(null);
+    setManageAnchorEl(null); // Reset Manage Users menu
+  }, [userType]);
 
   // Handle Logout
   const handleLogout = () => {
@@ -55,6 +64,15 @@ const Navbar = () => {
 
   const handleProfileMenuClose = () => {
     setProfileAnchorEl(null);
+  };
+
+  // Handlers for Manage Users menu
+  const handleManageMenuClick = (event) => {
+    setManageAnchorEl(event.currentTarget);
+  };
+
+  const handleManageMenuClose = () => {
+    setManageAnchorEl(null);
   };
 
   return (
@@ -173,7 +191,10 @@ const Navbar = () => {
                 {username}
               </Typography>
               <IconButton onClick={handleProfileMenuClick} sx={{ p: 0 }}>
-                <Avatar alt={username} src={profile || "/default-avatar.png"} />
+                <Avatar
+                  alt={String(username)}
+                  src={profile || "/default-avatar.png"}
+                />
               </IconButton>
               <Menu
                 anchorEl={profileAnchorEl}
@@ -220,37 +241,71 @@ const Navbar = () => {
               >
                 Reports
               </Button>
-              <Button
-                color="inherit"
-                sx={{ fontWeight: "bold" }}
-                onClick={handleStatusMenuClick}
-              >
-                DSC Management
-              </Button>
-              <Menu
-                anchorEl={statusAnchorEl}
-                open={Boolean(statusAnchorEl)}
-                onClose={handleStatusMenuClose}
-              >
-                <MenuItem
-                  onClick={() => {
-                    navigate("/officer/registerDSC");
-                    handleStatusMenuClose(); // Close menu after selection
-                  }}
-                >
-                  Register DSC
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    navigate("/officer/unregisterDSC");
-                    handleStatusMenuClose(); // Close menu after selection
-                  }}
-                >
-                  Unregister DSC
-                </MenuItem>
-              </Menu>
-            </Box>
+              {/* New "Manage Bank File*/}
+              {designation == "Director Finance" && (
+                <>
+                  <Button
+                    color="inherit"
+                    sx={{ fontWeight: "bold" }}
+                    onClick={handleManageMenuClick}
+                  >
+                    Manage Bank File
+                  </Button>
+                  <Menu
+                    anchorEl={manageAnchorEl}
+                    open={Boolean(manageAnchorEl)}
+                    onClose={handleManageMenuClose}
+                  >
+                    <MenuItem
+                      onClick={() => {
+                        navigate("/officer/bankFile");
+                        handleManageMenuClose(); // Close menu after selection
+                      }}
+                    >
+                      Create Bank File
+                    </MenuItem>
+                    <MenuItem
+                      onClick={() => {
+                        navigate("/officer/responseFile");
+                        handleManageMenuClose(); // Close menu after selection
+                      }}
+                    >
+                      Check Response File
+                    </MenuItem>
+                  </Menu>
 
+                  <Button
+                    color="inherit"
+                    sx={{ fontWeight: "bold" }}
+                    onClick={handleStatusMenuClick}
+                  >
+                    DSC Management
+                  </Button>
+                  <Menu
+                    anchorEl={statusAnchorEl}
+                    open={Boolean(statusAnchorEl)}
+                    onClose={handleStatusMenuClose}
+                  >
+                    <MenuItem
+                      onClick={() => {
+                        navigate("/officer/registerDSC");
+                        handleStatusMenuClose(); // Close menu after selection
+                      }}
+                    >
+                      Register DSC
+                    </MenuItem>
+                    <MenuItem
+                      onClick={() => {
+                        navigate("/officer/unregisterDSC");
+                        handleStatusMenuClose(); // Close menu after selection
+                      }}
+                    >
+                      Unregister DSC
+                    </MenuItem>
+                  </Menu>
+                </>
+              )}
+            </Box>
             <Box
               sx={{
                 marginLeft: "auto",
@@ -263,7 +318,10 @@ const Navbar = () => {
                 {username}
               </Typography>
               <IconButton onClick={handleProfileMenuClick} sx={{ p: 0 }}>
-                <Avatar alt={username} src={profile || "/default-avatar.png"} />
+                <Avatar
+                  alt={String(username)}
+                  src={profile || "/default-avatar.png"}
+                />
               </IconButton>
               <Menu
                 anchorEl={profileAnchorEl}
@@ -345,7 +403,10 @@ const Navbar = () => {
                 {username}
               </Typography>
               <IconButton onClick={handleProfileMenuClick} sx={{ p: 0 }}>
-                <Avatar alt={username} src={profile || "/default-avatar.png"} />
+                <Avatar
+                  alt={String(username)}
+                  src={profile || "/default-avatar.png"}
+                />
               </IconButton>
               <Menu
                 anchorEl={profileAnchorEl}

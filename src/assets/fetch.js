@@ -83,6 +83,19 @@ export const fetchDistricts = async (setDistrictOptions) => {
   }
 };
 
+export const fetchServiceList = async (setServices) => {
+  try {
+    const response = await axiosInstance.get("/Officer/GetServiceList");
+    const serviceList = response.data.serviceList.map((item) => ({
+      label: item.serviceName,
+      value: item.serviceId,
+    }));
+    setServices(serviceList);
+  } catch (error) {
+    console.error("Failed to fetch service list:", error);
+  }
+};
+
 export const fetchTehsils = async (districtId, setTehsilOptions) => {
   try {
     const response = await axios.get(
@@ -162,4 +175,17 @@ export async function fetchAcknowledgement(applicationId) {
   } catch (error) {
     console.error("Error fetching PDF path:", error);
   }
+}
+
+export async function checkBankFile(districtId, serviceId) {
+  const response = await axiosInstance.get("/Officer/GetApplicationsForBank", {
+    params: { ServiceId: serviceId, DistrictId: districtId },
+  });
+  return response.data;
+}
+
+export async function createBankFile(districtId, serviceId) {
+  const response = await axiosInstance.get("/Officer/BankCsvFile", {
+    params: { serviceId, districtId },
+  });
 }

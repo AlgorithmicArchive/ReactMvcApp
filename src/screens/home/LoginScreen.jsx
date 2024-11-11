@@ -28,8 +28,14 @@ export default function LoginScreen() {
     resolver: yupResolver(schema),
   });
 
-  const { setUserType, setToken, setProfile, setUsername, setVerified } =
-    useContext(UserContext);
+  const {
+    setUserType,
+    setToken,
+    setProfile,
+    setUsername,
+    setVerified,
+    setDesignation,
+  } = useContext(UserContext);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
@@ -49,6 +55,7 @@ export default function LoginScreen() {
         setProfile(response.profile);
         setUsername(response.username);
         setVerified(false);
+        setDesignation(response.designation);
         navigate("/Verification");
       }
     } catch (error) {

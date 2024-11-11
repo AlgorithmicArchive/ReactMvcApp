@@ -51,12 +51,22 @@ const BasicModal = ({
             gap: 5,
           }}
         >
-          <Button variant="outlined" onClick={handleClose} sx={{ mt: 2 }}>
-            Close
-          </Button>
-          {handleActionButton && (
-            <CustomButton text={buttonText} onClick={handleActionButton} />
-          )}
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: 2,
+            }}
+          >
+            {handleActionButton && buttonText && (
+              <CustomButton text={buttonText} onClick={handleActionButton} />
+            )}
+            <Button variant="outlined" onClick={handleClose} sx={{ mt: 2 }}>
+              Close
+            </Button>
+          </Box>
         </Box>
       </Box>
     </Modal>

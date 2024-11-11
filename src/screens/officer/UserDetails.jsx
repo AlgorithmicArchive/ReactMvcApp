@@ -24,6 +24,7 @@ export default function UserDetails() {
   const location = useLocation();
   const { applicationId } = location.state || {};
   const [serviceId, setServiceID] = useState(0);
+  const [canSanction, setCanSanction] = useState(false);
   const [modalButtonText, setModalButtonText] = useState("Approve");
   const [handleActionButton, setHandleActionButton] = useState(() => () => {});
 
@@ -99,7 +100,6 @@ export default function UserDetails() {
       formData
     );
     if (response.data.status) {
-      console.log(response.data);
       if (response.data.action == "sanction") {
         handleOpen();
         const path =
@@ -119,7 +119,6 @@ export default function UserDetails() {
       const response = await axiosInstance.get("/Officer/GetUserDetails", {
         params: { applicationId: applicationId },
       });
-      console.log(response.data);
       setGeneralDetails(response.data.generalDetails);
       setPreAddressDetails(response.data.presentAddressDetails);
       setPerAddressDetails(response.data.permanentAddressDetails);
@@ -130,6 +129,7 @@ export default function UserDetails() {
       setEditableField(response.data.officerEditableField);
       setServiceID(response.data.serviceId);
       setCurrentOfficer(response.data.currentOfficer);
+      setCanSanction(response.data.canSanction);
     }
     fetchUserDetail();
   }, []);
@@ -337,7 +337,7 @@ export default function UserDetails() {
         Title={"Document"}
         pdf={pdf}
         table={null}
-        handleActionButton={handleActionButton}
+        handleActionButton={canSanction ? handleActionButton : null}
         buttonText={modalButtonText}
       />
     </Container>
