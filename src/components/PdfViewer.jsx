@@ -3,10 +3,11 @@ import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 import CustomButton from "./CustomButton";
+import { downloadFile } from "../assets/downloadFile";
 
 pdfjs.GlobalWorkerOptions.workerSrc = "/js/pdf.worker.min.js";
 
-const PdfViewer = ({ pdfUrl }) => {
+const PdfViewer = ({ pdfUrl, path }) => {
   const [numPages, setNumPages] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const [error, setError] = useState(null);
@@ -41,10 +42,7 @@ const PdfViewer = ({ pdfUrl }) => {
         gap: 5,
       }}
     >
-      <CustomButton
-        text="Export PDF"
-        onClick={() => window.open(pdfUrl, "_blank")}
-      />
+      <CustomButton text="Export PDF" onClick={() => downloadFile(path)} />
       {error ? (
         <p style={{ color: "red" }}>{error}</p>
       ) : (

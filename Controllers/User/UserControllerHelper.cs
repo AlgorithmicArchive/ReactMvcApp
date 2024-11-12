@@ -147,7 +147,7 @@ namespace ReactMvcApp.Controllers.User
                 return new { }; // Return an empty dictionary
             }
 
-            string path = "/files/" + applicationId.Replace("/", "_") + "Acknowledgement.pdf";
+            string path = "files/" + applicationId.Replace("/", "_") + "Acknowledgement.pdf";
 
             var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails, docs) = helper.GetUserDetailsAndRelatedData(applicationId);
             int districtCode = Convert.ToInt32(serviceSpecific["District"]);

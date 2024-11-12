@@ -252,6 +252,7 @@ namespace ReactMvcApp.Controllers.Officer
 
         public dynamic GetForwardReturnApplications(List<Application> applications)
         {
+            var officerDetails = GetOfficerDetails();
             var columns = new List<dynamic>
             {
                 new { label = "S.No", value = "sno" },
@@ -274,7 +275,28 @@ namespace ReactMvcApp.Controllers.Officer
                     buttonText = "Pull"
                 };
 
-                bool canPull = dbcontext.ApplicationStatuses.FirstOrDefault(stat => stat.ApplicationId == item.ApplicationId)!.CanPull;
+                var currentStatus = dbcontext.ApplicationStatuses.FirstOrDefault(stat => stat.ApplicationId == item.ApplicationId);
+
+                var workFlow = dbcontext.WorkFlows.Where(wf => wf.ServiceId == item.ServiceId).ToList();
+                var permissions = dbcontext.WorkFlows.FirstOrDefault(wf => wf.ServiceId == item.ServiceId && wf.Role == officerDetails.Role);
+                string nextOfficer = workFlow.FirstOrDefault(wf => wf.SequenceOrder == permissions!.SequenceOrder + 1)?.Role ?? "";
+                int nextOfficerId = dbcontext.OfficerDetails.FirstOrDefault(od => od.AccessCode == officerDetails.AccessCode && od.Role == nextOfficer)!.OfficerId;
+
+                string previousOfficer = permissions!.SequenceOrder > 1
+                    ? workFlow.FirstOrDefault(wf => wf.SequenceOrder == permissions!.SequenceOrder - 1)!.Role ?? ""
+                    : "";
+                int previousOfficerId = dbcontext.OfficerDetails.FirstOrDefault(od => od.AccessCode == officerDetails.AccessCode && od.Role == previousOfficer)!.OfficerId;
+
+
+                bool canPull = false;
+                if (currentStatus!.Status == "Forwarded" && currentStatus.CurrentlyWith == nextOfficerId && currentStatus.CanPull)
+                {
+                    canPull = true;
+                }
+                else if (currentStatus!.Status == "Returned" && currentStatus.CurrentlyWith == previousOfficerId && currentStatus.CanPull)
+                {
+                    canPull = true;
+                }
 
                 var serviceSpecific = JsonConvert.DeserializeObject<Dictionary<string, string>>(item.ServiceSpecific);
 

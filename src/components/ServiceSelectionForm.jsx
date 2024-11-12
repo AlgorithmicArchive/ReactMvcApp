@@ -1,15 +1,28 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Box } from "@mui/material";
 import { useForm } from "react-hook-form";
 import CustomSelectField from "./form/CustomSelectField";
 import CustomButton from "./CustomButton";
 
 const ServiceSelectionForm = ({ services, errors, onServiceSelect }) => {
-  const { control, handleSubmit } = useForm();
+  const { control, handleSubmit, setValue } = useForm();
+  const [selectedValue, setSelectedValue] = useState("");
 
   const onSubmit = (data) => {
-    onServiceSelect(data); // Pass the selected service ID to OfficerHome
+    console.log(data);
+    onServiceSelect(data.Service); // Pass only the selected service ID to OfficerHome
   };
+
+  useEffect(() => {
+    if (services.length === 1) {
+      const defaultService = services[0].value;
+      setSelectedValue(defaultService);
+      setValue("Service", defaultService); // Set default value in form
+
+      // Trigger form submission after setting the value
+      handleSubmit(onSubmit)();
+    }
+  }, [services, setValue, handleSubmit, onSubmit]);
 
   return (
     <Box
@@ -28,6 +41,7 @@ const ServiceSelectionForm = ({ services, errors, onServiceSelect }) => {
       <CustomSelectField
         control={control}
         options={services}
+        value={selectedValue}
         label="Select Service"
         name="Service"
         rules={{ required: "This field is required" }}
@@ -35,8 +49,8 @@ const ServiceSelectionForm = ({ services, errors, onServiceSelect }) => {
       />
       <CustomButton
         type="submit"
-        onClick={handleSubmit(onSubmit)} // Use onSubmit function to handle form submission
-        text="Get Records"
+        onClick={handleSubmit(onSubmit)} // Use handleSubmit to handle form submission
+        text="Get Details"
         bgColor="background.default"
         color="primary.main"
         width="50%"

@@ -61,7 +61,7 @@ namespace ReactMvcApp.Controllers.User
                 {
                     function = "OpenForm",
                     parameters = new[] { item.ServiceId },
-                    buttonText = "View"
+                    buttonText = "Apply"
                 };
                 var cell = new
                 {

@@ -169,9 +169,9 @@ export async function fetchAcknowledgement(applicationId) {
     // Ensure that the path includes the protocol
     const completePath = path.startsWith("http")
       ? path
-      : `http://localhost:5004${path}`;
+      : `http://localhost:5004/${path}`;
     console.log("Complete PDF Path:", completePath);
-    return completePath;
+    return { path, completePath };
   } catch (error) {
     console.error("Error fetching PDF path:", error);
   }

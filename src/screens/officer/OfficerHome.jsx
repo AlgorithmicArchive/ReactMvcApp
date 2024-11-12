@@ -102,7 +102,8 @@ export default function OfficerHome() {
         }
       );
       const countList = response.data.countList;
-      if ((countList.length = 3))
+      console.log(countList);
+      if (countList.length == 3)
         countList.push({ label: "", bgColor: "transparent" });
       setCountList(response.data.countList);
       setCanSanction(response.data.canSanction);

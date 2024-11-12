@@ -17,8 +17,8 @@ namespace ReactMvcApp.Controllers.Officer
         [HttpPost]
         public IActionResult UploadCsv([FromForm] IFormCollection form)
         {
-            int? userId = HttpContext.Session.GetInt32("UserId");
-            Models.Entities.User Officer = dbcontext.Users.Find(userId)!;
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            Models.Entities.User Officer = dbcontext.Users.Find(Convert.ToInt32(userId))!;
             var officer = GetOfficerDetails();
             string officerDesignation = officer.Role!;
             string accessLevel = officer.AccessLevel!;
@@ -45,12 +45,22 @@ namespace ReactMvcApp.Controllers.Officer
             bankFile.FileSent = true;
             dbcontext.SaveChanges();
 
+            var @ServiceId = new SqlParameter("@ServiceId", serviceId);
+            var @DistrictId = new SqlParameter("@DistrictId", districtId.ToString());
+            var @OfficerId = new SqlParameter("@OfficerId", Convert.ToInt32(userId));
+            var @CurrentStatus = new SqlParameter("@CurrentStatus", "Deposited");
+            var @NewStatus = new SqlParameter("@NewStatus", "Dispatched");
+            var @UpdateDate = new SqlParameter("@UpdateDate", DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"));
+
+            var update = dbcontext.Database.ExecuteSqlRaw("EXEC UpdateApplication_Status_History_Count @ServiceId,@DistrictId,@OfficerId,@CurrentStatus,@NewStatus,@UpdateDate", @ServiceId, @DistrictId, @OfficerId, @CurrentStatus, @NewStatus, @UpdateDate);
+
+
             return Json(new { status = true, message = "File Uploaded Successfully." });
         }
 
         public IActionResult GetResponseBankFile([FromForm] IFormCollection form)
         {
-            int? userId = HttpContext.Session.GetInt32("UserId");
+            int? userId = Convert.ToInt32(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
             Models.Entities.User Officer = dbcontext.Users.Find(userId)!;
             var officer = GetOfficerDetails();
             string officerDesignation = officer.Role!;
@@ -66,16 +76,16 @@ namespace ReactMvcApp.Controllers.Officer
 
             if (bankFile == null)
             {
-                return Json(new { status = false, message = "No Bank File for this district." });
+                return Json(new { status = false, message = "No Bank File for this district with this service." });
             }
             else if (bankFile != null && bankFile.FileSent == false)
             {
-                return Json(new { status = false, message = "Bank File not sent." });
+                return Json(new { status = false, message = "Bank File for this district with this service not sent." });
             }
 
             if (!string.IsNullOrEmpty(bankFile!.ResponseFile))
             {
-                return Json(new { status = true, file = bankFile.ResponseFile });
+                return Json(new { status = true, filePath = "exports/" + bankFile.ResponseFile, message = "File is recieved already." });
             }
 
 
@@ -108,52 +118,45 @@ namespace ReactMvcApp.Controllers.Officer
             bankFile.ResponseFile = responseFile;
             dbcontext.SaveChanges();
 
-            return Json(new { status = true, file = bankFile.ResponseFile });
+            return Json(new { status = true, filePath = "exports/" + bankFile.ResponseFile, message = "File received successfully." });
 
         }
 
+        public async Task<IActionResult> ProcessResponseFile([FromForm] IFormCollection form)
+        {
+            int? userId = Convert.ToInt32(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            int? serviceId = Convert.ToInt32(form["serviceId"].ToString());
+            string filePath = Path.Combine(_webHostEnvironment.WebRootPath, form["responseFile"].ToString());
+            using var reader = new StreamReader(filePath);
+            var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
+            {
+                HasHeaderRecord = false
+            };
 
-        // private async Task UpdateApplicationHistoryAsync(IEnumerable<BankFileModel> bankFileData, string officer, string fileName)
-        // {
-        //     // Get all the ApplicationIds from the bankFileData
-        //     var applicationIds = bankFileData.Select(data => data.ApplicationId).ToList();
-
-        //     // Fetch all relevant application histories in a single query
-        //     var applicationHistories = await dbcontext.ApplicationsHistories
-        //         .Where(app => applicationIds.Contains(app.ApplicationId))
-        //         .ToListAsync();
-
-        //     foreach (var data in bankFileData)
-        //     {
-        //         // Find the corresponding history record
-        //         var applicationHistory = applicationHistories.FirstOrDefault(app => app.ApplicationId == data.ApplicationId);
-        //         if (applicationHistory != null)
-        //         {
-        //             // Deserialize history
-        //             var history = JsonConvert.DeserializeObject<List<dynamic>>(applicationHistory.History) ?? new List<dynamic>();
-
-        //             // Create the new history object
-        //             var newHistoryEntry = new
-        //             {
-        //                 ActionTaker = officer,
-        //                 ActionTaken = "Appended To Bank File",
-        //                 Remarks = "NIL",
-        //                 DateTime = DateTime.Now.ToString("dd MMM yyyy hh:mm tt"),
-        //                 UpdateObject = (dynamic)null!,
-        //                 File = fileName
-        //             };
-
-        //             // Add the new history entry
-        //             history.Add(newHistoryEntry);
-
-        //             // Serialize the history back to the string and update the database entity
-        //             applicationHistory.History = JsonConvert.SerializeObject(history);
-        //         }
-        //     }
-
-        //     // Save all changes in a single call
-        //     await dbcontext.SaveChangesAsync();
-        // }
+            using var csv = new CsvReader(reader, csvConfig);
+            try
+            {
+                var records = csv.GetRecords<ResponseCSVModal>().ToList();
+                foreach (var record in records)
+                {
+                    var serviceIdParam = new SqlParameter("@ServiceId", serviceId);
+                    var officerIdParam = new SqlParameter("@OfficerId", userId);
+                    var applicationIdParam = new SqlParameter("@ApplicationId", record.ReferenceNumber ?? string.Empty);
+                    var statusParam = new SqlParameter("@Status", record.Status ?? "");
+                    var transactionIdParam = new SqlParameter("@TransactionId", record.TransactionId ?? string.Empty);
+                    var dateOfDisbursionParam = new SqlParameter("@DateOfDibursion", record.DateOfDisbursion ?? DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"));
+                    var transactionStatusParam = new SqlParameter("@TransactionStatus", record.TransactionStatus ?? string.Empty);
+                    var fileParam = new SqlParameter("@File", form["responseFile"].ToString());
+                    var result = await dbcontext.Database.ExecuteSqlRawAsync("EXEC UpdateFromBankResponse @ServiceId, @OfficerId, @ApplicationId, @Status, @TransactionId, @DateOfDibursion, @TransactionStatus, @File", serviceIdParam, officerIdParam, applicationIdParam, statusParam, transactionIdParam, dateOfDisbursionParam, transactionStatusParam, fileParam);
+                }
+                return Json(new { status = true, message = "Database Updated Successfully." });
+            }
+            catch (System.Exception)
+            {
+                return Json(new { status = false, message = "Some error occurred while updating database." });
+                throw;
+            }
+        }
         public async Task<IActionResult> BankCsvFile(string serviceId, string districtId)
         {
             int serviceIdInt = Convert.ToInt32(serviceId);
@@ -247,6 +250,18 @@ namespace ReactMvcApp.Controllers.Officer
 
             await dbcontext.SaveChangesAsync();
 
+            var @ServiceId = new SqlParameter("@ServiceId", serviceIdInt);
+            var @DistrictId = new SqlParameter("@DistrictId", districtId);
+            var @OfficerId = new SqlParameter("@OfficerId", Convert.ToInt32(userId));
+            var @CurrentStatus = new SqlParameter("@CurrentStatus", "Sanctioned");
+            var @NewStatus = new SqlParameter("@NewStatus", "Deposited");
+            var @UpdateDate = new SqlParameter("@UpdateDate", DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"));
+
+            var update = await dbcontext.Database.ExecuteSqlRawAsync("EXEC UpdateApplication_Status_History_Count @ServiceId,@DistrictId,@OfficerId,@CurrentStatus,@NewStatus,@UpdateDate", @ServiceId, @DistrictId, @OfficerId, @CurrentStatus, @NewStatus, @UpdateDate);
+
+
+
+
             return Json(new { filePath = $"/exports/{fileName}" });
         }
 
@@ -254,6 +269,7 @@ namespace ReactMvcApp.Controllers.Officer
         {
             int serviceId = Convert.ToInt32(ServiceId);
             int districtId = Convert.ToInt32(DistrictId);
+            int totalCount = 0;
             _logger.LogInformation($"District Id: {districtId.GetType()} Service ID: {serviceId.GetType()}");
 
             // Fetch applications with pagination applied directly
@@ -264,7 +280,7 @@ namespace ReactMvcApp.Controllers.Officer
                 .ToList();
 
             // Total count of applications
-            int totalCount = applications.Count;
+            totalCount = applications.Count;
 
             // Apply pagination to the list
             applications = applications.Skip(0).Take(10).ToList();

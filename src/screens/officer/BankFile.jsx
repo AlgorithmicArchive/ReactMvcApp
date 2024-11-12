@@ -12,6 +12,7 @@ import {
 import connection, {
   startSignalRConnection,
 } from "../../assets/signalRService";
+import SftpModal from "../../components/SftpModal";
 
 export default function BankFile() {
   const {
@@ -27,6 +28,11 @@ export default function BankFile() {
   const [totalCount, setTotalCount] = useState(0);
   const [isTriggered, setIsTriggered] = useState(false);
   const [progress, setProgress] = useState(0);
+
+  const [open, setOpen] = useState(false);
+
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
 
   useEffect(() => {
     // Fetch initial data for districts and services
@@ -130,12 +136,14 @@ export default function BankFile() {
 
       {isTriggered && (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          <Typography sx={{ fontSize: "24px" }}>
+          <Typography sx={{ fontSize: "24px", textAlign: "center" }}>
             {isBankFile == null
               ? "No Bank File for this district and service has been created yet."
-              : "File Already Present for this district and service."}
+              : !isBankFile
+              ? "File Already Present for this district and service."
+              : "File Sent To Bank."}
           </Typography>
-          <Typography sx={{ fontSize: "24px" }}>
+          <Typography sx={{ fontSize: "24px", textAlign: "center" }}>
             {totalCount === 0 ? (
               "No new sanctioned records for this district and service."
             ) : (
@@ -146,6 +154,7 @@ export default function BankFile() {
                   sx={{
                     fontWeight: "bold",
                     fontSize: "24px",
+                    textAlign: "center",
                     color: "text.primary",
                   }}
                 >
@@ -161,16 +170,16 @@ export default function BankFile() {
               onClick={handleCreateBankFile}
             />
           )}
-          {isBankFile != null && !isBankFile.FileSent && totalCount > 0 && (
+          {isBankFile != null && !isBankFile && totalCount > 0 && (
             <CustomButton
               text="Append to Bank File"
               onClick={handleCreateBankFile}
             />
           )}
-          {((isBankFile != null) & !isBankFile.FileSent && totalCount == 0) ||
-            (progress == 100 && (
-              <CustomButton text="Send Bank File" onClick={() => {}} />
-            ))}
+          {(isBankFile != null && !isBankFile && totalCount === 0) ||
+          progress === 100 ? (
+            <CustomButton text="Send Bank File" onClick={handleOpen} />
+          ) : null}
 
           {/* Render Progress Bar if progress is above 0 */}
           {progress > 0 && (
@@ -181,6 +190,13 @@ export default function BankFile() {
           )}
         </Box>
       )}
+      <SftpModal
+        open={open}
+        handleClose={handleClose}
+        serviceId={getValues("service")}
+        districtId={getValues("district")}
+        type={"send"}
+      />
     </Box>
   );
 }
