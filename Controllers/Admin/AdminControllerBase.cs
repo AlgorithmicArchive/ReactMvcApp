@@ -106,7 +106,7 @@ namespace ReactMvcApp.Controllers.Admin
             countList.Add(new { label = "Pending", count = counts!.PendingCount, bgColor = "#FFC107", textColor = "#000000" });
             countList.Add(new { label = "Sanctioned", count = counts!.SanctionCount, bgColor = "#81C784", textColor = "#1B5E20" });
             countList.Add(new { label = "Disbursed", count = counts!.DisbursedCount, bgColor = "#4CAF50", textColor = "#FFFFFF" });
-            countList.Add(new { label = "Pending With Citizen", count = counts!.ReturnToEditCount, bgColor = "#CE93D8", textColor = "#4A148C" });
+            countList.Add(new { label = "Citizen Pending", count = counts!.ReturnToEditCount, bgColor = "#CE93D8", textColor = "#4A148C" });
             countList.Add(new { label = "Rejected", count = counts!.RejectCount, bgColor = "#FF7043", textColor = "#B71C1C" });
 
             return Json(new { countList, Districts, Services });
@@ -125,9 +125,6 @@ namespace ReactMvcApp.Controllers.Admin
                 .SqlQueryRaw<ApplicationDetailsSA>(
                     "EXEC GetApplications_SA @ServiceId, @DistrictId, @AccessLevel, @AccessCode, @ApplicationStatus",
                      serviceIdParam, districtIdParam, accessLevelParam, accessCodeParam, appStatusParam)
-                .AsEnumerable()
-                .Skip(page * size)
-                .Take(size)
                 .ToList();
 
             var columns = new List<dynamic>
@@ -163,8 +160,10 @@ namespace ReactMvcApp.Controllers.Admin
             }
 
 
-
-            return Json(new { columns, data, totalCount = data.Count });
+            var paginatedData = data.AsEnumerable()
+                .Skip(page * size)
+                .Take(size).ToList();
+            return Json(new { columns, data = paginatedData, totalCount = data.Count });
         }
 
 

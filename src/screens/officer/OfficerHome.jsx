@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Box, Container, Grid2, Typography } from "@mui/material";
 import axiosInstance from "../../axiosConfig";
 import { useForm } from "react-hook-form";
@@ -34,6 +34,9 @@ export default function OfficerHome() {
   const handleClose = () => setOpen(false);
 
   const navigate = useNavigate();
+
+  const tableRef = useRef(null);
+
   const {
     control,
     formState: { errors },
@@ -91,18 +94,16 @@ export default function OfficerHome() {
     }
   };
 
-  const handleRecords = async (data) => {
+  const handleRecords = async (serviceId) => {
     try {
-      console.log("Service", data);
-      setServiceId(data.Service);
+      setServiceId(serviceId);
       const response = await axiosInstance.get(
         "/Officer/GetApplicationsCount",
         {
-          params: { ServiceId: data.Service },
+          params: { ServiceId: serviceId },
         }
       );
       const countList = response.data.countList;
-      console.log(countList);
       if (countList.length == 3)
         countList.push({ label: "", bgColor: "transparent" });
       setCountList(response.data.countList);
@@ -162,6 +163,7 @@ export default function OfficerHome() {
   }, [transferAction, serviceId]);
 
   const handleCardClick = async (statusName) => {
+    console.log(statusName);
     if (statusName != "") {
       setCurrentList(statusName);
       if (statusName === "Pending" && canSanction) {
@@ -180,11 +182,14 @@ export default function OfficerHome() {
         url: "/Officer/GetApplications",
         params: {
           ServiceId: serviceId,
-          type:
-            statusName == "Pending With Citizen" ? "ReturnToEdit" : statusName,
+          type: statusName == "Citizen Pending" ? "ReturnToEdit" : statusName,
         },
         key: Date.now(),
       });
+      // Scroll to CustomTable after setting table data
+      if (tableRef.current) {
+        tableRef.current.scrollIntoView({ behavior: "smooth" });
+      }
     }
   };
 
@@ -270,6 +275,16 @@ export default function OfficerHome() {
       params: { ServiceId: serviceId, type: type },
       key: Date.now(),
     });
+  };
+
+  const handleTableButton = (functionName, paramerters) => {
+    if (functionName == "UserDetails") {
+      navigate("/officer/userDetails", {
+        state: { applicationId: paramerters[0] },
+      });
+    } else if (functionName == "PullApplication") {
+      
+    }
   };
 
   return (
@@ -405,28 +420,26 @@ export default function OfficerHome() {
               </Typography>
             </Box>
           )}
-        {table && (
-          <CustomTable
-            key={table.key}
-            fetchData={fetchData}
-            url={table.url}
-            params={table.params}
-            title={currentList + " Table"}
-            buttonActionHandler={(fn, params) =>
-              navigate("/officer/userDetails", {
-                state: { applicationId: params[0] },
-              })
-            }
-            showCheckbox={
-              canSanction &&
-              (currentList == "Pending" ||
-                currentList == "Approve" ||
-                currentList == "Pool")
-            }
-            fieldToReturn="referenceNumber"
-            onSelectionChange={handleSelectionChange}
-          />
-        )}
+        <Box sx={{ width: "100%" }} ref={tableRef}>
+          {table && (
+            <CustomTable
+              key={table.key}
+              fetchData={fetchData}
+              url={table.url}
+              params={table.params}
+              title={currentList + " List"}
+              buttonActionHandler={handleTableButton}
+              showCheckbox={
+                canSanction &&
+                (currentList === "Pending" ||
+                  currentList === "Approve" ||
+                  currentList === "Pool")
+              }
+              fieldToReturn="referenceNumber"
+              onSelectionChange={handleSelectionChange}
+            />
+          )}
+        </Box>
       </Box>
       <BasicModal
         open={open}

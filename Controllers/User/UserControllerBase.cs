@@ -205,7 +205,6 @@ namespace ReactMvcApp.Controllers.User
             }
             return Json(new { });
         }
-
         public IActionResult UpdateRequest([FromForm] IFormCollection form)
         {
             var ApplicationId = new SqlParameter("@ApplicationId", form["ApplicationId"].ToString());

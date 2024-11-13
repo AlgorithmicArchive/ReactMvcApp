@@ -52,6 +52,33 @@ namespace ReactMvcApp.Controllers.Profile
             return RedirectToAction("Error", "Home");
         }
 
+
+        [HttpGet]
+        public dynamic? GetUserDetails()
+        {
+            // Retrieve userId from JWT token
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId == null)
+            {
+                return null; // Handle case where userId is not available
+            }
+            var userDetails = _dbcontext.Users.FirstOrDefault(u => u.UserId.ToString() == userId);
+            var details = new
+            {
+                userDetails!.Name,
+                userDetails.Username,
+                userDetails.Profile,
+                userDetails.Email,
+                userDetails.MobileNumber,
+                userDetails.BackupCodes,
+            };
+
+            return details;
+        }
+
+
+
+
         [HttpPost]
         public IActionResult UpdateColumn([FromForm] IFormCollection form)
         {
@@ -74,7 +101,7 @@ namespace ReactMvcApp.Controllers.Profile
         [HttpGet]
         public IActionResult GenerateBackupCodes()
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userId = Convert.ToInt32(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
             string? TableName = "Users";
 
             var unused = _helper.GenerateUniqueRandomCodes(10, 8);
@@ -86,9 +113,9 @@ namespace ReactMvcApp.Controllers.Profile
 
             var backupCodesParam = new SqlParameter("@ColumnValue", JsonConvert.SerializeObject(backupCodes));
 
-            _dbcontext.Database.ExecuteSqlRaw("EXEC UpdateCitizenDetail @ColumnName,@ColumnValue,@TableName,@CitizenId", new SqlParameter("@ColumnName", "BackupCodes"), backupCodesParam, new SqlParameter("@TableName", TableName), new SqlParameter("@CitizenId", userId));
+            _dbcontext.Database.ExecuteSqlRaw("EXEC UpdateCitizenDetail @ColumnName,@ColumnValue,@TableName,@UserId", new SqlParameter("@ColumnName", "BackupCodes"), backupCodesParam, new SqlParameter("@TableName", TableName), new SqlParameter("@UserId", userId));
 
-            return Json(new { status = true, url = "/Profile/Settings" });
+            return Json(new { status = true, url = "/settings" });
         }
 
         [HttpGet]

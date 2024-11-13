@@ -70,7 +70,9 @@ export function isDateWithinRange(field, value) {
 
 export async function duplicateAccountNumber(field, value) {
   try {
-    const res = await fetch(`/Base/IsDuplicateAccNo?accNo=${value}&applicationId=${field.applicationId}`);
+    const res = await fetch(
+      `/Base/IsDuplicateAccNo?accNo=${value}&applicationId=${field.applicationId}`
+    );
     const data = await res.json();
     if (data.status) {
       return "Application with this account number already exists.";
@@ -91,7 +93,10 @@ export async function validateFile(field, value) {
 
     formData.append("file", value);
 
-    const res = await fetch("/Base/Validate", { method: "POST", body: formData });
+    const res = await fetch("/Base/Validate", {
+      method: "POST",
+      body: formData,
+    });
     const data = await res.json();
     if (!data.isValid) {
       return data.errorMessage;
@@ -126,6 +131,13 @@ export const runValidations = async (field, value) => {
 
   return true;
 };
+
+export function formatKey(input) {
+  if (!input) return input; // Check for empty or null input
+  // Use Regex to insert space before each capital letter, except for the first one
+  const result = input.replace(/(?<!^)([A-Z])/g, " $1");
+  return result;
+}
 
 // Mapping of Validation Functions
 

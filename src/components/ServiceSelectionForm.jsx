@@ -9,7 +9,6 @@ const ServiceSelectionForm = ({ services, errors, onServiceSelect }) => {
   const [selectedValue, setSelectedValue] = useState("");
 
   const onSubmit = (data) => {
-    console.log(data);
     onServiceSelect(data.Service); // Pass only the selected service ID to OfficerHome
   };
 
@@ -22,7 +21,7 @@ const ServiceSelectionForm = ({ services, errors, onServiceSelect }) => {
       // Trigger form submission after setting the value
       handleSubmit(onSubmit)();
     }
-  }, [services, setValue, handleSubmit, onSubmit]);
+  }, [services]);
 
   return (
     <Box

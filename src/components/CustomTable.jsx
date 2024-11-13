@@ -14,6 +14,7 @@ import {
   Button,
   Checkbox,
   IconButton,
+  TextField,
 } from "@mui/material";
 import { PictureAsPdf, GridOn, TableView } from "@mui/icons-material";
 import jsPDF from "jspdf";
@@ -23,7 +24,7 @@ import * as XLSX from "xlsx";
 const CustomTable = ({
   title = "Table", // Default title if none provided
   fetchData,
-  initialRowsPerPage = 10,
+  initialRowsPerPage = 5,
   url,
   buttonActionHandler,
   params,
@@ -40,6 +41,8 @@ const CustomTable = ({
   const [totalCount, setTotalCount] = useState(0);
   const [columns, setColumns] = useState([]);
   const [selectedRows, setSelectedRows] = useState([]);
+  const [searchTerm, setSearchTerm] = useState(""); // State for search input
+  const [filteredData, setFilteredData] = useState([]); // State for filtered data
 
   useEffect(() => {
     const loadData = async () => {
@@ -59,21 +62,56 @@ const CustomTable = ({
     };
 
     loadData();
-  }, [page, rowsPerPage, orderBy, order, fetchData]);
+  }, [page, rowsPerPage, fetchData, url, params]);
+
+  useEffect(() => {
+    // Filter and sort data based on search term and sort order
+    let updatedData = [...data];
+
+    // Filtering
+    if (searchTerm) {
+      const lowercasedSearchTerm = searchTerm.toLowerCase();
+      updatedData = updatedData.filter((row) =>
+        columns.some((col) =>
+          String(row[col.value]).toLowerCase().includes(lowercasedSearchTerm)
+        )
+      );
+    }
+
+    // Sorting
+    if (orderBy) {
+      updatedData.sort((a, b) => {
+        const aValue = a[orderBy];
+        const bValue = b[orderBy];
+
+        // Handle different data types
+        if (typeof aValue === "number" && typeof bValue === "number") {
+          return order === "asc" ? aValue - bValue : bValue - aValue;
+        }
+
+        // For strings and other types
+        const aString = aValue ? aValue.toString().toLowerCase() : "";
+        const bString = bValue ? bValue.toString().toLowerCase() : "";
+
+        if (aString < bString) return order === "asc" ? -1 : 1;
+        if (aString > bString) return order === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    setFilteredData(updatedData);
+  }, [data, searchTerm, columns, order, orderBy]);
 
   const handleRequestSort = (property) => {
     const isAscending = orderBy === property && order === "asc";
     setOrder(isAscending ? "desc" : "asc");
     setOrderBy(property);
-    const sortedData = [...data].sort((a, b) => {
-      if (a[property] < b[property]) return isAscending ? 1 : -1;
-      if (a[property] > b[property]) return isAscending ? -1 : 1;
-      return 0;
-    });
-    setData(sortedData);
   };
 
-  const handleChangePage = (event, newPage) => setPage(newPage);
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+    setSearchTerm("");
+  };
 
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
@@ -86,7 +124,9 @@ const CustomTable = ({
     doc.text(tableTitle, 10, 10);
     doc.autoTable({
       head: [columns.map((col) => col.label)],
-      body: data.map((row) => columns.map((col) => row[col.value] || "")),
+      body: filteredData.map((row) =>
+        columns.map((col) => row[col.value] || "")
+      ),
     });
     doc.save(`${tableTitle}.pdf`);
   };
@@ -94,7 +134,7 @@ const CustomTable = ({
   const exportCSV = () => {
     const csvContent = [
       columns.map((col) => col.label).join(","),
-      ...data.map((row) =>
+      ...filteredData.map((row) =>
         columns.map((col) => `"${row[col.value] || ""}"`).join(",")
       ),
     ].join("\n");
@@ -110,7 +150,7 @@ const CustomTable = ({
 
   const exportExcel = () => {
     const worksheetData = [columns.map((col) => col.label)];
-    data.forEach((row) => {
+    filteredData.forEach((row) => {
       worksheetData.push(columns.map((col) => row[col.value] || ""));
     });
 
@@ -118,6 +158,46 @@ const CustomTable = ({
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, title || "Table");
     XLSX.writeFile(workbook, `${title || "Table"}.xlsx`);
+  };
+
+  const isRowSelected = (row) => selectedRows.includes(row);
+
+  const handleSelectAllClick = (event) => {
+    if (event.target.checked) {
+      const newSelectedRows = filteredData;
+      setSelectedRows(newSelectedRows);
+      const selectedFieldValues = newSelectedRows.map((row) =>
+        fieldToReturn ? row[fieldToReturn] : row
+      );
+      onSelectionChange(selectedFieldValues);
+      return;
+    }
+    setSelectedRows([]);
+    onSelectionChange([]);
+  };
+
+  const handleRowClick = (row) => {
+    const selectedIndex = selectedRows.indexOf(row);
+    let newSelectedRows = [];
+
+    if (selectedIndex === -1) {
+      newSelectedRows = newSelectedRows.concat(selectedRows, row);
+    } else if (selectedIndex === 0) {
+      newSelectedRows = newSelectedRows.concat(selectedRows.slice(1));
+    } else if (selectedIndex === selectedRows.length - 1) {
+      newSelectedRows = newSelectedRows.concat(selectedRows.slice(0, -1));
+    } else if (selectedIndex > 0) {
+      newSelectedRows = newSelectedRows.concat(
+        selectedRows.slice(0, selectedIndex),
+        selectedRows.slice(selectedIndex + 1)
+      );
+    }
+
+    setSelectedRows(newSelectedRows);
+    const selectedFieldValues = newSelectedRows.map((row) =>
+      fieldToReturn ? row[fieldToReturn] : row
+    );
+    onSelectionChange(selectedFieldValues);
   };
 
   return (
@@ -139,19 +219,29 @@ const CustomTable = ({
       <div
         style={{
           display: "flex",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
           marginBottom: "10px",
         }}
       >
-        <IconButton onClick={exportPDF} color="primary">
-          <PictureAsPdf />
-        </IconButton>
-        <IconButton onClick={exportCSV} color="primary">
-          <GridOn />
-        </IconButton>
-        <IconButton onClick={exportExcel} color="primary">
-          <TableView />
-        </IconButton>
+        <TextField
+          label="Search"
+          variant="outlined"
+          size="small"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          sx={{ width: "200px" }}
+        />
+        <div>
+          <IconButton onClick={exportPDF} color="primary">
+            <PictureAsPdf />
+          </IconButton>
+          <IconButton onClick={exportCSV} color="primary">
+            <GridOn />
+          </IconButton>
+          <IconButton onClick={exportExcel} color="primary">
+            <TableView />
+          </IconButton>
+        </div>
       </div>
       <TableContainer>
         <Table aria-label="dynamic table">
@@ -168,19 +258,13 @@ const CustomTable = ({
                     color="default"
                     indeterminate={
                       selectedRows.length > 0 &&
-                      selectedRows.length < data.length
+                      selectedRows.length < filteredData.length
                     }
                     checked={
-                      data.length > 0 && selectedRows.length === data.length
+                      filteredData.length > 0 &&
+                      selectedRows.length === filteredData.length
                     }
-                    onChange={(event) => {
-                      const newSelectedRows = event.target.checked ? data : [];
-                      setSelectedRows(newSelectedRows);
-                      const selectedFieldValues = newSelectedRows.map((row) =>
-                        fieldToReturn ? row[fieldToReturn] : row
-                      );
-                      onSelectionChange(selectedFieldValues);
-                    }}
+                    onChange={handleSelectAllClick}
                   />
                 </TableCell>
               )}
@@ -226,74 +310,86 @@ const CustomTable = ({
                   <CircularProgress />
                 </TableCell>
               </TableRow>
-            ) : (
-              data.map((row, rowIndex) => (
-                <TableRow key={rowIndex} sx={{ border: "2px solid #F0C38E" }}>
-                  {showCheckbox && (
-                    <TableCell padding="checkbox">
-                      <Checkbox
-                        color="primary"
-                        checked={selectedRows.includes(row)}
-                        onChange={() => {
-                          const newSelectedRows = selectedRows.includes(row)
-                            ? selectedRows.filter(
-                                (selected) => selected !== row
-                              )
-                            : [...selectedRows, row];
-                          setSelectedRows(newSelectedRows);
-                          const selectedFieldValues = newSelectedRows.map(
-                            (row) => (fieldToReturn ? row[fieldToReturn] : row)
-                          );
-                          onSelectionChange(selectedFieldValues);
-                        }}
-                      />
-                    </TableCell>
-                  )}
-                  {columns.map(({ value }, columnIndex) => {
-                    if (
-                      value.includes("button") &&
-                      typeof row[value] !== "string"
-                    ) {
+            ) : filteredData.length > 0 ? (
+              filteredData.map((row, rowIndex) => {
+                const isSelected = isRowSelected(row);
+                return (
+                  <TableRow
+                    key={rowIndex}
+                    sx={{ border: "2px solid #F0C38E" }}
+                    hover
+                    role="checkbox"
+                    aria-checked={isSelected}
+                    selected={isSelected}
+                    onClick={() => showCheckbox && handleRowClick(row)}
+                  >
+                    {showCheckbox && (
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          color="primary"
+                          checked={isSelected}
+                          onChange={() => handleRowClick(row)}
+                        />
+                      </TableCell>
+                    )}
+                    {columns.map(({ value }, columnIndex) => {
+                      if (
+                        value.includes("button") &&
+                        typeof row[value] === "object" &&
+                        row[value] !== null
+                      ) {
+                        return (
+                          <TableCell
+                            key={columnIndex}
+                            sx={{ color: "background.paper" }}
+                          >
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              sx={{
+                                fontWeight: "bold",
+                                color: "background.paper",
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent row selection
+                                buttonActionHandler(
+                                  row[value].function,
+                                  row[value].parameters
+                                );
+                              }}
+                            >
+                              {row[value].buttonText}
+                            </Button>
+                          </TableCell>
+                        );
+                      }
                       return (
                         <TableCell
                           key={columnIndex}
-                          sx={{ color: "background.paper" }}
+                          sx={{
+                            color: "primary.main",
+                            borderRight: "2px solid #F0C38E",
+                          }}
                         >
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            sx={{
-                              fontWeight: "bold",
-                              color: "background.paper",
-                            }}
-                            onClick={() =>
-                              buttonActionHandler(
-                                row[value].function,
-                                row[value].parameters
-                              )
-                            }
-                          >
-                            {row[value].buttonText}
-                          </Button>
+                          {typeof row[value] === "object" && row[value] !== null
+                            ? JSON.stringify(row[value])
+                            : row[value]}
                         </TableCell>
                       );
-                    }
-                    return (
-                      <TableCell
-                        key={columnIndex}
-                        sx={{
-                          color: "primary.main",
-                          borderRight: "2px solid #F0C38E",
-                        }}
-                      >
-                        {typeof row[value] === "object"
-                          ? JSON.stringify(row[value])
-                          : row[value]}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))
+                    })}
+                  </TableRow>
+                );
+              })
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length + (showCheckbox ? 1 : 0)}
+                  align="center"
+                  sx={{ color: "primary.main" }}
+                >
+                  No records found.
+                </TableCell>
+              </TableRow>
             )}
           </TableBody>
         </Table>

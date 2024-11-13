@@ -24,6 +24,7 @@ import AdminHome from "../screens/admin/AdminHome";
 import EditForm from "../screens/user/EditForm";
 import BankFile from "../screens/officer/BankFile";
 import ResponseFile from "../screens/officer/ResponseFile";
+import Settings from "../screens/Settings";
 
 const RoutesComponent = () => {
   return (
@@ -63,6 +64,13 @@ const RoutesComponent = () => {
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="home" element={<AdminHome />} />
         </Route>
+      </Route>
+      <Route
+        element={
+          <ProtectedRoute requiredRoles={["Citizen", "Officer", "Admin"]} />
+        }
+      >
+        <Route path="/settings" element={<Settings />} />
       </Route>
     </Routes>
   );

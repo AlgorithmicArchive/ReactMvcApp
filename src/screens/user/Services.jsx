@@ -28,12 +28,14 @@ export default function Services() {
         height: "100vh",
       }}
     >
-      <CustomTable
-        title={"Services"}
-        fetchData={fetchData}
-        url="/User/GetServices"
-        buttonActionHandler={handleButtonAction}
-      />
+      <Box sx={{ width: "80%" }}>
+        <CustomTable
+          title={"Services"}
+          fetchData={fetchData}
+          url="/User/GetServices"
+          buttonActionHandler={handleButtonAction}
+        />
+      </Box>
     </Box>
   );
 }

@@ -1,27 +1,20 @@
 import { Box, Grid2 } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import StatusCountCard from "../../components/StatusCountCard";
 import axiosInstance from "../../axiosConfig";
 import Chart from "react-apexcharts";
 import { useForm } from "react-hook-form";
 import CustomSelectField from "../../components/form/CustomSelectField";
-import Col from "../../components/grid/Col";
 import CustomButton from "../../components/CustomButton";
-import BasicModal from "../../components/BasicModal";
+import CustomTable from "../../components/CustomTable";
+import { fetchData } from "../../assets/fetch";
 
 export default function AdminHome() {
   const [countList, setCountList] = useState([]);
   const [districts, setDistircts] = useState([]);
   const [services, setServices] = useState([]);
   const [table, setTable] = useState(null);
-  const [open, setOpen] = useState(false);
-
-  const handleOpen = () => {
-    setOpen(true);
-  };
-  const handleClose = () => {
-    setOpen(false);
-  };
+  const [currentList, setCurrentList] = useState("");
 
   const [barChartOptions, setBarChartOptions] = useState({
     chart: {
@@ -132,6 +125,7 @@ export default function AdminHome() {
     handleSubmit,
     getValues,
   } = useForm();
+  const tableRef = useRef(null);
 
   const fetchCount = async (
     ServiceId = null,
@@ -169,9 +163,11 @@ export default function AdminHome() {
     const applicationStatus =
       statusName == "Total"
         ? null
-        : statusName == "Pending With Citizen"
+        : statusName == "Citizen Pending"
         ? "ReturnToEdit"
         : statusName;
+
+    setCurrentList(statusName);
     const district = getValues("district") == "" ? null : getValues("district");
     const service = getValues("service") == "" ? null : getValues("service");
     setTable({
@@ -181,15 +177,28 @@ export default function AdminHome() {
         DistrictId: district,
         applicationStatus,
       },
+      key: Date.now(),
     });
-    handleOpen();
+    // Scroll to CustomTable after setting table data
+    if (tableRef.current) {
+      // Scroll to the element smoothly
+      tableRef.current.scrollIntoView({ behavior: "smooth" });
+
+      // Use a slight delay to scroll down by an offset
+      setTimeout(() => {
+        window.scrollBy({
+          top: 200, // Adjust this value to scroll a bit lower
+          behavior: "smooth",
+        });
+      }, 500); // Adjust the delay if necessary
+    }
   };
 
   return (
     <Box
       sx={{
         width: "100%",
-        height: "150vh",
+        height: "auto",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
@@ -197,7 +206,7 @@ export default function AdminHome() {
         gap: 5,
         paddingRight: 5,
         paddingLeft: 5,
-        paddingTop: 10,
+        marginTop: "110px",
       }}
     >
       <Box
@@ -246,7 +255,7 @@ export default function AdminHome() {
         <Grid2 container spacing={0}>
           {countList &&
             countList.map((item, index) => (
-              <Grid2 size={{ md: 4, xs: 12 }}>
+              <Grid2 key={index} size={{ md: 4, xs: 12 }}>
                 <StatusCountCard
                   statusName={item.label}
                   count={item.count}
@@ -279,7 +288,7 @@ export default function AdminHome() {
           }}
           width={"100%"}
         >
-          <Grid2 spacing={{ xs: 12, md: 6 }} width={"40%"}>
+          <Grid2 container spacing={{ xs: 12, md: 6 }} width={"40%"}>
             <Box
               sx={{
                 border: "2px solid",
@@ -287,6 +296,7 @@ export default function AdminHome() {
                 padding: 3,
                 borderRadius: 3,
                 backgroundColor: "background.paper",
+                width: "100%",
               }}
             >
               {barChartSeries.length > 0 && (
@@ -299,7 +309,7 @@ export default function AdminHome() {
               )}
             </Box>
           </Grid2>
-          <Grid2 spacing={{ xs: 12, md: 6 }} width={"40%"}>
+          <Grid2 container spacing={{ xs: 12, md: 6 }} width={"40%"}>
             <Box
               sx={{
                 border: "2px solid",
@@ -307,6 +317,7 @@ export default function AdminHome() {
                 padding: 3,
                 borderRadius: 3,
                 backgroundColor: "background.paper",
+                width: "100%",
               }}
             >
               {pieChartSeries.length > 0 && (
@@ -322,15 +333,18 @@ export default function AdminHome() {
         </Grid2>
       </Box>
 
-      <BasicModal
-        open={open}
-        handleClose={handleClose}
-        Title={"Applications"}
-        table={table}
-        pdf={null}
-        handleActionButton={() => {}}
-        buttonText=""
-      />
+      <Box sx={{ width: "100%" }} ref={tableRef}>
+        {table && (
+          <CustomTable
+            key={table.key}
+            fetchData={fetchData}
+            url={table.url}
+            params={table.params}
+            title={currentList + " Applications"}
+            buttonActionHandler={() => {}}
+          />
+        )}
+      </Box>
     </Box>
   );
 }

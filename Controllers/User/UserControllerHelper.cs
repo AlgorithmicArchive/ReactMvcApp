@@ -4,6 +4,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 
 namespace ReactMvcApp.Controllers.User
 {
@@ -55,6 +56,80 @@ namespace ReactMvcApp.Controllers.User
             };
 
             return details;
+        }
+
+        public static string FormatKey(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return input;
+
+            // Use Regex to insert space before each capital letter, except for the first one
+            string result = Regex.Replace(input, "(?<!^)([A-Z])", " $1");
+
+            return result;
+        }
+
+
+
+        public IActionResult GetApplicationDetails(string applicationId)
+        {
+            var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails, documents) = helper.GetUserDetailsAndRelatedData(applicationId);
+
+            var generalDetails = new List<KeyValuePair<string, object>>
+            {
+                new("Reference Number", userDetails.ApplicationId),
+                new("Applicant Name", userDetails.ApplicantName),
+                new("Applicant Image", userDetails.ApplicantImage),
+                new("Email", userDetails.Email),
+                new("Mobile Number", userDetails.MobileNumber),
+                new("Parentage", userDetails.RelationName + $"({userDetails.Relation})"),
+                new("Date Of Birth", userDetails.DateOfBirth),
+                new("Category", userDetails.Category),
+                new("Submission Date", userDetails.SubmissionDate)
+            };
+
+            foreach (var kvp in serviceSpecific!)
+            {
+                string key = kvp.Key;
+                string value = kvp.Value;
+                bool isDigitOnly = value.All(char.IsDigit);
+                if (!isDigitOnly)
+                {
+                    generalDetails.Insert(8, new KeyValuePair<string, object>(FormatKey(key), value));
+                }
+            }
+
+            var presentAddressDetails = new List<KeyValuePair<string, object>>{
+                new("Address",preAddressDetails.Address!),
+                new("District",preAddressDetails.District!),
+                new("Tehsil",preAddressDetails.Tehsil!),
+                new("Block",preAddressDetails.Block!),
+                new("Panchayat/Muncipality",preAddressDetails.PanchayatMuncipality!),
+                new("Village",preAddressDetails.Village!),
+                new("Ward",preAddressDetails.Ward!),
+                new("Pincode",preAddressDetails.Pincode!),
+            };
+
+            var permanentAddressDetails = new List<KeyValuePair<string, object>>{
+                new("Address",perAddressDetails.Address!),
+                new("District",perAddressDetails.District!),
+                new("Tehsil",perAddressDetails.Tehsil!),
+                new("Block",perAddressDetails.Block!),
+                new("Panchayat/Muncipality",perAddressDetails.PanchayatMuncipality!),
+                new("Village",perAddressDetails.Village!),
+                new("Ward",perAddressDetails.Ward!),
+                new("Pincode",perAddressDetails.Pincode!),
+            };
+
+            var BankDetails = new List<KeyValuePair<string, object>>{
+                new("Bank Name",bankDetails.BankName),
+                new("Branch Name",bankDetails.BranchName),
+                new("IFSC Code",bankDetails.IfscCode),
+                new("Account Number",bankDetails.AccountNumber),
+            };
+            
+
+            return Json(new { generalDetails, presentAddressDetails, permanentAddressDetails, BankDetails, documents });
         }
 
         [HttpGet]

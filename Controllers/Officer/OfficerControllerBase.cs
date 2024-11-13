@@ -100,7 +100,7 @@ namespace ReactMvcApp.Controllers.Officer
             if (authorities.CanReturn)
                 countList.Add(new { label = "Returned", count = counts!.ReturnCount, bgColor = "#E0E0E0", textColor = "#212121" });
             if (authorities.CanReturnToEdit)
-                countList.Add(new { label = "Pending With Citizen", count = counts!.ReturnToEditCount, bgColor = "#CE93D8", textColor = "#4A148C" });
+                countList.Add(new { label = "Citizen Pending", count = counts!.ReturnToEditCount, bgColor = "#CE93D8", textColor = "#4A148C" });
             if (authorities.CanReject)
                 countList.Add(new { label = "Rejected", count = counts!.RejectCount, bgColor = "#FF7043", textColor = "#B71C1C" });
             if (authorities.CanSanction)
@@ -111,17 +111,26 @@ namespace ReactMvcApp.Controllers.Officer
 
         public IActionResult GetApplications(int ServiceId, string type, int page, int size)
         {
+            // Get officer details
             var officer = GetOfficerDetails();
 
+            // Define SQL parameters
             var OfficerId = new SqlParameter("@OfficerId", officer.UserId);
             var ActionTaken = new SqlParameter("@ActionTaken", (type == "Approve" || type == "Pool") ? "Pending" : type);
             var serviceId = new SqlParameter("@ServiceId", ServiceId);
 
+            // Logging for debugging purposes
+            _logger.LogInformation($"-------------Service ID: {ServiceId}---------");
+
+            // Execute stored procedure
             var applications = dbcontext.Applications
                 .FromSqlRaw("EXEC GetFilteredApplications @OfficerId, @ActionTaken, @ServiceId", OfficerId, ActionTaken, serviceId)
-                .AsEnumerable().Skip(page * size).Take(size).ToList();
+                .ToList();
 
-            dynamic? Applications = null;
+            // Declare dynamic variable for processed applications data
+            dynamic? Applications;
+
+            // Process applications based on the type
             switch (type)
             {
                 case "Pending":
@@ -134,17 +143,11 @@ namespace ReactMvcApp.Controllers.Officer
                     Applications = GetPoolApplications(applications, ServiceId);
                     break;
                 case "Forwarded":
-                    Applications = GetForwardReturnApplications(applications);
-                    break;
                 case "Returned":
                     Applications = GetForwardReturnApplications(applications);
                     break;
                 case "ReturnToEdit":
-                    Applications = GetRejectReturnToEdit(applications);
-                    break;
                 case "Rejected":
-                    Applications = GetRejectReturnToEdit(applications);
-                    break;
                 case "Sanctioned":
                     Applications = GetRejectReturnToEdit(applications);
                     break;
@@ -152,7 +155,16 @@ namespace ReactMvcApp.Controllers.Officer
                     return BadRequest($"Unknown application type: {type}");
             }
 
-            return Json(new { data = Applications!.data, columns = Applications.columns, totalCount = Applications.totalCount });
+            // Apply pagination only after retrieving relevant data
+            List<dynamic> paginatedData = Applications!.data;
+
+            // Return paginated data along with columns and total count
+            return Json(new
+            {
+                data = paginatedData.Skip(page * size).Take(size).ToList(),
+                columns = Applications.columns,
+                totalCount = Applications.totalCount
+            });
         }
 
         public IActionResult GetUserDetails(string applicationId)

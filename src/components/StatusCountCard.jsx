@@ -1,5 +1,6 @@
 import React from "react";
-import { Card, CardContent, Typography } from "@mui/material";
+import { Box, Card, CardContent, Typography } from "@mui/material";
+import StatusIcons from "./StatusIcons";
 
 // Accept an onClick prop
 const StatusCountCard = ({
@@ -30,15 +31,24 @@ const StatusCountCard = ({
           height: "100%",
         }}
       >
-        <Typography
-          variant="h6"
-          component="div"
-          gutterBottom
-          color={textColor}
-          sx={{ fontSize: 36 }}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
         >
-          {statusName}
-        </Typography>
+          <Typography
+            variant="h6"
+            component="div"
+            gutterBottom
+            color={textColor}
+            sx={{ fontSize: 36 }}
+          >
+            {statusName}
+          </Typography>
+          <StatusIcons status={statusName} textColor={textColor} />
+        </Box>
         <Typography variant="h4" color={textColor} sx={{ fontSize: 80 }}>
           {count}
         </Typography>

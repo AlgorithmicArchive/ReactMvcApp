@@ -4,6 +4,8 @@ import CustomTable from "./CustomTable";
 import PdfViewer from "./PdfViewer";
 import { fetchData } from "../assets/fetch";
 import CustomButton from "./CustomButton";
+import UserDetailsAccordion from "./UserDetailsAccordion";
+import CancelIcon from "@mui/icons-material/Cancel";
 
 // Modal style
 const style = {
@@ -25,13 +27,26 @@ const BasicModal = ({
   pdf,
   handleActionButton,
   buttonText = "",
+  accordion = null,
 }) => {
   return (
     <Modal open={open} onClose={handleClose}>
       <Box sx={[style, { maxHeight: "600px", overflowY: "scroll" }]}>
-        <Typography variant="h6" component="h2" sx={{ textAlign: "center" }}>
-          {Title}
-        </Typography>
+        <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+          <Typography variant="h6" component="h2" sx={{ textAlign: "center" }}>
+            {Title}
+          </Typography>
+          <CancelIcon
+            color="primary.main"
+            onClick={handleClose}
+            sx={{ cursor: "pointer", fontSize: "18px" }}
+          />
+        </Box>
+        {accordion && (
+          <Box sx={{ mt: 2 }}>
+            <UserDetailsAccordion applicationId={accordion} />
+          </Box>
+        )}
         <Box sx={{ mt: 2 }}>
           {table != null && (
             <CustomTable

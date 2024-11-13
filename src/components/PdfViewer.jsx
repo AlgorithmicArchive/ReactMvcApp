@@ -7,7 +7,7 @@ import { downloadFile } from "../assets/downloadFile";
 
 pdfjs.GlobalWorkerOptions.workerSrc = "/js/pdf.worker.min.js";
 
-const PdfViewer = ({ pdfUrl, path }) => {
+const PdfViewer = ({ pdfUrl, path, exportButton = null }) => {
   const [numPages, setNumPages] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const [error, setError] = useState(null);
@@ -42,7 +42,9 @@ const PdfViewer = ({ pdfUrl, path }) => {
         gap: 5,
       }}
     >
-      <CustomButton text="Export PDF" onClick={() => downloadFile(path)} />
+      {exportButton && (
+        <CustomButton text="Export PDF" onClick={() => downloadFile(path)} />
+      )}
       {error ? (
         <p style={{ color: "red" }}>{error}</p>
       ) : (

@@ -11,7 +11,7 @@ public partial class ApplicationsCount
 
     public int OfficerId { get; set; }
 
-    public string? Status { get; set; }
+    public string Status { get; set; } = null!;
 
     public int Count { get; set; }
 

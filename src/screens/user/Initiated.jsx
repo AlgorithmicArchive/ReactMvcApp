@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 export default function Initiated() {
   const [open, setOpen] = useState(false);
   const [table, setTable] = useState(null);
+  const [ApplicationId, setApplicationId] = useState(null);
 
   // Toggle modal state
   const handleOpen = () => setOpen(true);
@@ -15,6 +16,7 @@ export default function Initiated() {
   const navigate = useNavigate();
   const handleButtonAction = async (functionName, parameters) => {
     const applicationId = parameters[0];
+    setApplicationId(applicationId);
     if (functionName == "CreateTimeLine") {
       handleOpen();
       setTable({
@@ -32,10 +34,11 @@ export default function Initiated() {
     <Container
       sx={{
         width: "100vw",
-        height: "100vh",
+        height: "auto",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
+        marginTop: "120px",
       }}
     >
       <CustomTable
@@ -50,6 +53,7 @@ export default function Initiated() {
         Title={"Application Status"}
         pdf={null}
         table={table}
+        accordion={ApplicationId}
       />
     </Container>
   );

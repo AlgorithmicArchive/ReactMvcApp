@@ -16,7 +16,7 @@ export default function Verification() {
     formState: { errors },
   } = useForm();
 
-  const {setVerified} = useContext(UserContext);
+  const { setVerified } = useContext(UserContext);
   const navigate = useNavigate();
 
   // Handle option selection
@@ -37,14 +37,13 @@ export default function Verification() {
 
       if (response.status) {
         setVerified(true);
-        // **Store the JWT token**
         const url =
           response.userType === "Admin"
             ? "/admin/home"
             : response.userType === "Officer"
             ? "/officer/home"
             : "/user/home";
-          navigate(url);
+        navigate(url);
       } else {
         // Handle verification failure
         console.error("Verification failed:", response.message);

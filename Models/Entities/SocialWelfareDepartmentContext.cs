@@ -35,6 +35,8 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     public virtual DbSet<Certificate> Certificates { get; set; }
 
+    public virtual DbSet<Contact> Contacts { get; set; }
+
     public virtual DbSet<District> Districts { get; set; }
 
     public virtual DbSet<Feedback> Feedbacks { get; set; }
@@ -315,6 +317,30 @@ public partial class SocialWelfareDepartmentContext : DbContext
                 .HasForeignKey(d => d.OfficerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Certificates_Officer");
+        });
+
+        modelBuilder.Entity<Contact>(entity =>
+        {
+            entity.HasKey(e => e.Uuid).HasName("PK_NewTable");
+
+            entity.ToTable("Contact");
+
+            entity.Property(e => e.Uuid).HasColumnName("UUID");
+            entity.Property(e => e.Email)
+                .HasMaxLength(50)
+                .IsUnicode(false)
+                .HasColumnName("email");
+            entity.Property(e => e.FullName)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("fullName");
+            entity.Property(e => e.Message)
+                .HasColumnType("text")
+                .HasColumnName("message");
+            entity.Property(e => e.SubmissionDate)
+                .HasMaxLength(50)
+                .IsUnicode(false)
+                .HasColumnName("submissionDate");
         });
 
         modelBuilder.Entity<District>(entity =>

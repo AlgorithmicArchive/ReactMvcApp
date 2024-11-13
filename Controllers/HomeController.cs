@@ -55,11 +55,6 @@ namespace ReactMvcApp.Controllers
             return View();
         }
 
-        public IActionResult Authentication()
-        {
-            return View();
-        }
-
         [HttpPost]
         public async Task<IActionResult> OfficerRegistration([FromForm] IFormCollection form)
         {
@@ -102,6 +97,28 @@ namespace ReactMvcApp.Controllers
             {
                 return Json(new { status = false, response = "Registration failed." });
             }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> SendOtp()
+        {
+            // Extract claims from the token
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userTypeClaim = User.FindFirst(ClaimTypes.Role)?.Value;
+
+            if (userIdClaim != null && userTypeClaim != null)
+            {
+                string email = _dbContext.Users.FirstOrDefault(u => u.UserId.ToString() == userIdClaim)?.Email!;
+
+                if (!string.IsNullOrEmpty(email))
+                {
+                    string otp = GenerateOTP(6);
+                    _otpStore.StoreOtp("verification", otp);
+                    await _emailSender.SendEmail(email, "OTP For Registration.", otp);
+                }
+            }
+
+            return Json(new { status = true });
         }
 
         [HttpPost]
@@ -160,28 +177,6 @@ namespace ReactMvcApp.Controllers
             {
                 return Json(new { status = false, response = "Invalid Username or Password." });
             }
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> SendOtp()
-        {
-            // Extract claims from the token
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var userTypeClaim = User.FindFirst(ClaimTypes.Role)?.Value;
-
-            if (userIdClaim != null && userTypeClaim != null)
-            {
-                string email = _dbContext.Users.FirstOrDefault(u => u.UserId.ToString() == userIdClaim)?.Email!;
-
-                if (!string.IsNullOrEmpty(email))
-                {
-                    string otp = GenerateOTP(6);
-                    _otpStore.StoreOtp("verification", otp);
-                    await _emailSender.SendEmail(email, "OTP For Registration.", otp);
-                }
-            }
-
-            return Json(new { status = true });
         }
 
         [HttpPost]
@@ -249,7 +244,6 @@ namespace ReactMvcApp.Controllers
 
             if (verified)
             {
-                // Return success response
                 return Json(new { status = true, userType = userTypeClaim, profile = profileClaim, username = usernameClaim });
             }
             else
@@ -257,6 +251,8 @@ namespace ReactMvcApp.Controllers
                 return Json(new { status = false, message = "Invalid Code" });
             }
         }
+
+
 
         public IActionResult LogOut()
         {
@@ -288,6 +284,26 @@ namespace ReactMvcApp.Controllers
             var designations = _dbContext.OfficersDesignations.ToList();
             return Json(new { status = true, designations });
         }
+
+        [HttpPost]
+        public IActionResult Contact([FromForm] IFormCollection form)
+        {
+            var fullName = form["fullName"].ToString();
+            var email = form["email"].ToString();
+            var message = form["message"].ToString();
+
+            _dbContext.Contacts.Add(new Contact
+            {
+                FullName = fullName,
+                Email = email,
+                Message = message,
+                SubmissionDate = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")
+            });
+            _dbContext.SaveChanges();
+
+            return Json(new { status = true, message = "Submitted successfully." });
+        }
+
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()

@@ -24,6 +24,8 @@ const Navbar = () => {
     username,
     profile,
     designation,
+    verified,
+    setVerified,
   } = useContext(UserContext);
 
   // Separate anchor states for each menu
@@ -44,6 +46,7 @@ const Navbar = () => {
     setUserType(null);
     setUsername(null);
     setProfile(null);
+    setVerified(false);
     localStorage.clear(); // Clear all localStorage on logout
     navigate("/login");
   };
@@ -88,7 +91,7 @@ const Navbar = () => {
           gap: 10,
         }}
       >
-        {!userType && (
+        {!userType && !verified && (
           <>
             <Button
               color="inherit"
@@ -122,7 +125,7 @@ const Navbar = () => {
           </>
         )}
 
-        {userType === "Citizen" && (
+        {userType === "Citizen" && verified && (
           <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
             <Box
               sx={{
@@ -215,7 +218,7 @@ const Navbar = () => {
           </Box>
         )}
 
-        {userType === "Officer" && (
+        {userType === "Officer" && verified && (
           <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
             <Box
               sx={{
@@ -342,7 +345,7 @@ const Navbar = () => {
           </Box>
         )}
 
-        {userType === "Admin" && (
+        {userType === "Admin" && verified && (
           <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
             <Box
               sx={{
@@ -415,11 +418,11 @@ const Navbar = () => {
               >
                 <MenuItem
                   onClick={() => {
-                    navigate("/profile");
+                    navigate("/settings");
                     handleProfileMenuClose(); // Close menu after selection
                   }}
                 >
-                  Profile
+                  Settings
                 </MenuItem>
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>
               </Menu>

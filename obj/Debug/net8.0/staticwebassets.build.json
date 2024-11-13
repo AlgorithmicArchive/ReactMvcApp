@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "3zA28whvlSKomLrg47MtXOvIuzcnFH7f1K2TmcteIUY=",
+  "Hash": "4Vv+h7Tb6T9TEOCzW2vRfLqVhio2+kQefZdiu4Ok9h0=",
   "Source": "ReactMvcApp",
   "BasePath": "_content/ReactMvcApp",
   "Mode": "Default",
@@ -2240,12 +2240,12 @@
       "OriginalItemSpec": "wwwroot/profile/075d7340.jpg"
     },
     {
-      "Identity": "/home/momin/Github/ReactMvcApp/wwwroot/profile/813d5dc2.jpg",
+      "Identity": "/home/momin/Github/ReactMvcApp/wwwroot/profile/c521fe58.jpg",
       "SourceId": "ReactMvcApp",
       "SourceType": "Discovered",
       "ContentRoot": "/home/momin/Github/ReactMvcApp/wwwroot/",
       "BasePath": "_content/ReactMvcApp",
-      "RelativePath": "profile/813d5dc2.jpg",
+      "RelativePath": "profile/c521fe58.jpg",
       "AssetKind": "All",
       "AssetMode": "All",
       "AssetRole": "Primary",
@@ -2256,7 +2256,26 @@
       "AssetTraitValue": "",
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
-      "OriginalItemSpec": "wwwroot/profile/813d5dc2.jpg"
+      "OriginalItemSpec": "wwwroot/profile/c521fe58.jpg"
+    },
+    {
+      "Identity": "/home/momin/Github/ReactMvcApp/wwwroot/profile/f91431f4.jpg",
+      "SourceId": "ReactMvcApp",
+      "SourceType": "Discovered",
+      "ContentRoot": "/home/momin/Github/ReactMvcApp/wwwroot/",
+      "BasePath": "_content/ReactMvcApp",
+      "RelativePath": "profile/f91431f4.jpg",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot/profile/f91431f4.jpg"
     },
     {
       "Identity": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/00ce0a66.pdf",

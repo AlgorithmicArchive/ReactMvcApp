@@ -10,6 +10,7 @@ import { fetchData, SetServiceId } from "../../assets/fetch";
 import { useForm } from "react-hook-form";
 import ActionModal from "../../components/ActionModal";
 import CustomButton from "../../components/CustomButton";
+import { formatKey } from "../../assets/formvalidations";
 
 export default function UserDetails() {
   const [generalDetails, setGeneralDetails] = useState([]);
@@ -291,7 +292,7 @@ export default function UserDetails() {
             <Col key={index} md={6} xs={12}>
               <Box sx={{ display: "flex", flexDirection: "column" }}>
                 <Typography sx={{ fontWeight: "bold", fontSize: "14px" }}>
-                  {item.Label}
+                  {formatKey(item.Label)}
                 </Typography>
                 <Typography
                   component={"div"}

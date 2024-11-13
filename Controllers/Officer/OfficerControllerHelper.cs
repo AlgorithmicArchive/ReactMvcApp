@@ -272,28 +272,51 @@ namespace ReactMvcApp.Controllers.Officer
                 {
                     function = "PullApplication",
                     parameters = new[] { item.ApplicationId },
-                    buttonText = "Pull"
+                    buttonText = "Call Back"
                 };
+                var currentStatus = dbcontext.ApplicationStatuses
+                    .FirstOrDefault(stat => stat.ApplicationId == item.ApplicationId);
 
-                var currentStatus = dbcontext.ApplicationStatuses.FirstOrDefault(stat => stat.ApplicationId == item.ApplicationId);
+                var workFlow = dbcontext.WorkFlows
+                    .Where(wf => wf.ServiceId == item.ServiceId)
+                    .ToList();
 
-                var workFlow = dbcontext.WorkFlows.Where(wf => wf.ServiceId == item.ServiceId).ToList();
-                var permissions = dbcontext.WorkFlows.FirstOrDefault(wf => wf.ServiceId == item.ServiceId && wf.Role == officerDetails.Role);
-                string nextOfficer = workFlow.FirstOrDefault(wf => wf.SequenceOrder == permissions!.SequenceOrder + 1)?.Role ?? "";
-                int nextOfficerId = dbcontext.OfficerDetails.FirstOrDefault(od => od.AccessCode == officerDetails.AccessCode && od.Role == nextOfficer)!.OfficerId;
+                var permissions = workFlow.FirstOrDefault(wf => wf.Role == officerDetails.Role);
+                if (permissions == null || currentStatus == null)
+                {
+                    // Handle cases where permissions or currentStatus is not found
+                    throw new Exception("Permissions or current application status not found.");
+                }
 
-                string previousOfficer = permissions!.SequenceOrder > 1
-                    ? workFlow.FirstOrDefault(wf => wf.SequenceOrder == permissions!.SequenceOrder - 1)!.Role ?? ""
-                    : "";
-                int previousOfficerId = dbcontext.OfficerDetails.FirstOrDefault(od => od.AccessCode == officerDetails.AccessCode && od.Role == previousOfficer)!.OfficerId;
+                string nextOfficer = "";
+                int nextOfficerId = 0;
 
+                // Determine the next officer role and ID
+                if (permissions.SequenceOrder < workFlow.Max(wf => wf.SequenceOrder))
+                {
+                    nextOfficer = workFlow.FirstOrDefault(wf => wf.SequenceOrder == permissions.SequenceOrder + 1)?.Role ?? "";
+                    nextOfficerId = dbcontext.OfficerDetails
+                        .FirstOrDefault(od => (od.AccessCode == officerDetails.AccessCode || od.AccessCode == 0) && od.Role == nextOfficer)?.OfficerId ?? 0;
+                }
+
+                string previousOfficer = "";
+                int previousOfficerId = 0;
+
+                // Determine the previous officer role and ID
+                if (permissions.SequenceOrder > 1)
+                {
+                    previousOfficer = workFlow.FirstOrDefault(wf => wf.SequenceOrder == permissions.SequenceOrder - 1)?.Role ?? "";
+                    previousOfficerId = dbcontext.OfficerDetails
+                        .FirstOrDefault(od => od.AccessCode == officerDetails.AccessCode && od.Role == previousOfficer)?.OfficerId ?? 0;
+                }
+                _logger.LogInformation($"---------------NEXT OFFICER: {nextOfficerId} CAN PULL :{currentStatus.CanPull}----------------");
 
                 bool canPull = false;
-                if (currentStatus!.Status == "Forwarded" && currentStatus.CurrentlyWith == nextOfficerId && currentStatus.CanPull)
+                if (nextOfficerId != 0 && currentStatus.CurrentlyWith == nextOfficerId && currentStatus.CanPull)
                 {
                     canPull = true;
                 }
-                else if (currentStatus!.Status == "Returned" && currentStatus.CurrentlyWith == previousOfficerId && currentStatus.CanPull)
+                else if (previousOfficerId != 0 && currentStatus.CurrentlyWith == previousOfficerId && currentStatus.CanPull)
                 {
                     canPull = true;
                 }
@@ -503,6 +526,7 @@ namespace ReactMvcApp.Controllers.Officer
                                               new SqlParameter("@Remarks", remarks),
                                               new SqlParameter("@FilePath", filePath ?? (object)DBNull.Value), // Handle null FilePath
                                               new SqlParameter("@Date", currentDate));
+            helper.UpdateApplication("ApplicationStatus", "Rejected", new SqlParameter("@ApplicationId", applicationId));
         }
         public void ActionSanction(int serviceId, string applicationId, int officerId, string remarks, string filePath)
         {
