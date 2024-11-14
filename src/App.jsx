@@ -1,10 +1,9 @@
 import React, { useContext, useEffect, useState } from "react";
 import { BrowserRouter as Router, useNavigate } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
-import { CssBaseline, Container } from "@mui/material";
+import { CssBaseline, Container, Box } from "@mui/material";
 import { TwilightBlossom } from "./themes/TwilightBlossom";
 import RoutesComponent from "./components/RoutesComponent"; // Import the RoutesComponent
-import Navbar from "./components/Navbar"; // Import the Navbar component
 import Header from "./components/Header";
 import { UserProvider, UserContext } from "./UserContext";
 
@@ -15,9 +14,7 @@ const App = () => {
         <CssBaseline /> {/* Normalize CSS across browsers */}
         <Router>
           <Header />
-          <Navbar /> {/* Render the Navbar */}
-          <MainContent />{" "}
-          {/* Handle routing and redirection in a separate component */}
+          <MainContent />
         </Router>
       </UserProvider>
     </ThemeProvider>
@@ -49,18 +46,18 @@ const MainContent = () => {
   }, [token, userType, verified, isInitialLoad]);
 
   return (
-    <Container
-      disableGutters
-      maxWidth={false}
+    <Box
       sx={{
-        top: "250px",
-        width: "100%",
+        width: "100vw",
         backgroundColor: "background.default",
-        paddingTop: "150px",
+        marginTop: {
+          xs: "60vh", // Extra-small screens (default, below sm)
+          md: "25vh", // Medium screens (900px and up)
+        },
       }}
     >
       <RoutesComponent />
-    </Container>
+    </Box>
   );
 };
 

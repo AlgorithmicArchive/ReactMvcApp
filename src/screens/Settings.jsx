@@ -1,10 +1,9 @@
 import { Box, Divider, Typography } from "@mui/material";
 import React, { useContext, useEffect, useRef, useState } from "react";
-import Row from "../components/grid/Row";
-import Col from "../components/grid/Col";
 import axiosInstance from "../axiosConfig";
 import CustomButton from "../components/CustomButton";
 import { UserContext } from "../UserContext";
+import { Col, Row } from "react-bootstrap";
 
 export default function Settings() {
   const { setProfile } = useContext(UserContext);
@@ -53,7 +52,7 @@ export default function Settings() {
   return (
     <Box
       sx={{
-        height: "auto",
+        height: { xs: "100vh", md: "110vh" },
         widht: "100vw",
         display: "flex",
         justifyContent: "center",
@@ -70,6 +69,8 @@ export default function Settings() {
           border: "3px solid",
           borderRadius: 3,
           padding: 5,
+          justifyContent: "center",
+          alignItems: "center",
         }}
       >
         <Box
@@ -86,7 +87,7 @@ export default function Settings() {
               borderColor: "primary.main",
               border: "3px solid",
               borderRadius: 3,
-              width: "max-content",
+              width: { xs: "100%", md: "max-content" },
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
@@ -95,7 +96,7 @@ export default function Settings() {
             <img
               src={profile.url}
               alt="User Profile Picture"
-              style={{ width: "15vw", height: "30vh" }}
+              style={{ width: "100%", height: "30vh" }}
             />
           </Box>
           <input
@@ -119,11 +120,19 @@ export default function Settings() {
             borderWidth: "2px",
           }}
         />
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
           <Typography sx={{ fontSize: 24, fontWeight: "bold" }}>
             Backup Codes
           </Typography>
-          <Row>
+          <Row className="gap-md-2 gap-xs-2 justify-content-center">
             {unused.map((item, index) => (
               <Col key={index} md={3} xs={6}>
                 <Typography

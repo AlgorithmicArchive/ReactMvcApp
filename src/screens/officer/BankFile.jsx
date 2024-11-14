@@ -8,11 +8,13 @@ import {
   fetchDistricts,
   fetchServiceList,
   createBankFile,
+  fetchData,
 } from "../../assets/fetch";
 import connection, {
   startSignalRConnection,
 } from "../../assets/signalRService";
 import SftpModal from "../../components/SftpModal";
+import CustomTable from "../../components/CustomTable";
 
 export default function BankFile() {
   const {
@@ -24,10 +26,13 @@ export default function BankFile() {
 
   const [districts, setDistricts] = useState([]);
   const [services, setServices] = useState([]);
+  const [currentList, setCurrentList] = useState("");
   const [isBankFile, setIsBankFile] = useState(null);
   const [totalCount, setTotalCount] = useState(0);
+  const [bankFileRecords, setBankFileRecords] = useState(0);
   const [isTriggered, setIsTriggered] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [table, setTable] = useState(null);
 
   const [open, setOpen] = useState(false);
 
@@ -67,6 +72,43 @@ export default function BankFile() {
     const result = await checkBankFile(districtId, serviceId);
     setIsBankFile(result.isBankFileSent);
     setTotalCount(result.totalCount);
+    setBankFileRecords(result.bankFileRecords);
+    console.log(result.isBankFileSent, result.totalCount);
+    if (result.isBankFileSent != null && result.isBankFileSent) {
+      setCurrentList("Bank File Records");
+      setTable({
+        url: "/Officer/GetBankFileRecords",
+        params: {
+          ServiceId: serviceId,
+          DistrictId: districtId,
+          status: "Dispatched",
+        },
+        key: Date.now(),
+      });
+    } else if (result.isBankFileSent != null && !result.isBankFileSent) {
+      setCurrentList("Bank File Records");
+      setTable({
+        url: "/Officer/GetBankFileRecords",
+        params: {
+          ServiceId: serviceId,
+          DistrictId: districtId,
+          status: "Deposited",
+        },
+        key: Date.now(),
+      });
+    } else if (result.totalCount > 0) {
+      console.log(result.totalCount);
+      setCurrentList("New Records");
+      setTable({
+        url: "/Officer/GetBankFileRecords",
+        params: {
+          ServiceId: serviceId,
+          DistrictId: districtId,
+          status: "Sanctioned",
+        },
+        key: Date.now(),
+      });
+    }
     setIsTriggered(true);
   };
 
@@ -81,6 +123,30 @@ export default function BankFile() {
     } catch (error) {
       console.error("Error creating bank file:", error);
     }
+  };
+
+  const handleListChange = (name) => {
+    setCurrentList(name);
+    setTable({
+      url: "/Officer/GetBankFileRecords",
+      params: {
+        ServiceId: getValues("service"),
+        DistrictId: getValues("district"),
+        status: name == "Bank File Records" ? "Deposited" : "Sanctioned",
+      },
+      key: Date.now(),
+    });
+  };
+
+  const BoldText = ({ text }) => {
+    return (
+      <Typography
+        component={"span"}
+        sx={{ fontWeight: "bold", fontSize: "24px" }}
+      >
+        {text}
+      </Typography>
+    );
   };
 
   return (
@@ -136,52 +202,114 @@ export default function BankFile() {
 
       {isTriggered && (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          {/* Message based on isBankFile status */}
           <Typography sx={{ fontSize: "24px", textAlign: "center" }}>
-            {isBankFile == null
-              ? "No Bank File for this district and service has been created yet."
-              : !isBankFile
-              ? "File Already Present for this district and service."
-              : "File Sent To Bank."}
-          </Typography>
-          <Typography sx={{ fontSize: "24px", textAlign: "center" }}>
-            {totalCount === 0 ? (
-              "No new sanctioned records for this district and service."
+            {isBankFile == null ? (
+              "A bank file for this district and service has not been created yet."
+            ) : !isBankFile ? (
+              <>
+                A bank file for this district and service already exists with{" "}
+                <BoldText text={bankFileRecords} /> entries.
+              </>
             ) : (
               <>
-                There are{" "}
-                <Typography
-                  component="span"
-                  sx={{
-                    fontWeight: "bold",
-                    fontSize: "24px",
-                    textAlign: "center",
-                    color: "text.primary",
-                  }}
-                >
-                  {totalCount}
-                </Typography>{" "}
-                new sanctioned records for this district and service.
+                The bank file with <BoldText text={bankFileRecords} /> records
+                has been sent to the bank.
               </>
             )}
           </Typography>
+
+          {/* Message for sanctioned records count */}
+          <Typography sx={{ fontSize: "24px", textAlign: "center" }}>
+            {totalCount === 0 ? (
+              "There are no new sanctioned records for this district and service."
+            ) : (
+              <>
+                There are <BoldText text={totalCount} /> new sanctioned records
+                for this district and service.
+              </>
+            )}
+          </Typography>
+
+          {bankFileRecords > 0 && totalCount > 0 && (
+            <Box
+              sx={{
+                backgroundColor: "primary.main",
+                padding: 5,
+                display: "flex",
+                justifyContent: "center",
+                gap: 3,
+                borderRadius: 5,
+              }}
+            >
+              <Typography
+                sx={{
+                  backgroundColor:
+                    currentList == "Bank File Records"
+                      ? "background.paper"
+                      : "gray",
+                  borderRadius: 5,
+                  paddingLeft: 2,
+                  paddingRight: 2,
+                  paddingTop: 1,
+                  paddingBottom: 1,
+                  cursor: "pointer",
+                }}
+                onClick={() => handleListChange("Bank File Records")}
+              >
+                Bank File Records
+              </Typography>
+              <Typography
+                sx={{
+                  backgroundColor:
+                    currentList == "New Records" ? "background.paper" : "gray",
+                  borderRadius: 5,
+                  paddingLeft: 2,
+                  paddingRight: 2,
+                  paddingTop: 1,
+                  paddingBottom: 1,
+                  cursor: "pointer",
+                }}
+                onClick={() => handleListChange("New Records")}
+              >
+                New Records
+              </Typography>
+            </Box>
+          )}
+
+          {((isBankFile != null && bankFileRecords > 0) || totalCount > 0) && (
+            <CustomTable
+              key={table.key}
+              fetchData={fetchData}
+              url={table.url}
+              params={table.params}
+              title={currentList + " List"}
+            />
+          )}
+
+          {/* Create Bank File Button */}
           {isBankFile == null && totalCount > 0 && (
             <CustomButton
               text="Create Bank File"
               onClick={handleCreateBankFile}
             />
           )}
+
+          {/* Append to Bank File Button */}
           {isBankFile != null && !isBankFile && totalCount > 0 && (
             <CustomButton
               text="Append to Bank File"
               onClick={handleCreateBankFile}
             />
           )}
-          {(isBankFile != null && !isBankFile && totalCount === 0) ||
-          progress === 100 ? (
-            <CustomButton text="Send Bank File" onClick={handleOpen} />
-          ) : null}
 
-          {/* Render Progress Bar if progress is above 0 */}
+          {/* Send Bank File Button */}
+          {((isBankFile != null && !isBankFile && totalCount === 0) ||
+            progress === 100) && (
+            <CustomButton text="Send Bank File" onClick={handleOpen} />
+          )}
+
+          {/* Progress Bar */}
           {progress > 0 && (
             <Box sx={{ width: "100%", mt: 2 }}>
               <Typography>Progress: {progress}%</Typography>
@@ -190,6 +318,7 @@ export default function BankFile() {
           )}
         </Box>
       )}
+
       <SftpModal
         open={open}
         handleClose={handleClose}

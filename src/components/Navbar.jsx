@@ -1,19 +1,9 @@
-import React, { useContext, useState, useEffect } from "react";
-import {
-  AppBar,
-  Toolbar,
-  Button,
-  Menu,
-  MenuItem,
-  Box,
-  Avatar,
-  IconButton,
-  Typography,
-} from "@mui/material";
+import React, { useContext } from "react";
+import { Navbar, Nav, NavDropdown, Container } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../UserContext";
 
-const Navbar = () => {
+const MyNavbar = () => {
   const navigate = useNavigate();
   const {
     userType,
@@ -28,410 +18,221 @@ const Navbar = () => {
     setVerified,
   } = useContext(UserContext);
 
-  // Separate anchor states for each menu
-  const [statusAnchorEl, setStatusAnchorEl] = useState(null); // Application status anchor
-  const [profileAnchorEl, setProfileAnchorEl] = useState(null); // Profile anchor
-  const [manageAnchorEl, setManageAnchorEl] = useState(null); // Manage Users anchor
-
-  // Reset anchor elements when userType changes to prevent invalid anchorEl
-  useEffect(() => {
-    setStatusAnchorEl(null);
-    setProfileAnchorEl(null);
-    setManageAnchorEl(null); // Reset Manage Users menu
-  }, [userType]);
-
-  // Handle Logout
   const handleLogout = () => {
     setToken(null);
     setUserType(null);
     setUsername(null);
     setProfile(null);
     setVerified(false);
-    localStorage.clear(); // Clear all localStorage on logout
+    localStorage.clear();
     navigate("/login");
   };
 
-  // Handlers for Application Status menu
-  const handleStatusMenuClick = (event) => {
-    setStatusAnchorEl(event.currentTarget);
-  };
-
-  const handleStatusMenuClose = () => {
-    setStatusAnchorEl(null);
-  };
-
-  // Handlers for Profile menu
-  const handleProfileMenuClick = (event) => {
-    setProfileAnchorEl(event.currentTarget);
-  };
-
-  const handleProfileMenuClose = () => {
-    setProfileAnchorEl(null);
-  };
-
-  // Handlers for Manage Users menu
-  const handleManageMenuClick = (event) => {
-    setManageAnchorEl(event.currentTarget);
-  };
-
-  const handleManageMenuClose = () => {
-    setManageAnchorEl(null);
-  };
-
   return (
-    <AppBar position="fixed" sx={{ top: "185px", zIndex: 1100 }}>
-      <Toolbar
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "background.paper",
-          boxShadow: "none",
-          color: "primary.main",
-          gap: 10,
-        }}
-      >
-        {!userType && !verified && (
-          <>
-            <Button
-              color="inherit"
-              sx={{ fontWeight: "bold" }}
-              component={Link}
-              to="/"
-            >
-              Home
-            </Button>
-            <Button
-              color="inherit"
-              sx={{ fontWeight: "bold" }}
-              component={Link}
-              to="/login"
-            >
-              Login
-            </Button>
-            <img
-              src="/assets/images/logo.png"
-              alt="Logo"
-              style={{ width: "80px" }}
-            />
-            <Button
-              color="inherit"
-              sx={{ fontWeight: "bold" }}
-              component={Link}
-              to="/register"
-            >
-              Register
-            </Button>
-          </>
-        )}
-
-        {userType === "Citizen" && verified && (
-          <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                gap: 10,
-                flexGrow: 1,
-              }}
-            >
-              <Button
-                color="inherit"
-                sx={{ fontWeight: "bold" }}
-                component={Link}
-                to="/user/home"
-              >
-                Home
-              </Button>
-              <Button
-                color="inherit"
-                sx={{ fontWeight: "bold" }}
-                component={Link}
-                to="/user/services"
-              >
-                Apply for Service
-              </Button>
-              <Button
-                color="inherit"
-                sx={{ fontWeight: "bold" }}
-                onClick={handleStatusMenuClick}
-              >
-                Application Status
-              </Button>
-              <Menu
-                anchorEl={statusAnchorEl}
-                open={Boolean(statusAnchorEl)}
-                onClose={handleStatusMenuClose}
-              >
-                <MenuItem
-                  onClick={() => {
-                    navigate("/user/initiated");
-                    handleStatusMenuClose(); // Close menu after selection
-                  }}
+    <Navbar
+      expand="lg"
+      style={{ backgroundColor: "#312C51" }}
+      className="shadow-sm"
+    >
+      <Container className="d-flex justify-content-center align-items-center">
+        <Navbar.Toggle aria-controls="basic-navbar-nav" />
+        <Navbar.Collapse id="basic-navbar-nav">
+          <Nav
+            className="mx-auto d-flex align-items-center justify-content-between gap-5"
+            style={{ color: "#F0C38E" }}
+          >
+            {/* Guest Links */}
+            {!userType && !verified && (
+              <>
+                <Nav.Link
+                  as={Link}
+                  to="/"
+                  className="fw-bold"
+                  style={{ color: "#F0C38E" }}
                 >
-                  Initiated Applications
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    navigate("/user/incomplete");
-                    handleStatusMenuClose(); // Close menu after selection
-                  }}
+                  Home
+                </Nav.Link>
+                <Nav.Link
+                  as={Link}
+                  to="/login"
+                  className="fw-bold"
+                  style={{ color: "#F0C38E" }}
                 >
-                  Incomplete Applications
-                </MenuItem>
-              </Menu>
-            </Box>
-
-            <Box
-              sx={{
-                marginLeft: "auto",
-                display: "flex",
-                gap: 5,
-                alignItems: "center",
-              }}
-            >
-              <Typography sx={{ color: "primary.main", fontWeight: "bold" }}>
-                {username}
-              </Typography>
-              <IconButton onClick={handleProfileMenuClick} sx={{ p: 0 }}>
-                <Avatar
-                  alt={String(username)}
-                  src={profile || "/default-avatar.png"}
-                />
-              </IconButton>
-              <Menu
-                anchorEl={profileAnchorEl}
-                open={Boolean(profileAnchorEl)}
-                onClose={handleProfileMenuClose}
-              >
-                <MenuItem
-                  onClick={() => {
-                    navigate("/settings");
-                    handleProfileMenuClose(); // Close menu after selection
-                  }}
+                  Login
+                </Nav.Link>
+                <Nav.Link
+                  as={Link}
+                  to="/register"
+                  className="fw-bold"
+                  style={{ color: "#F0C38E" }}
                 >
-                  Settings
-                </MenuItem>
-                <MenuItem onClick={handleLogout}>Logout</MenuItem>
-              </Menu>
-            </Box>
-          </Box>
-        )}
+                  Register
+                </Nav.Link>
+              </>
+            )}
 
-        {userType === "Officer" && verified && (
-          <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                gap: 10,
-                flexGrow: 1,
-              }}
-            >
-              <Button
-                color="inherit"
-                sx={{ fontWeight: "bold" }}
-                component={Link}
-                to="/officer/home"
-              >
-                Home
-              </Button>
-              <Button
-                color="inherit"
-                sx={{ fontWeight: "bold" }}
-                component={Link}
-                to="/officer/reports"
-              >
-                Reports
-              </Button>
-              {/* New "Manage Bank File*/}
-              {designation == "Director Finance" && (
-                <>
-                  <Button
-                    color="inherit"
-                    sx={{ fontWeight: "bold" }}
-                    onClick={handleManageMenuClick}
+            {/* Citizen Links */}
+            {userType === "Citizen" && verified && (
+              <>
+                <Nav.Link
+                  as={Link}
+                  to="/user/home"
+                  className="fw-bold"
+                  style={{ color: "#F0C38E" }}
+                >
+                  Home
+                </Nav.Link>
+                <Nav.Link
+                  as={Link}
+                  to="/user/services"
+                  className="fw-bold"
+                  style={{ color: "#F0C38E" }}
+                >
+                  Apply for Service
+                </Nav.Link>
+                <NavDropdown
+                  title={
+                    <span style={{ color: "#F0C38E", fontWeight: "bold" }}>
+                      Application Status
+                    </span>
+                  }
+                  id="application-status"
+                >
+                  <NavDropdown.Item onClick={() => navigate("/user/initiated")}>
+                    Initiated Applications
+                  </NavDropdown.Item>
+                  <NavDropdown.Item
+                    onClick={() => navigate("/user/incomplete")}
                   >
-                    Manage Bank File
-                  </Button>
-                  <Menu
-                    anchorEl={manageAnchorEl}
-                    open={Boolean(manageAnchorEl)}
-                    onClose={handleManageMenuClose}
+                    Incomplete Applications
+                  </NavDropdown.Item>
+                </NavDropdown>
+              </>
+            )}
+
+            {/* Officer Links */}
+            {userType === "Officer" && verified && (
+              <>
+                <Nav.Link
+                  as={Link}
+                  to="/officer/home"
+                  className="fw-bold"
+                  style={{ color: "#F0C38E" }}
+                >
+                  Home
+                </Nav.Link>
+                <Nav.Link
+                  as={Link}
+                  to="/officer/reports"
+                  className="fw-bold"
+                  style={{ color: "#F0C38E" }}
+                >
+                  Reports
+                </Nav.Link>
+                {designation === "Director Finance" && (
+                  <NavDropdown
+                    title={
+                      <span style={{ color: "#F0C38E", fontWeight: "bold" }}>
+                        Manage Bank File
+                      </span>
+                    }
+                    id="manage-bank-file"
+                    style={{ color: "#F0C38E" }}
                   >
-                    <MenuItem
-                      onClick={() => {
-                        navigate("/officer/bankFile");
-                        handleManageMenuClose(); // Close menu after selection
-                      }}
+                    <NavDropdown.Item
+                      onClick={() => navigate("/officer/bankFile")}
                     >
                       Create Bank File
-                    </MenuItem>
-                    <MenuItem
-                      onClick={() => {
-                        navigate("/officer/responseFile");
-                        handleManageMenuClose(); // Close menu after selection
-                      }}
+                    </NavDropdown.Item>
+                    <NavDropdown.Item
+                      onClick={() => navigate("/officer/responseFile")}
                     >
                       Check Response File
-                    </MenuItem>
-                  </Menu>
-
-                  <Button
-                    color="inherit"
-                    sx={{ fontWeight: "bold" }}
-                    onClick={handleStatusMenuClick}
+                    </NavDropdown.Item>
+                  </NavDropdown>
+                )}
+                <NavDropdown
+                  title={
+                    <span style={{ color: "#F0C38E", fontWeight: "bold" }}>
+                      DSC Management
+                    </span>
+                  }
+                  id="dsc-management"
+                  style={{ color: "#F0C38E" }}
+                >
+                  <NavDropdown.Item
+                    onClick={() => navigate("/officer/registerDSC")}
                   >
-                    DSC Management
-                  </Button>
-                  <Menu
-                    anchorEl={statusAnchorEl}
-                    open={Boolean(statusAnchorEl)}
-                    onClose={handleStatusMenuClose}
+                    Register DSC
+                  </NavDropdown.Item>
+                  <NavDropdown.Item
+                    onClick={() => navigate("/officer/unregisterDSC")}
                   >
-                    <MenuItem
-                      onClick={() => {
-                        navigate("/officer/registerDSC");
-                        handleStatusMenuClose(); // Close menu after selection
-                      }}
-                    >
-                      Register DSC
-                    </MenuItem>
-                    <MenuItem
-                      onClick={() => {
-                        navigate("/officer/unregisterDSC");
-                        handleStatusMenuClose(); // Close menu after selection
-                      }}
-                    >
-                      Unregister DSC
-                    </MenuItem>
-                  </Menu>
-                </>
-              )}
-            </Box>
-            <Box
-              sx={{
-                marginLeft: "auto",
-                display: "flex",
-                gap: 5,
-                alignItems: "center",
-              }}
-            >
-              <Typography sx={{ color: "primary.main", fontWeight: "bold" }}>
-                {username}
-              </Typography>
-              <IconButton onClick={handleProfileMenuClick} sx={{ p: 0 }}>
-                <Avatar
-                  alt={String(username)}
-                  src={profile || "/default-avatar.png"}
-                />
-              </IconButton>
-              <Menu
-                anchorEl={profileAnchorEl}
-                open={Boolean(profileAnchorEl)}
-                onClose={handleProfileMenuClose}
-              >
-                <MenuItem
-                  onClick={() => {
-                    navigate("/settings");
-                    handleProfileMenuClose(); // Close menu after selection
-                  }}
-                >
-                  Settings
-                </MenuItem>
-                <MenuItem onClick={handleLogout}>Logout</MenuItem>
-              </Menu>
-            </Box>
-          </Box>
-        )}
+                    Unregister DSC
+                  </NavDropdown.Item>
+                </NavDropdown>
+              </>
+            )}
 
-        {userType === "Admin" && verified && (
-          <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                gap: 10,
-                flexGrow: 1,
-              }}
-            >
-              <Button
-                color="inherit"
-                sx={{ fontWeight: "bold" }}
-                component={Link}
-                to="/admin/home"
-              >
-                Dashboard
-              </Button>
-              <Button
-                color="inherit"
-                sx={{ fontWeight: "bold" }}
-                onClick={handleStatusMenuClick}
-              >
-                Reports
-              </Button>
-              <Menu
-                anchorEl={statusAnchorEl}
-                open={Boolean(statusAnchorEl)}
-                onClose={handleStatusMenuClose}
-              >
-                <MenuItem
-                  onClick={() => {
-                    navigate("/admin/individual");
-                    handleStatusMenuClose(); // Close menu after selection
-                  }}
+            {/* Admin Links */}
+            {userType === "Admin" && verified && (
+              <>
+                <Nav.Link
+                  as={Link}
+                  to="/admin/home"
+                  className="fw-bold"
+                  style={{ color: "#F0C38E" }}
                 >
-                  Individual Report
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    navigate("/admin/history");
-                    handleStatusMenuClose(); // Close menu after selection
-                  }}
+                  Dashboard
+                </Nav.Link>
+                <NavDropdown
+                  title="Reports"
+                  id="admin-reports"
+                  style={{ color: "#F0C38E" }}
                 >
-                  History
-                </MenuItem>
-              </Menu>
-            </Box>
+                  <NavDropdown.Item
+                    onClick={() => navigate("/admin/individual")}
+                  >
+                    Individual Report
+                  </NavDropdown.Item>
+                  <NavDropdown.Item onClick={() => navigate("/admin/history")}>
+                    History
+                  </NavDropdown.Item>
+                </NavDropdown>
+              </>
+            )}
+          </Nav>
 
-            <Box
-              sx={{
-                marginLeft: "auto",
-                display: "flex",
-                gap: 5,
-                alignItems: "center",
-              }}
-            >
-              <Typography sx={{ color: "primary.main", fontWeight: "bold" }}>
+          {/* User Profile and Logout */}
+          {userType && verified && (
+            <Nav className="ms-auto d-flex align-items-center">
+              <span className="fw-bold" style={{ color: "#F0C38E" }}>
                 {username}
-              </Typography>
-              <IconButton onClick={handleProfileMenuClick} sx={{ p: 0 }}>
-                <Avatar
-                  alt={String(username)}
-                  src={profile || "/default-avatar.png"}
-                />
-              </IconButton>
-              <Menu
-                anchorEl={profileAnchorEl}
-                open={Boolean(profileAnchorEl)}
-                onClose={handleProfileMenuClose}
+              </span>
+              <NavDropdown
+                title={
+                  <img
+                    src={profile || "/default-avatar.png"}
+                    alt="Profile"
+                    className="rounded-circle"
+                    style={{ width: "30px" }}
+                  />
+                }
+                id="profile-dropdown"
               >
-                <MenuItem
-                  onClick={() => {
-                    navigate("/settings");
-                    handleProfileMenuClose(); // Close menu after selection
-                  }}
-                >
+                <NavDropdown.Item onClick={() => navigate("/settings")}>
                   Settings
-                </MenuItem>
-                <MenuItem onClick={handleLogout}>Logout</MenuItem>
-              </Menu>
-            </Box>
-          </Box>
-        )}
-      </Toolbar>
-    </AppBar>
+                </NavDropdown.Item>
+                <NavDropdown.Item onClick={handleLogout}>
+                  Logout
+                </NavDropdown.Item>
+              </NavDropdown>
+            </Nav>
+          )}
+        </Navbar.Collapse>
+      </Container>
+    </Navbar>
   );
 };
 
-export default Navbar;
+export default MyNavbar;

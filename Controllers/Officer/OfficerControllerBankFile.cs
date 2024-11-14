@@ -225,8 +225,8 @@ namespace ReactMvcApp.Controllers.Officer
             // Notify completion
             await hubContext.Clients.All.SendAsync("ReceiveProgress", 100);
 
-            var sanctionCount = dbcontext.ApplicationsCounts.FirstOrDefault(ac => ac.ServiceId == serviceIdInt && ac.OfficerId.ToString() == userId && ac.Status == "Sanctioned");
-            sanctionCount!.Count -= totalRecords;
+            // var sanctionCount = dbcontext.ApplicationsCounts.FirstOrDefault(ac => ac.ServiceId == serviceIdInt && ac.OfficerId.ToString() == userId && ac.Status == "Sanctioned");
+            // sanctionCount!.Count -= totalRecords;
 
             if (bankFile == null)
             {
@@ -265,30 +265,18 @@ namespace ReactMvcApp.Controllers.Officer
             return Json(new { filePath = $"/exports/{fileName}" });
         }
 
-        public IActionResult GetApplicationsForBank(string ServiceId, string DistrictId)
+        public IActionResult GetBankFileRecords(string ServiceId, string DistrictId, string status, int page, int size)
         {
             int serviceId = Convert.ToInt32(ServiceId);
             int districtId = Convert.ToInt32(DistrictId);
-            int totalCount = 0;
-            _logger.LogInformation($"District Id: {districtId.GetType()} Service ID: {serviceId.GetType()}");
-
-            // Fetch applications with pagination applied directly
             var applications = dbcontext.Applications
-                .FromSqlRaw("EXEC GetApplicationsForBank @DistrictId, @ServiceId",
-                            new SqlParameter("@DistrictId", districtId),
-                            new SqlParameter("@ServiceId", serviceId))
-                .ToList();
-
-            // Total count of applications
-            totalCount = applications.Count;
-
+               .FromSqlRaw("EXEC GetApplicationsForBank @DistrictId, @ServiceId, @Status",
+                           new SqlParameter("@DistrictId", districtId),
+                           new SqlParameter("@ServiceId", serviceId),
+                           new SqlParameter("@Status", status))
+               .ToList();
             // Apply pagination to the list
-            applications = applications.Skip(0).Take(10).ToList();
-
-            // Check if bank file is sent
-            var bankFile = dbcontext.BankFiles.FirstOrDefault(bf => bf.ServiceId == serviceId && bf.DistrictId == districtId);
-            var isBankFileSent = bankFile?.FileSent;
-
+            var paginatedApplications = applications.Skip(page * size).Take(size).ToList();
             // Define columns
             var columns = new List<dynamic>
             {
@@ -305,7 +293,7 @@ namespace ReactMvcApp.Controllers.Officer
             List<dynamic> data = [];
             int index = 1;
 
-            foreach (var item in applications)
+            foreach (var item in paginatedApplications)
             {
                 // Deserialize ServiceSpecific JSON
                 var serviceSpecific = JsonConvert.DeserializeObject<Dictionary<string, string>>(item.ServiceSpecific);
@@ -341,8 +329,40 @@ namespace ReactMvcApp.Controllers.Officer
                 index++;
             }
 
+
+
+            return Json(new { data, columns, totalCount = applications.Count });
+        }
+
+
+        public IActionResult VerifyBankFileAndRecords(string ServiceId, string DistrictId)
+        {
+            int serviceId = Convert.ToInt32(ServiceId);
+            int districtId = Convert.ToInt32(DistrictId);
+            int totalCount = 0;
+            _logger.LogInformation($"District Id: {districtId.GetType()} Service ID: {serviceId.GetType()}");
+
+            // Fetch applications with pagination applied directly
+            var applications = dbcontext.Applications
+                .FromSqlRaw("EXEC GetApplicationsForBank @DistrictId, @ServiceId, @Status",
+                            new SqlParameter("@DistrictId", districtId),
+                            new SqlParameter("@ServiceId", serviceId),
+                            new SqlParameter("@Status", "Sanctioned"))
+                .ToList();
+
+            // Total count of applications
+            totalCount = applications.Count;
+
+
+            // Check if bank file is sent
+            var bankFile = dbcontext.BankFiles.FirstOrDefault(bf => bf.ServiceId == serviceId && bf.DistrictId == districtId);
+            var isBankFileSent = bankFile!.FileSent;
+            int bankFileRecords = bankFile?.TotalRecords ?? 0;
+
+
+
             // Return the JSON result
-            return Json(new { data, columns, totalCount, isBankFileSent });
+            return Json(new { totalCount, isBankFileSent, bankFileRecords });
         }
 
 

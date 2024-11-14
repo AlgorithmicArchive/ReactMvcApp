@@ -13,7 +13,6 @@ const style = {
   top: "50%",
   left: "50%",
   transform: "translate(-50%, -50%)",
-  width: "50vw",
   bgcolor: "background.paper",
   boxShadow: 24,
   p: 4,
@@ -31,7 +30,16 @@ const BasicModal = ({
 }) => {
   return (
     <Modal open={open} onClose={handleClose}>
-      <Box sx={[style, { maxHeight: "600px", overflowY: "scroll" }]}>
+      <Box
+        sx={[
+          style,
+          {
+            maxHeight: "600px",
+            overflowY: "scroll",
+            width: { xs: "90%", md: "50%" },
+          },
+        ]}
+      >
         <Box sx={{ display: "flex", justifyContent: "space-between" }}>
           <Typography variant="h6" component="h2" sx={{ textAlign: "center" }}>
             {Title}

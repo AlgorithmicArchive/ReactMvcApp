@@ -2,8 +2,6 @@ import { Box, Container, Typography } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axiosInstance from "../../axiosConfig";
-import Row from "../../components/grid/Row";
-import Col from "../../components/grid/Col";
 import BasicModal from "../../components/BasicModal";
 import CustomTable from "../../components/CustomTable";
 import { fetchData, SetServiceId } from "../../assets/fetch";
@@ -11,6 +9,7 @@ import { useForm } from "react-hook-form";
 import ActionModal from "../../components/ActionModal";
 import CustomButton from "../../components/CustomButton";
 import { formatKey } from "../../assets/formvalidations";
+import { Col, Row } from "react-bootstrap";
 
 export default function UserDetails() {
   const [generalDetails, setGeneralDetails] = useState([]);
@@ -136,14 +135,16 @@ export default function UserDetails() {
   }, []);
 
   return (
-    <Container
+    <Box
       sx={{
         width: "100vw",
-        height: "70vh",
+        height: "auto",
         display: "flex",
         flexDirection: "column",
         gap: 5,
-        marginTop: "12vh",
+        marginTop: "30vh",
+        justifyContent: "center",
+        alignItems: "center",
       }}
     >
       <CustomButton
@@ -161,9 +162,10 @@ export default function UserDetails() {
           marginTop: 2,
           padding: 3,
           backgroundColor: "background.paper",
+          width: { xs: "95%", md: "60%" },
         }}
       >
-        <Row>
+        <Row style={{ rowGap: "25px" }}>
           <Col md={12} xs={12}>
             <Typography variant="h3">General Details</Typography>
           </Col>
@@ -335,12 +337,11 @@ export default function UserDetails() {
       <BasicModal
         open={open}
         handleClose={handleClose}
-        Title={"Document"}
         pdf={pdf}
         table={null}
         handleActionButton={canSanction ? handleActionButton : null}
         buttonText={modalButtonText}
       />
-    </Container>
+    </Box>
   );
 }

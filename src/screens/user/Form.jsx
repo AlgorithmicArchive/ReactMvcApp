@@ -36,8 +36,9 @@ export default function Form() {
         justifyContent: "center",
         alignItems: "center",
         flexDirection: "column",
-        padding: 3,
-        marginTop: "100px",
+        width: "100vw",
+        height: "auto",
+        marginTop: "30vh",
       }}
     >
       <Typography
@@ -52,9 +53,9 @@ export default function Form() {
         <Box
           sx={{
             backgroundColor: "primary.main",
-            width: "80%",
-            padding: 5,
-            borderRadius: 5,
+            width: { xs: "100%", md: "60%" },
+            padding: 3,
+            borderRadius: 3,
           }}
         >
           <DynamicStepForm formConfig={formElements} serviceId={serviceId} />

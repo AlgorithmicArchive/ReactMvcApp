@@ -8,6 +8,8 @@ import CustomInputField from "../../components/form/CustomInputField";
 import CustomTextarea from "../../components/form/CustomTextArea";
 import { Email, Phone, LocationOn, AccessTime } from "@mui/icons-material";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { Col, Container, Row } from "react-bootstrap";
 
 // Define validation schema using Yup
 const schema = yup.object().shape({
@@ -58,114 +60,81 @@ export default function HomeScreen() {
     const result = response.data;
     if (result.status) setContactMsg(result.message);
   };
+  const navigate = useNavigate();
 
   return (
-    <Box sx={{ backgroundColor: "background.default" }}>
-      {/* Section 1 */}
-      <Box
-        sx={{
-          width: "100vw",
-          height: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: 3,
-        }}
-      >
-        <Box sx={{ backgroundColor: "primary.main", borderRadius: 5 }}>
-          <img
+    <Container
+      fluid
+      style={{
+        paddingTop: "50px",
+        paddingBottom: "50px",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <Row className="gap-3 mb-5">
+        <Col md={12} xs={12} className="d-flex justify-content-center">
+          <Box
+            component={"img"}
             src="/assets/images/socialwelfare.png"
-            alt="HOME Image"
-            style={{ width: "30vw" }}
+            sx={{
+              backgroundColor: "primary.main",
+              borderRadius: 5,
+              width: { xs: "80vw", md: "25vw" },
+            }}
           />
-        </Box>
-        <CustomButton text={"Get Started"} />
-      </Box>
-
-      {/* Section 2 */}
-      <Box
-        sx={{
-          width: "100vw",
-          height: "100vh",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          flexDirection: "column",
-          gap: 10,
-        }}
-      >
-        <Typography variant="h2" sx={{ color: "white" }}>
-          Services
-        </Typography>
-        {/* Service Boxes */}
-        <Box sx={{ display: "flex", gap: 20 }}>
-          {[
-            { url: "LadliBeti.png", label: "Ladli Beti" },
-            { url: "Pension.png", label: "Pension Scheme" },
-            { url: "marriage.png", label: "Marriage Assistance" },
-          ].map((service, index) => (
+        </Col>
+        <Col md={12} xs={12} className="d-flex justify-content-center">
+          <CustomButton
+            text={"Get Started"}
+            onClick={() => navigate("/login")}
+          />
+        </Col>
+      </Row>
+      <Row className="mt-5 mb-5">
+        <Col md={12} xs={12} className="mb-5">
+          <Typography sx={{ textAlign: "center", fontSize: "48px" }}>
+            Services
+          </Typography>
+        </Col>
+        {[
+          { url: "LadliBeti.png", label: "Ladli Beti" },
+          { url: "Pension.png", label: "Pension Scheme" },
+          { url: "marriage.png", label: "Marriage Assistance" },
+        ].map((service, index) => (
+          <Col
+            key={index}
+            md={4}
+            xs={12}
+            className="d-flex flex-column justify-content-center align-items-center"
+          >
             <Box
-              key={index}
+              component={"img"}
+              src={`/assets/images/${service.url}`}
               sx={{
                 position: "relative",
-                width: "20vw",
+                width: { xs: "80vw", md: "25vw" },
                 borderRadius: 5,
                 backgroundColor: "primary.main",
               }}
+            />
+            <Typography
+              sx={{
+                color: "primary.main",
+                fontWeight: "bold",
+                textAlign: "center",
+                width: "85%",
+              }}
             >
-              <img
-                src={`/assets/images/${service.url}`}
-                alt={service.url}
-                style={{
-                  width: "100%",
-                  borderRadius: "5px",
-                  display: "block",
-                }}
-              />
-              <Typography
-                variant="h6"
-                sx={{
-                  position: "absolute",
-                  bottom: "5px",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)",
-                  color: "background.paper",
-                  fontWeight: "bold",
-                  width: "100%",
-                  textAlign: "center",
-                }}
-              >
-                {service.label}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-      </Box>
-
-      {/* Section 3 */}
-      <Box
-        ref={section3Ref}
-        sx={{
-          width: "100vw",
-          height: "100vh",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "50px",
-            backgroundColor: "background.paper",
-            borderRadius: 10,
-            gap: 5,
-          }}
-        >
-          {/* Left Section (Contact Form) */}
+              {service.label}
+            </Typography>
+          </Col>
+        ))}
+      </Row>
+      <Row className="mt-5 gap-md-0 gap-5">
+        <Col md={6} xs={12}>
           <Box
             sx={{
               flex: 1,
@@ -174,6 +143,7 @@ export default function HomeScreen() {
               boxShadow: "0px 10px 30px rgba(0, 0, 0, 0.1)",
               borderRadius: "10px",
               color: "background.paper",
+              width: "100%",
             }}
           >
             <Typography variant="h3" sx={{ fontWeight: "bold", mb: 2 }}>
@@ -184,7 +154,6 @@ export default function HomeScreen() {
               as we can!
             </Typography>
 
-            {/* Contact Form */}
             <form onSubmit={handleSubmit(onSubmit)} autoComplete="off">
               <CustomInputField
                 label="Full Name"
@@ -224,26 +193,28 @@ export default function HomeScreen() {
               )}
             </form>
           </Box>
-
-          {/* Right Section (Info) */}
+        </Col>
+        <Col
+          md={6}
+          xs={12}
+          className="d-flex justify-content-center align-items-center"
+        >
           <Box
             sx={{
-              flex: 1,
               backgroundColor: "text.primary",
-              padding: "50px",
               color: "background.paper",
+              padding: "50px",
               borderRadius: "10px",
-              boxShadow: "0px 10px 30px rgba(0, 0, 0, 0.1)",
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
+              width: "100%",
             }}
           >
             <Typography variant="h4" sx={{ fontWeight: "bold", mb: 4 }}>
               Info
             </Typography>
 
-            {/* Contact Information */}
             <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
               <Email sx={{ mr: 2 }} />
               <Typography>info@getintouch.we</Typography>
@@ -261,8 +232,8 @@ export default function HomeScreen() {
               <Typography>09:00 - 18:00</Typography>
             </Box>
           </Box>
-        </Box>
-      </Box>
-    </Box>
+        </Col>
+      </Row>
+    </Container>
   );
 }

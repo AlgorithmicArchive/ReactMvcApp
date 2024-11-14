@@ -12,6 +12,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import axiosInstance from "../axiosConfig";
 import BasicModal from "./BasicModal";
 import { formatKey } from "../assets/formvalidations";
+import { Col, Container, Row } from "react-bootstrap";
 
 const UserDetailsAccordion = ({ applicationId }) => {
   const [generalDetails, setGeneralDetails] = useState([]);
@@ -62,36 +63,77 @@ const UserDetailsAccordion = ({ applicationId }) => {
           backgroundColor: "transparent",
         }}
       >
-        <Grid2
-          container
-          spacing={5}
-          sx={{
-            justifyContent: "center",
-            alignItems: "center",
-            border: "2px solid",
-            borderColor: "primary.main",
-            padding: 2,
-            borderRadius: 3,
-          }}
-          width={"100%"}
-        >
-          <Grid2 container spacing={{ md: 12, xs: 12 }} width={"100%"}>
-            <Typography variant="h5">General Details</Typography>
-          </Grid2>
-          {generalDetails.map((item, index) => (
-            <Grid2
-              key={index}
-              container
-              spacing={{ md: 6, xs: 12 }}
-              width={"40%"}
-            >
-              <Box
-                sx={{ display: "flex", flexDirection: "column", width: "100%" }}
-              >
-                <Typography sx={{ fontWeight: "bold", fontSize: "12px" }}>
-                  {item.key}
-                </Typography>
-                {item.key != "Applicant Image" ? (
+        <Container fluid>
+          <Row>
+            <Col md={12} xs={12}>
+              <Typography variant="h5">General Details</Typography>
+            </Col>
+            {generalDetails.map((item, index) => (
+              <Col key={index} md={6} xs={12}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    width: "100%",
+                  }}
+                >
+                  <Typography sx={{ fontWeight: "bold", fontSize: "12px" }}>
+                    {item.key}
+                  </Typography>
+                  {item.key != "Applicant Image" ? (
+                    <Typography
+                      sx={{
+                        fontWeight: "normal",
+                        fontSize: "14px",
+                        border: "2px solid",
+                        borderColor: "primary.main",
+                        borderRadius: 3,
+                        padding: 1,
+                      }}
+                    >
+                      {item.value}
+                    </Typography>
+                  ) : (
+                    <Box>
+                      <img
+                        src={`http://localhost:5004${item.value}`}
+                        alt="Preview"
+                        style={{
+                          width: "150px",
+                          height: "150px",
+                          objectFit: "cover",
+                          borderRadius: "5px",
+                        }}
+                      />
+                    </Box>
+                  )}
+                </Box>
+              </Col>
+            ))}
+            <Divider
+              sx={{
+                width: "100%",
+                borderColor: "primary.main",
+                borderWidth: "2px",
+                marginTop: "10px",
+                marginBottom: "10px",
+              }}
+            />
+            <Col md={12} xs={12}>
+              <Typography variant="h5">Present Address Details</Typography>
+            </Col>
+            {preAddressDetails.map((item, index) => (
+              <Col key={index} md={6} xs={12}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    width: "100%",
+                  }}
+                >
+                  <Typography sx={{ fontWeight: "bold", fontSize: "12px" }}>
+                    {item.key}
+                  </Typography>
                   <Typography
                     sx={{
                       fontWeight: "normal",
@@ -104,201 +146,153 @@ const UserDetailsAccordion = ({ applicationId }) => {
                   >
                     {item.value}
                   </Typography>
-                ) : (
-                  <Box>
-                    <img
-                      src={`http://localhost:5004${item.value}`}
-                      alt="Preview"
-                      style={{
-                        width: "150px",
-                        height: "150px",
-                        objectFit: "cover",
-                        borderRadius: "5px",
-                      }}
-                    />
-                  </Box>
-                )}
-              </Box>
-            </Grid2>
-          ))}
-          <Divider
-            sx={{
-              width: "100%",
-              borderColor: "primary.main",
-              borderWidth: "2px",
-            }}
-          />
-          <Grid2 container spacing={{ md: 12, xs: 12 }} width={"100%"}>
-            <Typography variant="h5">Present Address Details</Typography>
-          </Grid2>
-          {preAddressDetails.map((item, index) => (
-            <Grid2
-              key={index}
-              container
-              spacing={{ md: 6, xs: 12 }}
-              width={"40%"}
-            >
-              <Box
-                sx={{ display: "flex", flexDirection: "column", width: "100%" }}
-              >
-                <Typography sx={{ fontWeight: "bold", fontSize: "12px" }}>
-                  {item.key}
-                </Typography>
-                <Typography
+                </Box>
+              </Col>
+            ))}
+            <Divider
+              sx={{
+                width: "100%",
+                borderColor: "primary.main",
+                borderWidth: "2px",
+                marginTop: "10px",
+                marginBottom: "10px",
+              }}
+            />
+            <Col md={12} xs={12}>
+              <Typography variant="h5">Permanent Address Details</Typography>
+            </Col>
+            {perAddressDetails.map((item, index) => (
+              <Col key={index} md={6} xs={12}>
+                <Box
                   sx={{
-                    fontWeight: "normal",
-                    fontSize: "14px",
-                    border: "2px solid",
-                    borderColor: "primary.main",
-                    borderRadius: 3,
-                    padding: 1,
-                  }}
-                >
-                  {item.value}
-                </Typography>
-              </Box>
-            </Grid2>
-          ))}
-          <Divider
-            sx={{
-              width: "100%",
-              borderColor: "primary.main",
-              borderWidth: "2px",
-            }}
-          />
-          <Grid2 container spacing={{ md: 12, xs: 12 }} width={"100%"}>
-            <Typography variant="h5">Permanent Address Details</Typography>
-          </Grid2>
-          {perAddressDetails.map((item, index) => (
-            <Grid2
-              key={index}
-              container
-              spacing={{ md: 6, xs: 12 }}
-              width={"40%"}
-            >
-              <Box
-                sx={{ display: "flex", flexDirection: "column", width: "100%" }}
-              >
-                <Typography sx={{ fontWeight: "bold", fontSize: "12px" }}>
-                  {item.key}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontWeight: "normal",
-                    fontSize: "14px",
-                    border: "2px solid",
-                    borderColor: "primary.main",
-                    borderRadius: 3,
-                    padding: 1,
-                  }}
-                >
-                  {item.value}
-                </Typography>
-              </Box>
-            </Grid2>
-          ))}
-          <Divider
-            sx={{
-              width: "100%",
-              borderColor: "primary.main",
-              borderWidth: "2px",
-            }}
-          />
-          <Grid2 container spacing={{ md: 12, xs: 12 }} width={"100%"}>
-            <Typography variant="h5">Bank Details</Typography>
-          </Grid2>
-          {bankDetails.map((item, index) => (
-            <Grid2
-              key={index}
-              container
-              spacing={{ md: 12, xs: 12 }}
-              width={"100%"}
-            >
-              <Box
-                sx={{ display: "flex", flexDirection: "column", width: "100%" }}
-              >
-                <Typography sx={{ fontWeight: "bold", fontSize: "12px" }}>
-                  {item.key}
-                </Typography>
-                <Typography
-                  sx={{
-                    fontWeight: "normal",
-                    fontSize: "14px",
-                    border: "2px solid",
-                    borderColor: "primary.main",
-                    borderRadius: 3,
-                    padding: 1,
-                  }}
-                >
-                  {item.value}
-                </Typography>
-              </Box>
-            </Grid2>
-          ))}
-          <Divider
-            sx={{
-              width: "100%",
-              borderColor: "primary.main",
-              borderWidth: "2px",
-            }}
-          />
-          <Grid2 container spacing={{ md: 12, xs: 12 }} width={"100%"}>
-            <Typography variant="h5">Bank Details</Typography>
-          </Grid2>
-          {documents.map((item, index) => (
-            <Grid2
-              key={index}
-              container
-              spacing={{ md: 6, xs: 12 }}
-              width={"40%"}
-            >
-              <Box
-                sx={{ display: "flex", flexDirection: "column", width: "100%" }}
-              >
-                <Typography
-                  sx={{
-                    fontWeight: "bold",
-                    fontSize: "14px",
-                    wordWrap: "break-word",
-                  }}
-                >
-                  {formatKey(item.Label)}
-                </Typography>
-                <Typography
-                  component={"div"}
-                  sx={{
-                    fontWeight: "normal",
-                    fontSize: "18px",
-                    border: "2px solid",
-                    borderColor: "primary.main",
-                    borderRadius: 3,
-                    padding: 1,
                     display: "flex",
-                    justifyContent: "space-between",
+                    flexDirection: "column",
+                    width: "100%",
                   }}
                 >
-                  <Typography>{item.Enclosure}</Typography>
+                  <Typography sx={{ fontWeight: "bold", fontSize: "12px" }}>
+                    {item.key}
+                  </Typography>
                   <Typography
                     sx={{
-                      cursor: "pointer",
-                      fontWeight: "bold",
+                      fontWeight: "normal",
+                      fontSize: "14px",
                       border: "2px solid",
+                      borderColor: "primary.main",
                       borderRadius: 3,
-                      height: "max-content",
-                      paddingLeft: 1,
-                      paddingRight: 1,
-                      backgroundColor: "primary.main",
-                      color: "background.paper",
+                      padding: 1,
                     }}
-                    onClick={() => handleDocument(item.File)}
                   >
-                    View
+                    {item.value}
                   </Typography>
-                </Typography>
-              </Box>
-            </Grid2>
-          ))}
-        </Grid2>
+                </Box>
+              </Col>
+            ))}
+            <Divider
+              sx={{
+                width: "100%",
+                borderColor: "primary.main",
+                borderWidth: "2px",
+                marginTop: "10px",
+                marginBottom: "10px",
+              }}
+            />
+            <Col md={12} xs={12}>
+              <Typography variant="h5">Bank Details</Typography>
+            </Col>
+            {bankDetails.map((item, index) => (
+              <Col key={index} md={6} xs={12}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    width: "100%",
+                  }}
+                >
+                  <Typography sx={{ fontWeight: "bold", fontSize: "12px" }}>
+                    {item.key}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontWeight: "normal",
+                      fontSize: "14px",
+                      border: "2px solid",
+                      borderColor: "primary.main",
+                      borderRadius: 3,
+                      padding: 1,
+                    }}
+                  >
+                    {item.value}
+                  </Typography>
+                </Box>
+              </Col>
+            ))}
+            <Divider
+              sx={{
+                width: "100%",
+                borderColor: "primary.main",
+                borderWidth: "2px",
+                marginTop: "10px",
+                marginBottom: "10px",
+              }}
+            />
+            <Col md={12} xs={12}>
+              <Typography variant="h5">Bank Details</Typography>
+            </Col>
+            {documents.map((item, index) => (
+              <Col key={index} md={6} xs={12}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    width: "100%",
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: "14px",
+                      wordWrap: "break-word",
+                    }}
+                  >
+                    {formatKey(item.Label)}
+                  </Typography>
+                  <Typography
+                    component={"div"}
+                    sx={{
+                      fontWeight: "normal",
+                      fontSize: "18px",
+                      border: "2px solid",
+                      borderColor: "primary.main",
+                      borderRadius: 3,
+                      padding: 1,
+                      display: "flex",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Typography>{item.Enclosure}</Typography>
+                    <Typography
+                      sx={{
+                        cursor: "pointer",
+                        fontWeight: "bold",
+                        border: "2px solid",
+                        borderRadius: 3,
+                        height: "max-content",
+                        paddingLeft: 1,
+                        paddingRight: 1,
+                        backgroundColor: "primary.main",
+                        color: "background.paper",
+                      }}
+                      onClick={() => handleDocument(item.File)}
+                    >
+                      View
+                    </Typography>
+                  </Typography>
+                </Box>
+              </Col>
+            ))}
+          </Row>
+        </Container>
       </AccordionDetails>
       <BasicModal
         open={open}

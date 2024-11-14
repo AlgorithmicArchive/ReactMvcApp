@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Container, Typography } from "@mui/material";
+import { Box, Container, Typography } from "@mui/material";
 import CustomTable from "../../components/CustomTable";
 import { fetchData } from "../../assets/fetch";
 import BasicModal from "../../components/BasicModal";
@@ -31,22 +31,23 @@ export default function Initiated() {
   };
 
   return (
-    <Container
+    <Box
       sx={{
         width: "100vw",
-        height: "auto",
+        height: { xs: "100vh", md: "80vh" },
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        marginTop: "120px",
       }}
     >
-      <CustomTable
-        title={"Initiated Applications"}
-        fetchData={fetchData}
-        url="/User/GetInitiatedApplications"
-        buttonActionHandler={handleButtonAction}
-      />
+      <Box sx={{ width: { xs: "90%", md: "80%" } }}>
+        <CustomTable
+          title={"Initiated Applications"}
+          fetchData={fetchData}
+          url="/User/GetInitiatedApplications"
+          buttonActionHandler={handleButtonAction}
+        />
+      </Box>
       <BasicModal
         open={open}
         handleClose={handleClose}
@@ -55,6 +56,6 @@ export default function Initiated() {
         table={table}
         accordion={ApplicationId}
       />
-    </Container>
+    </Box>
   );
 }

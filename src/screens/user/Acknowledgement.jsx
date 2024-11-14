@@ -59,7 +59,7 @@ export default function Acknowledgement() {
         Acknowledgement
       </Typography>
       {pdfBlobUrl ? (
-        <PdfViewer pdfUrl={pdfBlobUrl} path={path} />
+        <PdfViewer pdfUrl={pdfBlobUrl} path={path} exportButton={true} />
       ) : (
         <Typography variant="body1">Loading PDF...</Typography>
       )}

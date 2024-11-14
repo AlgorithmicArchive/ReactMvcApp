@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Box, Container, Grid2, Typography } from "@mui/material";
+import { Box, Grid2, Typography } from "@mui/material";
 import axiosInstance from "../../axiosConfig";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
@@ -10,6 +10,7 @@ import StatusCountCard from "../../components/StatusCountCard";
 import CustomSelectField from "../../components/form/CustomSelectField";
 import CustomButton from "../../components/CustomButton";
 import BasicModal from "../../components/BasicModal";
+import { Col, Container, Row } from "react-bootstrap";
 
 export default function OfficerHome() {
   const [services, setServices] = useState([]);
@@ -103,9 +104,6 @@ export default function OfficerHome() {
           params: { ServiceId: serviceId },
         }
       );
-      const countList = response.data.countList;
-      if (countList.length == 3)
-        countList.push({ label: "", bgColor: "transparent" });
       setCountList(response.data.countList);
       setCanSanction(response.data.canSanction);
     } catch (error) {
@@ -283,21 +281,21 @@ export default function OfficerHome() {
         state: { applicationId: paramerters[0] },
       });
     } else if (functionName == "PullApplication") {
-      
     }
   };
 
   return (
     <Box
       sx={{
-        width: "100%",
-        height: "100%",
+        width: "100vw",
+        height: "auto",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
         flexDirection: "column",
-        marginTop: "12vh",
+        marginTop: "30vh",
         marginBottom: "5vh",
+        gap: 5,
       }}
     >
       <ServiceSelectionForm
@@ -305,7 +303,7 @@ export default function OfficerHome() {
         errors={errors}
         onServiceSelect={handleRecords}
       />
-      <Box
+      <Container
         sx={{
           display: "flex",
           justifyContent: "space-evenly",
@@ -313,9 +311,9 @@ export default function OfficerHome() {
           width: "100%",
         }}
       >
-        <Grid2 container spacing={0}>
+        <Row>
           {countList.map((item, index) => (
-            <Grid2 key={index} size={{ md: 4, xs: 12 }}>
+            <Col key={index} xs={12} md={4}>
               <StatusCountCard
                 statusName={item.label}
                 count={item.count}
@@ -323,10 +321,10 @@ export default function OfficerHome() {
                 textColor={item.textColor}
                 onClick={() => handleCardClick(item.label)}
               />
-            </Grid2>
+            </Col>
           ))}
-        </Grid2>
-      </Box>
+        </Row>
+      </Container>
       <Box sx={{ width: "80%" }}>
         {canSanction &&
           (pendingList.length > 0 ||
@@ -349,9 +347,7 @@ export default function OfficerHome() {
                 <Typography
                   sx={{
                     backgroundColor:
-                      currentList == "Pending"
-                        ? "background.paper"
-                        : "background.default",
+                      currentList == "Pending" ? "background.paper" : "gray",
                     borderRadius: 5,
                     paddingLeft: 2,
                     paddingRight: 2,
@@ -366,9 +362,7 @@ export default function OfficerHome() {
                 <Typography
                   sx={{
                     backgroundColor:
-                      currentList == "Approve"
-                        ? "background.paper"
-                        : "background.default",
+                      currentList == "Approve" ? "background.paper" : "gray",
                     borderRadius: 5,
                     paddingLeft: 2,
                     paddingRight: 2,
@@ -383,9 +377,7 @@ export default function OfficerHome() {
                 <Typography
                   sx={{
                     backgroundColor:
-                      currentList == "Pool"
-                        ? "background.paper"
-                        : "background.default",
+                      currentList == "Pool" ? "background.paper" : "gray",
                     borderRadius: 5,
                     paddingLeft: 2,
                     paddingRight: 2,
@@ -411,7 +403,7 @@ export default function OfficerHome() {
                 type="submit"
                 color="primary.main"
                 bgColor="background.default"
-                text="Transfer"
+                text="Proceed"
                 onClick={handleSubmit(handleTransfer)}
                 disabled={selectedValues.length === 0}
               />

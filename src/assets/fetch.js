@@ -178,9 +178,12 @@ export async function fetchAcknowledgement(applicationId) {
 }
 
 export async function checkBankFile(districtId, serviceId) {
-  const response = await axiosInstance.get("/Officer/GetApplicationsForBank", {
-    params: { ServiceId: serviceId, DistrictId: districtId },
-  });
+  const response = await axiosInstance.get(
+    "/Officer/VerifyBankFileAndRecords",
+    {
+      params: { ServiceId: serviceId, DistrictId: districtId },
+    }
+  );
   return response.data;
 }
 

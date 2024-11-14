@@ -14,12 +14,10 @@ import { Typography, Box } from "@mui/material";
 import CustomButton from "../CustomButton";
 import axiosInstance from "../../axiosConfig";
 import { fetchBlocks, fetchDistricts, fetchTehsils } from "../../assets/fetch";
-import Row from "../grid/Row";
-import Col from "../grid/Col";
-import Container from "../grid/Container";
 import { useNavigate } from "react-router-dom";
 import { dummyDataList, insertDummyData } from "../../assets/dummyData";
 import LoadingSpinner from "../LoadingSpinner";
+import { Col, Container, Row } from "react-bootstrap";
 
 const DynamicStepForm = ({ formConfig, serviceId }) => {
   const {
@@ -342,6 +340,7 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
           sx={{
             width: "max-content",
             margin: "0 auto",
+            marginBottom: "10px",
           }}
         >
           <CustomButton
@@ -361,7 +360,7 @@ const DynamicStepForm = ({ formConfig, serviceId }) => {
           />
         </Box>
 
-        <Container maxWidth="xl">
+        <Container>
           <Row sx={{ flex: 1 }}>
             {formConfig[step].fields.map((field) => (
               <Col

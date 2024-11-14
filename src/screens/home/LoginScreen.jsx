@@ -1,6 +1,6 @@
 import React, { useContext, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Box, Typography, Container } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import CustomInputField from "../../components/form/CustomInputField";
@@ -9,6 +9,7 @@ import { Login } from "../../assets/fetch"; // Assuming the Login function is in
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../../UserContext";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import { Container } from "react-bootstrap";
 
 // Define a validation schema using Yup
 const schema = yup.object().shape({
@@ -66,88 +67,82 @@ export default function LoginScreen() {
   };
 
   return (
-    <Box sx={{ backgroundColor: "background.default" }}>
+    <Box
+      sx={{
+        paddingTop: "50px",
+        paddingBottom: "50px",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        height: { xs: "40vh", md: "60vh" },
+      }}
+    >
       {loading && <LoadingSpinner />}
       <Box
         sx={{
-          width: "100vw",
-          height: "90vh",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: 3,
+          backgroundColor: "primary.main",
+          padding: 5,
+          borderRadius: 5,
+          width: { xs: "90%", md: "50%" },
         }}
       >
-        <Container
-          maxWidth="sm"
+        <Typography
+          variant="h4"
+          component="h1"
           sx={{
-            mt: 5,
-            bgcolor: "primary.main",
-            p: 4,
-            borderRadius: 5,
-            boxShadow: 20,
+            mb: 3,
+            textAlign: "center",
+            color: "background.paper",
+            fontWeight: "bold",
           }}
         >
-          <Typography
-            variant="h4"
-            component="h1"
-            sx={{
-              mb: 3,
-              textAlign: "center",
-              color: "background.paper",
-              fontWeight: "bold",
+          Login
+        </Typography>
+        <Box
+          component="form"
+          noValidate
+          autoComplete="off"
+          onSubmit={handleSubmit(onSubmit)}
+        >
+          {/* Username Field */}
+          <CustomInputField
+            label="Username"
+            name="username"
+            control={control}
+            placeholder="Enter your username"
+            rules={{ required: "Username is required" }}
+            errors={errors}
+          />
+
+          {/* Password Field */}
+          <CustomInputField
+            label="Password"
+            name="password"
+            control={control}
+            type="password"
+            placeholder="Enter your password"
+            rules={{
+              required: "Password is required",
+              minLength: {
+                value: 6,
+                message: "Password must be at least 6 characters",
+              },
             }}
-          >
-            Login
-          </Typography>
+            errors={errors}
+          />
 
-          {/* Form */}
-          <Box
-            component="form"
-            noValidate
-            autoComplete="off"
-            onSubmit={handleSubmit(onSubmit)}
-          >
-            {/* Username Field */}
-            <CustomInputField
-              label="Username"
-              name="username"
-              control={control}
-              placeholder="Enter your username"
-              rules={{ required: "Username is required" }}
-              errors={errors}
+          {/* Submit Button */}
+          <Box sx={{ display: "flex", justifyContent: "center" }}>
+            <CustomButton
+              text="Login"
+              bgColor="background.paper"
+              color="primary.main"
+              onClick={handleSubmit(onSubmit)} // Use handleSubmit here
+              type="submit" // Set type to "submit" for correct form behavior
             />
-
-            {/* Password Field */}
-            <CustomInputField
-              label="Password"
-              name="password"
-              control={control}
-              type="password"
-              placeholder="Enter your password"
-              rules={{
-                required: "Password is required",
-                minLength: {
-                  value: 6,
-                  message: "Password must be at least 6 characters",
-                },
-              }}
-              errors={errors}
-            />
-
-            {/* Submit Button */}
-            <Box sx={{ display: "flex", justifyContent: "center" }}>
-              <CustomButton
-                text="Login"
-                bgColor="background.paper"
-                color="primary.main"
-                onClick={handleSubmit(onSubmit)} // Use handleSubmit here
-                type="submit" // Set type to "submit" for correct form behavior
-              />
-            </Box>
           </Box>
-        </Container>
+        </Box>
       </Box>
     </Box>
   );

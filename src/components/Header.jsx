@@ -1,91 +1,46 @@
 import React from "react";
 import { Box, Typography, Button, Grid2 } from "@mui/material";
 import GoogleTranslateWidget from "./GoogleTranslateWidget"; // Import the Google Translate Widget
-import Grid from "@mui/material/Grid2";
+import { Container, Row, Col } from "react-bootstrap";
+import MyNavbar from "./Navbar";
 
 const Header = () => {
   return (
-    <Box
-      sx={{
-        padding: "0 0",
-        position: "fixed",
-        top: 0,
-        width: "100%",
-        zIndex: 1200,
-        boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
-      }}
-      className="notranslate"
-    >
-      {/* Top Bar */}
-
-      <Grid
-        container
-        spacing={2}
-        width={"100%"}
-        sx={{ backgroundColor: "purple" }}
+    <Container fluid style={{ position: "fixed", top: 0, zIndex: 1000 }}>
+      <Row
+        style={{ backgroundColor: "#312C51", color: "#F0C38E", padding: 10 }}
       >
-        <Grid xs={6} width={"100%"} sx={{ backgroundColor: "red" }}>
-          <Box sx={{ flex: 1 }}>
-            <Typography
-              variant="body2"
-              sx={{
-                fontWeight: "bold",
-                display: "flex",
-                gap: "10px",
-                color: "primary.main",
-              }}
-            >
-              <span>जम्मू और कश्मीर सरकार</span>
-              <span>GOVERNMENT OF JAMMU AND KASHMIR</span>
-              <span>حکومت جموں و کشمیر</span>
-            </Typography>
-          </Box>
-        </Grid>
-        <Grid
-          width={"100%"}
-          xs={6}
-          sx={{
-            backgroundColor: "blue",
-            display: "flex",
-            justifyContent: "end",
-          }}
+        <Col
+          md={6}
+          sm={12}
+          className="d-flex gap-3 justify-content-center flex-md-row flex-column"
         >
-          <Box
-            sx={{
-              flex: 1,
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "15px",
-            }}
-          >
-            <Box sx={{ display: "flex", alignItems: "center", gap: "5px" }}>
-              <Typography sx={{ fontSize: "18px", fontWeight: "bold" }}>
-                A
-              </Typography>
-              <Typography sx={{ fontSize: "16px" }}>A</Typography>
-            </Box>
-            {/* Replace the Select dropdown with the Google Translate Widget */}
-            <GoogleTranslateWidget />
-          </Box>
-        </Grid>
-      </Grid>
-
-      {/* Main Header Section */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: "100px",
-          padding: "20px 20px",
-          backgroundColor: "white",
-        }}
-      >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <Typography>जम्मू और कश्मीर सरकार</Typography>
+          <Typography>GOVERNMENT OF JAMMU AND KASHMIR</Typography>
+          <Typography>حکومت جموں و کشمیر</Typography>
+        </Col>
+        <Col
+          md={6}
+          sm={12}
+          className="d-flex gap-3 justify-content-center flex-md-row flex-column"
+        >
+          <Typography sx={{ fontSize: "18px", fontWeight: "bold" }}>
+            Aa
+          </Typography>
+          <GoogleTranslateWidget />
+        </Col>
+      </Row>
+      <Row style={{ backgroundColor: "#FFFFFF", padding: 10 }}>
+        <Col
+          md={6}
+          sm={12}
+          className="d-flex justify-content-center flex-md-row flex-column"
+        >
           <img
             src="/assets/images/emblem.png"
             alt="Gov Emblem"
-            style={{ height: "100px" }}
+            className="me-md-0 mx-auto"
+            style={{ width: "5vw" }}
           />
           <Typography
             variant="h6"
@@ -101,16 +56,26 @@ const Header = () => {
             <br />
             محکمہ سوشیل ویلفیئر
           </Typography>
-        </Box>
-        <Box>
+        </Col>
+        <Col
+          md={6}
+          sm={12}
+          style={{
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
           <img
             src="/assets/images/swach-bharat.png"
             alt="Swachh Bharat"
             style={{ height: "80px" }}
           />
-        </Box>
-      </Box>
-    </Box>
+        </Col>
+      </Row>
+      <Row>
+        <MyNavbar />
+      </Row>
+    </Container>
   );
 };
 

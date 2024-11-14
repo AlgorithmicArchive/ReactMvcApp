@@ -56,10 +56,10 @@ export default function Verification() {
   };
 
   return (
-    <Container
+    <Box
       sx={{
         width: "100vw",
-        height: "100vh",
+        height: "80vh",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
@@ -165,6 +165,6 @@ export default function Verification() {
           {errorMessage}
         </Typography>
       )}
-    </Container>
+    </Box>
   );
 }

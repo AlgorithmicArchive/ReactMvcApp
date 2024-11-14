@@ -25,7 +25,7 @@ export default function Services() {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        height: "100vh",
+        height: "80vh",
       }}
     >
       <Box sx={{ width: "80%" }}>
