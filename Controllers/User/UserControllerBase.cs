@@ -118,7 +118,7 @@ namespace ReactMvcApp.Controllers.User
 
             // Ensure that you filter by the correct "Initiated" status
             var applications = dbcontext.Applications
-                                        .Where(u => u.CitizenId.ToString() == userIdClaim && u.ApplicationStatus == "Initiated")
+                                        .Where(u => u.CitizenId.ToString() == userIdClaim && u.ApplicationStatus != "Incomplete")
                                         .ToList();
 
             // Initialize columns
@@ -127,14 +127,28 @@ namespace ReactMvcApp.Controllers.User
                 new { label = "S.No", value = "sno" },
                 new { label = "Reference Number", value = "referenceNumber" },
                 new { label = "Applicant Name", value = "applicantName" },
-                new { label = "Currently With Officer", value = "withOfficer" },
+                new { label = "Currently With", value = "withOfficer" },
                 new { label = "Status", value = "status" },
                 new { label = "Action", value = "button" }
             };
 
             // Correctly initialize data list
-            List<dynamic> data = new List<dynamic>();
+            List<dynamic> data = [];
             int index = 1;
+            Dictionary<string, string> actionMap = new()
+            {
+                {"Pending","Pending"},
+                {"Forwarded","Forwarded"},
+                {"Sanctioned","Sanctioned"},
+                {"Returned","Returned"},
+                {"Rejected","Rejected"},
+                {"ReturnToEdit","Returned to citizen for edition"},
+                {"Deposited","Inserted to Bank File"},
+                {"Dispatched","Payment Under Process"},
+                {"Disbursed","Payment Disbursed"},
+                {"Failure","Payment Failed"},
+            };
+
 
             foreach (var application in applications)
             {
@@ -166,8 +180,8 @@ namespace ReactMvcApp.Controllers.User
                         sno = index,
                         referenceNumber = application.ApplicationId,
                         applicantName = application.ApplicantName,
-                        withOfficer = officerRole,
-                        status = applicationStatus.Status == "ReturnToEdit" ? "Returned For Edition" : applicationStatus.Status,
+                        withOfficer = applicationStatus.Status == "Dispatched" ? "Bank" : applicationStatus.Status == "Disbursed" || applicationStatus.Status == "Failure" ? "NULL" : officerRole,
+                        status = actionMap[applicationStatus.Status],
                         button,
                         buttonExtra
                     };

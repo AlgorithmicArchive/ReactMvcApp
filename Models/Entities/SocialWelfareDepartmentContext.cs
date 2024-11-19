@@ -47,6 +47,8 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     public virtual DbSet<OfficersDesignation> OfficersDesignations { get; set; }
 
+    public virtual DbSet<PaymentDetail> PaymentDetails { get; set; }
+
     public virtual DbSet<Pincode> Pincodes { get; set; }
 
     public virtual DbSet<Service> Services { get; set; }
@@ -265,14 +267,26 @@ public partial class SocialWelfareDepartmentContext : DbContext
         {
             entity.HasKey(e => e.FileId);
 
+            entity.Property(e => e.DbUpdate)
+                .HasDefaultValue(false)
+                .HasColumnName("dbUpdate");
             entity.Property(e => e.FileName)
-                .HasMaxLength(510)
+                .HasMaxLength(100)
                 .IsUnicode(false);
             entity.Property(e => e.GeneratedDate)
                 .HasMaxLength(100)
                 .IsUnicode(false);
+            entity.Property(e => e.RecievedOn)
+                .HasMaxLength(50)
+                .IsUnicode(false);
             entity.Property(e => e.ResponseFile)
-                .HasMaxLength(510)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.SentOn)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+            entity.Property(e => e.UpdatedOn)
+                .HasMaxLength(50)
                 .IsUnicode(false);
 
             entity.HasOne(d => d.District).WithMany(p => p.BankFiles)
@@ -418,6 +432,35 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.DesignationShort)
                 .HasMaxLength(100)
                 .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<PaymentDetail>(entity =>
+        {
+            entity.HasKey(e => e.PaymentId);
+
+            entity.Property(e => e.ApplicantName)
+                .HasMaxLength(255)
+                .IsUnicode(false);
+            entity.Property(e => e.ApplicationId)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+            entity.Property(e => e.DateOfDistribution)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+            entity.Property(e => e.Status)
+                .HasMaxLength(255)
+                .IsUnicode(false);
+            entity.Property(e => e.TransactionId)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.TransactionStatus)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+
+            entity.HasOne(d => d.Application).WithMany(p => p.PaymentDetails)
+                .HasForeignKey(d => d.ApplicationId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_PaymentDetails_Applications");
         });
 
         modelBuilder.Entity<Pincode>(entity =>

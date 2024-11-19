@@ -121,6 +121,10 @@
       "PackagePath": "staticwebassets/exports/JMU_BankFile_14Nov20240448.csv"
     },
     {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/exports/JMU_BankFile_14Nov20240448_response.csv",
+      "PackagePath": "staticwebassets/exports/JMU_BankFile_14Nov20240448_response.csv"
+    },
+    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/favicon.ico",
       "PackagePath": "staticwebassets/favicon.ico"
     },
@@ -153,8 +157,16 @@
       "PackagePath": "staticwebassets/files/JMU_2024-2025_4Acknowledgement.pdf"
     },
     {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/files/JMU_2024-2025_4SanctionLetter.pdf",
+      "PackagePath": "staticwebassets/files/JMU_2024-2025_4SanctionLetter.pdf"
+    },
+    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/files/JMU_2024-2025_5Acknowledgement.pdf",
       "PackagePath": "staticwebassets/files/JMU_2024-2025_5Acknowledgement.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/files/JMU_2024-2025_5SanctionLetter.pdf",
+      "PackagePath": "staticwebassets/files/JMU_2024-2025_5SanctionLetter.pdf"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/index.html",
@@ -527,6 +539,10 @@
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/6d03f282.pdf",
       "PackagePath": "staticwebassets/uploads/6d03f282.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/7020abc9.pdf",
+      "PackagePath": "staticwebassets/uploads/7020abc9.pdf"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/757f9812.pdf",

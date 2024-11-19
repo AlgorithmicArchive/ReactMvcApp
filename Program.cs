@@ -114,17 +114,31 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 app.UseHttpsRedirection();
+
 app.UseStaticFiles(new StaticFileOptions
 {
     OnPrepareResponse = ctx =>
     {
+        // Allow CORS for all static files
         ctx.Context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
-        if (ctx.File.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+
+        var fileExtension = Path.GetExtension(ctx.File.Name).ToLower();
+
+        // Handle PDFs: Set Content-Disposition to inline
+        if (fileExtension == ".pdf")
         {
             ctx.Context.Response.Headers.Append("Content-Disposition", "inline");
         }
+
+        // Handle Images: Ensure no Content-Disposition is set
+        else if (new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg" }.Contains(fileExtension))
+        {
+            // Optionally set Content-Type to explicitly specify image type
+            ctx.Context.Response.Headers.Append("Content-Type", $"image/{fileExtension.TrimStart('.')}");
+        }
     }
 });
+
 
 app.UseRouting();
 app.UseCors("AllowAll");

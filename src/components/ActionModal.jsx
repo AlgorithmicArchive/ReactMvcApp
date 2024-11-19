@@ -14,7 +14,6 @@ const style = {
   top: "50%",
   left: "50%",
   transform: "translate(-50%, -50%)",
-  width: "50vw",
   bgcolor: "background.paper",
   boxShadow: 24,
   p: 4,
@@ -49,6 +48,7 @@ const ActionModal = ({
             flexDirection: "column",
             justifyContent: "center",
             gap: 3,
+            width: { xs: "100%", md: "50%" },
           },
         ]}
       >
@@ -68,8 +68,7 @@ const ActionModal = ({
               backgroundColor: "primary.main",
               borderRadius: 5,
               padding: 3,
-              width: "max-content",
-              margin: "0 auto",
+              width: "100%",
             }}
           >
             <CustomSelectField
@@ -80,10 +79,10 @@ const ActionModal = ({
               placeholder={"Choose Action"}
               rules={{ required: "This field is required" }}
               errors={errors}
-              onChange={(value) => handleActionChange(value)} 
+              onChange={(value) => handleActionChange(value)}
             />
             {selectedAction == "returnToEdit" && (
-              <Box sx={{maxHeight:'200px',overflowY:'scroll'}}>
+              <Box sx={{ maxHeight: "200px", overflowY: "scroll" }}>
                 {editList.map((item, index) => (
                   <CustomCheckbox
                     label={item.label}
@@ -96,36 +95,36 @@ const ActionModal = ({
                 ))}
               </Box>
             )}
-            {
-            selectedAction == "updateAndForward" &&
-                <Box>
-                    <CustomDateInput
-                     key={editableField.name}
-                     label={editableField.label}
-                     name={"editableField"}
-                     control={control}
-                     defaultDate={editableField.value}
-                     rules={{
-                       validate: async (value) => {
-                         const error = await runValidations(editableField, value);
-                         return error === true || error === "" ? true : error;
-                       },
-                     }}
-                     errors={errors}
-                    />
-                </Box>
-            }
-            {selectedAction=="forward" && currentOfficer=="District Social Welfare Officer" &&
-              <CustomFileSelector
-                key={'forwardFile'}
-                label={'Certificate By TSWO'}
-                name={'forwardFile'}
-                control={control}
-                accept={'.pdf'}
-                rules={{required:'This field is required'}}
-                errors={errors}
-              />
-            }
+            {selectedAction == "updateAndForward" && (
+              <Box>
+                <CustomDateInput
+                  key={editableField.name}
+                  label={editableField.label}
+                  name={"editableField"}
+                  control={control}
+                  defaultDate={editableField.value}
+                  rules={{
+                    validate: async (value) => {
+                      const error = await runValidations(editableField, value);
+                      return error === true || error === "" ? true : error;
+                    },
+                  }}
+                  errors={errors}
+                />
+              </Box>
+            )}
+            {selectedAction == "forward" &&
+              currentOfficer == "District Social Welfare Officer" && (
+                <CustomFileSelector
+                  key={"forwardFile"}
+                  label={"Certificate By TSWO"}
+                  name={"forwardFile"}
+                  control={control}
+                  accept={".pdf"}
+                  rules={{ required: "This field is required" }}
+                  errors={errors}
+                />
+              )}
             <CustomInputField
               name={"remarks"}
               label={"Remarks"}

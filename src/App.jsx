@@ -51,8 +51,8 @@ const MainContent = () => {
         width: "100vw",
         backgroundColor: "background.default",
         marginTop: {
-          xs: "60vh", // Extra-small screens (default, below sm)
-          md: "25vh", // Medium screens (900px and up)
+          xs: "10vh", // Extra-small screens (default, below sm)
+          md: "30vh", // Medium screens (900px and up)
         },
       }}
     >

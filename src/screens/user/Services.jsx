@@ -25,10 +25,10 @@ export default function Services() {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        height: "80vh",
+        height: { md: "70vh" },
       }}
     >
-      <Box sx={{ width: "80%" }}>
+      <Box sx={{ width: { xs: "100%", md: "80%" } }}>
         <CustomTable
           title={"Services"}
           fetchData={fetchData}

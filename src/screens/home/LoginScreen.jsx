@@ -69,13 +69,12 @@ export default function LoginScreen() {
   return (
     <Box
       sx={{
-        paddingTop: "50px",
         paddingBottom: "50px",
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
-        height: { xs: "40vh", md: "60vh" },
+        height: { xs: "80vh", md: "80vh" },
       }}
     >
       {loading && <LoadingSpinner />}

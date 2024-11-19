@@ -36,7 +36,7 @@ const BasicModal = ({
           {
             maxHeight: "600px",
             overflowY: "scroll",
-            width: { xs: "90%", md: "50%" },
+            width: { xs: "100%", md: "50%" },
           },
         ]}
       >

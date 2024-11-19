@@ -25,6 +25,7 @@ import EditForm from "../screens/user/EditForm";
 import BankFile from "../screens/officer/BankFile";
 import ResponseFile from "../screens/officer/ResponseFile";
 import Settings from "../screens/Settings";
+import PaymentDetails from "../screens/officer/PaymentDetails";
 
 const RoutesComponent = () => {
   return (
@@ -58,6 +59,7 @@ const RoutesComponent = () => {
           <Route path="userDetails" element={<UserDetails />} />
           <Route path="bankFile" element={<BankFile />} />
           <Route path="responseFile" element={<ResponseFile />} />
+          <Route path="paymentDetails" element={<PaymentDetails />} />
         </Route>
       </Route>
       <Route element={<ProtectedRoute requiredRoles={["Admin"]} />}>

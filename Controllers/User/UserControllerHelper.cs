@@ -127,7 +127,7 @@ namespace ReactMvcApp.Controllers.User
                 new("IFSC Code",bankDetails.IfscCode),
                 new("Account Number",bankDetails.AccountNumber),
             };
-            
+
 
             return Json(new { generalDetails, presentAddressDetails, permanentAddressDetails, BankDetails, documents });
         }
@@ -156,7 +156,7 @@ namespace ReactMvcApp.Controllers.User
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetApplicationHistory(string ApplicationId)
+        public async Task<IActionResult> GetApplicationHistory(string ApplicationId, int page, int size)
         {
             if (string.IsNullOrEmpty(ApplicationId))
             {
@@ -169,11 +169,25 @@ namespace ReactMvcApp.Controllers.User
                                          .SqlQuery<ApplicationsHistoryModal>($"EXEC GetApplicationsHistory @ApplicationId = {parameter}")
                                          .ToListAsync();
 
+            Dictionary<string, string> actionMap = new()
+            {
+                {"Pending","Pending"},
+                {"Forwarded","Forwarded"},
+                {"Sanctioned","Sanctioned"},
+                {"Returned","Returned"},
+                {"Rejected","Rejected"},
+                {"ReturnToEdit","Returned to citizen for edition"},
+                {"Deposited","Inserted to Bank File"},
+                {"Dispatched","Payment Under Process"},
+                {"Disbursed","Payment Disbursed"},
+                {"Failure","Payment Failed"},
+            };
+
             var columns = new List<dynamic>
             {
                 new { label = "S.No", value="sno" },
                 new { label = "Receive On",value="receivedOn" },
-                new { label = "Officer", value="officer" },
+                new { label = "Currently With", value="currentlyWith" },
                 new { label = "Action Taken",value="actionTaken" },
                 new { label = "Remarks",value="remarks" }
             };
@@ -182,10 +196,10 @@ namespace ReactMvcApp.Controllers.User
             {
                 sno = index + 1,
                 receivedOn = item.TakenAt,
-                officer = item.Designation,
-                actionTaken = item.ActionTaken == "ReturnToEdit" ? "Returned for Edition" : item.ActionTaken,
+                currentlyWith = item.ActionTaken == "Dispatched" ? "Bank" : item.ActionTaken == "Disbursed" || item.ActionTaken == "Failure" ? "NULL" : item.Designation,
+                actionTaken = actionMap[item.ActionTaken!],
                 remarks = item.Remarks
-            }).ToList();
+            }).AsEnumerable().Skip(page * size).Take(size).ToList();
 
             return Json(new { status = true, data, columns, totalCount = data.Count });
         }

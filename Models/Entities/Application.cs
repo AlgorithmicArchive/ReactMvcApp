@@ -49,5 +49,7 @@ public partial class Application
 
     public virtual User Citizen { get; set; } = null!;
 
+    public virtual ICollection<PaymentDetail> PaymentDetails { get; set; } = new List<PaymentDetail>();
+
     public virtual Service Service { get; set; } = null!;
 }

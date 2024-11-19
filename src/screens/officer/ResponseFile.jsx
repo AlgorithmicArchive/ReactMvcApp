@@ -1,12 +1,18 @@
 import { Box, Typography } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { fetchDistricts, fetchServiceList } from "../../assets/fetch";
+import {
+  fetchData,
+  fetchDistricts,
+  fetchServiceList,
+} from "../../assets/fetch";
 import CustomSelectField from "../../components/form/CustomSelectField";
 import CustomInputField from "../../components/form/CustomInputField";
 import CustomButton from "../../components/CustomButton";
 import axiosInstance from "../../axiosConfig";
 import { downloadFile } from "../../assets/downloadFile";
+import LoadingSpinner from "../../components/LoadingSpinner";
+import CustomTable from "../../components/CustomTable";
 
 export default function () {
   const {
@@ -19,8 +25,9 @@ export default function () {
   const [services, setServices] = useState([]);
   const [responseMessage, setResponseMessage] = useState("");
   const [responseColor, setResponseColor] = useState("background.paper");
-  const [responseFile, setResponseFile] = useState("");
-
+  const [responseFile, setResponseFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [table, setTable] = useState(null);
   useEffect(() => {
     fetchDistricts(setDistricts);
     fetchServiceList(setServices);
@@ -45,11 +52,9 @@ export default function () {
       : setResponseColor("red");
   };
 
-  const DownloadFile = () => {
+  const DownloadFileAndUpdateDatabase = async () => {
     downloadFile(responseFile);
-  };
-
-  const handleDatabaseUpdate = async () => {
+    setLoading(true);
     const serviceId = getValues("serviceId");
     const formdata = new FormData();
     formdata.append("serviceId", serviceId);
@@ -59,11 +64,23 @@ export default function () {
       formdata
     );
     const result = response.data;
-    setResponseMessage(result.message);
-    setResponseFile(result.filePath);
-    result.status
-      ? setResponseColor("background.paper")
-      : setResponseColor("red");
+    if (result.status) {
+      setResponseMessage(result.message);
+      setResponseFile(result.filePath);
+      setResponseColor("background.paper");
+      setTable({
+        url: "/Officer/GetPaymentHistory",
+        params: {
+          referenceNumbersString: result.referenceNumbers,
+        },
+        key: Date.now(),
+      });
+      setLoading(false);
+    } else {
+      setResponseMessage(result.message);
+      setResponseColor("red");
+      setLoading(false);
+    }
   };
 
   return (
@@ -76,9 +93,9 @@ export default function () {
         gap: "1rem",
         justifyContent: "flex-start",
         alignItems: "center",
-        paddingTop: "10%",
       }}
     >
+      {loading && <LoadingSpinner />}
       <Box
         sx={{
           backgroundColor: "primary.main",
@@ -150,21 +167,27 @@ export default function () {
             {responseMessage}
           </Typography>
         )}
-        {responseFile != "" && (
+        {responseFile != null && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
             <CustomButton
-              text="Downlaod File"
+              text="Downlaod File & Update Database"
               bgColor="background.paper"
               color="primary.main"
-              onClick={DownloadFile}
-            />
-            <CustomButton
-              text="Update Database"
-              bgColor="background.paper"
-              color="primary.main"
-              onClick={handleDatabaseUpdate}
+              onClick={DownloadFileAndUpdateDatabase}
             />
           </Box>
+        )}
+      </Box>
+
+      <Box>
+        {table != null && (
+          <CustomTable
+            key={table.key}
+            fetchData={fetchData}
+            url={table.url}
+            params={table.params}
+            title={"Payment History"}
+          />
         )}
       </Box>
     </Box>

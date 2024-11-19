@@ -287,6 +287,14 @@ export default function BankFile() {
             />
           )}
 
+          {/* Progress Bar */}
+          {progress > 0 && (
+            <Box sx={{ width: "100%", mt: 2 }}>
+              <Typography>Progress: {progress}%</Typography>
+              <progress value={progress} max="100" style={{ width: "100%" }} />
+            </Box>
+          )}
+
           {/* Create Bank File Button */}
           {isBankFile == null && totalCount > 0 && (
             <CustomButton
@@ -307,14 +315,6 @@ export default function BankFile() {
           {((isBankFile != null && !isBankFile && totalCount === 0) ||
             progress === 100) && (
             <CustomButton text="Send Bank File" onClick={handleOpen} />
-          )}
-
-          {/* Progress Bar */}
-          {progress > 0 && (
-            <Box sx={{ width: "100%", mt: 2 }}>
-              <Typography>Progress: {progress}%</Typography>
-              <progress value={progress} max="100" style={{ width: "100%" }} />
-            </Box>
           )}
         </Box>
       )}

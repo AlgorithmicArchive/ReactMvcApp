@@ -38,7 +38,6 @@ export default function Form() {
         flexDirection: "column",
         width: "100vw",
         height: "auto",
-        marginTop: "30vh",
       }}
     >
       <Typography

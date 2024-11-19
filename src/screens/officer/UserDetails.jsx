@@ -137,12 +137,11 @@ export default function UserDetails() {
   return (
     <Box
       sx={{
+        height: { xs: "100vh", md: "80vh" },
         width: "100vw",
-        height: "auto",
         display: "flex",
         flexDirection: "column",
         gap: 5,
-        marginTop: "30vh",
         justifyContent: "center",
         alignItems: "center",
       }}

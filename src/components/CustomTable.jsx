@@ -22,7 +22,7 @@ import "jspdf-autotable";
 import * as XLSX from "xlsx";
 
 const CustomTable = ({
-  title = "Table", // Default title if none provided
+  title = "", // Default title if none provided
   fetchData,
   initialRowsPerPage = 5,
   url,

@@ -34,13 +34,13 @@ export default function Initiated() {
     <Box
       sx={{
         width: "100vw",
-        height: { xs: "100vh", md: "80vh" },
+        height: { xs: "100vh", md: "70vh" },
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
       }}
     >
-      <Box sx={{ width: { xs: "90%", md: "80%" } }}>
+      <Box sx={{ width: { xs: "100%", md: "80%" } }}>
         <CustomTable
           title={"Initiated Applications"}
           fetchData={fetchData}

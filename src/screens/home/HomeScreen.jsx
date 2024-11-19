@@ -63,10 +63,8 @@ export default function HomeScreen() {
   const navigate = useNavigate();
 
   return (
-    <Container
-      fluid
-      style={{
-        paddingTop: "50px",
+    <Box
+      sx={{
         paddingBottom: "50px",
         display: "flex",
         flexDirection: "column",
@@ -234,6 +232,6 @@ export default function HomeScreen() {
           </Box>
         </Col>
       </Row>
-    </Container>
+    </Box>
   );
 }

@@ -9,6 +9,7 @@ const Header = () => {
     <Container fluid style={{ position: "fixed", top: 0, zIndex: 1000 }}>
       <Row
         style={{ backgroundColor: "#312C51", color: "#F0C38E", padding: 10 }}
+        className="d-none d-md-flex"
       >
         <Col
           md={6}
@@ -30,7 +31,10 @@ const Header = () => {
           <GoogleTranslateWidget />
         </Col>
       </Row>
-      <Row style={{ backgroundColor: "#FFFFFF", padding: 10 }}>
+      <Row
+        style={{ backgroundColor: "#FFFFFF", padding: 10 }}
+        className="d-none d-md-flex"
+      >
         <Col
           md={6}
           sm={12}

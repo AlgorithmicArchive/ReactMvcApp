@@ -8,11 +8,15 @@ const LoadingSpinner = () => {
       sx={{
         backgroundColor: "background.default",
         position: "fixed",
-        top: "30%",
+        top: "0",
         left: "0",
         zIndex: 1000,
         opacity: 0.7,
-        width: "100vw",
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
       }}
     >
       <TailSpin color="#00BFFF" height={500} width={"100%"} visible={true} />

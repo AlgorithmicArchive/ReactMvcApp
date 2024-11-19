@@ -313,7 +313,7 @@ export default function OfficerHome() {
       >
         <Row>
           {countList.map((item, index) => (
-            <Col key={index} xs={12} md={4}>
+            <Col key={index} xs={12} lg={4}>
               <StatusCountCard
                 statusName={item.label}
                 count={item.count}
@@ -325,7 +325,7 @@ export default function OfficerHome() {
           ))}
         </Row>
       </Container>
-      <Box sx={{ width: "80%" }}>
+      <Box sx={{ width: { xs: "100%", md: "80%" } }}>
         {canSanction &&
           (pendingList.length > 0 ||
             approveList.length > 0 ||

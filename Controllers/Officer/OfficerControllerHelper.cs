@@ -419,7 +419,7 @@ namespace ReactMvcApp.Controllers.Officer
         // Application History
         public IActionResult GetApplicationHistory(string applicationId, int page, int size)
         {
-            var applicationHistory = dbcontext.Database.SqlQuery<ApplicationsHistoryModal>($"EXEC GetApplicationsHistory @ApplicationId = {new SqlParameter("@ApplicationId", applicationId)}").AsEnumerable().Skip(page * size).Take(size).ToList();
+            var applicationHistory = dbcontext.Database.SqlQuery<ApplicationsHistoryModal>($"EXEC GetApplicationsHistory @ApplicationId = {new SqlParameter("@ApplicationId", applicationId)}").ToList();
             var columns = new List<dynamic>{
                 new {label="S.No.",value="sno"},
                 new {label="Designation",value="designation"},
@@ -442,9 +442,54 @@ namespace ReactMvcApp.Controllers.Officer
                 data.Add(cell);
                 index++;
             }
-            return Json(new { columns, data, totalCount = data.Count });
+            var paginatedData = data.AsEnumerable().Skip(page * size).Take(size);
+            return Json(new { columns, data = paginatedData, totalCount = data.Count });
         }
 
+        // Payment Details
+        public IActionResult GetPaymentDetails(int page, int size, int? districtId = null)
+        {
+            var officerDetails = GetOfficerDetails();
+
+            // Create SQL parameters
+            var accessLevelParam = new SqlParameter("@AccessLevel", officerDetails.AccessLevel);
+            var accessCodeParam = new SqlParameter("@AccessCode", officerDetails.AccessCode);
+            var districtIdParam = new SqlParameter("@DistrictId",
+                districtId.HasValue ? (object)districtId.Value : DBNull.Value);
+
+            // Execute the stored procedure
+            var paymentDetails = dbcontext.PaymentDetails
+                .FromSqlRaw("EXEC GetPaymentDetailsForOfficer @AccessLevel, @AccessCode, @DistrictId",
+                            accessLevelParam, accessCodeParam, districtIdParam)
+                .ToList();
+
+            // Define columns for the frontend
+            var columns = new List<dynamic>
+    {
+        new { label = "S.No.", value = "sno" },
+        new { label = "ApplicationId", value = "applicationId" },
+        new { label = "Applicant Name", value = "applicantName" },
+        new { label = "Status", value = "status" },
+        new { label = "Transaction Id", value = "transactionId" },
+        new { label = "Transaction Status", value = "transactionStatus" },
+        new { label = "Date Of Disbursion", value = "dateOfDisbursion" },
+    };
+
+            // Process data and paginate results
+            var data = paymentDetails.Select((item, index) => new
+            {
+                sno = index + 1,
+                applicationId = item.ApplicationId,
+                applicantName = item.ApplicantName,
+                status = item.Status,
+                transactionId = item.TransactionId,
+                transactionStatus = item.TransactionStatus,
+                dateOfDisbursion = item.DateOfDistribution,
+            }).ToList();
+
+            var paginatedData = data.Skip(page * size).Take(size);
+            return Json(new { columns, data = paginatedData, totalCount = data.Count });
+        }
 
 
 

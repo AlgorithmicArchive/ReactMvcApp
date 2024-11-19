@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "kLm8+gnACSeBaHNU2u44uWFotkKeTdjtpM7wnsCIe/k=",
+  "Hash": "nGVq8eRfJrCQxMIqjSEk2FFIYgRcwMbj+cHn9Wx00Vo=",
   "Source": "ReactMvcApp",
   "BasePath": "_content/ReactMvcApp",
   "Mode": "Default",
@@ -587,6 +587,25 @@
       "OriginalItemSpec": "wwwroot/css/site.css"
     },
     {
+      "Identity": "/home/momin/Github/ReactMvcApp/wwwroot/exports/JMU_BankFile_14Nov20240448_response.csv",
+      "SourceId": "ReactMvcApp",
+      "SourceType": "Discovered",
+      "ContentRoot": "/home/momin/Github/ReactMvcApp/wwwroot/",
+      "BasePath": "_content/ReactMvcApp",
+      "RelativePath": "exports/JMU_BankFile_14Nov20240448_response.csv",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot/exports/JMU_BankFile_14Nov20240448_response.csv"
+    },
+    {
       "Identity": "/home/momin/Github/ReactMvcApp/wwwroot/exports/JMU_BankFile_14Nov20240448.csv",
       "SourceId": "ReactMvcApp",
       "SourceType": "Discovered",
@@ -758,6 +777,25 @@
       "OriginalItemSpec": "wwwroot/files/JMU_2024-2025_4Acknowledgement.pdf"
     },
     {
+      "Identity": "/home/momin/Github/ReactMvcApp/wwwroot/files/JMU_2024-2025_4SanctionLetter.pdf",
+      "SourceId": "ReactMvcApp",
+      "SourceType": "Discovered",
+      "ContentRoot": "/home/momin/Github/ReactMvcApp/wwwroot/",
+      "BasePath": "_content/ReactMvcApp",
+      "RelativePath": "files/JMU_2024-2025_4SanctionLetter.pdf",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot/files/JMU_2024-2025_4SanctionLetter.pdf"
+    },
+    {
       "Identity": "/home/momin/Github/ReactMvcApp/wwwroot/files/JMU_2024-2025_5Acknowledgement.pdf",
       "SourceId": "ReactMvcApp",
       "SourceType": "Discovered",
@@ -775,6 +813,25 @@
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "wwwroot/files/JMU_2024-2025_5Acknowledgement.pdf"
+    },
+    {
+      "Identity": "/home/momin/Github/ReactMvcApp/wwwroot/files/JMU_2024-2025_5SanctionLetter.pdf",
+      "SourceId": "ReactMvcApp",
+      "SourceType": "Discovered",
+      "ContentRoot": "/home/momin/Github/ReactMvcApp/wwwroot/",
+      "BasePath": "_content/ReactMvcApp",
+      "RelativePath": "files/JMU_2024-2025_5SanctionLetter.pdf",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot/files/JMU_2024-2025_5SanctionLetter.pdf"
     },
     {
       "Identity": "/home/momin/Github/ReactMvcApp/wwwroot/index.html",
@@ -2542,6 +2599,25 @@
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "wwwroot/uploads/6d03f282.pdf"
+    },
+    {
+      "Identity": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/7020abc9.pdf",
+      "SourceId": "ReactMvcApp",
+      "SourceType": "Discovered",
+      "ContentRoot": "/home/momin/Github/ReactMvcApp/wwwroot/",
+      "BasePath": "_content/ReactMvcApp",
+      "RelativePath": "uploads/7020abc9.pdf",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot/uploads/7020abc9.pdf"
     },
     {
       "Identity": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/757f9812.pdf",

@@ -1,9 +1,10 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import { Navbar, Nav, NavDropdown, Container } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../UserContext";
 
 const MyNavbar = () => {
+  const [expanded, setExpanded] = useState(false); // Manage expanded state
   const navigate = useNavigate();
   const {
     userType,
@@ -26,10 +27,18 @@ const MyNavbar = () => {
     setVerified(false);
     localStorage.clear();
     navigate("/login");
+    setExpanded(false); // Collapse Navbar after logout
+  };
+
+  const handleNavigate = (path) => {
+    navigate(path);
+    setExpanded(false); // Collapse Navbar after navigation
   };
 
   return (
     <Navbar
+      expanded={expanded}
+      onToggle={(isExpanded) => setExpanded(isExpanded)} // Sync with Bootstrap's toggle
       expand="lg"
       style={{ backgroundColor: "#312C51" }}
       className="shadow-sm"
@@ -49,6 +58,7 @@ const MyNavbar = () => {
                   to="/"
                   className="fw-bold"
                   style={{ color: "#F0C38E" }}
+                  onClick={() => setExpanded(false)}
                 >
                   Home
                 </Nav.Link>
@@ -57,6 +67,7 @@ const MyNavbar = () => {
                   to="/login"
                   className="fw-bold"
                   style={{ color: "#F0C38E" }}
+                  onClick={() => setExpanded(false)}
                 >
                   Login
                 </Nav.Link>
@@ -65,6 +76,7 @@ const MyNavbar = () => {
                   to="/register"
                   className="fw-bold"
                   style={{ color: "#F0C38E" }}
+                  onClick={() => setExpanded(false)}
                 >
                   Register
                 </Nav.Link>
@@ -79,6 +91,7 @@ const MyNavbar = () => {
                   to="/user/home"
                   className="fw-bold"
                   style={{ color: "#F0C38E" }}
+                  onClick={() => setExpanded(false)}
                 >
                   Home
                 </Nav.Link>
@@ -87,6 +100,7 @@ const MyNavbar = () => {
                   to="/user/services"
                   className="fw-bold"
                   style={{ color: "#F0C38E" }}
+                  onClick={() => setExpanded(false)}
                 >
                   Apply for Service
                 </Nav.Link>
@@ -98,11 +112,13 @@ const MyNavbar = () => {
                   }
                   id="application-status"
                 >
-                  <NavDropdown.Item onClick={() => navigate("/user/initiated")}>
+                  <NavDropdown.Item
+                    onClick={() => handleNavigate("/user/initiated")}
+                  >
                     Initiated Applications
                   </NavDropdown.Item>
                   <NavDropdown.Item
-                    onClick={() => navigate("/user/incomplete")}
+                    onClick={() => handleNavigate("/user/incomplete")}
                   >
                     Incomplete Applications
                   </NavDropdown.Item>
@@ -118,6 +134,7 @@ const MyNavbar = () => {
                   to="/officer/home"
                   className="fw-bold"
                   style={{ color: "#F0C38E" }}
+                  onClick={() => setExpanded(false)}
                 >
                   Home
                 </Nav.Link>
@@ -126,8 +143,18 @@ const MyNavbar = () => {
                   to="/officer/reports"
                   className="fw-bold"
                   style={{ color: "#F0C38E" }}
+                  onClick={() => setExpanded(false)}
                 >
                   Reports
+                </Nav.Link>
+                <Nav.Link
+                  as={Link}
+                  to="/officer/paymentDetails"
+                  className="fw-bold"
+                  style={{ color: "#F0C38E" }}
+                  onClick={() => setExpanded(false)}
+                >
+                  Payment Details
                 </Nav.Link>
                 {designation === "Director Finance" && (
                   <NavDropdown
@@ -140,12 +167,12 @@ const MyNavbar = () => {
                     style={{ color: "#F0C38E" }}
                   >
                     <NavDropdown.Item
-                      onClick={() => navigate("/officer/bankFile")}
+                      onClick={() => handleNavigate("/officer/bankFile")}
                     >
                       Create Bank File
                     </NavDropdown.Item>
                     <NavDropdown.Item
-                      onClick={() => navigate("/officer/responseFile")}
+                      onClick={() => handleNavigate("/officer/responseFile")}
                     >
                       Check Response File
                     </NavDropdown.Item>
@@ -161,12 +188,12 @@ const MyNavbar = () => {
                   style={{ color: "#F0C38E" }}
                 >
                   <NavDropdown.Item
-                    onClick={() => navigate("/officer/registerDSC")}
+                    onClick={() => handleNavigate("/officer/registerDSC")}
                   >
                     Register DSC
                   </NavDropdown.Item>
                   <NavDropdown.Item
-                    onClick={() => navigate("/officer/unregisterDSC")}
+                    onClick={() => handleNavigate("/officer/unregisterDSC")}
                   >
                     Unregister DSC
                   </NavDropdown.Item>
@@ -182,6 +209,7 @@ const MyNavbar = () => {
                   to="/admin/home"
                   className="fw-bold"
                   style={{ color: "#F0C38E" }}
+                  onClick={() => setExpanded(false)}
                 >
                   Dashboard
                 </Nav.Link>
@@ -191,11 +219,13 @@ const MyNavbar = () => {
                   style={{ color: "#F0C38E" }}
                 >
                   <NavDropdown.Item
-                    onClick={() => navigate("/admin/individual")}
+                    onClick={() => handleNavigate("/admin/individual")}
                   >
                     Individual Report
                   </NavDropdown.Item>
-                  <NavDropdown.Item onClick={() => navigate("/admin/history")}>
+                  <NavDropdown.Item
+                    onClick={() => handleNavigate("/admin/history")}
+                  >
                     History
                   </NavDropdown.Item>
                 </NavDropdown>
@@ -220,7 +250,7 @@ const MyNavbar = () => {
                 }
                 id="profile-dropdown"
               >
-                <NavDropdown.Item onClick={() => navigate("/settings")}>
+                <NavDropdown.Item onClick={() => handleNavigate("/settings")}>
                   Settings
                 </NavDropdown.Item>
                 <NavDropdown.Item onClick={handleLogout}>

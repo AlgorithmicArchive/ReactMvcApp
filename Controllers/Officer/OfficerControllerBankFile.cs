@@ -9,6 +9,7 @@ using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
 using System.Security.Claims;
+using System.Data;
 
 namespace ReactMvcApp.Controllers.Officer
 {
@@ -72,54 +73,50 @@ namespace ReactMvcApp.Controllers.Officer
             int serviceId = Convert.ToInt32(form["serviceId"].ToString());
             int districtId = Convert.ToInt32(form["districtId"].ToString());
 
-            var bankFile = dbcontext.BankFiles.FirstOrDefault(bf => bf.ServiceId == serviceId && bf.DistrictId == districtId);
-
-            if (bankFile == null)
-            {
-                return Json(new { status = false, message = "No Bank File for this district with this service." });
-            }
-            else if (bankFile != null && bankFile.FileSent == false)
-            {
-                return Json(new { status = false, message = "Bank File for this district with this service not sent." });
-            }
-
-            if (!string.IsNullOrEmpty(bankFile!.ResponseFile))
-            {
-                return Json(new { status = true, filePath = "exports/" + bankFile.ResponseFile, message = "File is recieved already." });
-            }
-
-
-            string originalFileName = Path.GetFileNameWithoutExtension(bankFile!.FileName);
-            string responseFile = $"{originalFileName}_response.csv";
-
+            var bankFiles = dbcontext.BankFiles.Where(bf => bf.ServiceId == serviceId && bf.DistrictId == districtId && bf.FileSent == true && bf.DbUpdate == false).ToList();
             var ftpClient = new SftpClient(ftpHost, 22, ftpUser, ftpPassword);
             ftpClient.Connect();
 
-
-
             if (!ftpClient.IsConnected)
-            {
                 return Json(new { status = false, message = "Unable to connect to the SFTP server." });
-            }
 
-            if (!ftpClient.Exists(responseFile))
+            var columns = new List<dynamic>{
+                new {label="S.No.",value="sno"},
+                new {label="File Name",value="fileName"},
+                new {label="Response File",value="responseFile"},
+                new {label="Action",value="button"},
+            };
+
+            List<dynamic> fileResponse = [];
+            int index = 1;
+            if (bankFiles.Count > 0)
             {
-                return Json(new { status = false, message = "No response file received yet." });
+                foreach (var item in bankFiles)
+                {
+                    string originalFileName = Path.GetFileNameWithoutExtension(item!.FileName);
+                    string responseFile = $"{originalFileName}_response.csv";
+                    if (item.ResponseFile != responseFile && !ftpClient.Exists(responseFile))
+                    {
+                        fileResponse.Add(new { sno = index, fileName = item.FileName, responseFile = "No Reponse File", button = "No Action" });
+                    }
+                    else
+                    {
+                        string filePath = Path.Combine(_webHostEnvironment.WebRootPath, "exports", responseFile);
+                        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+
+                        using (var stream = new FileStream(filePath, FileMode.Create))
+                        {
+                            ftpClient.DownloadFile(responseFile, stream);
+                        }
+
+                        fileResponse.Add(new { sno = index, fileName = item.FileName, responseFile, button = new { function = "UpdateDatabase", parameters = new[] { responseFile } } });
+                        item.ResponseFile = responseFile;
+                    }
+                }
+                dbcontext.SaveChanges();
+                return Json(new { columns, data = fileResponse, totalCount = fileResponse.Count });
             }
-
-            string filePath = Path.Combine(_webHostEnvironment.WebRootPath, "exports", responseFile);
-            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
-
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                ftpClient.DownloadFile(responseFile, stream);
-            }
-
-            bankFile.ResponseFile = responseFile;
-            dbcontext.SaveChanges();
-
-            return Json(new { status = true, filePath = "exports/" + bankFile.ResponseFile, message = "File received successfully." });
-
+            else return Json(new { status = false, message = "No Bank File for this district with this service." });
         }
 
         public async Task<IActionResult> ProcessResponseFile([FromForm] IFormCollection form)
@@ -127,6 +124,7 @@ namespace ReactMvcApp.Controllers.Officer
             int? userId = Convert.ToInt32(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
             int? serviceId = Convert.ToInt32(form["serviceId"].ToString());
             string filePath = Path.Combine(_webHostEnvironment.WebRootPath, form["responseFile"].ToString());
+
             using var reader = new StreamReader(filePath);
             var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
             {
@@ -134,29 +132,109 @@ namespace ReactMvcApp.Controllers.Officer
             };
 
             using var csv = new CsvReader(reader, csvConfig);
+
             try
             {
                 var records = csv.GetRecords<ResponseCSVModal>().ToList();
+
+                // Extract all ReferenceNumbers
+                var referenceNumbers = records.Select(r => r.ReferenceNumber).Where(r => !string.IsNullOrEmpty(r)).ToList();
+
+                // Convert the list of ReferenceNumbers to a comma-separated string
+                var referenceNumbersString = string.Join(",", referenceNumbers);
+
+                // Create a DataTable for the TVP
+                var dataTable = new DataTable();
+                dataTable.Columns.Add("ServiceId", typeof(int));
+                dataTable.Columns.Add("OfficerId", typeof(int));
+                dataTable.Columns.Add("ApplicationId", typeof(string));
+                dataTable.Columns.Add("Status", typeof(string));
+                dataTable.Columns.Add("TransactionId", typeof(string));
+                dataTable.Columns.Add("DateOfDibursion", typeof(string));
+                dataTable.Columns.Add("TransactionStatus", typeof(string));
+                dataTable.Columns.Add("File", typeof(string));
+                dataTable.Columns.Add("ApplicantName", typeof(string));
+
                 foreach (var record in records)
                 {
-                    var serviceIdParam = new SqlParameter("@ServiceId", serviceId);
-                    var officerIdParam = new SqlParameter("@OfficerId", userId);
-                    var applicationIdParam = new SqlParameter("@ApplicationId", record.ReferenceNumber ?? string.Empty);
-                    var statusParam = new SqlParameter("@Status", record.Status ?? "");
-                    var transactionIdParam = new SqlParameter("@TransactionId", record.TransactionId ?? string.Empty);
-                    var dateOfDisbursionParam = new SqlParameter("@DateOfDibursion", record.DateOfDisbursion ?? DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"));
-                    var transactionStatusParam = new SqlParameter("@TransactionStatus", record.TransactionStatus ?? string.Empty);
-                    var fileParam = new SqlParameter("@File", form["responseFile"].ToString());
-                    var result = await dbcontext.Database.ExecuteSqlRawAsync("EXEC UpdateFromBankResponse @ServiceId, @OfficerId, @ApplicationId, @Status, @TransactionId, @DateOfDibursion, @TransactionStatus, @File", serviceIdParam, officerIdParam, applicationIdParam, statusParam, transactionIdParam, dateOfDisbursionParam, transactionStatusParam, fileParam);
+                    dataTable.Rows.Add(
+                        serviceId,
+                        userId,
+                        record.ReferenceNumber ?? string.Empty,
+                        record.Status ?? "",
+                        record.TransactionId ?? string.Empty,
+                        record.DateOfDisbursion ?? DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"),
+                        record.TransactionStatus ?? string.Empty,
+                        form["responseFile"].ToString(),
+                        record.ApplicantName
+                    );
                 }
-                return Json(new { status = true, message = "Database Updated Successfully." });
+
+                var tvpParameter = new SqlParameter("@ResponseRecords", SqlDbType.Structured)
+                {
+                    TypeName = "BankResponseTableType",
+                    Value = dataTable
+                };
+
+                // Execute the bulk processing procedure
+                await dbcontext.Database.ExecuteSqlRawAsync("EXEC UpdateFromBankResponse @ResponseRecords", tvpParameter);
+
+                // Return the reference numbers string for further processing
+                return Json(new { status = true, message = "Database Updated Successfully.", referenceNumbers = referenceNumbersString });
             }
-            catch (System.Exception)
+            catch (Exception ex)
             {
-                return Json(new { status = false, message = "Some error occurred while updating database." });
-                throw;
+                return Json(new { status = false, message = "Some error occurred while updating database.", error = ex.Message });
             }
         }
+
+
+        public dynamic GetPaymentHistory(string referenceNumbersString, int page, int size)
+        {
+            try
+            {
+                // Create the SQL parameter
+                var referenceNumbersParam = new SqlParameter("@ReferenceNumbers", referenceNumbersString);
+
+                // Call the GetPaymentHistory stored procedure
+                var paymentHistory = dbcontext.Database.SqlQuery<ApplicationsHistoryModal>($"EXEC GetPaymentHistory @ReferenceNumbers = {new SqlParameter("@ReferenceNumbers", referenceNumbersParam)}")
+                    .AsEnumerable()
+                    .Skip(page * size)
+                    .Take(size)
+                    .ToList();
+
+                var columns = new List<dynamic>{
+                new {label="S.No.",value="sno"},
+                new {label="Designation",value="designation"},
+                new {label="Action Taken",value="actionTaken"},
+                new {label="Remarks",value="remarks"},
+                new {label="Taken On/Received On",value="takenOn"},
+            };
+                List<dynamic> data = [];
+                int index = 1;
+                foreach (var item in paymentHistory)
+                {
+                    var cell = new
+                    {
+                        sno = index,
+                        designation = item.Designation,
+                        actionTaken = item.ActionTaken,
+                        remarks = item.Remarks,
+                        takenOn = item.TakenAt
+                    };
+                    data.Add(cell);
+                    index++;
+                }
+
+                return Json(new { columns, data, totalCount = data.Count });
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error while fetching payment history: " + ex.Message);
+            }
+        }
+
+
         public async Task<IActionResult> BankCsvFile(string serviceId, string districtId)
         {
             int serviceIdInt = Convert.ToInt32(serviceId);
@@ -173,8 +251,8 @@ namespace ReactMvcApp.Controllers.Officer
             string officerDesignation = details?.Role!;
             int accessCode = Convert.ToInt32(details?.AccessCode);
 
-            var applicationsCount = await dbcontext.ApplicationsCounts
-                .FirstOrDefaultAsync(rc => rc.ServiceId == serviceIdInt && rc.OfficerId == details!.UserId && rc.Status == "Sanctioned");
+            // var applicationsCount = await dbcontext.ApplicationsCounts
+            //     .FirstOrDefaultAsync(rc => rc.ServiceId == serviceIdInt && rc.OfficerId == details!.UserId && rc.Status == "Sanctioned");
 
             var bankFile = await dbcontext.BankFiles
                 .FirstOrDefaultAsync(bf => bf.ServiceId == serviceIdInt && bf.DistrictId == districtIdInt && bf.FileSent == false);
@@ -197,7 +275,6 @@ namespace ReactMvcApp.Controllers.Officer
 
 
             // Fetch data using the stored procedure
-
             var bankFileData = dbcontext.Database.SqlQuery<BankFileData>($"EXEC GetBankFileData @ServiceId = {new SqlParameter("@ServiceId", serviceIdInt)}, @FileCreationDate = {new SqlParameter("@FileCreationDate", DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"))}, @DistrictId = {new SqlParameter("@DistrictId", districtId)}").AsEnumerable().ToList();
 
             int totalRecords = bankFileData.Count;
@@ -224,9 +301,6 @@ namespace ReactMvcApp.Controllers.Officer
 
             // Notify completion
             await hubContext.Clients.All.SendAsync("ReceiveProgress", 100);
-
-            // var sanctionCount = dbcontext.ApplicationsCounts.FirstOrDefault(ac => ac.ServiceId == serviceIdInt && ac.OfficerId.ToString() == userId && ac.Status == "Sanctioned");
-            // sanctionCount!.Count -= totalRecords;
 
             if (bankFile == null)
             {
@@ -354,15 +428,58 @@ namespace ReactMvcApp.Controllers.Officer
             totalCount = applications.Count;
 
 
+            var columns = new List<dynamic>{
+                new {label="S.No.",value="sno"},
+                new {label="Bank File Records",value="bankRecords"},
+                new {label="New Records",value="newRecords"},
+                new {label="Bank File Action",value="button1"},
+                new {label="Bank File Action",value="button2"},
+                new {label="New Records Action",value="button2"},
+            };
+
             // Check if bank file is sent
             var bankFile = dbcontext.BankFiles.FirstOrDefault(bf => bf.ServiceId == serviceId && bf.DistrictId == districtId);
             var isBankFileSent = bankFile!.FileSent;
             int bankFileRecords = bankFile?.TotalRecords ?? 0;
 
+            List<dynamic> data = [];
+            var button1 = new
+            {
+                function = "ViewBankRecords",
+                parameters = new[] { serviceId, districtId },
+                buttonText = "View"
+            };
+            var button2 = new
+            {
+                function = "AppendToBankFile",
+                parameters = new[] { serviceId, districtId },
+                buttonText = "Append"
+            };
 
+            var button3 = new
+            {
+                function = "ViewNewRecords",
+                parameters = new[] { serviceId, districtId },
+                buttonText = "View"
+            };
+            var cell = new
+            {
+                sno = 1,
+                bankRecords = bankFileRecords,
+                newRecords = totalCount,
+                button1,
+                button2,
+                button3
+            };
+            data.Add(cell);
 
             // Return the JSON result
-            return Json(new { totalCount, isBankFileSent, bankFileRecords });
+            return Json(new
+            {
+                columns,
+                data,
+                totalCount = data.Count
+            });
         }
 
 

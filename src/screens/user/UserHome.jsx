@@ -25,13 +25,14 @@ export default function UserHome() {
   if (loading) return <LoadingSpinner />;
 
   return (
-    <Container
-      style={{
+    <Box
+      sx={{
         width: "100vw",
-        height: "80vh",
+        height: { xs: "120vh", md: "70vh" },
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
+        padding: 2,
       }}
     >
       <Row className="align-items-center">
@@ -57,7 +58,7 @@ export default function UserHome() {
             />
           </Box>
         </Col>
-        <Col md={8} xs={12}>
+        <Col md={8} xs={12} className="mt-5 mt-md-0">
           <Box
             sx={{
               border: "2px solid",
@@ -174,6 +175,6 @@ export default function UserHome() {
           </Box>
         </Col>
       </Row>
-    </Container>
+    </Box>
   );
 }
