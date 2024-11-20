@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
 using System.Security.Claims;
 using System.Data;
+using System.Text.RegularExpressions;
 
 namespace ReactMvcApp.Controllers.Officer
 {
@@ -101,16 +102,19 @@ namespace ReactMvcApp.Controllers.Officer
                     }
                     else
                     {
-                        string filePath = Path.Combine(_webHostEnvironment.WebRootPath, "exports", responseFile);
-                        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
-
-                        using (var stream = new FileStream(filePath, FileMode.Create))
+                        if (item.ResponseFile != responseFile)
                         {
-                            ftpClient.DownloadFile(responseFile, stream);
-                        }
+                            string filePath = Path.Combine(_webHostEnvironment.WebRootPath, "exports", responseFile);
+                            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
 
-                        fileResponse.Add(new { sno = index, fileName = item.FileName, responseFile, button = new { function = "UpdateDatabase", parameters = new { responseFile }, buttonText = "Update Database" } });
-                        item.ResponseFile = responseFile;
+                            using (var stream = new FileStream(filePath, FileMode.Create))
+                            {
+                                ftpClient.DownloadFile(responseFile, stream);
+                            }
+                            item.ResponseFile = responseFile;
+                            item.RecievedOn = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
+                        }
+                        fileResponse.Add(new { sno = index, fileName = item.FileName, responseFile, button = new { function = "UpdateDatabase", parameters = new { responseFile = $"exports/{responseFile}" }, buttonText = "Update Database" } });
                     }
                 }
                 dbcontext.SaveChanges();
@@ -123,7 +127,8 @@ namespace ReactMvcApp.Controllers.Officer
         {
             int? userId = Convert.ToInt32(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
             int? serviceId = Convert.ToInt32(form["serviceId"].ToString());
-            string filePath = Path.Combine(_webHostEnvironment.WebRootPath, form["responseFile"].ToString());
+            string responseFile = form["responseFile"].ToString();
+            string filePath = Path.Combine(_webHostEnvironment.WebRootPath, responseFile);
 
             using var reader = new StreamReader(filePath);
             var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
@@ -178,7 +183,11 @@ namespace ReactMvcApp.Controllers.Officer
 
                 // Execute the bulk processing procedure
                 await dbcontext.Database.ExecuteSqlRawAsync("EXEC UpdateFromBankResponse @ResponseRecords", tvpParameter);
-
+                string file = Regex.Match(responseFile, @"[^/]+$").Value;
+                var bankFile = dbcontext.BankFiles.FirstOrDefault(bf => bf.ResponseFile == file);
+                bankFile!.DbUpdate = true;
+                bankFile.UpdatedOn = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
+                dbcontext.SaveChanges();
                 // Return the reference numbers string for further processing
                 return Json(new { status = true, message = "Database Updated Successfully.", referenceNumbers = referenceNumbersString });
             }
@@ -187,7 +196,6 @@ namespace ReactMvcApp.Controllers.Officer
                 return Json(new { status = false, message = "Some error occurred while updating database.", error = ex.Message });
             }
         }
-
 
         public dynamic GetPaymentHistory(string referenceNumbersString, int page, int size)
         {
@@ -347,11 +355,22 @@ namespace ReactMvcApp.Controllers.Officer
         {
             int serviceId = Convert.ToInt32(ServiceId);
             int districtId = Convert.ToInt32(DistrictId);
+            List<string> statuses = [];
+            if (status == "BankRecords")
+            {
+                statuses.Add("Deposited");
+                statuses.Add("Dispatched");
+                statuses.Add("Disbursed");
+                statuses.Add("Failure");
+            }
+            else statuses.Add(status);
+
+            string statusParam = string.Join(",", statuses);
             var applications = dbcontext.Applications
-               .FromSqlRaw("EXEC GetApplicationsForBank @DistrictId, @ServiceId, @Status",
+               .FromSqlRaw("EXEC GetApplicationsForBank @DistrictId, @ServiceId, @Statuses",
                            new SqlParameter("@DistrictId", districtId),
                            new SqlParameter("@ServiceId", serviceId),
-                           new SqlParameter("@Status", status))
+                           new SqlParameter("@Statuses", statusParam))
                .ToList();
             // Apply pagination to the list
             var paginatedApplications = applications.Skip(page * size).Take(size).ToList();

@@ -204,14 +204,20 @@ namespace ReactMvcApp.Controllers.User
             helper.UpdateApplication("Documents", documents, new SqlParameter("@ApplicationId", applicationId));
             helper.UpdateApplication("ApplicationStatus", "Initiated", new SqlParameter("@ApplicationId", applicationId));
             helper.UpdateApplication("SubmissionDate", DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"), new SqlParameter("@ApplicationId", applicationId));
+
+            var ServiceSpecific = JsonConvert.DeserializeObject<Dictionary<string, string>>(dbcontext.Applications.FirstOrDefault(a => a.ApplicationId == applicationId)!.ServiceSpecific);
+            string AccessLevel = "";
+            int AccessCode = 0;
+            if (ServiceSpecific!.ContainsKey("District"))
+            {
+                AccessLevel = "District";
+                AccessCode = Convert.ToInt32(ServiceSpecific["District"]);
+            }
             var workFlow = dbcontext.WorkFlows.FirstOrDefault(w => w.ServiceId == serviceId && w.SequenceOrder == 1);
 
+
             // Get the officerId based on serviceId and workflow
-            int officerId = dbcontext.Users
-                .Join(dbcontext.OfficerDetails, u => u.UserId, od => od.OfficerId, (u, od) => new { u, od })
-                .Join(dbcontext.WorkFlows, combined => combined.od.Role, wf => wf.Role, (combined, wf) => new { combined.u, wf })
-                .Where(x => x.wf.ServiceId == serviceId)
-                .ToList()[0].u.UserId;
+            int officerId = dbcontext.OfficerDetails.FirstOrDefault(od => od.AccessLevel == AccessLevel && od.AccessCode == AccessCode)!.OfficerId;
 
             if (!form.ContainsKey("returnToEdit"))
             {
@@ -277,8 +283,6 @@ namespace ReactMvcApp.Controllers.User
 
             await dbcontext.SaveChangesAsync();
 
-            // Removed session handling since JWT is now used
-            // HttpContext.Session.SetString("ApplicationId", applicationId);
             return Json(new { status = true, ApplicationId = applicationId, complete = true });
         }
 

@@ -26,7 +26,7 @@ export default function () {
   const [services, setServices] = useState([]);
   const [responseMessage, setResponseMessage] = useState("");
   const [responseColor, setResponseColor] = useState("background.paper");
-  const [responseFile, setResponseFile] = useState(null);
+  // const [responseFile, setResponseFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [table, setTable] = useState(null);
   useEffect(() => {
@@ -48,14 +48,12 @@ export default function () {
 
   const buttonActionHandler = (functionName, parameters) => {
     if (functionName == "UpdateDatabase") {
-      const responsefile = parameters.responseFile;
-      console.log(parameters.responseFile);
-      setResponseFile(responsefile);
-      DownloadFileAndUpdateDatabase();
+      const responseFile = parameters.responseFile;
+      DownloadFileAndUpdateDatabase(responseFile);
     }
   };
 
-  const DownloadFileAndUpdateDatabase = async () => {
+  const DownloadFileAndUpdateDatabase = async (responseFile) => {
     downloadFile(responseFile);
     setLoading(true);
     const serviceId = getValues("serviceId");
@@ -69,7 +67,6 @@ export default function () {
     const result = response.data;
     if (result.status) {
       setResponseMessage(result.message);
-      setResponseFile(result.filePath);
       setResponseColor("background.paper");
       setTable({
         url: "/Officer/GetPaymentHistory",
@@ -169,16 +166,6 @@ export default function () {
           >
             {responseMessage}
           </Typography>
-        )}
-        {responseFile != null && (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <CustomButton
-              text="Downlaod File & Update Database"
-              bgColor="background.paper"
-              color="primary.main"
-              onClick={DownloadFileAndUpdateDatabase}
-            />
-          </Box>
         )}
       </Box>
 

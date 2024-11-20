@@ -37,8 +37,10 @@ namespace ReactMvcApp.Controllers.User
                 .Count();
             int sanctioned = dbcontext.Applications
                 .Where(u => u.CitizenId.ToString() == userId &&
-                           (u.ApplicationStatus == "Sanctioned" || u.ApplicationStatus == "Dispatched"))
+                           (u.ApplicationStatus == "Sanctioned" || u.ApplicationStatus == "Dispatched" || u.ApplicationStatus == "Deposited" || u.ApplicationStatus == "Disbursed" || u.ApplicationStatus == "Failure"))
                 .Count();
+            int paymentDisbursed = dbcontext.Applications.Where(u => u.CitizenId.ToString() == userId && u.ApplicationStatus == "Disbursed").Count();
+            int paymentFailed = dbcontext.Applications.Where(u => u.CitizenId.ToString() == userId && u.ApplicationStatus == "Failure").Count();
 
             var userDetails = dbcontext.Users.FirstOrDefault(u => u.UserId.ToString() == userId);
 
@@ -136,6 +138,19 @@ namespace ReactMvcApp.Controllers.User
         public IActionResult GetDistricts()
         {
             var districts = dbcontext.Districts.ToList();
+            return Json(new { status = true, districts });
+        }
+
+        [HttpGet]
+        public IActionResult GetDistrictsForService()
+        {
+            var districts = dbcontext.Districts
+            .Where(district =>
+                dbcontext.OfficerDetails.Any(officer =>
+                    officer.AccessLevel == "District" &&
+                    officer.AccessCode == district.DistrictId)) // Subquery condition
+            .ToList();
+
             return Json(new { status = true, districts });
         }
 

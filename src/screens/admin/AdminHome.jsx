@@ -133,7 +133,7 @@ export default function AdminHome() {
     DistrictId = null
   ) => {
     try {
-      const response = await axiosInstance.get("/Admin/GetApplicationsCount", {
+      const response = await axiosInstance.get("/Base/GetApplicationsCount", {
         params: { ServiceId, Officer, DistrictId },
       });
       const data = response.data;
@@ -171,7 +171,7 @@ export default function AdminHome() {
     const district = getValues("district") == "" ? null : getValues("district");
     const service = getValues("service") == "" ? null : getValues("service");
     setTable({
-      url: "/Admin/GetApplicationDetails",
+      url: "/Base/GetApplicationDetails",
       params: {
         ServiceId: service,
         DistrictId: district,

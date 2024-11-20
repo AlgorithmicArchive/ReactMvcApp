@@ -90,6 +90,25 @@ export async function GetServiceContent(ServiceId) {
   }
 }
 
+export const fetchDistrictsForService = async (setDistrictOptions) => {
+  try {
+    const response = await axiosInstance.get("/User/GetDistrictsForService");
+    console.log(response);
+    const { status, districts } = response.data;
+    if (status) {
+      const formattedDistricts = districts.map((district) => ({
+        label: district.districtName,
+        value: district.districtId,
+      }));
+      setDistrictOptions(formattedDistricts);
+    } else {
+      alert("Failed to load districts.");
+    }
+  } catch (error) {
+    console.error("Error fetching districts:", error);
+  }
+};
+
 export const fetchDistricts = async (setDistrictOptions) => {
   try {
     const response = await axios.get("/Base/GetDistricts");

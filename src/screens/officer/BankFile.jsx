@@ -93,11 +93,7 @@ export default function BankFile() {
       functionName == "ViewNewRecords"
     ) {
       const status =
-        functionName == "ViewBankRecords"
-          ? !isBankFileSent
-            ? "Deposited"
-            : "Dispatched"
-          : "Sanctioned";
+        functionName == "ViewBankRecords" ? "BankRecords" : "Sanctioned";
       handleBasicOpen();
       setBasicTable({
         url: "/Officer/GetBankFileRecords",
