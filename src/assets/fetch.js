@@ -41,6 +41,31 @@ export const fetchData = async (page, rowsPerPage, URL, params) => {
   }
 };
 
+export const fetchDataPost = async (
+  page,
+  rowsPerPage,
+  URL,
+  params,
+  formdata
+) => {
+  try {
+    console.log(formdata);
+    const url = `${URL}?page=${page}&size=${rowsPerPage}`;
+    const response = await axiosInstance.post(url, formdata);
+    console.log(response.data);
+    return {
+      data: response.data.data,
+      totalCount: response.data.totalCount,
+      columns: response.data.columns, // Columns are still included if dynamic
+      currentPage: page,
+      pageSize: rowsPerPage,
+    };
+  } catch (error) {
+    console.error("Error while fetching data:", error);
+    throw error;
+  }
+};
+
 export async function SetServiceId(formData) {
   try {
     // Make POST request to the desired endpoint with formData as the body

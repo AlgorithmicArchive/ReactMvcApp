@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   fetchData,
+  fetchDataPost,
   fetchDistricts,
   fetchServiceList,
 } from "../../assets/fetch";
@@ -38,18 +39,20 @@ export default function () {
     Object.entries(data).forEach(([key, value]) => {
       formData.append(key, value);
     });
-    console.log(formData);
-    const response = await axiosInstance.post(
-      "/Officer/GetResponseBankFile",
-      formData
-    );
-    const result = response.data;
-    console.log(result);
-    setResponseMessage(result.message);
-    setResponseFile(result.filePath);
-    result.status
-      ? setResponseColor("background.paper")
-      : setResponseColor("red");
+    setTable({
+      url: "/Officer/GetResponseBankFile",
+      formdata: formData,
+      key: Date.now(),
+    });
+  };
+
+  const buttonActionHandler = (functionName, parameters) => {
+    if (functionName == "UpdateDatabase") {
+      const responsefile = parameters.responseFile;
+      console.log(parameters.responseFile);
+      setResponseFile(responsefile);
+      DownloadFileAndUpdateDatabase();
+    }
   };
 
   const DownloadFileAndUpdateDatabase = async () => {
@@ -183,10 +186,11 @@ export default function () {
         {table != null && (
           <CustomTable
             key={table.key}
-            fetchData={fetchData}
+            fetchData={fetchDataPost}
             url={table.url}
-            params={table.params}
-            title={"Payment History"}
+            params={null}
+            formdata={table.formdata}
+            buttonActionHandler={buttonActionHandler}
           />
         )}
       </Box>

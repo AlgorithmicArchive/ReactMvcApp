@@ -147,15 +147,6 @@ const MyNavbar = () => {
                 >
                   Reports
                 </Nav.Link>
-                <Nav.Link
-                  as={Link}
-                  to="/officer/paymentDetails"
-                  className="fw-bold"
-                  style={{ color: "#F0C38E" }}
-                  onClick={() => setExpanded(false)}
-                >
-                  Payment Details
-                </Nav.Link>
                 {designation === "Director Finance" && (
                   <NavDropdown
                     title={

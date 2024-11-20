@@ -15,6 +15,7 @@ import connection, {
 } from "../../assets/signalRService";
 import SftpModal from "../../components/SftpModal";
 import CustomTable from "../../components/CustomTable";
+import BasicModal from "../../components/BasicModal";
 
 export default function BankFile() {
   const {
@@ -33,11 +34,15 @@ export default function BankFile() {
   const [isTriggered, setIsTriggered] = useState(false);
   const [progress, setProgress] = useState(0);
   const [table, setTable] = useState(null);
+  const [basicTable, setBasicTable] = useState(null);
 
   const [open, setOpen] = useState(false);
-
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
+
+  const [basicOpen, setBasicOpen] = useState(false);
+  const handleBasicOpen = () => setBasicOpen(true);
+  const handleBasicClose = () => setBasicOpen(false);
 
   useEffect(() => {
     // Fetch initial data for districts and services
@@ -66,49 +71,57 @@ export default function BankFile() {
     };
   }, []);
 
+  const handleButtonAction = (functionName, parameters) => {
+    const isBankFileSent = parameters.isBankFileSent;
+    const districtId = getValues("district");
+    const serviceId = getValues("service");
+    if (
+      functionName == "CreateBankFile" ||
+      functionName == "AppendToBankFile"
+    ) {
+      handleCreateBankFile();
+      setTable({
+        url: "/Officer/VerifyBankFileAndRecords",
+        params: {
+          ServiceId: serviceId,
+          DistrictId: districtId,
+        },
+        key: Date.now(),
+      });
+    } else if (
+      functionName == "ViewBankRecords" ||
+      functionName == "ViewNewRecords"
+    ) {
+      const status =
+        functionName == "ViewBankRecords"
+          ? !isBankFileSent
+            ? "Deposited"
+            : "Dispatched"
+          : "Sanctioned";
+      handleBasicOpen();
+      setBasicTable({
+        url: "/Officer/GetBankFileRecords",
+        params: {
+          ServiceId: serviceId,
+          DistrictId: districtId,
+          status: status,
+        },
+        key: Date.now(),
+      });
+    } else if (functionName == "SendBankFile") handleOpen();
+  };
+
   const onSubmit = async (data) => {
     const districtId = data.district;
     const serviceId = data.service;
-    const result = await checkBankFile(districtId, serviceId);
-    setIsBankFile(result.isBankFileSent);
-    setTotalCount(result.totalCount);
-    setBankFileRecords(result.bankFileRecords);
-    console.log(result.isBankFileSent, result.totalCount);
-    if (result.isBankFileSent != null && result.isBankFileSent) {
-      setCurrentList("Bank File Records");
-      setTable({
-        url: "/Officer/GetBankFileRecords",
-        params: {
-          ServiceId: serviceId,
-          DistrictId: districtId,
-          status: "Dispatched",
-        },
-        key: Date.now(),
-      });
-    } else if (result.isBankFileSent != null && !result.isBankFileSent) {
-      setCurrentList("Bank File Records");
-      setTable({
-        url: "/Officer/GetBankFileRecords",
-        params: {
-          ServiceId: serviceId,
-          DistrictId: districtId,
-          status: "Deposited",
-        },
-        key: Date.now(),
-      });
-    } else if (result.totalCount > 0) {
-      console.log(result.totalCount);
-      setCurrentList("New Records");
-      setTable({
-        url: "/Officer/GetBankFileRecords",
-        params: {
-          ServiceId: serviceId,
-          DistrictId: districtId,
-          status: "Sanctioned",
-        },
-        key: Date.now(),
-      });
-    }
+    setTable({
+      url: "/Officer/VerifyBankFileAndRecords",
+      params: {
+        ServiceId: serviceId,
+        DistrictId: districtId,
+      },
+      key: Date.now(),
+    });
     setIsTriggered(true);
   };
 
@@ -123,30 +136,6 @@ export default function BankFile() {
     } catch (error) {
       console.error("Error creating bank file:", error);
     }
-  };
-
-  const handleListChange = (name) => {
-    setCurrentList(name);
-    setTable({
-      url: "/Officer/GetBankFileRecords",
-      params: {
-        ServiceId: getValues("service"),
-        DistrictId: getValues("district"),
-        status: name == "Bank File Records" ? "Deposited" : "Sanctioned",
-      },
-      key: Date.now(),
-    });
-  };
-
-  const BoldText = ({ text }) => {
-    return (
-      <Typography
-        component={"span"}
-        sx={{ fontWeight: "bold", fontSize: "24px" }}
-      >
-        {text}
-      </Typography>
-    );
   };
 
   return (
@@ -201,123 +190,34 @@ export default function BankFile() {
       </Box>
 
       {isTriggered && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          {/* Message based on isBankFile status */}
-          <Typography sx={{ fontSize: "24px", textAlign: "center" }}>
-            {isBankFile == null ? (
-              "A bank file for this district and service has not been created yet."
-            ) : !isBankFile ? (
-              <>
-                A bank file for this district and service already exists with{" "}
-                <BoldText text={bankFileRecords} /> entries.
-              </>
-            ) : (
-              <>
-                The bank file with <BoldText text={bankFileRecords} /> records
-                has been sent to the bank.
-              </>
-            )}
-          </Typography>
-
-          {/* Message for sanctioned records count */}
-          <Typography sx={{ fontSize: "24px", textAlign: "center" }}>
-            {totalCount === 0 ? (
-              "There are no new sanctioned records for this district and service."
-            ) : (
-              <>
-                There are <BoldText text={totalCount} /> new sanctioned records
-                for this district and service.
-              </>
-            )}
-          </Typography>
-
-          {bankFileRecords > 0 && totalCount > 0 && (
-            <Box
-              sx={{
-                backgroundColor: "primary.main",
-                padding: 5,
-                display: "flex",
-                justifyContent: "center",
-                gap: 3,
-                borderRadius: 5,
-              }}
-            >
-              <Typography
-                sx={{
-                  backgroundColor:
-                    currentList == "Bank File Records"
-                      ? "background.paper"
-                      : "gray",
-                  borderRadius: 5,
-                  paddingLeft: 2,
-                  paddingRight: 2,
-                  paddingTop: 1,
-                  paddingBottom: 1,
-                  cursor: "pointer",
-                }}
-                onClick={() => handleListChange("Bank File Records")}
-              >
-                Bank File Records
-              </Typography>
-              <Typography
-                sx={{
-                  backgroundColor:
-                    currentList == "New Records" ? "background.paper" : "gray",
-                  borderRadius: 5,
-                  paddingLeft: 2,
-                  paddingRight: 2,
-                  paddingTop: 1,
-                  paddingBottom: 1,
-                  cursor: "pointer",
-                }}
-                onClick={() => handleListChange("New Records")}
-              >
-                New Records
-              </Typography>
-            </Box>
-          )}
-
-          {((isBankFile != null && bankFileRecords > 0) || totalCount > 0) && (
+        <Box>
+          {table != null && (
             <CustomTable
               key={table.key}
               fetchData={fetchData}
               url={table.url}
               params={table.params}
               title={currentList + " List"}
+              buttonActionHandler={handleButtonAction}
             />
           )}
-
-          {/* Progress Bar */}
           {progress > 0 && (
             <Box sx={{ width: "100%", mt: 2 }}>
               <Typography>Progress: {progress}%</Typography>
               <progress value={progress} max="100" style={{ width: "100%" }} />
             </Box>
           )}
-
-          {/* Create Bank File Button */}
-          {isBankFile == null && totalCount > 0 && (
-            <CustomButton
-              text="Create Bank File"
-              onClick={handleCreateBankFile}
-            />
-          )}
-
-          {/* Append to Bank File Button */}
-          {isBankFile != null && !isBankFile && totalCount > 0 && (
-            <CustomButton
-              text="Append to Bank File"
-              onClick={handleCreateBankFile}
-            />
-          )}
-
-          {/* Send Bank File Button */}
-          {((isBankFile != null && !isBankFile && totalCount === 0) ||
-            progress === 100) && (
-            <CustomButton text="Send Bank File" onClick={handleOpen} />
-          )}
         </Box>
       )}
+
+      <BasicModal
+        open={basicOpen}
+        handleClose={handleBasicClose}
+        table={basicTable}
+        pdf={null}
+        handleActionButton={() => {}}
+        buttonText=""
+      />
 
       <SftpModal
         open={open}

@@ -764,6 +764,7 @@ namespace ReactMvcApp.Controllers.Officer
 
         public void UpdatePool(string applicationId, int serviceId)
         {
+            _logger.LogInformation($"--------Application ID: {applicationId}  Service ID: {serviceId}------------");
             var officer = GetOfficerDetails();
 
             var lists = dbcontext.ApplicationLists
@@ -776,6 +777,7 @@ namespace ReactMvcApp.Controllers.Officer
             {
                 poolList = JsonConvert.DeserializeObject<List<string>>(lists.PoolList) ?? [];
             }
+            else return;
 
             if (poolList.Contains(applicationId))
             {

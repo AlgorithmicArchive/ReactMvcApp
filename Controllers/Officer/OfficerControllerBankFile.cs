@@ -109,14 +109,14 @@ namespace ReactMvcApp.Controllers.Officer
                             ftpClient.DownloadFile(responseFile, stream);
                         }
 
-                        fileResponse.Add(new { sno = index, fileName = item.FileName, responseFile, button = new { function = "UpdateDatabase", parameters = new[] { responseFile } } });
+                        fileResponse.Add(new { sno = index, fileName = item.FileName, responseFile, button = new { function = "UpdateDatabase", parameters = new { responseFile }, buttonText = "Update Database" } });
                         item.ResponseFile = responseFile;
                     }
                 }
                 dbcontext.SaveChanges();
                 return Json(new { columns, data = fileResponse, totalCount = fileResponse.Count });
             }
-            else return Json(new { status = false, message = "No Bank File for this district with this service." });
+            else return Json(new { columns, data = fileResponse, totalCount = fileResponse.Count });
         }
 
         public async Task<IActionResult> ProcessResponseFile([FromForm] IFormCollection form)
@@ -312,7 +312,11 @@ namespace ReactMvcApp.Controllers.Officer
                     GeneratedDate = DateTime.Now.ToString("dd MMM yyyy hh:mm tt"),
                     TotalRecords = totalRecords,
                     FileSent = false,
-                    ResponseFile = ""
+                    SentOn = "",
+                    ResponseFile = "",
+                    RecievedOn = "",
+                    DbUpdate = false,
+                    UpdatedOn = "",
                 };
                 dbcontext.BankFiles.Add(newBankFile);
             }
@@ -432,46 +436,63 @@ namespace ReactMvcApp.Controllers.Officer
                 new {label="S.No.",value="sno"},
                 new {label="Bank File Records",value="bankRecords"},
                 new {label="New Records",value="newRecords"},
-                new {label="Bank File Action",value="button1"},
+                new {label="Bank File Records",value="button1"},
                 new {label="Bank File Action",value="button2"},
-                new {label="New Records Action",value="button2"},
+                new {label="New Records Action",value="button3"},
             };
 
             // Check if bank file is sent
             var bankFile = dbcontext.BankFiles.FirstOrDefault(bf => bf.ServiceId == serviceId && bf.DistrictId == districtId);
-            var isBankFileSent = bankFile!.FileSent;
+            var isBankFileSent = bankFile?.FileSent;
             int bankFileRecords = bankFile?.TotalRecords ?? 0;
 
             List<dynamic> data = [];
-            var button1 = new
+            var bankFileAction1 = new
             {
                 function = "ViewBankRecords",
-                parameters = new[] { serviceId, districtId },
+                parameters = new { isBankFileSent },
                 buttonText = "View"
             };
-            var button2 = new
+            var bankFileAction2 = new
             {
                 function = "AppendToBankFile",
-                parameters = new[] { serviceId, districtId },
+                parameters = new { },
                 buttonText = "Append"
             };
 
-            var button3 = new
+            var bankFileAction3 = new
+            {
+                function = "CreateBankFile",
+                parameters = new { },
+                buttonText = "Create Bank File"
+            };
+
+            var bankFileAction4 = new
+            {
+                function = "SendBankFile",
+                parameters = new { },
+                buttonText = "Send Bank File"
+            };
+
+
+            var newRecordAction = new
             {
                 function = "ViewNewRecords",
-                parameters = new[] { serviceId, districtId },
+                parameters = new { isBankFileSent },
                 buttonText = "View"
             };
-            var cell = new
+            var cell = new List<KeyValuePair<string, object>>
             {
-                sno = 1,
-                bankRecords = bankFileRecords,
-                newRecords = totalCount,
-                button1,
-                button2,
-                button3
+               new("sno",1),
+               new("bankRecords",bankFileRecords),
+               new("newRecords",totalCount),
+               new("button1",bankFileRecords>0?bankFileAction1:"No Action"),
+               new("button2",totalCount > 0 && bankFileRecords > 0 ? bankFileAction2 : totalCount > 0 && bankFileRecords == 0 ? bankFileAction3 : totalCount == 0 && bankFileRecords > 0 && isBankFileSent == false ? bankFileAction4: "No Action"),
+               new("button3",totalCount>0?newRecordAction:"No Action")
             };
-            data.Add(cell);
+            var cellDictionary = cell.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            data.Add(cellDictionary);
+
 
             // Return the JSON result
             return Json(new

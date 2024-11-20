@@ -125,6 +125,14 @@
       "PackagePath": "staticwebassets/exports/JMU_BankFile_14Nov20240448_response.csv"
     },
     {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/exports/JMU_BankFile_20Nov20241108.csv",
+      "PackagePath": "staticwebassets/exports/JMU_BankFile_20Nov20241108.csv"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/exports/JMU_BankFile_20Nov20241113.csv",
+      "PackagePath": "staticwebassets/exports/JMU_BankFile_20Nov20241113.csv"
+    },
+    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/favicon.ico",
       "PackagePath": "staticwebassets/favicon.ico"
     },
@@ -157,16 +165,8 @@
       "PackagePath": "staticwebassets/files/JMU_2024-2025_4Acknowledgement.pdf"
     },
     {
-      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/files/JMU_2024-2025_4SanctionLetter.pdf",
-      "PackagePath": "staticwebassets/files/JMU_2024-2025_4SanctionLetter.pdf"
-    },
-    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/files/JMU_2024-2025_5Acknowledgement.pdf",
       "PackagePath": "staticwebassets/files/JMU_2024-2025_5Acknowledgement.pdf"
-    },
-    {
-      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/files/JMU_2024-2025_5SanctionLetter.pdf",
-      "PackagePath": "staticwebassets/files/JMU_2024-2025_5SanctionLetter.pdf"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/index.html",
@@ -445,8 +445,32 @@
       "PackagePath": "staticwebassets/profile/f91431f4.jpg"
     },
     {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/050375ab.pdf",
+      "PackagePath": "staticwebassets/uploads/050375ab.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/073206cc.pdf",
+      "PackagePath": "staticwebassets/uploads/073206cc.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/0d48fe9d.pdf",
+      "PackagePath": "staticwebassets/uploads/0d48fe9d.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/0d61e73a.pdf",
+      "PackagePath": "staticwebassets/uploads/0d61e73a.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/0f0c7731.pdf",
+      "PackagePath": "staticwebassets/uploads/0f0c7731.pdf"
+    },
+    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/0f9f368f.pdf",
       "PackagePath": "staticwebassets/uploads/0f9f368f.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/11d0d50b.pdf",
+      "PackagePath": "staticwebassets/uploads/11d0d50b.pdf"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/12163bf7.pdf",
@@ -473,6 +497,10 @@
       "PackagePath": "staticwebassets/uploads/15f2fffa.pdf"
     },
     {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/16cde85b.pdf",
+      "PackagePath": "staticwebassets/uploads/16cde85b.pdf"
+    },
+    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/194b5b71.pdf",
       "PackagePath": "staticwebassets/uploads/194b5b71.pdf"
     },
@@ -481,8 +509,28 @@
       "PackagePath": "staticwebassets/uploads/1abae81d.pdf"
     },
     {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/1e32019c.pdf",
+      "PackagePath": "staticwebassets/uploads/1e32019c.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/20cd3fdb.pdf",
+      "PackagePath": "staticwebassets/uploads/20cd3fdb.pdf"
+    },
+    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/20e984c2.pdf",
       "PackagePath": "staticwebassets/uploads/20e984c2.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/217740cd.pdf",
+      "PackagePath": "staticwebassets/uploads/217740cd.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/262cc0b3.pdf",
+      "PackagePath": "staticwebassets/uploads/262cc0b3.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/2901d16b.pdf",
+      "PackagePath": "staticwebassets/uploads/2901d16b.pdf"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/2cf4610b.pdf",
@@ -497,8 +545,24 @@
       "PackagePath": "staticwebassets/uploads/30fc01d9.pdf"
     },
     {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/3298909e.pdf",
+      "PackagePath": "staticwebassets/uploads/3298909e.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/33ac5e9c.pdf",
+      "PackagePath": "staticwebassets/uploads/33ac5e9c.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/360d5544.pdf",
+      "PackagePath": "staticwebassets/uploads/360d5544.pdf"
+    },
+    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/3a86c457.pdf",
       "PackagePath": "staticwebassets/uploads/3a86c457.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/3d5aff16.pdf",
+      "PackagePath": "staticwebassets/uploads/3d5aff16.pdf"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/3e5afec6.pdf",
@@ -507,6 +571,14 @@
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/413639d2.pdf",
       "PackagePath": "staticwebassets/uploads/413639d2.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/439b9741.pdf",
+      "PackagePath": "staticwebassets/uploads/439b9741.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/4992a9f7.pdf",
+      "PackagePath": "staticwebassets/uploads/4992a9f7.pdf"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/4b4a3953.pdf",
@@ -525,6 +597,30 @@
       "PackagePath": "staticwebassets/uploads/502adfcd.pdf"
     },
     {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/547e1e0d.pdf",
+      "PackagePath": "staticwebassets/uploads/547e1e0d.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/5747d925.jpg",
+      "PackagePath": "staticwebassets/uploads/5747d925.jpg"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/5cadeb9a.pdf",
+      "PackagePath": "staticwebassets/uploads/5cadeb9a.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/5de3b2a8.pdf",
+      "PackagePath": "staticwebassets/uploads/5de3b2a8.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/60666a09.jpg",
+      "PackagePath": "staticwebassets/uploads/60666a09.jpg"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/60a6e876.pdf",
+      "PackagePath": "staticwebassets/uploads/60a6e876.pdf"
+    },
+    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/67c16910.pdf",
       "PackagePath": "staticwebassets/uploads/67c16910.pdf"
     },
@@ -537,16 +633,40 @@
       "PackagePath": "staticwebassets/uploads/6aa29408.jpg"
     },
     {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/6aca5df3.pdf",
+      "PackagePath": "staticwebassets/uploads/6aca5df3.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/6bda15f0.pdf",
+      "PackagePath": "staticwebassets/uploads/6bda15f0.pdf"
+    },
+    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/6d03f282.pdf",
       "PackagePath": "staticwebassets/uploads/6d03f282.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/6dad83cf.pdf",
+      "PackagePath": "staticwebassets/uploads/6dad83cf.pdf"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/7020abc9.pdf",
       "PackagePath": "staticwebassets/uploads/7020abc9.pdf"
     },
     {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/70f8fab5.pdf",
+      "PackagePath": "staticwebassets/uploads/70f8fab5.pdf"
+    },
+    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/757f9812.pdf",
       "PackagePath": "staticwebassets/uploads/757f9812.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/775df2d3.pdf",
+      "PackagePath": "staticwebassets/uploads/775df2d3.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/7a7ec290.pdf",
+      "PackagePath": "staticwebassets/uploads/7a7ec290.pdf"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/7c1e8097.pdf",
@@ -555,6 +675,10 @@
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/7c4195d5.pdf",
       "PackagePath": "staticwebassets/uploads/7c4195d5.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/7dbe654f.pdf",
+      "PackagePath": "staticwebassets/uploads/7dbe654f.pdf"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/8035ae88.pdf",
@@ -577,8 +701,16 @@
       "PackagePath": "staticwebassets/uploads/87508d23.pdf"
     },
     {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/87a8b20f.pdf",
+      "PackagePath": "staticwebassets/uploads/87a8b20f.pdf"
+    },
+    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/8b45c7a0.pdf",
       "PackagePath": "staticwebassets/uploads/8b45c7a0.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/8bac514b.pdf",
+      "PackagePath": "staticwebassets/uploads/8bac514b.pdf"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/9033987d.pdf",
@@ -587,6 +719,10 @@
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/90e95ae7.pdf",
       "PackagePath": "staticwebassets/uploads/90e95ae7.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/94d8accf.jpg",
+      "PackagePath": "staticwebassets/uploads/94d8accf.jpg"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/94fd72d9.pdf",
@@ -603,6 +739,10 @@
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/96e3b190.pdf",
       "PackagePath": "staticwebassets/uploads/96e3b190.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/9861a675.pdf",
+      "PackagePath": "staticwebassets/uploads/9861a675.pdf"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/9ad4764f.pdf",
@@ -641,6 +781,10 @@
       "PackagePath": "staticwebassets/uploads/aaeab658.pdf"
     },
     {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/ad584888.pdf",
+      "PackagePath": "staticwebassets/uploads/ad584888.pdf"
+    },
+    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/af2c094c.pdf",
       "PackagePath": "staticwebassets/uploads/af2c094c.pdf"
     },
@@ -649,8 +793,16 @@
       "PackagePath": "staticwebassets/uploads/b10ce19e.pdf"
     },
     {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/b877f787.pdf",
+      "PackagePath": "staticwebassets/uploads/b877f787.pdf"
+    },
+    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/bb71f39c.pdf",
       "PackagePath": "staticwebassets/uploads/bb71f39c.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/bdc85a17.pdf",
+      "PackagePath": "staticwebassets/uploads/bdc85a17.pdf"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/c2da18de.pdf",
@@ -667,6 +819,10 @@
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/d296b89d.pdf",
       "PackagePath": "staticwebassets/uploads/d296b89d.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/d6a30aff.pdf",
+      "PackagePath": "staticwebassets/uploads/d6a30aff.pdf"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/d76bd43d.pdf",
@@ -693,6 +849,10 @@
       "PackagePath": "staticwebassets/uploads/e7c657b6.jpg"
     },
     {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/e9ae0e01.pdf",
+      "PackagePath": "staticwebassets/uploads/e9ae0e01.pdf"
+    },
+    {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/f1842c50.pdf",
       "PackagePath": "staticwebassets/uploads/f1842c50.pdf"
     },
@@ -707,6 +867,10 @@
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/f6d30e99.pdf",
       "PackagePath": "staticwebassets/uploads/f6d30e99.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/f7d41c10.pdf",
+      "PackagePath": "staticwebassets/uploads/f7d41c10.pdf"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/f8aa466f.pdf",
@@ -727,6 +891,10 @@
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/ff853335.pdf",
       "PackagePath": "staticwebassets/uploads/ff853335.pdf"
+    },
+    {
+      "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/ffccd927.pdf",
+      "PackagePath": "staticwebassets/uploads/ffccd927.pdf"
     },
     {
       "Id": "obj/Debug/net8.0/staticwebassets/msbuild.ReactMvcApp.Microsoft.AspNetCore.StaticWebAssets.props",

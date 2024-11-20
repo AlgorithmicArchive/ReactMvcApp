@@ -28,6 +28,7 @@ const CustomTable = ({
   url,
   buttonActionHandler,
   params,
+  formdata,
   showCheckbox = false,
   onSelectionChange,
   fieldToReturn = "",
@@ -48,7 +49,13 @@ const CustomTable = ({
     const loadData = async () => {
       setLoading(true);
       try {
-        const result = await fetchData(page, rowsPerPage, url, params);
+        const result = await fetchData(
+          page,
+          rowsPerPage,
+          url,
+          params,
+          formdata
+        );
         setData(result.data);
         setTotalCount(result.totalCount);
         setColumns(result.columns);
@@ -62,7 +69,7 @@ const CustomTable = ({
     };
 
     loadData();
-  }, [page, rowsPerPage, fetchData, url, params]);
+  }, [page, rowsPerPage, fetchData, url, params, formdata]);
 
   useEffect(() => {
     // Filter and sort data based on search term and sort order
