@@ -9,11 +9,17 @@ public partial class ApplicationsHistory
 
     public int ServiceId { get; set; }
 
+    public string? AccessLevel { get; set; }
+
+    public int? AccessCode { get; set; }
+
+    public string? Role { get; set; }
+
     public string ApplicationId { get; set; } = null!;
 
     public string ActionTaken { get; set; } = null!;
 
-    public int TakenBy { get; set; }
+    public int? TakenBy { get; set; }
 
     public string Remarks { get; set; } = null!;
 
@@ -25,5 +31,5 @@ public partial class ApplicationsHistory
 
     public virtual Service Service { get; set; } = null!;
 
-    public virtual User TakenByNavigation { get; set; } = null!;
+    public virtual User? TakenByNavigation { get; set; }
 }

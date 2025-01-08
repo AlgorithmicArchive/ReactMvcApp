@@ -217,7 +217,10 @@ namespace ReactMvcApp.Controllers.User
 
 
             // Get the officerId based on serviceId and workflow
-            int officerId = dbcontext.OfficerDetails.FirstOrDefault(od => od.AccessLevel == AccessLevel && od.AccessCode == AccessCode)!.OfficerId;
+            int? officerId = 0;
+            var officer = dbcontext.OfficerDetails.FirstOrDefault(od => od.AccessLevel == AccessLevel && od.AccessCode == AccessCode && od.Role == workFlow!.Role);
+            if (officer != null) officerId = officer.OfficerId;
+            else officerId = null;
 
             if (!form.ContainsKey("returnToEdit"))
             {
@@ -253,35 +256,39 @@ namespace ReactMvcApp.Controllers.User
             {
                 await emailSender.SendEmail(email, "Acknowledgement", $"Your Application with Reference Number {applicationId} has been sent to {workFlow!.Role} at {DateTime.Now.ToString("dd MMM yyyy hh:mm tt")}");
             }
-
-            // Insert into application history and status tables
-            _ = dbcontext.Database.ExecuteSqlRaw("EXEC InsertApplicationHistory @ServiceId,@ApplicationId,@ActionTaken,@TakenBy,@File,@TakenAt", new SqlParameter("@ServiceId", serviceId), new SqlParameter("@ApplicationId", applicationId), new SqlParameter("@ActionTaken", "Pending"), new SqlParameter("@TakenBy", officerId), new SqlParameter("@File", ""), new SqlParameter("@TakenAt", DateTime.Now.ToString("dd MMM yyyy hh:mm tt")));
-            _ = dbcontext.Database.ExecuteSqlRaw("EXEC InsertApplicationStatus @ServiceId,@ApplicationId,@Status,@CurrentlyWith,@LastUpdated", new SqlParameter("@ServiceId", serviceId), new SqlParameter("@ApplicationId", applicationId), new SqlParameter("@Status", "Pending"), new SqlParameter("@CurrentlyWith", officerId), new SqlParameter("@LastUpdated", DateTime.Now.ToString("dd MMM yyyy hh:mm tt")));
-
-            var applicationCount = dbcontext.ApplicationsCounts
-                .FirstOrDefault(ac => ac.ServiceId == serviceId && ac.OfficerId == officerId && ac.Status == "Pending");
-
-            var currentDate = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
-
-            if (applicationCount != null)
+            // Define the parameters
+            var ServiceIdParam = new SqlParameter("@ServiceId", serviceId);
+            var AccessLevelParam = new SqlParameter("@AccessLevel", AccessLevel);
+            var AccessCodeParam = new SqlParameter("@AccessCode", AccessCode);
+            var RoleParam = new SqlParameter("@Role", workFlow!.Role);
+            var ApplicationIdParam = new SqlParameter("@ApplicationId", applicationId);
+            var StatusActionParam = new SqlParameter("@StatusAction", "Pending");
+            var OfficerIdParam = new SqlParameter("@OfficerId", officerId.HasValue ? officerId : (object)DBNull.Value); // Handle NULL
+            var RemarksParam = new SqlParameter("@Remarks", "");
+            var FileParam = new SqlParameter("@File", "");
+            var TimestampParam = new SqlParameter("@Timestamp", DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"));
+            var CanPullParam = new SqlParameter("@canPull", SqlDbType.Bit)
             {
-                applicationCount.Count++;
-                applicationCount.LastUpdated = currentDate;
-            }
-            else
-            {
-                var newApplicationCount = new ApplicationsCount
-                {
-                    ServiceId = serviceId,
-                    OfficerId = officerId,
-                    Status = "Pending",
-                    Count = 1,
-                    LastUpdated = currentDate
-                };
-                dbcontext.ApplicationsCounts.Add(newApplicationCount);
-            }
+                Value = 0 // Default value for optional parameter
+            };
 
-            await dbcontext.SaveChangesAsync();
+            // Execute the stored procedure
+            var result = await dbcontext.Database.ExecuteSqlRawAsync(
+                "EXEC [dbo].[InsertApplicationStatusAndHistoryWithCount] @ServiceId, @AccessLevel, @AccessCode, @Role, @ApplicationId, @StatusAction, @OfficerId, @Remarks, @File, @Timestamp, @canPull",
+                ServiceIdParam,
+                AccessLevelParam,
+                AccessCodeParam,
+                RoleParam,
+                ApplicationIdParam,
+                StatusActionParam,
+                OfficerIdParam,
+                RemarksParam,
+                FileParam,
+                TimestampParam,
+                CanPullParam
+            );
+
+            helper.WebService("onsubmit", serviceId, applicationId);
 
             return Json(new { status = true, ApplicationId = applicationId, complete = true });
         }

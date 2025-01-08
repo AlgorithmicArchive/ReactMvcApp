@@ -88,6 +88,7 @@ namespace ReactMvcApp.Controllers
             {
                 var userId = new SqlParameter("@OfficerId", result[0].UserId);
                 await _dbContext.Database.ExecuteSqlRawAsync("EXEC InsertOfficerDetail @OfficerId,@Role,@AccessLevel,@AccessCode", userId, designation, accessLevel, accessCode);
+                await _dbContext.Database.ExecuteSqlRawAsync("EXEC UpdateNullOfficer @NewOfficerId, @AccessLevel, @AccessCode, @Role", new SqlParameter("@NewOfficerId", result[0].UserId), designation, accessLevel, accessCode);
                 string otp = GenerateOTP(6);
                 _otpStore.StoreOtp("registration", otp);
                 await _emailSender.SendEmail(form["Email"].ToString(), "OTP For Registration.", otp);

@@ -318,7 +318,7 @@ namespace ReactMvcApp.Controllers.Officer
                     _logger.LogInformation($"-------------Officer ID: {officerId}-----------------");
                     string editList = form["editList"].ToString();
                     helper.UpdateApplication("EditList", editList, new SqlParameter("@ApplicationId", applicationId));
-                    ActionReturnToEdit(serviceId, applicationId, officerId, remarks, filePath);
+                    ActionReturnToEdit(serviceId, applicationId, officerId, officerDesignation, accessLevel, accessCode, remarks, filePath);
                     break;
 
                 case "updateAndForward":
@@ -346,10 +346,10 @@ namespace ReactMvcApp.Controllers.Officer
                     ActionReturn(serviceId, applicationId, officer.UserId, officerDesignation, remarks, filePath, accessLevel, accessCode);
                     break;
                 case "reject":
-                    ActionReject(serviceId, applicationId, officer.UserId, remarks, filePath);
+                    ActionReject(serviceId, applicationId, officer.UserId, officerDesignation, accessLevel, accessCode, remarks, filePath);
                     break;
                 case "sanction":
-                    ActionSanction(serviceId, applicationId, officer.UserId, remarks, filePath);
+                    ActionSanction(serviceId, applicationId, officer.UserId, officerDesignation, accessLevel, accessCode, remarks, filePath);
                     break;
 
                 default:

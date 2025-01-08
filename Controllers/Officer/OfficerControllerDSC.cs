@@ -21,7 +21,6 @@ namespace ReactMvcApp.Controllers.Officer
     {
         [HttpPost]
         public async Task<IActionResult> UploadDSC([FromForm] IFormCollection form)
-
         {
             var file = form.Files["dscFile"];
             string password = form["password"].ToString();
@@ -157,7 +156,7 @@ namespace ReactMvcApp.Controllers.Officer
             signer.SignDetached(pks, certificateWrappers, crlList, ocspClient, tsaClient, estimatedSize, subfilter);
         }
         public IActionResult SignPdf(string ApplicationId)
-        {   
+        {
             var officer = GetOfficerDetails();
             int userId = officer.UserId;
             string inputPdfPath = Path.Combine(_webHostEnvironment.WebRootPath, "files", ApplicationId.Replace("/", "_") + "SanctionLetter.pdf");

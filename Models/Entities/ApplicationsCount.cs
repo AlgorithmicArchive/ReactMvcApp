@@ -9,7 +9,13 @@ public partial class ApplicationsCount
 
     public int ServiceId { get; set; }
 
-    public int OfficerId { get; set; }
+    public string? AccessLevel { get; set; }
+
+    public int? AccessCode { get; set; }
+
+    public string? Role { get; set; }
+
+    public int? OfficerId { get; set; }
 
     public string Status { get; set; } = null!;
 
@@ -17,7 +23,7 @@ public partial class ApplicationsCount
 
     public string LastUpdated { get; set; } = null!;
 
-    public virtual User Officer { get; set; } = null!;
+    public virtual User? Officer { get; set; }
 
     public virtual Service Service { get; set; } = null!;
 }

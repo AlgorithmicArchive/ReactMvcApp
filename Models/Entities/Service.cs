@@ -19,7 +19,9 @@ public partial class Service
 
     public string OfficerEditableField { get; set; } = null!;
 
-    public string CreatedAt { get; set; } = null!;
+    public string? WebService { get; set; }
+
+    public string? CreatedAt { get; set; }
 
     public bool Active { get; set; }
 

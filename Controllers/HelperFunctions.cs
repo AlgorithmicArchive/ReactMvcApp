@@ -1,6 +1,8 @@
+using System.Dynamic;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using ReactMvcApp.Models.Entities;
 
 public class UserHelperFunctions(IWebHostEnvironment webHostEnvironment, SocialWelfareDepartmentContext dbcontext, ILogger<UserHelperFunctions> logger)
@@ -204,6 +206,119 @@ public class UserHelperFunctions(IWebHostEnvironment webHostEnvironment, SocialW
         string[] codesArray = new string[numberOfCodes];
         codesSet.CopyTo(codesArray);
         return codesArray;
+    }
+
+
+    public async void WebService(string webAction, int serviceId, string applicationId)
+    {
+        // Retrieve the service
+        var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
+        if (service == null || string.IsNullOrEmpty(service.WebService))
+        {
+            _logger.LogInformation("Service not found or WebService data is missing.");
+        }
+
+        // Deserialize the WebService JSON
+        var webserviceList = JsonConvert.DeserializeObject<Dictionary<string, JArray>>(service!.WebService!);
+        if (webserviceList == null || !webserviceList.ContainsKey(webAction))
+        {
+            _logger.LogInformation($"Action '{webAction}' not found in WebService data.");
+        }
+
+        // Get the action array
+        var actionArray = webserviceList![webAction];
+        if (actionArray == null || actionArray.Count == 0)
+        {
+            _logger.LogInformation("No web services found for the specified action.");
+        }
+
+        var httpClient = new HttpClient(); // Instantiate HttpClient for making the POST request
+
+        foreach (int id in actionArray!)
+        {
+            // Create a dynamic object to store results
+            var dynamicObject = new ExpandoObject() as IDictionary<string, object>;
+
+            var webservice = dbcontext.WebServices.FirstOrDefault(ws => ws.WebserviceId == id);
+            if (webservice == null)
+            {
+                _logger.LogInformation($"WebService with ID {id} not found.");
+            }
+
+            // Deserialize the response fields into a list of JObject
+            var responseFields = JsonConvert.DeserializeObject<List<JObject>>(webservice!.Fields);
+            if (responseFields == null || responseFields.Count == 0)
+            {
+                continue;
+            }
+
+            // Retrieve the application
+            var application = dbcontext.Applications.FirstOrDefault(a => a.ApplicationId == applicationId);
+            if (application == null)
+            {
+                _logger.LogInformation("Application not found.");
+            }
+
+            // Deserialize ServiceSpecific data
+            var serviceSpecific = JsonConvert.DeserializeObject<dynamic>(application!.ServiceSpecific);
+
+            foreach (var field in responseFields)
+            {
+                // Extract FieldName and NodeReference
+                var fieldName = field["FieldName"]?.ToString();
+                var nodeReference = field["NodeReference"]?.ToString();
+
+                if (string.IsNullOrEmpty(fieldName))
+                {
+                    _logger.LogInformation("FieldName must be a non-null string.");
+                }
+
+                if (string.IsNullOrEmpty(nodeReference))
+                {
+                    _logger.LogInformation($"NodeReference for FieldName '{fieldName}' must be a non-null string.");
+                }
+
+                object value;
+
+                // Check if key exists in ServiceSpecific
+                if (serviceSpecific != null && ((JObject)serviceSpecific!).ContainsKey(nodeReference!))
+                {
+                    value = serviceSpecific![nodeReference]?.ToString() ?? "null";
+                }
+                else
+                {
+                    // Fallback to application property
+                    var info = application.GetType().GetProperty(nodeReference!);
+                    if (info == null)
+                    {
+                        _logger.LogInformation($"Property '{nodeReference}' not found on Application or ServiceSpecific object.");
+                    }
+
+                    value = info!.GetValue(application) ?? "null"; // Handle null values
+                }
+
+                // Add to dynamicObject
+                dynamicObject[fieldName!] = value;
+            }
+
+            // Send the dynamicObject to the Node.js server
+            var nodeServerUrl = webservice.ServerUrl; // Update with your Node.js server URL
+            try
+            {
+                var response = await httpClient.PostAsJsonAsync(nodeServerUrl, dynamicObject);
+
+                // Optionally read response from Node.js server
+                var nodeResponse = await response.Content.ReadAsStringAsync();
+
+                // Log or process the response if needed
+                Console.WriteLine($"Response from Node.js server: {nodeResponse}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation("Error occurred while sending data to Node.js server");
+            }
+        }
+
     }
 
 }

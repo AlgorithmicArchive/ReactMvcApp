@@ -275,7 +275,15 @@ namespace ReactMvcApp.Controllers.Officer
                     buttonText = "Call Back"
                 };
                 var currentStatus = dbcontext.ApplicationStatuses
-                    .FirstOrDefault(stat => stat.ApplicationId == item.ApplicationId);
+                    .Where(stat => stat.ApplicationId == item.ApplicationId)
+                    .Select(stat => new
+                    {
+                        ServiceId = (int?)stat.ServiceId ?? 0,              // Default for NULL
+                        CurrentlyWith = (int?)stat.CurrentlyWith ?? 0,          // Allow nullable
+                        Status = stat.Status ?? "Unknown",           // Default for NULL
+                        stat.CanPull,
+                        LastUpdated = stat.LastUpdated               // Allow nullable if possible
+                    }).FirstOrDefault();
 
                 var workFlow = dbcontext.WorkFlows
                     .Where(wf => wf.ServiceId == item.ServiceId)
@@ -465,15 +473,15 @@ namespace ReactMvcApp.Controllers.Officer
 
             // Define columns for the frontend
             var columns = new List<dynamic>
-    {
-        new { label = "S.No.", value = "sno" },
-        new { label = "ApplicationId", value = "applicationId" },
-        new { label = "Applicant Name", value = "applicantName" },
-        new { label = "Status", value = "status" },
-        new { label = "Transaction Id", value = "transactionId" },
-        new { label = "Transaction Status", value = "transactionStatus" },
-        new { label = "Date Of Disbursion", value = "dateOfDisbursion" },
-    };
+            {
+                new { label = "S.No.", value = "sno" },
+                new { label = "ApplicationId", value = "applicationId" },
+                new { label = "Applicant Name", value = "applicantName" },
+                new { label = "Status", value = "status" },
+                new { label = "Transaction Id", value = "transactionId" },
+                new { label = "Transaction Status", value = "transactionStatus" },
+                new { label = "Date Of Disbursion", value = "dateOfDisbursion" },
+            };
 
             // Process data and paginate results
             var data = paymentDetails.Select((item, index) => new
@@ -506,19 +514,32 @@ namespace ReactMvcApp.Controllers.Officer
                                        .FirstOrDefault();
 
             // Find the next officer's ID based on their role and access levels (LINQ applied after data is in memory)
-            int nextOfficerId = dbcontext.OfficerDetails
+            var nextOfficerDetails = dbcontext.OfficerDetails
                                         .Where(of => of.Role == nextOfficer!.Role &&
                                                      ((of.AccessLevel == accessLevel && of.AccessCode == accessCode) ||
                                                      of.AccessLevel == "State"))
-                                        .Select(of => of.OfficerId)
                                         .FirstOrDefault();
+
+            int? nextAccessCode = null;
+            var nextOfficerId = nextOfficerDetails != null ? nextOfficerDetails!.OfficerId : (object)DBNull.Value;
+            string nextAccessLevel = dbcontext.OfficersDesignations.FirstOrDefault(od => od.Designation == nextOfficer!.Role)!.AccessLevel;
+            if (accessLevel == nextAccessLevel)
+                nextAccessCode = accessCode;
+            else if (accessLevel == "Tehsil" && nextAccessLevel == "District")
+                nextAccessCode = dbcontext.Tehsils.FirstOrDefault(t => t.TehsilId == accessCode)!.DistrictId;
+            else if (nextAccessLevel == "State")
+                nextAccessCode = 0;
 
             // Get the current date in the desired format
             string currentDate = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
 
             // Execute the stored procedure to update the status and history
-            dbcontext.Database.ExecuteSqlRaw("EXEC Status_History_Count_Forward @ServiceId, @ApplicationId, @OfficerId, @NextOfficerId, @Remarks, @FilePath, @Date",
+            dbcontext.Database.ExecuteSqlRaw("EXEC Status_History_Count_Forward @ServiceId, @AccessLevel, @AccessCode,@CurrentOfficerRole, @Role, @ApplicationId, @OfficerId, @NextOfficerId, @Remarks, @FilePath, @Date",
                                               new SqlParameter("@ServiceId", serviceId),
+                                              new SqlParameter("@AccessLevel", nextAccessLevel),
+                                              new SqlParameter("@AccessCode", nextAccessCode),
+                                              new SqlParameter("@CurrentOfficerRole", officerDesignation),
+                                              new SqlParameter("@Role", nextOfficer!.Role),
                                               new SqlParameter("@ApplicationId", applicationId),
                                               new SqlParameter("@OfficerId", officerId),
                                               new SqlParameter("@NextOfficerId", nextOfficerId),
@@ -530,12 +551,12 @@ namespace ReactMvcApp.Controllers.Officer
         {
             // Retrieve the next officer's role using the GetAdjacentRole stored procedure
             var previousOfficer = dbcontext.WorkFlows
-                                       .FromSqlRaw("EXEC GetAdjacentRole @ServiceId, @Role, @Direction",
-                                                   new SqlParameter("@ServiceId", serviceId),
-                                                   new SqlParameter("@Role", officerDesignation),
-                                                   new SqlParameter("@Direction", "PREVIOUS"))
-                                       .AsEnumerable() // Bring the result into memory to avoid composition issues
-                                       .FirstOrDefault();
+                                           .FromSqlRaw("EXEC GetAdjacentRole @ServiceId, @Role, @Direction",
+                                                       new SqlParameter("@ServiceId", serviceId),
+                                                       new SqlParameter("@Role", officerDesignation),
+                                                       new SqlParameter("@Direction", "PREVIOUS"))
+                                           .AsEnumerable() // Bring the result into memory to avoid composition issues
+                                           .FirstOrDefault();
 
             // Find the previous officer's ID based on their role and access levels (LINQ applied after data is in memory)
             int previousOfficerId = dbcontext.OfficerDetails
@@ -549,8 +570,12 @@ namespace ReactMvcApp.Controllers.Officer
             string currentDate = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
 
             // Execute the stored procedure to update the status and history for returning the application
-            dbcontext.Database.ExecuteSqlRaw("EXEC Status_History_Count_Return @ServiceId, @ApplicationId, @OfficerId, @PreviousOfficerId, @Remarks, @FilePath, @Date",
+            dbcontext.Database.ExecuteSqlRaw("EXEC Status_History_Count_Return @ServiceId, @AccessLevel, @AccessCode, @CurrentOfficerRole, @Role, @ApplicationId, @OfficerId, @PreviousOfficerId, @Remarks, @FilePath, @Date",
                                               new SqlParameter("@ServiceId", serviceId),
+                                              new SqlParameter("@AccessLevel", accessLevel),
+                                              new SqlParameter("@AccessCode", accessCode),
+                                              new SqlParameter("@CurrentOfficerRole", officerDesignation),
+                                              new SqlParameter("@Role", previousOfficer!.Role),
                                               new SqlParameter("@ApplicationId", applicationId),
                                               new SqlParameter("@OfficerId", officerId),
                                               new SqlParameter("@PreviousOfficerId", previousOfficerId),
@@ -558,52 +583,62 @@ namespace ReactMvcApp.Controllers.Officer
                                               new SqlParameter("@FilePath", filePath ?? (object)DBNull.Value), // Handle null FilePath
                                               new SqlParameter("@Date", currentDate));
         }
-        public void ActionReject(int serviceId, string applicationId, int officerId, string remarks, string filePath)
+        public void ActionReject(int serviceId, string applicationId, int officerId, string officerDesignation, string accessLevel, int accessCode, string remarks, string filePath)
         {
             // Get the current date in the desired format
             string currentDate = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
 
             // Execute the stored procedure to update the status and history for rejection
-            dbcontext.Database.ExecuteSqlRaw("EXEC Status_History_Count_Reject @ServiceId, @ApplicationId, @OfficerId, @Remarks, @FilePath, @Date",
+            dbcontext.Database.ExecuteSqlRaw("EXEC Status_History_Count_Reject @ServiceId, @AccessLevel, @AccessCode, @CurrentOfficerRole, @ApplicationId, @OfficerId, @Remarks, @FilePath, @Date",
                                               new SqlParameter("@ServiceId", serviceId),
+                                              new SqlParameter("@AccessLevel", accessLevel),
+                                              new SqlParameter("@AccessCode", accessCode),
+                                              new SqlParameter("@CurrentOfficerRole", officerDesignation),
                                               new SqlParameter("@ApplicationId", applicationId),
                                               new SqlParameter("@OfficerId", officerId),
                                               new SqlParameter("@Remarks", remarks),
                                               new SqlParameter("@FilePath", filePath ?? (object)DBNull.Value), // Handle null FilePath
                                               new SqlParameter("@Date", currentDate));
+
             helper.UpdateApplication("ApplicationStatus", "Rejected", new SqlParameter("@ApplicationId", applicationId));
         }
-        public void ActionSanction(int serviceId, string applicationId, int officerId, string remarks, string filePath)
+        public void ActionSanction(int serviceId, string applicationId, int officerId, string officerDesignation, string accessLevel, int accessCode, string remarks, string filePath)
         {
-            var officer = GetOfficerDetails();
-            Sanction(applicationId, officer.Role!);
             // Get the current date in the desired format
             string currentDate = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
 
             // Execute the stored procedure to update the status and history for sanctioning
-            dbcontext.Database.ExecuteSqlRaw("EXEC Status_History_Count_Sanction @ServiceId, @ApplicationId, @OfficerId, @Remarks, @FilePath, @Date",
+            dbcontext.Database.ExecuteSqlRaw("EXEC Status_History_Count_Sanction @ServiceId, @AccessLevel, @AccessCode, @CurrentOfficerRole, @ApplicationId, @OfficerId, @Remarks, @FilePath, @Date",
                                               new SqlParameter("@ServiceId", serviceId),
+                                              new SqlParameter("@AccessLevel", accessLevel),
+                                              new SqlParameter("@AccessCode", accessCode),
+                                              new SqlParameter("@CurrentOfficerRole", officerDesignation),
                                               new SqlParameter("@ApplicationId", applicationId),
                                               new SqlParameter("@OfficerId", officerId),
                                               new SqlParameter("@Remarks", remarks),
                                               new SqlParameter("@FilePath", filePath ?? (object)DBNull.Value), // Handle null FilePath
                                               new SqlParameter("@Date", currentDate));
+            Sanction(applicationId, officerDesignation);
             helper.UpdateApplication("ApplicationStatus", "Sanctioned", new SqlParameter("@ApplicationId", applicationId));
         }
-        public void ActionReturnToEdit(int serviceId, string applicationId, int officerId, string remarks, string filePath)
+        public void ActionReturnToEdit(int serviceId, string applicationId, int officerId, string officerDesignation, string accessLevel, int accessCode, string remarks, string filePath)
         {
             // Get the current date in the desired format
             string currentDate = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
 
             // Execute the stored procedure to update the status and history for returning the application to the citizen for editing
-            dbcontext.Database.ExecuteSqlRaw("EXEC Status_History_Count_ReturnToEdit @ServiceId, @ApplicationId, @OfficerId, @Remarks, @FilePath, @Date",
+            dbcontext.Database.ExecuteSqlRaw("EXEC Status_History_Count_ReturnToEdit @ServiceId, @AccessLevel, @AccessCode, @CurrentOfficerRole, @ApplicationId, @OfficerId, @Remarks, @FilePath, @Date",
                                               new SqlParameter("@ServiceId", serviceId),
+                                              new SqlParameter("@AccessLevel", accessLevel),
+                                              new SqlParameter("@AccessCode", accessCode),
+                                              new SqlParameter("@CurrentOfficerRole", officerDesignation),
                                               new SqlParameter("@ApplicationId", applicationId),
                                               new SqlParameter("@OfficerId", officerId),
                                               new SqlParameter("@Remarks", remarks),
                                               new SqlParameter("@FilePath", filePath ?? (object)DBNull.Value), // Handle null FilePath
                                               new SqlParameter("@Date", currentDate));
         }
+
 
 
 

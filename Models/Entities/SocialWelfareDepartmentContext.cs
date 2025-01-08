@@ -63,6 +63,8 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     public virtual DbSet<Ward> Wards { get; set; }
 
+    public virtual DbSet<WebService> WebServices { get; set; }
+
     public virtual DbSet<WorkFlow> WorkFlows { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -176,12 +178,18 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
             entity.ToTable("ApplicationStatus");
 
+            entity.Property(e => e.AccessLevel)
+                .HasMaxLength(10)
+                .IsUnicode(false);
             entity.Property(e => e.ApplicationId)
                 .HasMaxLength(50)
                 .IsUnicode(false);
             entity.Property(e => e.CanPull).HasColumnName("canPull");
             entity.Property(e => e.LastUpdated)
                 .HasMaxLength(255)
+                .IsUnicode(false);
+            entity.Property(e => e.Role)
+                .HasMaxLength(50)
                 .IsUnicode(false);
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
@@ -194,7 +202,6 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
             entity.HasOne(d => d.CurrentlyWithNavigation).WithMany(p => p.ApplicationStatuses)
                 .HasForeignKey(d => d.CurrentlyWith)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_ApplicationStatus_Officer");
 
             entity.HasOne(d => d.Service).WithMany(p => p.ApplicationStatuses)
@@ -209,8 +216,14 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
             entity.ToTable("ApplicationsCount");
 
+            entity.Property(e => e.AccessLevel)
+                .HasMaxLength(10)
+                .IsUnicode(false);
             entity.Property(e => e.LastUpdated)
                 .HasMaxLength(255)
+                .IsUnicode(false);
+            entity.Property(e => e.Role)
+                .HasMaxLength(50)
                 .IsUnicode(false);
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
@@ -218,8 +231,7 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
             entity.HasOne(d => d.Officer).WithMany(p => p.ApplicationsCounts)
                 .HasForeignKey(d => d.OfficerId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_ApplicationsCount_Officer");
+                .HasConstraintName("FK_ApplicationsCount_Users");
 
             entity.HasOne(d => d.Service).WithMany(p => p.ApplicationsCounts)
                 .HasForeignKey(d => d.ServiceId)
@@ -233,6 +245,9 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
             entity.ToTable("ApplicationsHistory");
 
+            entity.Property(e => e.AccessLevel)
+                .HasMaxLength(10)
+                .IsUnicode(false);
             entity.Property(e => e.ActionTaken)
                 .HasMaxLength(50)
                 .IsUnicode(false);
@@ -245,6 +260,9 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.Remarks)
                 .HasDefaultValue("")
                 .HasColumnType("text");
+            entity.Property(e => e.Role)
+                .HasMaxLength(50)
+                .IsUnicode(false);
             entity.Property(e => e.TakenAt).IsUnicode(false);
 
             entity.HasOne(d => d.Application).WithMany(p => p.ApplicationsHistories)
@@ -259,7 +277,6 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
             entity.HasOne(d => d.TakenByNavigation).WithMany(p => p.ApplicationsHistories)
                 .HasForeignKey(d => d.TakenBy)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_ApplicationsHistory_Officer");
         });
 
@@ -267,9 +284,7 @@ public partial class SocialWelfareDepartmentContext : DbContext
         {
             entity.HasKey(e => e.FileId);
 
-            entity.Property(e => e.DbUpdate)
-                .HasDefaultValue(false)
-                .HasColumnName("dbUpdate");
+            entity.Property(e => e.DbUpdate).HasColumnName("dbUpdate");
             entity.Property(e => e.FileName)
                 .HasMaxLength(100)
                 .IsUnicode(false);
@@ -278,16 +293,20 @@ public partial class SocialWelfareDepartmentContext : DbContext
                 .IsUnicode(false);
             entity.Property(e => e.RecievedOn)
                 .HasMaxLength(50)
-                .IsUnicode(false);
+                .IsUnicode(false)
+                .HasDefaultValue("");
             entity.Property(e => e.ResponseFile)
                 .HasMaxLength(100)
-                .IsUnicode(false);
+                .IsUnicode(false)
+                .HasDefaultValue("");
             entity.Property(e => e.SentOn)
                 .HasMaxLength(50)
-                .IsUnicode(false);
+                .IsUnicode(false)
+                .HasDefaultValue("");
             entity.Property(e => e.UpdatedOn)
                 .HasMaxLength(50)
-                .IsUnicode(false);
+                .IsUnicode(false)
+                .HasDefaultValue("");
 
             entity.HasOne(d => d.District).WithMany(p => p.BankFiles)
                 .HasForeignKey(d => d.DistrictId)
@@ -490,6 +509,7 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.ServiceName)
                 .HasMaxLength(255)
                 .IsUnicode(false);
+            entity.Property(e => e.WebService).HasColumnName("webService");
         });
 
         modelBuilder.Entity<Tehsil>(entity =>
@@ -584,6 +604,33 @@ public partial class SocialWelfareDepartmentContext : DbContext
                 .HasForeignKey(d => d.VillageId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Ward_Village");
+        });
+
+        modelBuilder.Entity<WebService>(entity =>
+        {
+            entity.Property(e => e.WebserviceId).HasColumnName("webserviceID");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("createdAt");
+            entity.Property(e => e.Fields).HasColumnName("fields");
+            entity.Property(e => e.Method)
+                .HasMaxLength(10)
+                .IsUnicode(false)
+                .HasColumnName("method");
+            entity.Property(e => e.ResponseType)
+                .HasMaxLength(10)
+                .IsUnicode(false)
+                .HasColumnName("responseType");
+            entity.Property(e => e.ServerUrl)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("serverUrl");
+            entity.Property(e => e.ServiceName)
+                .HasMaxLength(100)
+                .IsUnicode(false)
+                .HasColumnName("serviceName");
+            entity.Property(e => e.SuccessCode).HasColumnName("successCode");
         });
 
         modelBuilder.Entity<WorkFlow>(entity =>

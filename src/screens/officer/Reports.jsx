@@ -8,6 +8,7 @@ import CustomSelectField from "../../components/form/CustomSelectField";
 import CustomButton from "../../components/CustomButton";
 import CustomTable from "../../components/CustomTable";
 import { fetchData } from "../../assets/fetch";
+import { Card, Col, Row } from "react-bootstrap";
 
 export default function Reports() {
   const [countList, setCountList] = useState([]);
@@ -24,25 +25,29 @@ export default function Reports() {
     plotOptions: {
       bar: {
         distributed: true,
+        horizontal: false, // Ensure vertical bars
       },
     },
     xaxis: {
       categories: [
         "Total",
         "Pending",
+        "Citizen Pending",
         "Sanctioned",
         "Disbursed",
-        "Pending With Citizen",
+        "Failed Payment",
         "Rejected",
       ],
       labels: {
+        rotate: -45, // Rotate labels
         style: {
           colors: [
             "#F0C38E",
             "#FFC107",
+            "#CE93D8",
             "#81C784",
             "#4CAF50",
-            "#CE93D8",
+            "#FF7043",
             "#FF7043",
           ],
           fontSize: "12px",
@@ -58,7 +63,20 @@ export default function Reports() {
         },
       },
     },
-    colors: ["#F0C38E", "#FFC107", "#81C784", "#4CAF50", "#CE93D8", "#FF7043"],
+    grid: {
+      padding: {
+        bottom: 20, // Add extra space for rotated labels
+      },
+    },
+    colors: [
+      "#F0C38E",
+      "#FFC107",
+      "#CE93D8",
+      "#81C784",
+      "#4CAF50",
+      "#FF7043",
+      "#FF7043",
+    ],
     title: {
       text: "Applications Overview",
       align: "center",
@@ -80,12 +98,21 @@ export default function Reports() {
     labels: [
       "Total",
       "Pending",
+      "Citizen Pending",
       "Sanctioned",
       "Disbursed",
-      "Pending With Citizen",
+      "Failed Payment",
       "Rejected",
+    ], // Static labels matching the labels in countList
+    colors: [
+      "#F0C38E", // Total
+      "#FFC107", // Pending
+      "#CE93D8", // Citizen Pending
+      "#81C784", // Sanctioned
+      "#4CAF50", // Disbursed
+      "#FF7043", // Failed Payment
+      "#FF7043", // Rejected
     ],
-    colors: ["#F0C38E", "#FFC107", "#81C784", "#4CAF50", "#CE93D8", "#FF7043"], // Set colors for each pie segment, which also affects legend markers
     title: {
       text: "Applications Overview",
       align: "center",
@@ -98,14 +125,15 @@ export default function Reports() {
       position: "bottom",
       labels: {
         colors: [
-          "#F0C38E",
-          "#FFC107",
-          "#81C784",
-          "#4CAF50",
-          "#CE93D8",
-          "#FF7043",
-        ], // Colors for each legend text
-        useSeriesColors: true, // Use the pie chart colors for each legend label
+          "#F0C38E", // Total
+          "#FFC107", // Pending
+          "#CE93D8", // Citizen Pending
+          "#81C784", // Sanctioned
+          "#4CAF50", // Disbursed
+          "#FF7043", // Failed Payment
+          "#FF7043", // Rejected
+        ],
+        useSeriesColors: true,
       },
       markers: {
         width: 12,
@@ -154,6 +182,10 @@ export default function Reports() {
   const handleRecords = (data) => {
     fetchCount(data.service, data.officer, data.district);
   };
+
+  useEffect(() => {
+    console.log(barChartOptions);
+  }, []);
 
   useEffect(() => {
     fetchCount();
@@ -279,58 +311,63 @@ export default function Reports() {
           alignItems: "center",
         }}
       >
-        <Grid2
-          container
-          spacing={5}
-          sx={{
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-          width={"100%"}
+        <Row
+          className="justify-content-center align-items-center"
+          style={{ width: "100%" }}
         >
-          <Grid2 container spacing={{ xs: 12, md: 6 }} width={"40%"}>
-            <Box
-              sx={{
+          <Col xs={12} md={6} className="mb-4">
+            <Card
+              style={{
                 border: "2px solid",
-                borderColor: "primary.main",
-                padding: 3,
-                borderRadius: 3,
-                backgroundColor: "background.paper",
-                width: "100%",
+                borderColor: "#F0C38E",
+                borderRadius: "0.75rem",
+                overflow: "hidden",
               }}
             >
-              {barChartSeries.length > 0 && (
-                <Chart
-                  options={barChartOptions}
-                  series={barChartSeries}
-                  type="bar"
-                  width="100%"
-                />
-              )}
-            </Box>
-          </Grid2>
-          <Grid2 container spacing={{ xs: 12, md: 6 }} width={"40%"}>
-            <Box
-              sx={{
+              <Card.Body
+                style={{
+                  backgroundColor: "#312C51",
+                  padding: "1.5rem",
+                }}
+              >
+                {barChartSeries.length > 0 && (
+                  <Chart
+                    options={barChartOptions}
+                    series={barChartSeries}
+                    type="bar"
+                    width="100%"
+                  />
+                )}
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col xs={12} md={6} className="mb-4">
+            <Card
+              style={{
                 border: "2px solid",
-                borderColor: "primary.main",
-                padding: 3,
-                borderRadius: 3,
-                backgroundColor: "background.paper",
-                width: "100%",
+                borderColor: "#F0C38E",
+                borderRadius: "0.75rem",
+                overflow: "hidden",
               }}
             >
-              {pieChartSeries.length > 0 && (
-                <Chart
-                  options={pieChartOptions}
-                  series={pieChartSeries}
-                  type="pie"
-                  width="100%"
-                />
-              )}
-            </Box>
-          </Grid2>
-        </Grid2>
+              <Card.Body
+                style={{
+                  backgroundColor: "#312C51",
+                  padding: "1.5rem",
+                }}
+              >
+                {pieChartSeries.length > 0 && (
+                  <Chart
+                    options={pieChartOptions}
+                    series={pieChartSeries}
+                    type="pie"
+                    width="100%"
+                  />
+                )}
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
       </Box>
 
       <Box sx={{ width: "100%" }} ref={tableRef}>

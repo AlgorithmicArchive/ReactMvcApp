@@ -19,15 +19,15 @@ public partial class BankFile
 
     public bool FileSent { get; set; }
 
-    public string? SentOn { get; set; }
+    public string SentOn { get; set; } = null!;
 
-    public string? ResponseFile { get; set; }
+    public string ResponseFile { get; set; } = null!;
 
-    public string? RecievedOn { get; set; }
+    public string RecievedOn { get; set; } = null!;
 
-    public bool? DbUpdate { get; set; }
+    public bool DbUpdate { get; set; }
 
-    public string? UpdatedOn { get; set; }
+    public string UpdatedOn { get; set; } = null!;
 
     public virtual District District { get; set; } = null!;
 
