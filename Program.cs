@@ -11,22 +11,23 @@ using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add this line to bind to all network interfaces
+builder.WebHost.UseUrls("http://0.0.0.0:5004");
+
 // Add services to the container.
 builder.Services.AddControllersWithViews().AddRazorRuntimeCompilation();
 builder.Services.AddSignalR(); // Add SignalR service
-builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options => options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
+builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
+    options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
 
 builder.Services.AddDbContext<SocialWelfareDepartmentContext>(options =>
 {
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection")
-    );
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtection-Keys")))
     .SetApplicationName("ReactMvcApp"); // Set a unique application name to prevent key conflicts
-
 
 builder.Services.AddControllers().AddNewtonsoftJson(options =>
 {
@@ -42,7 +43,6 @@ builder.Services.AddCors(options =>
                .AllowAnyHeader();  // Allow any headers
     });
 });
-
 
 // JWT Authentication Setup
 var jwtSecretKey = builder.Configuration.GetValue<string>("JWT:Secret");
@@ -71,7 +71,6 @@ builder.Services.AddAuthentication(options =>
     {
         OnTokenValidated = context =>
         {
-            // You can log or inspect the validated claims here
             var claimsIdentity = context.Principal!.Identity as ClaimsIdentity;
             if (claimsIdentity != null)
             {
@@ -88,13 +87,12 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-
 // Authorization policies for different roles
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("CitizenPolicy", policy => policy.RequireRole("Citizen"))
     .AddPolicy("OfficerPolicy", policy => policy.RequireRole("Officer"))
-    .AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin"));
-
+    .AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin"))
+    .AddPolicy("DesignerPolicy", policy => policy.RequireRole("Designer"));
 
 builder.Services.AddTransient<IEmailSender, EmailSender>();
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
@@ -129,21 +127,17 @@ app.UseStaticFiles(new StaticFileOptions
         {
             ctx.Context.Response.Headers.Append("Content-Disposition", "inline");
         }
-
         // Handle Images: Ensure no Content-Disposition is set
         else if (new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg" }.Contains(fileExtension))
         {
-            // Optionally set Content-Type to explicitly specify image type
             ctx.Context.Response.Headers.Append("Content-Type", $"image/{fileExtension.TrimStart('.')}");
         }
     }
 });
 
-
 app.UseRouting();
 app.UseCors("AllowAll");
 
-// Ensure both JWT and Cookie Authentication are used
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -154,8 +148,7 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-
-// Add this line to handle fallback routing for React
+// Add fallback route for React
 app.MapFallbackToController("Index", "Home");
 
 app.Run();

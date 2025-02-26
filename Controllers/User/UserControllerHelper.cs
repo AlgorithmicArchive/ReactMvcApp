@@ -3,12 +3,14 @@ using Microsoft.CodeAnalysis.Differencing;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using ReactMvcApp.Models.Entities;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 
 namespace ReactMvcApp.Controllers.User
 {
-    public partial class UserController : Controller
+    public partial class UserController
     {
         [HttpPost]
         public IActionResult SetServiceForm([FromForm] IFormCollection form)
@@ -217,6 +219,60 @@ namespace ReactMvcApp.Controllers.User
             }).AsEnumerable().Skip(page * size).Take(size).ToList();
 
             return Json(new { status = true, data, columns, totalCount = data.Count });
+        }
+
+        public int GetCountPerDistrict(int districtId, int serviceId)
+        {
+
+            // Attempt to find an existing record for the district and service
+            var applicationsPerDistrict = dbcontext.ApplicationPerDistricts
+                .FirstOrDefault(apd => apd.DistrictId == districtId && apd.ServiceId == serviceId);
+
+            if (applicationsPerDistrict != null)
+            {
+                // Record exists: increment the count
+                applicationsPerDistrict.CountValue += 1;
+                dbcontext.ApplicationPerDistricts.Update(applicationsPerDistrict);
+            }
+            else
+            {
+                // Record does not exist: create a new record with count 1
+                applicationsPerDistrict = new ApplicationPerDistrict
+                {
+                    DistrictId = districtId,
+                    ServiceId = serviceId,
+                    FinancialYear = helper.GetCurrentFinancialYear(),
+                    CountValue = 1
+                };
+                dbcontext.ApplicationPerDistricts.Add(applicationsPerDistrict);
+            }
+
+            // Save changes to the database
+            dbcontext.SaveChanges();
+
+            return applicationsPerDistrict.CountValue;
+        }
+
+        private static string SaveFile(IFormFile file)
+        {
+            // Define the folder to store files (e.g., wwwroot/uploads)
+            string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+            if (!Directory.Exists(folderPath))
+            {
+                Directory.CreateDirectory(folderPath);
+            }
+
+            // Generate a unique filename using a GUID and preserve the file extension
+            string uniqueFileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
+            string filePath = Path.Combine(folderPath, uniqueFileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                file.CopyTo(stream);
+            }
+
+            // Return the relative path (or absolute, as needed) for storage in your JSON.
+            return "/uploads/" + uniqueFileName;
         }
 
         [HttpGet]

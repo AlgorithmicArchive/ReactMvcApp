@@ -2,7 +2,7 @@
   "Files": [
     {
       "Id": "/home/momin/Github/ReactMvcApp/obj/Debug/net8.0/scopedcss/projectbundle/ReactMvcApp.bundle.scp.css",
-      "PackagePath": "staticwebassets/ReactMvcApp.bundle.scp.css"
+      "PackagePath": "staticwebassets/ReactMvcApp.cfzph4uais.bundle.scp.css"
     },
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/assets/dummyDocs/DummyPDF.pdf",
@@ -471,6 +471,10 @@
     {
       "Id": "/home/momin/Github/ReactMvcApp/wwwroot/uploads/fe64b4c1.pdf",
       "PackagePath": "staticwebassets/uploads/fe64b4c1.pdf"
+    },
+    {
+      "Id": "obj/Debug/net8.0/staticwebassets/msbuild.ReactMvcApp.Microsoft.AspNetCore.StaticWebAssetEndpoints.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssetEndpoints.props"
     },
     {
       "Id": "obj/Debug/net8.0/staticwebassets/msbuild.ReactMvcApp.Microsoft.AspNetCore.StaticWebAssets.props",

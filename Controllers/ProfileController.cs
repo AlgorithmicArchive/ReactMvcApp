@@ -76,9 +76,6 @@ namespace ReactMvcApp.Controllers.Profile
             return details;
         }
 
-
-
-
         [HttpPost]
         public IActionResult UpdateColumn([FromForm] IFormCollection form)
         {

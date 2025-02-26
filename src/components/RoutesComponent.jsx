@@ -8,6 +8,8 @@ import Verification from "../screens/home/Verification";
 import UserHome from "../screens/user/UserHome";
 import Services from "../screens/user/Services";
 import UserLayout from "../screens/user/UserLayout";
+import DesignerLayout from "../screens/designer/DesignerLayout";
+import Dashboard from "../screens/designer/Dashboard";
 import Form from "../screens/user/Form";
 import ProtectedRoute from "../ProtectedRoute"; // Import the ProtectedRoute component
 import Unauthorized from "../screens/Unauthorized"; // Create this component
@@ -25,6 +27,9 @@ import EditForm from "../screens/user/EditForm";
 import BankFile from "../screens/officer/BankFile";
 import ResponseFile from "../screens/officer/ResponseFile";
 import Settings from "../screens/Settings";
+import CreateService from "../screens/designer/CreateService";
+import DynamicStepForm from "../screens/designer/Form";
+import CreateWorkflow from "../screens/designer/CreateWorkFlow";
 
 const RoutesComponent = () => {
   return (
@@ -65,9 +70,19 @@ const RoutesComponent = () => {
           <Route path="home" element={<AdminHome />} />
         </Route>
       </Route>
+      <Route element={<ProtectedRoute requiredRoles={["Designer"]} />}>
+        <Route path="/designer" element={<DesignerLayout />}>
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="createservice" element={<CreateService />} />
+          <Route path="createworkflow" element={<CreateWorkflow />} />
+          <Route path="dynamicform" element={<DynamicStepForm />} />
+        </Route>
+      </Route>
       <Route
         element={
-          <ProtectedRoute requiredRoles={["Citizen", "Officer", "Admin"]} />
+          <ProtectedRoute
+            requiredRoles={["Citizen", "Officer", "Admin", "Designer"]}
+          />
         }
       >
         <Route path="/settings" element={<Settings />} />

@@ -42,6 +42,8 @@ export default function Verification() {
             ? "/admin/home"
             : response.userType === "Officer"
             ? "/officer/home"
+            : response.userType === "Designer"
+            ? "/designer/dashboard"
             : "/user/home";
         navigate(url);
       } else {

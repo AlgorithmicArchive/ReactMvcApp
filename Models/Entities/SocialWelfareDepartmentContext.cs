@@ -35,6 +35,8 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     public virtual DbSet<Certificate> Certificates { get; set; }
 
+    public virtual DbSet<CitizenApplication> CitizenApplications { get; set; }
+
     public virtual DbSet<Contact> Contacts { get; set; }
 
     public virtual DbSet<District> Districts { get; set; }
@@ -170,6 +172,10 @@ public partial class SocialWelfareDepartmentContext : DbContext
                 .HasForeignKey(d => d.DistrictId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_ApplicationPerDistrict_District");
+
+            entity.HasOne(d => d.Service).WithMany(p => p.ApplicationPerDistricts)
+                .HasForeignKey(d => d.ServiceId)
+                .HasConstraintName("FK_ApplicationPerDistrict_Services");
         });
 
         modelBuilder.Entity<ApplicationStatus>(entity =>
@@ -352,6 +358,36 @@ public partial class SocialWelfareDepartmentContext : DbContext
                 .HasConstraintName("FK_Certificates_Officer");
         });
 
+        modelBuilder.Entity<CitizenApplication>(entity =>
+        {
+            entity.HasKey(e => e.ReferenceNumber);
+
+            entity.ToTable("Citizen_Applications");
+
+            entity.Property(e => e.ReferenceNumber)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+            entity.Property(e => e.CitizenId).HasColumnName("Citizen_id");
+            entity.Property(e => e.CreatedAt)
+                .HasMaxLength(50)
+                .IsUnicode(false)
+                .HasColumnName("Created_at");
+            entity.Property(e => e.Status)
+                .HasMaxLength(50)
+                .IsUnicode(false)
+                .HasDefaultValue("pending");
+
+            entity.HasOne(d => d.Citizen).WithMany(p => p.CitizenApplications)
+                .HasForeignKey(d => d.CitizenId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Citizen_Applications_Users");
+
+            entity.HasOne(d => d.Service).WithMany(p => p.CitizenApplications)
+                .HasForeignKey(d => d.ServiceId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Citizen_Applications_Services");
+        });
+
         modelBuilder.Entity<Contact>(entity =>
         {
             entity.HasKey(e => e.Uuid).HasName("PK_NewTable");
@@ -505,7 +541,6 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.NameShort)
                 .HasMaxLength(50)
                 .IsUnicode(false);
-            entity.Property(e => e.OfficerEditableField).IsUnicode(false);
             entity.Property(e => e.ServiceName)
                 .HasMaxLength(255)
                 .IsUnicode(false);

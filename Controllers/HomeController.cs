@@ -181,6 +181,55 @@ namespace ReactMvcApp.Controllers
         }
 
         [HttpPost]
+        public async Task<IActionResult> Register(IFormCollection form)
+        {
+            var fullName = new SqlParameter("@Name", form["fullName"].ToString());
+            var username = new SqlParameter("@Username", form["Username"].ToString());
+            var password = new SqlParameter("@Password", form["Password"].ToString());
+            var email = new SqlParameter("@Email", form["Email"].ToString());
+            var mobileNumber = new SqlParameter("@MobileNumber", form["MobileNumber"].ToString());
+
+            var unused = _helper.GenerateUniqueRandomCodes(10, 8);
+            var backupCodes = new
+            {
+                unused,
+                used = Array.Empty<string>()
+            };
+
+            var Profile = new SqlParameter("@Profile", "");
+
+            var UserType = new SqlParameter("@UserType", "Citizen");
+
+            var backupCodesParam = new SqlParameter("@BackupCodes", JsonConvert.SerializeObject(backupCodes));
+
+            var registeredDate = new SqlParameter("@RegisteredDate", DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"));
+
+            _logger.LogInformation($"------------ Registered Date: {DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")}");
+            var result = _dbContext.Users.FromSqlRaw(
+                "EXEC RegisterUser @Name, @Username, @Password, @Email, @MobileNumber, @Profile, @UserType, @BackupCodes, @RegisteredDate",
+                fullName, username, password, email, mobileNumber, Profile, UserType, backupCodesParam, registeredDate
+            ).ToList();
+
+
+            if (result.Count != 0)
+            {
+                string otp = GenerateOTP(6);
+                _otpStore.StoreOtp("registration", otp);
+                await _emailSender.SendEmail(form["Email"].ToString(), "OTP For Registration.", otp);
+                return Json(new
+                {
+                    status = true,
+                    result[0].UserId
+                });
+            }
+            else
+            {
+                return Json(new { status = false, response = "Registration failed." });
+            }
+        }
+
+
+        [HttpPost]
         public IActionResult Verification([FromForm] IFormCollection form)
         {
             var authHeader = Request.Headers.Authorization.ToString();
@@ -192,10 +241,6 @@ namespace ReactMvcApp.Controllers
             }
 
             var claims = User.Claims;
-            foreach (var claim in claims)
-            {
-                _logger.LogInformation($"------------{claim.Type}: {claim.Value}----------");
-            }
 
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var userTypeClaim = User.FindFirst(ClaimTypes.Role)?.Value;
@@ -252,7 +297,6 @@ namespace ReactMvcApp.Controllers
                 return Json(new { status = false, message = "Invalid Code" });
             }
         }
-
 
 
         public IActionResult LogOut()

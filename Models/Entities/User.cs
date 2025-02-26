@@ -37,5 +37,7 @@ public partial class User
 
     public virtual ICollection<Certificate> Certificates { get; set; } = new List<Certificate>();
 
+    public virtual ICollection<CitizenApplication> CitizenApplications { get; set; } = new List<CitizenApplication>();
+
     public virtual ICollection<OfficerDetail> OfficerDetails { get; set; } = new List<OfficerDetail>();
 }

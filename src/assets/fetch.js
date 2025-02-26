@@ -236,3 +236,10 @@ export async function createBankFile(districtId, serviceId) {
     params: { serviceId, districtId },
   });
 }
+
+export async function fetchUserDetail(applicationId, setFormDetails) {
+  const response = await axiosInstance.get("/Officer/GetUserDetails", {
+    params: { applicationId: applicationId },
+  });
+  setFormDetails(response.data.list);
+}

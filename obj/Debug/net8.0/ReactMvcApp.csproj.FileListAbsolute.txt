@@ -469,10 +469,13 @@
 /home/momin/Github/ReactMvcApp/obj/Debug/net8.0/scopedcss/Views/Shared/_Layout.cshtml.rz.scp.css
 /home/momin/Github/ReactMvcApp/obj/Debug/net8.0/scopedcss/bundle/ReactMvcApp.styles.css
 /home/momin/Github/ReactMvcApp/obj/Debug/net8.0/scopedcss/projectbundle/ReactMvcApp.bundle.scp.css
-/home/momin/Github/ReactMvcApp/obj/Debug/net8.0/ReactMvcApp.csproj.CopyComplete
 /home/momin/Github/ReactMvcApp/obj/Debug/net8.0/ReactMvcApp.dll
 /home/momin/Github/ReactMvcApp/obj/Debug/net8.0/refint/ReactMvcApp.dll
 /home/momin/Github/ReactMvcApp/obj/Debug/net8.0/ReactMvcApp.pdb
 /home/momin/Github/ReactMvcApp/obj/Debug/net8.0/ReactMvcApp.genruntimeconfig.cache
 /home/momin/Github/ReactMvcApp/obj/Debug/net8.0/ref/ReactMvcApp.dll
 /home/momin/Github/ReactMvcApp/bin/Debug/net8.0/Pkcs11Interop.dll
+/home/momin/Github/ReactMvcApp/bin/Debug/net8.0/ReactMvcApp.staticwebassets.endpoints.json
+/home/momin/Github/ReactMvcApp/obj/Debug/net8.0/staticwebassets.build.endpoints.json
+/home/momin/Github/ReactMvcApp/obj/Debug/net8.0/staticwebassets/msbuild.ReactMvcApp.Microsoft.AspNetCore.StaticWebAssetEndpoints.props
+/home/momin/Github/ReactMvcApp/obj/Debug/net8.0/ReactMvc.835DE5A0.Up2Date

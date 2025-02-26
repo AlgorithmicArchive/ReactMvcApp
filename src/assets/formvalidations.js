@@ -3,7 +3,7 @@
 // Validation functions
 
 export function notEmpty(field, value) {
-  if (value === "") {
+  if (value === "" || value == "Please Select") {
     return "This field is required.";
   }
   return true;
@@ -114,11 +114,32 @@ export function CapitalizeAlphabets(field, value) {
   return value.toUpperCase();
 }
 
+export async function tehsilForDistrict(field, districtValue) {
+  if (!districtValue) return [];
+  try {
+    const response = await fetch(
+      `/Base/GetTeshilForDistrict?districtId=${districtValue}`
+    );
+    const data = await response.json();
+    if (data.status && Array.isArray(data.tehsils)) {
+      // Map the returned tehsils to the expected format
+      return data.tehsils.map((tehsil) => ({
+        value: tehsil.tehsilId,
+        label: tehsil.tehsilName,
+      }));
+    }
+    return [];
+  } catch (error) {
+    console.error("Error in tehsilForDistrict:", error);
+    return [];
+  }
+}
+
 export const runValidations = async (field, value) => {
   if (!Array.isArray(field.validationFunctions)) return true;
 
   for (const validationFn of field.validationFunctions) {
-    const fun = validationFunctionsList[validationFn];
+    const fun = ValidationFunctionsList[validationFn];
     if (typeof fun !== "function") continue;
 
     try {
@@ -141,7 +162,7 @@ export function formatKey(input) {
 
 // Mapping of Validation Functions
 
-export const validationFunctionsList = {
+const ValidationFunctionsList = {
   notEmpty,
   onlyAlphabets,
   onlyDigits,
@@ -152,3 +173,15 @@ export const validationFunctionsList = {
   duplicateAccountNumber,
   validateFile,
 };
+
+export const validationFunctionsList = [
+  { id: "notEmpty", label: "Required" },
+  { id: "onlyAlphabets", label: "Only Alphabets" },
+  { id: "onlyDigits", label: "Only Digits" },
+  { id: "specificLength", label: "Specific Length" },
+  { id: "isAgeGreaterThan", label: "Age Limit" },
+  { id: "isEmailValid", label: "Email Format" },
+  { id: "isDateWithinRange", label: "Date Range" },
+  { id: "duplicateAccountNumber", label: "Duplicate Account Number" },
+  { id: "validateFile", label: "Validate File" },
+];

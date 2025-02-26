@@ -222,6 +222,49 @@ const MyNavbar = () => {
                 </NavDropdown>
               </>
             )}
+
+            {/* Designer Links */}
+            {userType === "Designer" && verified && (
+              <>
+                <Nav.Link
+                  as={Link}
+                  to="/designer/dashboard"
+                  className="fw-bold"
+                  style={{ color: "#F0C38E" }}
+                  onClick={() => setExpanded(false)}
+                >
+                  Dashboard
+                </Nav.Link>
+                <Nav.Link
+                  as={Link}
+                  to="/designer/dynamicform"
+                  className="fw-bold"
+                  style={{ color: "#F0C38E" }}
+                  onClick={() => setExpanded(false)}
+                >
+                  Dyanmic Form
+                </Nav.Link>
+                <NavDropdown
+                  title={
+                    <span style={{ color: "#F0C38E", fontWeight: "bold" }}>
+                      Create
+                    </span>
+                  }
+                  id="designer-create"
+                >
+                  <NavDropdown.Item
+                    onClick={() => handleNavigate("/designer/createservice")}
+                  >
+                    Service
+                  </NavDropdown.Item>
+                  <NavDropdown.Item
+                    onClick={() => handleNavigate("/designer/createworkflow")}
+                  >
+                    Workflow
+                  </NavDropdown.Item>
+                </NavDropdown>
+              </>
+            )}
           </Nav>
 
           {/* User Profile and Logout */}
@@ -233,7 +276,7 @@ const MyNavbar = () => {
               <NavDropdown
                 title={
                   <img
-                    src={profile || "/default-avatar.png"}
+                    src={profile || "/assets/images/profile.jpg"}
                     alt="Profile"
                     className="rounded-circle"
                     style={{ width: "30px" }}

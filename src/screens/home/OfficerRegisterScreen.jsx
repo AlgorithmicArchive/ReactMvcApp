@@ -9,6 +9,7 @@ import OtpModal from "../../components/OtpModal";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import { Col, Row } from "react-bootstrap";
 
 export default function OfficerRegisterScreen() {
   const {
@@ -18,20 +19,47 @@ export default function OfficerRegisterScreen() {
     watch,
   } = useForm();
 
-  const [designations, setDesignations] = useState();
-  const [districtOptions, setDistrictOptions] = useState();
+  const [designations, setDesignations] = useState([]);
+  const [districtOptions, setDistrictOptions] = useState([]);
+  const [tehsilOptions, setTehsilOptions] = useState([]); // State for Tehsil values
   const [accessLevelMap, setAccessLevelMap] = useState({});
   const selectedDesignation = watch("designation");
+  const selectedDistrict = watch("District"); // Watch for changes in District
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   const [userId, setUserId] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const naviagate = useNavigate();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchDesignation(setDesignations, setAccessLevelMap);
     fetchDistricts(setDistrictOptions);
   }, []);
+
+  // Fetch Tehsil values when the District selection changes.
+  useEffect(() => {
+    if (selectedDistrict) {
+      axios
+        .get(`/Base/GetTeshilForDistrict?districtId=${selectedDistrict}`)
+        .then((response) => {
+          console.log(response);
+          if (response.data.status) {
+            console.log(response.data);
+            // Convert tehsils to an array of objects with label and value properties
+            const tehsilOptionsFormatted = response.data.tehsils.map(
+              (tehsil) => ({
+                label: tehsil.tehsilName,
+                value: tehsil.tehsilId,
+              })
+            );
+            setTehsilOptions(tehsilOptionsFormatted);
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching tehsils", error);
+        });
+    }
+  }, [selectedDistrict]);
 
   // Handle form submission
   const onSubmit = async (data) => {
@@ -43,14 +71,24 @@ export default function OfficerRegisterScreen() {
     formData.append("accessLevel", accessLevelMap[selectedDesignation]);
     formData.append(
       "accessCode",
-      accessLevelMap[selectedDesignation] != "State" ? data["District"] : 0
+      accessLevelMap[selectedDesignation] !== "State"
+        ? accessLevelMap[selectedDesignation].includes("Tehsil")
+          ? data["Tehsil"]
+          : data["District"]
+        : 0
     );
-    const response = await axios.post("/Home/OfficerRegistration", formData);
-    const { status, userId } = response.data;
-    setLoading(false);
-    if (status) {
-      setIsOtpModalOpen(true);
-      setUserId(userId);
+    console.log(formData);
+    try {
+      const response = await axios.post("/Home/OfficerRegistration", formData);
+      const { status, userId } = response.data;
+      setLoading(false);
+      if (status) {
+        setIsOtpModalOpen(true);
+        setUserId(userId);
+      }
+    } catch (error) {
+      setLoading(false);
+      console.error("Registration error", error);
     }
   };
 
@@ -60,7 +98,7 @@ export default function OfficerRegisterScreen() {
     formdata.append("UserId", userId);
     const response = await axios.post("/Home/OTPValidation", formdata);
     const { status } = response.data;
-    if (status) naviagate("/login");
+    if (status) navigate("/login");
   };
 
   return (
@@ -81,7 +119,6 @@ export default function OfficerRegisterScreen() {
         <Container
           maxWidth="sm"
           sx={{
-            mt: 5,
             bgcolor: "primary.main",
             p: 4,
             borderRadius: 5,
@@ -107,102 +144,134 @@ export default function OfficerRegisterScreen() {
             autoComplete="off"
             onSubmit={handleSubmit(onSubmit)}
           >
-            <Box sx={{}}>
-              <CustomInputField
-                rules={{ required: "This Field is required" }}
-                label="Full Name"
-                name="fullName"
-                control={control}
-                placeholder="Full Name"
-                errors={errors}
+            <Row>
+              <Col xs={12} lg={6}>
+                <Box>
+                  <CustomInputField
+                    rules={{ required: "This Field is required" }}
+                    label="Full Name"
+                    name="fullName"
+                    control={control}
+                    placeholder="Full Name"
+                    errors={errors}
+                  />
+                  <CustomInputField
+                    rules={{ required: "This Field is required" }}
+                    label="Username"
+                    name="username"
+                    control={control}
+                    placeholder="Username"
+                    errors={errors}
+                  />
+                </Box>
+              </Col>
+              <Col xs={12} lg={6}>
+                <Box>
+                  <CustomInputField
+                    rules={{ required: "This Field is required" }}
+                    label="Email"
+                    name="email"
+                    control={control}
+                    placeholder="Email"
+                    type="email"
+                    errors={errors}
+                  />
+                  <CustomInputField
+                    rules={{ required: "This Field is required" }}
+                    label="Mobile Number"
+                    name="mobileNumber"
+                    control={control}
+                    placeholder="Mobile Number"
+                    errors={errors}
+                  />
+                </Box>
+              </Col>
+              <Col xs={12} lg={6}>
+                <Box>
+                  <CustomInputField
+                    rules={{ required: "This Field is required" }}
+                    label="Password"
+                    name="password"
+                    control={control}
+                    placeholder="Password"
+                    type="password"
+                    errors={errors}
+                  />
+                </Box>
+              </Col>
+              <Col xs={12} lg={6}>
+                <Box>
+                  <CustomInputField
+                    rules={{ required: "This Field is required" }}
+                    label="Confirm Password"
+                    name="confirmPassword"
+                    control={control}
+                    placeholder="Confirm Password"
+                    type="password"
+                    errors={errors}
+                  />
+                </Box>
+              </Col>
+              <Col xs={12} lg={6}>
+                <Box>
+                  <CustomSelectField
+                    label="Select Designation"
+                    name="designation"
+                    control={control}
+                    placeholder="Designation"
+                    options={designations}
+                    rules={{ required: "This field is required" }}
+                    errors={errors}
+                  />
+                </Box>
+              </Col>
+              <Col xs={12} lg={6}>
+                <Box>
+                  {(accessLevelMap[selectedDesignation] === "District" ||
+                    accessLevelMap[selectedDesignation] === "Tehsil") && (
+                    <CustomSelectField
+                      label="Select District"
+                      name="District"
+                      control={control}
+                      placeholder="Select District"
+                      options={districtOptions}
+                      rules={{ required: "This field is required" }}
+                      errors={errors}
+                    />
+                  )}
+                </Box>
+              </Col>
+              <Col xs={12} lg={6}>
+                <Box>
+                  {accessLevelMap[selectedDesignation] === "Tehsil" && (
+                    <CustomSelectField
+                      label="Select Tehsil"
+                      name="Tehsil"
+                      control={control}
+                      placeholder="Select Tehsil"
+                      options={tehsilOptions} // Use fetched tehsil options here
+                      rules={{ required: "This field is required" }}
+                      errors={errors}
+                    />
+                  )}
+                </Box>
+              </Col>
+              <Col xs={12} lg={12}>
+                <Box sx={{ display: "flex", justifyContent: "center" }}>
+                  <CustomButton
+                    text="Register"
+                    bgColor="background.paper"
+                    color="primary.main"
+                    type="submit" // Set type to "submit" for form submission
+                  />
+                </Box>
+              </Col>
+              <OtpModal
+                open={isOtpModalOpen}
+                onClose={() => setIsOtpModalOpen(false)}
+                onSubmit={handleOtpSubmit}
               />
-              <CustomInputField
-                rules={{ required: "This Field is required" }}
-                label="Username"
-                name="username"
-                control={control}
-                placeholder="Username"
-                errors={errors}
-              />
-            </Box>
-
-            <Box sx={{}}>
-              <CustomInputField
-                rules={{ required: "This Field is required" }}
-                label="Email"
-                name="email"
-                control={control}
-                placeholder="Email"
-                type="email"
-                errors={errors}
-              />
-              <CustomInputField
-                rules={{ required: "This Field is required" }}
-                label="Mobile Number"
-                name="mobileNumber"
-                control={control}
-                placeholder="Mobile Number"
-                errors={errors}
-              />
-            </Box>
-
-            <Box sx={{}}>
-              <CustomInputField
-                rules={{ required: "This Field is required" }}
-                label="Password"
-                name="password"
-                control={control}
-                placeholder="Password"
-                type="password"
-                errors={errors}
-              />
-              <CustomInputField
-                rules={{ required: "This Field is required" }}
-                label="Confirm Password"
-                name="confirmPassword"
-                control={control}
-                placeholder="Confirm Password"
-                type="password"
-                errors={errors}
-              />
-            </Box>
-
-            <Box>
-              <CustomSelectField
-                label={"Select Designation"}
-                name={"designation"}
-                control={control}
-                placeholder="Designation"
-                options={designations}
-                rules={{ required: "This field is requried" }}
-                errors={errors}
-              />
-              {accessLevelMap[selectedDesignation] == "District" && (
-                <CustomSelectField
-                  label={"Select District"}
-                  name={"District"}
-                  control={control}
-                  placeholder="Select District"
-                  options={districtOptions}
-                  rules={{ required: "This field is requried" }}
-                  errors={errors}
-                />
-              )}
-            </Box>
-
-            <Box sx={{ display: "flex", justifyContent: "center" }}>
-              <CustomButton
-                text="Register"
-                bgColor="background.paper"
-                color="primary.main"
-                type="submit" // Set type to "submit" for correct form behavior
-              />
-            </Box>
-            <OtpModal
-              open={isOtpModalOpen}
-              onClose={() => setIsOtpModalOpen(false)}
-              onSubmit={handleOtpSubmit}
-            />
+            </Row>
           </Box>
         </Container>
       </Box>

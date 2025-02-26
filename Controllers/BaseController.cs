@@ -266,6 +266,76 @@ namespace ReactMvcApp.Controllers
             return Json(new { status = true, services });
         }
 
+        [HttpPost]
+        public IActionResult FormElement([FromForm] IFormCollection form)
+        {
+            string serviceIdString = form["serviceId"].ToString();
+            var formElement = form["formElement"].ToString();
+
+            _logger.LogInformation($"--------------SERVICE ID: {serviceIdString}---------------------");
+            if (!string.IsNullOrEmpty(serviceIdString))
+            {
+                int serviceId = Convert.ToInt32(serviceIdString);
+                var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
+
+                if (service != null)
+                {
+                    service.FormElement = formElement;
+                }
+            }
+            else
+            {
+                var newService = new Service
+                {
+                    FormElement = formElement
+                };
+                dbcontext.Services.Add(newService);
+            }
+
+            dbcontext.SaveChanges();
+
+            return Json(new { status = true });
+        }
+
+        [HttpPost]
+        public IActionResult WorkFlowPlayers([FromForm] IFormCollection form)
+        {
+            string serviceIdString = form["serviceId"].ToString();
+            var WorkFlowPlayers = form["workflowplayers"].ToString();
+
+            _logger.LogInformation($"--------------SERVICE ID: {serviceIdString}---------------------");
+            if (!string.IsNullOrEmpty(serviceIdString))
+            {
+                int serviceId = Convert.ToInt32(serviceIdString);
+                var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
+
+                if (service != null)
+                {
+                    service.OfficerEditableField = WorkFlowPlayers;
+                }
+            }
+            else
+            {
+                var newService = new Service
+                {
+                    OfficerEditableField = WorkFlowPlayers
+                };
+                dbcontext.Services.Add(newService);
+            }
+
+            dbcontext.SaveChanges();
+
+            return Json(new { status = true });
+        }
+
+
+        [HttpGet]
+        public IActionResult GetService()
+        {
+            var service = dbcontext.Services.Where(ser => ser.ServiceId == 4).FirstOrDefault();
+            return Json(new { status = true, formElement = service!.FormElement });
+        }
+
         [HttpGet]
         public IActionResult GetDistricts()
         {
@@ -293,15 +363,15 @@ namespace ReactMvcApp.Controllers
         [HttpGet]
         public IActionResult IsDuplicateAccNo(string accNo, string applicationId)
         {
-            var application = dbcontext.Applications.FromSqlRaw("EXEC GetDuplicateAccNo @AccountNo", new SqlParameter("@AccountNo", accNo)).ToList();
+            var application = dbcontext.CitizenApplications.FromSqlRaw("EXEC GetDuplicateAccNo @AccountNo", new SqlParameter("@AccountNo", accNo)).ToList();
 
             if (application.Count == 0)
                 return Json(new { status = false });
-            else if (application[0].ApplicationId == applicationId)
+            else if (application[0].ReferenceNumber == applicationId)
                 return Json(new { status = false });
             else
             {
-                if (application[0].ApplicationStatus == "Rejected") return Json(new { status = false });
+                if (application[0].Status == "Rejected") return Json(new { status = false });
                 else return Json(new { status = true });
             }
         }
@@ -321,7 +391,7 @@ namespace ReactMvcApp.Controllers
             using (var fileStream = uploadedFile.OpenReadStream())
             {
                 byte[] fileHeader = new byte[4];
-                fileStream.Read(fileHeader, 0, 4); // Read first 4 bytes of the file
+                fileStream.ReadExactly(fileHeader, 0, 4); // Read first 4 bytes of the file
 
                 string fileExtension = Path.GetExtension(uploadedFile.FileName)?.ToLower()!;
 

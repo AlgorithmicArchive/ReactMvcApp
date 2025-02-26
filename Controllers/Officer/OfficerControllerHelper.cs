@@ -500,6 +500,15 @@ namespace ReactMvcApp.Controllers.Officer
         }
 
 
+        public string GetDistrictName(int districtId)
+        {
+            return dbcontext.Districts.FirstOrDefault(d => d.DistrictId == districtId)!.DistrictName;
+        }
+        public string GetTehsilName(int tehsilId)
+        {
+            return dbcontext.Tehsils.FirstOrDefault(d => d.TehsilId == tehsilId)!.TehsilName;
+        }
+
 
         // Officer Actions
         public void ActionForward(int serviceId, string applicationId, int officerId, string officerDesignation, string remarks, string filePath, string accessLevel, int accessCode)

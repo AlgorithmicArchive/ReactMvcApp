@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using ReactMvcApp.Models.Entities;
 using System.Security.Claims;
+using Newtonsoft.Json.Linq;
 
 namespace ReactMvcApp.Controllers.User
 {
@@ -17,6 +18,77 @@ namespace ReactMvcApp.Controllers.User
             public string? Enclosure { get; set; }
             public string? File { get; set; }
         }
+
+
+        [HttpPost]
+        public async Task<IActionResult> InsertFormDetails([FromForm] IFormCollection form)
+        {
+
+            // Retrieve userId from JWT token
+            int userId = Convert.ToInt32(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            int serviceId = Convert.ToInt32(form["serviceId"].ToString());
+            string formDetailsJson = form["formDetails"].ToString();
+
+            // Parse the JSON into a JObject (flat structure)
+            var formDetailsObj = JObject.Parse(formDetailsJson);
+
+            // Process file uploads: iterate through all uploaded files
+            foreach (var file in form.Files)
+            {
+                // Save the file and get its storage location
+                string filePath = await helper.GetFilePath(file);
+
+
+                // Update the flat JSON: if a property key matches the file's name, replace its value with the file path.
+                if (formDetailsObj.TryGetValue(file.Name, out JToken token))
+                {
+                    formDetailsObj[file.Name] = filePath;
+                }
+            }
+
+            // Example: Extract district id from the flat JSON if needed.
+            // Here we look for any key that contains "District" (case-insensitive) and try to parse its value as an integer.
+            int districtId = 0;
+            foreach (var property in formDetailsObj.Properties())
+            {
+                if (property.Name.Contains("District", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (int.TryParse(property.Value.ToString(), out int parsedId))
+                    {
+                        districtId = parsedId;
+                        break; // End loop as soon as we find a valid district id
+                    }
+                }
+            }
+
+            int count = GetCountPerDistrict(districtId, serviceId);
+            var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
+
+            var workFlow = service!.OfficerEditableField;
+
+
+            var finYear = helper.GetCurrentFinancialYear();
+            var referenceNumber = "JK-" + service.NameShort + "/" + finYear + "/" + count;
+            var createdAt = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
+
+            // Store the updated JSON (with file paths) in the database.
+            var newFormDetails = new CitizenApplication
+            {
+                ReferenceNumber = referenceNumber,
+                CitizenId = userId,
+                ServiceId = serviceId,
+                FormDetails = formDetailsObj.ToString(),
+                WorkFlow = workFlow!,
+                CreatedAt = createdAt
+            };
+
+            dbcontext.CitizenApplications.Add(newFormDetails);
+            dbcontext.SaveChanges();
+
+            return Json(new { status = true });
+        }
+
+
 
         [HttpPost]
         public async Task<IActionResult> InsertGeneralDetails([FromForm] IFormCollection form)
