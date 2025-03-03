@@ -315,7 +315,8 @@ const DynamicStepForm = () => {
             control={control}
             defaultValue={field.options[0]?.value || ""}
             rules={{
-              validate: async (value) => await runValidations(field, value),
+              validate: async (value) =>
+                await runValidations(field, value, getValues()),
             }}
             render={({ field: { onChange, value, ref } }) => {
               const districtFields = [

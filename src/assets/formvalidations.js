@@ -30,17 +30,35 @@ export function specificLength(field, value) {
   return true;
 }
 
-export function isAgeGreaterThan(field, value) {
+export function isAgeGreaterThan(field, value, formData) {
+  let maxLengthValue;
+
+  // If maxLength is an object with a dependentOn key, get the dependent field's value.
+  if (typeof field.maxLength === "object" && field.maxLength.dependentOn) {
+    // Use the dependentOn field id to look up its current value in formData.
+    const dependentFieldId = field.maxLength.dependentOn; // e.g., "PensionType"
+    const dependentValue = formData[dependentFieldId];
+    if (!dependentValue) {
+      return `Dependent field (${dependentFieldId}) value is missing.`;
+    }
+    maxLengthValue = field.maxLength[dependentValue];
+    if (maxLengthValue === undefined) {
+      return `No maximum length defined for option (${dependentValue}).`;
+    }
+  } else {
+    maxLengthValue = field.maxLength;
+  }
+  console.log("MAX LENGHT", maxLengthValue);
   const currentDate = new Date();
   const compareDate = new Date(
-    currentDate.getFullYear() - field.maxLength,
+    currentDate.getFullYear() - maxLengthValue,
     currentDate.getMonth(),
     currentDate.getDate()
   );
   const inputDate = new Date(value);
-
-  if (inputDate > compareDate) {
-    return `Age should be greater than ${field.maxLength}.`;
+  console.log(inputDate, compareDate);
+  if (inputDate >= compareDate) {
+    return `Age should be greater than or equal to ${maxLengthValue}.`;
   }
   return true;
 }
@@ -135,7 +153,7 @@ export async function tehsilForDistrict(field, districtValue) {
   }
 }
 
-export const runValidations = async (field, value) => {
+export const runValidations = async (field, value, formData) => {
   if (!Array.isArray(field.validationFunctions)) return true;
 
   for (const validationFn of field.validationFunctions) {
@@ -143,7 +161,7 @@ export const runValidations = async (field, value) => {
     if (typeof fun !== "function") continue;
 
     try {
-      const error = await fun(field, value || "");
+      const error = await fun(field, value || "", formData);
       if (error !== true) return error;
     } catch (err) {
       return "Validation failed due to an unexpected error.";

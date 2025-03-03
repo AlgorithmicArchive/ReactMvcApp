@@ -384,7 +384,7 @@ export const defaultFormConfig = [
         additionalFields: {},
         accept: "",
         sectionId: "section-2",
-        editable: false,
+        editable: true,
       },
       {
         type: "text",

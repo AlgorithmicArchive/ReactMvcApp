@@ -1,5 +1,5 @@
 // src/components/FieldEditModal.js
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -48,6 +48,16 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
     options: initialOptions,
     validationFunctions: selectedField.validationFunctions || [],
   });
+
+  // Determine if the current maximum length is dependent based on initial data.
+  const initialIsDependentMaxLength =
+    typeof selectedField.maxLength === "object" &&
+    selectedField.maxLength.dependentOn
+      ? true
+      : false;
+  const [isDependentMaxLength, setIsDependentMaxLength] = useState(
+    initialIsDependentMaxLength
+  );
 
   const saveChanges = () => {
     updateField(formData);
@@ -112,19 +122,127 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
           }
           margin="dense"
         />
-        <TextField
-          fullWidth
-          label="Maximum Length"
-          type="text"
-          value={formData.maxLength}
-          onChange={(e) =>
-            setFormData({
-              ...formData,
-              maxLength: parseInt(e.target.value, 10),
-            })
-          }
-          margin="dense"
-        />
+
+        {/* --- Maximum Length Section --- */}
+        <Box sx={{ marginTop: 2 }}>
+          <Typography variant="body2">Maximum Length</Typography>
+          {/* Toggle between static and dependent maximum length */}
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={isDependentMaxLength}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setIsDependentMaxLength(checked);
+                  if (checked) {
+                    // initialize as an object with empty dependentOn if switching to dependent mode
+                    setFormData((prev) => ({
+                      ...prev,
+                      maxLength: { dependentOn: "" },
+                    }));
+                  } else {
+                    // when turning off, reset to a static value (e.g., 0 or any default)
+                    setFormData((prev) => ({
+                      ...prev,
+                      maxLength: 0,
+                    }));
+                  }
+                }}
+              />
+            }
+            label="Dependent Maximum Length"
+          />
+          {isDependentMaxLength ? (
+            <>
+              {/* Select the field to depend on */}
+              <FormControl fullWidth margin="dense">
+                <InputLabel id="maxLength-dependent-on-label">
+                  Dependent Field
+                </InputLabel>
+                <Select
+                  labelId="maxLength-dependent-on-label"
+                  value={formData.maxLength.dependentOn || ""}
+                  label="Dependent Field"
+                  onChange={(e) => {
+                    const field = e.target.value;
+                    setFormData((prev) => ({
+                      ...prev,
+                      maxLength: { dependentOn: field },
+                    }));
+                  }}
+                >
+                  {sections
+                    .flatMap((section) => section.fields)
+                    .filter(
+                      (field) =>
+                        field.type === "select" &&
+                        !field.name.includes("District")
+                    )
+                    .map((field) => (
+                      <MenuItem key={field.name} value={field.name}>
+                        {field.label}
+                      </MenuItem>
+                    ))}
+                </Select>
+              </FormControl>
+              {/* Render a text field for each option of the selected dependent field */}
+              {(() => {
+                const dependentFieldName = formData.maxLength.dependentOn;
+                if (dependentFieldName) {
+                  const allFields = sections.flatMap(
+                    (section) => section.fields
+                  );
+                  const parentField = allFields.find(
+                    (field) => field.name === dependentFieldName
+                  );
+                  if (parentField && parentField.options) {
+                    return parentField.options.map((option) => (
+                      <TextField
+                        key={option.value}
+                        fullWidth
+                        label={`Maximum Length for ${option.label}`}
+                        type="number"
+                        value={
+                          (formData.maxLength &&
+                            formData.maxLength[option.value]) ||
+                          ""
+                        }
+                        onChange={(e) => {
+                          const newValue = parseInt(e.target.value, 10);
+                          setFormData((prev) => ({
+                            ...prev,
+                            maxLength: {
+                              ...prev.maxLength,
+                              [option.value]: newValue,
+                            },
+                          }));
+                        }}
+                        margin="dense"
+                      />
+                    ));
+                  }
+                }
+                return null;
+              })()}
+            </>
+          ) : (
+            <TextField
+              fullWidth
+              label="Maximum Length"
+              type="number"
+              value={formData.maxLength}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  maxLength: parseInt(e.target.value, 10),
+                })
+              }
+              margin="dense"
+            />
+          )}
+        </Box>
+        {/* --- End Maximum Length Section --- */}
+
         <TextField
           fullWidth
           label="Span (Grid)"
