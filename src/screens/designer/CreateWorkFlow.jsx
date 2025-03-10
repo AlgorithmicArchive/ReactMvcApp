@@ -23,6 +23,8 @@ import {
 import { SortableItem } from "../../components/designer/SortableItem"; // Create this component
 import PlayerEditModal from "../../components/designer/PlayerEditModal"; // Create this component
 
+// Helper: generate a default action field based on player's permissions.
+
 export default function CreateWorkflow() {
   // State for workflow players
   const [players, setPlayers] = useState([]);
@@ -37,8 +39,9 @@ export default function CreateWorkflow() {
     actionForm: [],
     prevPlayerId: null,
     nextPlayerId: null,
-    currentlyWith: false,
-    poolApplications: [],
+    status: "",
+    completedAt: null,
+    remarks: "",
   });
 
   // State for service selection and services list
@@ -48,6 +51,123 @@ export default function CreateWorkflow() {
   // State for editing a player
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
+
+  // Helper: generate a default action field based on player's permissions.
+  const getDefaultActionFields = (player) => {
+    const actionOptions = [];
+
+    // For "Forward" action: if a next player exists, use their designation.
+    if (player.canForwardToPlayer) {
+      let label = "Forward to Player";
+      if (player.nextPlayerId !== null) {
+        const nextPlayer = players.find(
+          (p) => p.playerId === player.nextPlayerId
+        );
+        if (nextPlayer && nextPlayer.designation) {
+          label = `Forward to ${nextPlayer.designation}`;
+        }
+      }
+      actionOptions.push({ value: "Forward", label });
+    }
+
+    // Static sanction option.
+    if (player.canSanction) {
+      actionOptions.push({ value: "Sanction", label: "Sanction" });
+    }
+
+    // For "Return" action: if a previous player exists, use their designation.
+    if (player.canReturnToPlayer) {
+      let label = "Return to Player";
+      if (player.prevPlayerId !== null) {
+        const previousPlayer = players.find(
+          (p) => p.playerId === player.prevPlayerId
+        );
+        if (previousPlayer && previousPlayer.designation) {
+          label = `Return to ${previousPlayer.designation}`;
+        }
+      }
+      actionOptions.push({ value: "ReturnToPlayer", label });
+    }
+
+    // Other actions
+    if (player.canReturnToCitizen) {
+      actionOptions.push({
+        value: "ReturnToCitizen",
+        label: "Return to Citizen",
+      });
+    }
+    if (player.canReject) {
+      actionOptions.push({ value: "Reject", label: "Reject" });
+    }
+
+    const defaultActionField = {
+      id: `default-field-${Date.now()}`,
+      type: "select",
+      label: "Action",
+      name: "defaultAction",
+      minLength: 0,
+      maxLength: 0,
+      options: actionOptions,
+      span: 12,
+      validationFunctions: [],
+      transformationFunctions: [],
+      additionalFields: {},
+      accept: "",
+    };
+
+    const remarksField = {
+      id: `remarks-field-${Date.now()}`,
+      type: "text",
+      label: "Remarks",
+      name: "Remarks",
+      minLength: 0,
+      maxLength: 100,
+      options: [],
+      span: 12,
+      validationFunctions: ["notEmpty", "onlyAlphabets"],
+      transformationFunctions: [],
+      additionalFields: {},
+      accept: "",
+    };
+
+    return [defaultActionField, remarksField];
+  };
+
+  // Helper: update default fields for all players based on current designations.
+  const updateAllDefaultActionFields = () => {
+    setPlayers((prevPlayers) =>
+      prevPlayers.map((player) => {
+        // Regenerate default fields using the updated players list.
+        const defaultFields = getDefaultActionFields(player);
+        // Replace only the default fields (identified by fixed names) in the actionForm.
+        const updatedActionForm = player.actionForm.map((field) => {
+          if (field.name === "defaultAction" || field.name === "Remarks") {
+            const newField = defaultFields.find((f) => f.name === field.name);
+            return newField ? newField : field;
+          }
+          return field;
+        });
+        return { ...player, actionForm: updatedActionForm };
+      })
+    );
+  };
+
+  const removePlayer = (playerIdToRemove) => {
+    // Remove the selected player from the list.
+    const filteredPlayers = players.filter(
+      (player) => player.playerId !== playerIdToRemove
+    );
+
+    // Reassign playerId, prevPlayerId, and nextPlayerId for the remaining players.
+    const updatedPlayers = filteredPlayers.map((player, index) => ({
+      ...player,
+      playerId: index,
+      prevPlayerId: index > 0 ? index - 1 : null,
+      nextPlayerId: index < filteredPlayers.length - 1 ? index + 1 : null,
+    }));
+
+    setPlayers(updatedPlayers);
+  };
 
   // Fetch active services for selection
   useEffect(() => {
@@ -83,24 +203,25 @@ export default function CreateWorkflow() {
   const addPlayer = () => {
     const newPlayerId = players.length;
 
-    // Update previous player's nextPlayerId
+    // Update previous player's nextPlayerId if exists.
     const updatedPlayers = players.map((player, index) =>
       index === players.length - 1
         ? { ...player, nextPlayerId: newPlayerId }
         : player
     );
 
-    setPlayers([
-      ...updatedPlayers,
-      {
-        ...newPlayer,
-        playerId: newPlayerId,
-        prevPlayerId: newPlayerId > 0 ? newPlayerId - 1 : null,
-        nextPlayerId: null,
-      },
-    ]);
+    // Create new player with default action form fields.
+    const newPlayerWithDefaultFields = {
+      ...newPlayer,
+      playerId: newPlayerId,
+      prevPlayerId: newPlayerId > 0 ? newPlayerId - 1 : null,
+      nextPlayerId: null,
+      actionForm: getDefaultActionFields(newPlayer),
+    };
 
-    // Reset new player template
+    setPlayers([...updatedPlayers, newPlayerWithDefaultFields]);
+
+    // Reset the newPlayer template.
     setNewPlayer({
       designation: "",
       canSanction: false,
@@ -109,8 +230,7 @@ export default function CreateWorkflow() {
       canForwardToPlayer: false,
       canReject: false,
       actionForm: [],
-      currentlyWith: false,
-      status: "pending",
+      status: "",
       completedAt: null,
       remarks: "",
     });
@@ -165,11 +285,26 @@ export default function CreateWorkflow() {
 
   // Update player after editing
   const updatePlayer = (updatedPlayer) => {
+    // Update the current player's default fields as before.
+    const defaultFields = getDefaultActionFields(updatedPlayer);
+    const updatedActionForm = updatedPlayer.actionForm.map((field) => {
+      if (field.name === "defaultAction" || field.name === "Remarks") {
+        const newField = defaultFields.find((f) => f.name === field.name);
+        return newField ? newField : field;
+      }
+      return field;
+    });
+    updatedPlayer.actionForm = updatedActionForm;
+
     setPlayers((prev) =>
       prev.map((p) =>
         p.playerId === updatedPlayer.playerId ? updatedPlayer : p
       )
     );
+
+    // After updating this player, update all players' default fields.
+    updateAllDefaultActionFields();
+
     setIsEditModalOpen(false);
   };
 
@@ -280,6 +415,13 @@ export default function CreateWorkflow() {
                           onClick={() => handleEditPlayer(player)}
                         >
                           Edit Player
+                        </Button>
+                        <Button
+                          variant="contained"
+                          onClick={() => removePlayer(player.playerId)}
+                          sx={{ ml: 2 }}
+                        >
+                          Remove Player
                         </Button>
                       </Box>
                     </SortableItem>

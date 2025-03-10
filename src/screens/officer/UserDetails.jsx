@@ -1,374 +1,45 @@
-// import { Box, Container, Typography } from "@mui/material";
-// import React, { useEffect, useState } from "react";
-// import { useLocation, useNavigate } from "react-router-dom";
-// import axiosInstance from "../../axiosConfig";
-// import BasicModal from "../../components/BasicModal";
-// import CustomTable from "../../components/CustomTable";
-// import { fetchData, SetServiceId } from "../../assets/fetch";
-// import { useForm } from "react-hook-form";
-// import ActionModal from "../../components/ActionModal";
-// import CustomButton from "../../components/CustomButton";
-// import { formatKey } from "../../assets/formvalidations";
-// import { Col, Row } from "react-bootstrap";
-
-// export default function UserDetails() {
-//   const [generalDetails, setGeneralDetails] = useState([]);
-//   const [preAddressDetails, setPreAddressDetails] = useState([]);
-//   const [perAddressDetails, setPerAddressDetails] = useState([]);
-//   const [bankDetails, setBankDetails] = useState([]);
-//   const [documents, setDocuments] = useState([]);
-//   const [actionOptions, setActionOptions] = useState([]);
-//   const [editList, setEditList] = useState([]);
-//   const [editableField, setEditableField] = useState(null);
-//   const [currentOfficer, setCurrentOfficer] = useState("");
-//   const location = useLocation();
-//   const { applicationId } = location.state || {};
-//   const [serviceId, setServiceID] = useState(0);
-//   const [canSanction, setCanSanction] = useState(false);
-//   const [modalButtonText, setModalButtonText] = useState("Approve");
-//   const [handleActionButton, setHandleActionButton] = useState(() => () => {});
-
-//   const {
-//     control,
-//     formState: { errors },
-//     handleSubmit,
-//   } = useForm({ mode: "onChange" });
-//   const [pdf, setPdf] = useState(null);
-//   const [open, setOpen] = useState(false);
-//   const [actionOpen, setActionOpen] = useState(false);
-//   const navigate = useNavigate();
-//   const handleOpen = () => setOpen(true);
-//   const handleClose = () => setOpen(false);
-
-//   const handleActionOpen = () => setActionOpen(true);
-//   const handleActionClose = () => setActionOpen(false);
-
-//   const handleDocument = (link) => {
-//     setPdf(`http://localhost:5004${link}`);
-//     handleOpen();
-//   };
-
-//   const handleRedirect = () => {
-//     navigate("/officer/home");
-//   };
-
-//   const handleApprove = async () => {
-//     const response = await axiosInstance.get("/Officer/SignPdf", {
-//       params: { ApplicationId: applicationId },
-//     });
-//     if (response.data.status) {
-//       const path =
-//         "/files/" + applicationId.replace(/\//g, "_") + "SanctionLetter.pdf";
-//       setPdf(path);
-//       setModalButtonText("OK");
-//       // Close the modal first
-//       handleClose();
-
-//       // Reopen the modal after a brief delay
-//       setTimeout(() => {
-//         handleOpen();
-//         setHandleActionButton(() => handleRedirect);
-//       }, 300); // Adjust delay time as needed
-//     }
-//   };
-
-//   const onSubmit = async (data) => {
-//     const formData = new FormData();
-//     for (const [key, value] of Object.entries(data)) {
-//       if (value instanceof FileList) {
-//         formData.append(key, value[0]);
-//       } else if (key == "editableField") {
-//         formData.append(
-//           "editableField",
-//           JSON.stringify({
-//             serviceSpeicific: editableField.isFormSpecific ?? false,
-//             name: editableField.name,
-//             value: value,
-//           })
-//         );
-//       } else if (key == "editList") {
-//         formData.append(key, JSON.stringify(value));
-//       } else {
-//         formData.append(key, value);
-//       }
-//     }
-//     formData.append("serviceId", serviceId);
-//     formData.append("applicationId", applicationId);
-
-//     const response = await axiosInstance.post(
-//       "/Officer/HandleAction",
-//       formData
-//     );
-//     if (response.data.status) {
-//       if (response.data.action == "sanction") {
-//         handleOpen();
-//         const path =
-//           "/files/" +
-//           response.data.applicationId.replace(/\//g, "_") +
-//           "SanctionLetter.pdf";
-//         setPdf(path);
-//         setHandleActionButton(() => handleApprove);
-//       } else {
-//         navigate("/officer/home");
-//       }
-//     }
-//   };
-
-//   useEffect(() => {
-//     async function fetchUserDetail() {
-//       const response = await axiosInstance.get("/Officer/GetUserDetails", {
-//         params: { applicationId: applicationId },
-//       });
-//       setGeneralDetails(response.data.generalDetails);
-//       setPreAddressDetails(response.data.presentAddressDetails);
-//       setPerAddressDetails(response.data.permanentAddressDetails);
-//       setBankDetails(response.data.bankDetails);
-//       setDocuments(response.data.documents);
-//       setActionOptions(response.data.actionOptions);
-//       setEditList(response.data.editList);
-//       setEditableField(response.data.officerEditableField);
-//       setServiceID(response.data.serviceId);
-//       setCurrentOfficer(response.data.currentOfficer);
-//       setCanSanction(response.data.canSanction);
-//     }
-//     fetchUserDetail();
-//   }, []);
-
-//   return (
-//     <Box
-//       sx={{
-//         height: { xs: "100vh", md: "80vh" },
-//         width: "100vw",
-//         display: "flex",
-//         flexDirection: "column",
-//         gap: 5,
-//         justifyContent: "center",
-//         alignItems: "center",
-//       }}
-//     >
-//       <CustomButton
-//         text="Take Action"
-//         width={"50%"}
-//         onClick={() => handleActionOpen()}
-//       />
-//       <Box
-//         sx={{
-//           maxHeight: "600px",
-//           overflowY: "scroll",
-//           border: "2px solid",
-//           borderColor: "primary.main",
-//           borderRadius: 5,
-//           marginTop: 2,
-//           padding: 3,
-//           backgroundColor: "background.paper",
-//           width: { xs: "95%", md: "60%" },
-//         }}
-//       >
-//         <Row style={{ rowGap: "25px" }}>
-//           <Col md={12} xs={12}>
-//             <Typography variant="h3">General Details</Typography>
-//           </Col>
-//           {generalDetails.map((item, index) => (
-//             <Col key={index} md={6} xs={12}>
-//               <Box sx={{ display: "flex", flexDirection: "column" }}>
-//                 <Typography sx={{ fontWeight: "bold", fontSize: "14px" }}>
-//                   {item.key}
-//                 </Typography>
-//                 {item.key != "Applicant Image" ? (
-//                   <Typography
-//                     sx={{
-//                       fontWeight: "normal",
-//                       fontSize: "18px",
-//                       border: "2px solid",
-//                       borderColor: "primary.main",
-//                       borderRadius: 3,
-//                       padding: 1,
-//                     }}
-//                   >
-//                     {item.value}
-//                   </Typography>
-//                 ) : (
-//                   <Box>
-//                     <img
-//                       src={`http://localhost:5004${item.value}`}
-//                       alt="Preview"
-//                       style={{
-//                         width: "150px",
-//                         height: "150px",
-//                         objectFit: "cover",
-//                         borderRadius: "5px",
-//                       }}
-//                     />
-//                   </Box>
-//                 )}
-//               </Box>
-//             </Col>
-//           ))}
-//           <Col md={12} xs={12}>
-//             <Typography variant="h3">Present Address Details</Typography>
-//           </Col>
-//           {preAddressDetails.map((item, index) => (
-//             <Col key={index} md={6} xs={12}>
-//               <Box sx={{ display: "flex", flexDirection: "column" }}>
-//                 <Typography sx={{ fontWeight: "bold", fontSize: "14px" }}>
-//                   {item.key}
-//                 </Typography>
-//                 <Typography
-//                   sx={{
-//                     fontWeight: "normal",
-//                     fontSize: "18px",
-//                     border: "2px solid",
-//                     borderColor: "primary.main",
-//                     borderRadius: 3,
-//                     padding: 1,
-//                   }}
-//                 >
-//                   {item.value}
-//                 </Typography>
-//               </Box>
-//             </Col>
-//           ))}
-//           <Col md={12} xs={12}>
-//             <Typography variant="h3">Permanent Address Details</Typography>
-//           </Col>
-//           {perAddressDetails.map((item, index) => (
-//             <Col key={index} md={6} xs={12}>
-//               <Box sx={{ display: "flex", flexDirection: "column" }}>
-//                 <Typography sx={{ fontWeight: "bold", fontSize: "14px" }}>
-//                   {item.key}
-//                 </Typography>
-//                 <Typography
-//                   sx={{
-//                     fontWeight: "normal",
-//                     fontSize: "18px",
-//                     border: "2px solid",
-//                     borderColor: "primary.main",
-//                     borderRadius: 3,
-//                     padding: 1,
-//                   }}
-//                 >
-//                   {item.value}
-//                 </Typography>
-//               </Box>
-//             </Col>
-//           ))}
-//           <Col md={12} xs={12}>
-//             <Typography variant="h3">Bank Details</Typography>
-//           </Col>
-//           {bankDetails.map((item, index) => (
-//             <Col key={index} md={12} xs={12}>
-//               <Box sx={{ display: "flex", flexDirection: "column" }}>
-//                 <Typography sx={{ fontWeight: "bold", fontSize: "14px" }}>
-//                   {item.key}
-//                 </Typography>
-//                 <Typography
-//                   sx={{
-//                     fontWeight: "normal",
-//                     fontSize: "18px",
-//                     border: "2px solid",
-//                     borderColor: "primary.main",
-//                     borderRadius: 3,
-//                     padding: 1,
-//                   }}
-//                 >
-//                   {item.value}
-//                 </Typography>
-//               </Box>
-//             </Col>
-//           ))}
-//           <Col md={12} xs={12}>
-//             <Typography variant="h3">Previous Actions</Typography>
-//           </Col>
-//           <CustomTable
-//             fetchData={fetchData}
-//             url={"/Officer/GetApplicationHistory"}
-//             title={"Previous Actions"}
-//             buttonActionHandler={() => {}}
-//             params={{ applicationId: applicationId }}
-//           />
-//           <Col md={12} xs={12}>
-//             <Typography variant="h3">Documents</Typography>
-//           </Col>
-//           {documents.map((item, index) => (
-//             <Col key={index} md={6} xs={12}>
-//               <Box sx={{ display: "flex", flexDirection: "column" }}>
-//                 <Typography sx={{ fontWeight: "bold", fontSize: "14px" }}>
-//                   {formatKey(item.Label)}
-//                 </Typography>
-//                 <Typography
-//                   component={"div"}
-//                   sx={{
-//                     fontWeight: "normal",
-//                     fontSize: "18px",
-//                     border: "2px solid",
-//                     borderColor: "primary.main",
-//                     borderRadius: 3,
-//                     padding: 1,
-//                     display: "flex",
-//                     justifyContent: "space-between",
-//                   }}
-//                 >
-//                   <Typography>{item.Enclosure}</Typography>
-//                   <Typography
-//                     sx={{ cursor: "pointer" }}
-//                     onClick={() => handleDocument(item.File)}
-//                   >
-//                     View
-//                   </Typography>
-//                 </Typography>
-//               </Box>
-//             </Col>
-//           ))}
-//         </Row>
-//       </Box>
-//       <ActionModal
-//         open={actionOpen}
-//         handleClose={handleActionClose}
-//         control={control}
-//         handleSubmit={handleSubmit}
-//         onSubmit={onSubmit}
-//         actionOptions={actionOptions}
-//         editList={editList}
-//         editableField={editableField}
-//         currentOfficer={currentOfficer}
-//         errors={errors}
-//       />
-//       <BasicModal
-//         open={open}
-//         handleClose={handleClose}
-//         pdf={pdf}
-//         table={null}
-//         handleActionButton={canSanction ? handleActionButton : null}
-//         buttonText={modalButtonText}
-//       />
-//     </Box>
-//   );
-// }
-
 import { Box } from "@mui/system";
 import React, { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { fetchUserDetail } from "../../assets/fetch";
 import { Col, Row } from "react-bootstrap";
-import { Button, Collapse, Divider, Typography } from "@mui/material";
-import { formatKey } from "../../assets/formvalidations";
+import {
+  Button,
+  Collapse,
+  Divider,
+  FormControl,
+  FormHelperText,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { formatKey, runValidations } from "../../assets/formvalidations";
+import { Controller, useForm } from "react-hook-form";
+import CustomButton from "../../components/CustomButton";
+import axiosInstance from "../../axiosConfig";
 
-const CollapsibleFormDetails = ({ formDetails, formatKey }) => {
-  const [open, setOpen] = useState(false);
-
+// Modified CollapsibleFormDetails now receives its open state from props.
+const CollapsibleFormDetails = ({
+  formDetails,
+  formatKey,
+  detailsOpen,
+  setDetailsOpen,
+}) => {
   return (
     <>
       <Button
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => setDetailsOpen((prev) => !prev)}
         sx={{
           backgroundColor: "#CCA682",
           color: "#312C51",
           fontWeight: "bold",
         }}
       >
-        {open ? "Collapse" : "Expand"} Details
+        {detailsOpen ? "Collapse" : "Expand"} Details
       </Button>
-      <Collapse in={open}>
+      <Collapse in={detailsOpen}>
         <Box
           sx={{
             width: "60%",
@@ -392,7 +63,7 @@ const CollapsibleFormDetails = ({ formDetails, formatKey }) => {
                 >
                   <Box sx={{ display: "flex", flexDirection: "column" }}>
                     <Typography
-                      variant="label"
+                      variant="subtitle2"
                       sx={{
                         fontSize: 14,
                         fontWeight: "bold",
@@ -429,14 +100,317 @@ const CollapsibleFormDetails = ({ formDetails, formatKey }) => {
   );
 };
 
+const commonStyles = {
+  "& .MuiOutlinedInput-root": {
+    "& fieldset": { borderColor: "#312C51" },
+    "&:hover fieldset": { borderColor: "#312C51" },
+    "&.Mui-focused fieldset": { borderColor: "#312C51" },
+  },
+  "& .MuiInputLabel-root": { color: "#312C51" },
+  "& .MuiInputBase-input::placeholder": { color: "#312C51" },
+  color: "#312C51",
+};
+
 export default function UserDetails() {
   const location = useLocation();
   const { applicationId } = location.state || {};
   const [formDetails, setFormDetails] = useState([]);
+  const [actionForm, setActionForm] = useState([]);
+  // Lift the open/closed state for user details
+  const [detailsOpen, setDetailsOpen] = useState(true);
+  const navigate = useNavigate();
+  const {
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    getValues,
+    formState: { errors },
+  } = useForm({ mode: "onChange" });
 
   useEffect(() => {
-    fetchUserDetail(applicationId, setFormDetails);
-  }, []);
+    // fetchUserDetail is assumed to set both formDetails and actionForm
+    fetchUserDetail(applicationId, setFormDetails, setActionForm);
+  }, [applicationId]);
+
+  // Render an individual field using Controller
+  const renderField = (field, sectionIndex) => {
+    switch (field.type) {
+      case "text":
+      case "email":
+      case "date":
+        return (
+          <Controller
+            name={field.name}
+            control={control}
+            defaultValue={""}
+            rules={{
+              validate: async (value) =>
+                await runValidations(field, value, getValues()),
+            }}
+            render={({ field: { onChange, value, ref } }) => (
+              <TextField
+                type={field.type}
+                id={field.id}
+                label={field.label}
+                value={value || ""}
+                onChange={onChange}
+                inputRef={ref}
+                error={Boolean(errors[field.name])}
+                helperText={errors[field.name]?.message || ""}
+                fullWidth
+                margin="normal"
+                inputProps={{
+                  maxLength: field.validationFunctions?.includes(
+                    "specificLength"
+                  )
+                    ? field.maxLength
+                    : undefined,
+                }}
+                sx={{
+                  ...commonStyles,
+                  "& .MuiInputBase-input": { color: "#312C51" },
+                }}
+              />
+            )}
+          />
+        );
+      case "file":
+        return (
+          <Controller
+            name={field.name}
+            control={control}
+            defaultValue={null}
+            rules={{
+              validate: async (value) => await runValidations(field, value),
+            }}
+            render={({ field: { onChange, ref } }) => (
+              <FormControl
+                fullWidth
+                margin="normal"
+                error={Boolean(errors[field.name])}
+                sx={commonStyles}
+              >
+                <Button
+                  variant="contained"
+                  component="label"
+                  sx={{ backgroundColor: "#312C51", color: "#fff" }}
+                >
+                  {field.label}
+                  <input
+                    type="file"
+                    hidden
+                    onChange={(e) => onChange(e.target.files[0])}
+                    ref={ref}
+                    accept={field.accept}
+                  />
+                </Button>
+                <FormHelperText>
+                  {errors[field.name]?.message || ""}
+                </FormHelperText>
+              </FormControl>
+            )}
+          />
+        );
+      case "select":
+        return (
+          <Controller
+            name={field.name}
+            control={control}
+            defaultValue={field.options[0]?.value || ""}
+            rules={{
+              validate: async (value) =>
+                await runValidations(field, value, getValues()),
+            }}
+            render={({ field: { onChange, value, ref } }) => {
+              const districtFields = [
+                "district",
+                "presentdistrict",
+                "permanentdistrict",
+              ];
+              const normalizedFieldName = field.name
+                .toLowerCase()
+                .replace(/\s/g, "");
+
+              const isDistrict = districtFields.includes(normalizedFieldName);
+              let options;
+              if (field.optionsType === "dependent" && field.dependentOn) {
+                const parentValue = watch(field.dependentOn);
+                options =
+                  field.dependentOptions && field.dependentOptions[parentValue]
+                    ? field.dependentOptions[parentValue]
+                    : [];
+              } else options = field.options;
+              return (
+                <FormControl
+                  fullWidth
+                  margin="normal"
+                  error={Boolean(errors[field.name])}
+                  sx={commonStyles}
+                >
+                  <InputLabel id={`${field.id}-label`}>
+                    {field.label}
+                  </InputLabel>
+                  <Select
+                    labelId={`${field.id}-label`}
+                    id={field.id}
+                    value={value || ""}
+                    label={field.label}
+                    onChange={(e) => {
+                      onChange(e);
+                      // Optionally, handle district changes here.
+                    }}
+                    inputRef={ref}
+                    sx={{
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#312C51",
+                      },
+                      color: "#312C51",
+                    }}
+                  >
+                    {options.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>
+                    {errors[field.name]?.message || ""}
+                  </FormHelperText>
+                  {field.additionalFields &&
+                    field.additionalFields[value] &&
+                    field.additionalFields[value].map((additionalField) => {
+                      const additionalFieldName =
+                        additionalField.name ||
+                        `${field.name}_${additionalField.id}`;
+                      return (
+                        <div
+                          key={additionalField.id}
+                          style={{ marginBottom: 16 }}
+                        >
+                          <InputLabel
+                            htmlFor={additionalField.id}
+                            sx={{ color: "#312C51" }}
+                          >
+                            {additionalField.label}
+                          </InputLabel>
+                          {renderField(
+                            { ...additionalField, name: additionalFieldName },
+                            sectionIndex
+                          )}
+                        </div>
+                      );
+                    })}
+                </FormControl>
+              );
+            }}
+          />
+        );
+      case "enclosure":
+        return (
+          <Controller
+            name={field.name}
+            control={control}
+            defaultValue={{
+              selected: field.options[0]?.value || "",
+              file: null,
+            }}
+            rules={{}}
+            render={({ field: { onChange, value, ref } }) => {
+              return (
+                <FormControl
+                  fullWidth
+                  margin="normal"
+                  error={Boolean(errors[field.name])}
+                  sx={commonStyles}
+                >
+                  <InputLabel id={`${field.id}_select-label`}>
+                    {field.label}
+                  </InputLabel>
+                  <Select
+                    labelId={`${field.id}_select-label`}
+                    id={`${field.id}_select`}
+                    value={value.selected || ""}
+                    label={field.label}
+                    onChange={(e) => {
+                      const newVal = { ...value, selected: e.target.value };
+                      onChange(newVal);
+                    }}
+                    inputRef={ref}
+                    sx={{
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#312C51",
+                      },
+                      color: "#312C51",
+                    }}
+                  >
+                    {field.options.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>
+                    {errors[field.name]?.message || ""}
+                  </FormHelperText>
+                  <Button
+                    variant="contained"
+                    component="label"
+                    sx={{ mt: 2, backgroundColor: "#312C51", color: "#fff" }}
+                  >
+                    Upload File
+                    <input
+                      type="file"
+                      hidden
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        onChange({ ...value, file });
+                      }}
+                      accept={field.accept}
+                    />
+                  </Button>
+                </FormControl>
+              );
+            }}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  const onSubmit = async (data) => {
+    console.log("Submitted Data:", data);
+
+    // Create a new FormData instance
+    const formData = new FormData();
+
+    // Iterate over each key in the data object
+    Object.keys(data).forEach((key) => {
+      const value = data[key];
+
+      // If the value is an object (and not a File), you might want to stringify it.
+      // Adjust this logic as needed if you have nested objects.
+      if (value instanceof File) {
+        formData.append(key, value);
+      } else if (typeof value === "object" && value !== null) {
+        formData.append(key, JSON.stringify(value));
+      } else {
+        formData.append(key, value);
+      }
+    });
+
+    formData.append("applicationId", applicationId);
+    console.log(formData);
+
+    const response = await axiosInstance.post(
+      "/Officer/HandleAction",
+      formData
+    );
+    const result = response.data;
+    if (result.status) navigate("/officer/home");
+    else alert(result.response);
+  };
 
   return (
     <Box
@@ -449,7 +423,41 @@ export default function UserDetails() {
       }}
     >
       <Typography variant="h3">USER DETAILS</Typography>
-      <CollapsibleFormDetails formDetails={formDetails} formatKey={formatKey} />
+      <CollapsibleFormDetails
+        formDetails={formDetails}
+        formatKey={formatKey}
+        detailsOpen={detailsOpen}
+        setDetailsOpen={setDetailsOpen}
+      />
+      <Typography variant="h3" sx={{ marginTop: detailsOpen ? 40 : 5 }}>
+        Action Form
+      </Typography>
+      <Box
+        sx={{
+          width: "50vw",
+          height: "auto",
+          margin: "0 auto",
+          backgroundColor: "#F0C38E",
+          borderRadius: 5,
+          color: "#312C51",
+          padding: 10,
+        }}
+      >
+        <form onSubmit={handleSubmit(onSubmit)} style={{ width: "100%" }}>
+          {actionForm.length > 0 &&
+            actionForm.map((field, index) => (
+              <Box key={index}>{renderField(field, index)}</Box>
+            ))}
+
+          <CustomButton
+            text="Take Action"
+            bgColor="#312C51"
+            color="#F0C38E"
+            width={"100%"}
+            onClick={handleSubmit(onSubmit)}
+          />
+        </form>
+      </Box>
     </Box>
   );
 }

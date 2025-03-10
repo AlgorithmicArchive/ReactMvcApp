@@ -66,6 +66,16 @@ namespace ReactMvcApp.Controllers.User
 
             var workFlow = service!.OfficerEditableField;
 
+            // Update the first player's status to "pending" if workflow is not null/empty.
+            if (!string.IsNullOrEmpty(workFlow))
+            {
+                var players = JArray.Parse(workFlow);
+                if (players.Count > 0)
+                {
+                    players[0]["status"] = "pending";
+                }
+                workFlow = players.ToString(Formatting.None);
+            }
 
             var finYear = helper.GetCurrentFinancialYear();
             var referenceNumber = "JK-" + service.NameShort + "/" + finYear + "/" + count;

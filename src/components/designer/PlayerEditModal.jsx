@@ -1,5 +1,5 @@
 // PlayerEditModal.js
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Button,
@@ -8,14 +8,64 @@ import {
   FormControlLabel,
   Checkbox,
   Typography,
+  InputLabel,
+  Select,
+  FormControl,
+  MenuItem,
 } from "@mui/material";
 import FieldEditModal from "./FieldEditModal";
 import SortableField from "./SortableField";
+import {
+  closestCenter,
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 
 const PlayerEditModal = ({ player, onClose, onSave }) => {
   const [editedPlayer, setEditedPlayer] = useState(player);
   const [isFieldModalOpen, setIsFieldModalOpen] = useState(false);
   const [selectedField, setSelectedField] = useState(null);
+  const [designations, setDesignations] = useState(null);
+
+  // Updated sensor: activationConstraint ensures drag doesn't start immediately
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  useEffect(() => {
+    async function getDesignations() {
+      const response = await fetch("/Base/GetDesignations");
+      const result = await response.json();
+      setDesignations(result.designations);
+    }
+    getDesignations();
+  }, []);
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = editedPlayer.actionForm.findIndex(
+      (field) => field.id === active.id
+    );
+    const newIndex = editedPlayer.actionForm.findIndex(
+      (field) => field.id === over.id
+    );
+
+    const newActionForm = arrayMove(
+      editedPlayer.actionForm,
+      oldIndex,
+      newIndex
+    );
+    setEditedPlayer((prev) => ({ ...prev, actionForm: newActionForm }));
+  };
 
   const handleChange = (field, value) => {
     setEditedPlayer((prev) => ({ ...prev, [field]: value }));
@@ -53,6 +103,8 @@ const PlayerEditModal = ({ player, onClose, onSave }) => {
     setSelectedField(field);
     setIsFieldModalOpen(true);
   };
+
+  // Remove handler: receives sectionId and fieldId (sectionId is fixed as "actionForm")
   const handleRemoveField = (sectionId, fieldId) => {
     setEditedPlayer((prev) => ({
       ...prev,
@@ -68,13 +120,6 @@ const PlayerEditModal = ({ player, onClose, onSave }) => {
         field.id === updatedField.id ? updatedField : field
       ),
     }));
-  };
-
-  const removeActionFormField = (index) => {
-    const updatedActionForm = editedPlayer.actionForm.filter(
-      (_, i) => i !== index
-    );
-    setEditedPlayer((prev) => ({ ...prev, actionForm: updatedActionForm }));
   };
 
   return (
@@ -95,14 +140,23 @@ const PlayerEditModal = ({ player, onClose, onSave }) => {
       >
         <h2>Edit Player</h2>
 
-        {/* Basic Player Details */}
-        <TextField
-          label="Designation"
-          value={editedPlayer.designation || ""}
-          onChange={(e) => handleChange("designation", e.target.value)}
-          fullWidth
-          margin="normal"
-        />
+        {/* Designation as a Select */}
+        <FormControl fullWidth margin="normal">
+          <InputLabel id="designation-select-label">Designation</InputLabel>
+          <Select
+            labelId="designation-select-label"
+            label="Designation"
+            value={editedPlayer.designation || ""}
+            onChange={(e) => handleChange("designation", e.target.value)}
+          >
+            {designations &&
+              designations.map((des, index) => (
+                <MenuItem key={index} value={des.designation}>
+                  {des.designation}
+                </MenuItem>
+              ))}
+          </Select>
+        </FormControl>
 
         {/* Permissions */}
         <Typography variant="h6" sx={{ mt: 2 }}>
@@ -164,14 +218,26 @@ const PlayerEditModal = ({ player, onClose, onSave }) => {
         <Typography variant="h6" sx={{ mt: 2 }}>
           Action Form
         </Typography>
-        {editedPlayer.actionForm.map((field, index) => (
-          <SortableField
-            key={field.id}
-            field={field}
-            onEditField={handleEditField}
-            onRemoveField={handleRemoveField}
-          />
-        ))}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={editedPlayer.actionForm.map((field) => field.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {editedPlayer.actionForm.map((field, index) => (
+              <SortableField
+                key={field.id}
+                field={field}
+                sectionId="actionForm"
+                onEditField={handleEditField}
+                onRemoveField={handleRemoveField}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
         <Button variant="contained" onClick={addActionFormField} sx={{ mt: 2 }}>
           Add Action Form Field
         </Button>

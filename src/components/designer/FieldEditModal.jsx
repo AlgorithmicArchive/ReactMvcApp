@@ -287,7 +287,7 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
               >
                 <MenuItem value="">Please Select</MenuItem>
                 <MenuItem value="independent">Independent</MenuItem>
-                <MenuItem value="dependent">Dependent</MenuItem>
+                {sections && <MenuItem value="dependent">Dependent</MenuItem>}
               </Select>
             </FormControl>
             {formData.optionsType === "independent" && (

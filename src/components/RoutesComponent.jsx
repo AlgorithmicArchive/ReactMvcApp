@@ -30,6 +30,7 @@ import Settings from "../screens/Settings";
 import CreateService from "../screens/designer/CreateService";
 import DynamicStepForm from "../screens/designer/Form";
 import CreateWorkflow from "../screens/designer/CreateWorkFlow";
+import ViewUserDetails from "../screens/officer/ViewUserDetails";
 
 const RoutesComponent = () => {
   return (
@@ -61,6 +62,7 @@ const RoutesComponent = () => {
           <Route path="home" element={<OfficerHome />} />
           <Route path="reports" element={<Reports />} />
           <Route path="userDetails" element={<UserDetails />} />
+          <Route path="viewUserDetails" element={<ViewUserDetails />} />
           <Route path="bankFile" element={<BankFile />} />
           <Route path="responseFile" element={<ResponseFile />} />
         </Route>

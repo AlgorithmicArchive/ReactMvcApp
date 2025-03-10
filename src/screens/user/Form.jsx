@@ -240,7 +240,8 @@ const DynamicStepForm = () => {
             control={control}
             defaultValue={""}
             rules={{
-              validate: async (value) => await runValidations(field, value),
+              validate: async (value) =>
+                await runValidations(field, value, getValues()),
             }}
             render={({ field: { onChange, value, ref } }) => (
               <TextField

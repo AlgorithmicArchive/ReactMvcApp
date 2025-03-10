@@ -63,6 +63,12 @@ export default function OfficerHome() {
         state: { applicationId: userdata.referenceNumber },
       });
     },
+    handleViewApplication: (row) => {
+      const data = row.original;
+      navigate("/officer/viewUserDetails", {
+        state: { applicationId: data.referenceNumber },
+      });
+    },
   };
 
   // extraParams are computed from serviceId and type

@@ -237,9 +237,15 @@ export async function createBankFile(districtId, serviceId) {
   });
 }
 
-export async function fetchUserDetail(applicationId, setFormDetails) {
+export async function fetchUserDetail(
+  applicationId,
+  setFormDetails,
+  setActionForm
+) {
   const response = await axiosInstance.get("/Officer/GetUserDetails", {
     params: { applicationId: applicationId },
   });
   setFormDetails(response.data.list);
+  console.log(response.data.currentOfficerDetails.actionForm);
+  setActionForm(response.data.currentOfficerDetails.actionForm);
 }
