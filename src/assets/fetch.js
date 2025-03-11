@@ -208,7 +208,9 @@ export async function fetchAcknowledgement(applicationId) {
     const response = await axiosInstance.get("/User/GetAcknowledgement", {
       params: { ApplicationId: applicationId },
     });
+    console.log("RESPONSE", response.data);
     const { path } = response.data;
+    console.log(path);
 
     // Ensure that the path includes the protocol
     const completePath = path.startsWith("http")

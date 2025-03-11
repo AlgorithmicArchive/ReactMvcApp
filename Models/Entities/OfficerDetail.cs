@@ -9,11 +9,9 @@ public partial class OfficerDetail
 
     public int OfficerId { get; set; }
 
-    public string Role { get; set; } = null!;
+    public string? Role { get; set; }
 
-    public string AccessLevel { get; set; } = null!;
+    public string? AccessLevel { get; set; }
 
     public int AccessCode { get; set; }
-
-    public virtual User Officer { get; set; } = null!;
 }

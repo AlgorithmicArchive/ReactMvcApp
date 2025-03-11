@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Specialized;
 using System.Reflection;
 using iText.IO.Image;
 using iText.Kernel.Pdf;
@@ -56,9 +58,9 @@ public class PdfService(IWebHostEnvironment webHostEnvironment)
         document.Add(new Paragraph($"Date: {DateTime.Today.ToString("dd-mm-yyyy")}\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t{Officer}")).SetBold();
     }
 
-    public void CreateAcknowledgement(Dictionary<string, string> details, string ApplicationId)
+    public void CreateAcknowledgement(OrderedDictionary details, string applicationId)
     {
-        string path = Path.Combine(_webHostEnvironment.WebRootPath, "files", ApplicationId.Replace("/", "_") + "Acknowledgement.pdf");
+        string path = Path.Combine(_webHostEnvironment.WebRootPath, "files", applicationId.Replace("/", "_") + "Acknowledgement.pdf");
         Directory.CreateDirectory(Path.GetDirectoryName(path) ?? string.Empty);
 
         string emblem = Path.Combine(_webHostEnvironment.WebRootPath, "assets", "images", "emblem.png");
@@ -81,12 +83,13 @@ public class PdfService(IWebHostEnvironment webHostEnvironment)
             .SetFontSize(16));
 
         Table table = new Table(UnitValue.CreatePercentArray(2)).UseAllAvailableWidth();
-        foreach (var item in details)
-        {
-            table.AddCell(new Cell().Add(new Paragraph(item.Key)));
-            table.AddCell(new Cell().Add(new Paragraph(item.Value)));
-        }
-        document.Add(table);
 
+        foreach (DictionaryEntry item in details)
+        {
+            table.AddCell(new Cell().Add(new Paragraph(item.Key.ToString())));
+            table.AddCell(new Cell().Add(new Paragraph(item.Value?.ToString() ?? string.Empty)));
+        }
+
+        document.Add(table);
     }
 }

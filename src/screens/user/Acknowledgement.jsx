@@ -40,7 +40,7 @@ export default function Acknowledgement() {
     }
     setTimeout(() => {
       getPdfBlob();
-    }, 2000);
+    }, 1000);
   }, []);
 
   return (

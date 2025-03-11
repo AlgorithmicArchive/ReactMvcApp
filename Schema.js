@@ -751,3 +751,19 @@
     fields: [],
   },
 ];
+
+const DocumentFields = {
+  Acknowledgement: [
+    { FieldName: ["ReferenceNumber"], Label: "REFERENCE NUMBER" },
+    { FieldName: ["ApplicantName"], Label: "APPLICANT NAME" },
+    {
+      FieldName: ["RelationName", "Relation"],
+      Label: "PARENTAGE",
+      // Transform function receives an object with the values for each field in FieldName.
+      Transform: ({ RelationName, Relation }) =>
+        `${RelationName} (${Relation.toUpperCase()})`,
+    },
+    { FieldName: ["PensionType"], Label: "PENSION TYPE" },
+    { FieldName: ["District"], Label: "APPLIED DISTRICT", },
+  ],
+};

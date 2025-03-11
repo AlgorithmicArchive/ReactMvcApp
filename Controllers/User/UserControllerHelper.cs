@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using ReactMvcApp.Models.Entities;
+using System.Collections.Specialized;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 
@@ -31,18 +32,18 @@ namespace ReactMvcApp.Controllers.User
                 return null; // Handle case where userId is not available
             }
 
-            int initiated = dbcontext.Applications
-                .Where(u => u.CitizenId.ToString() == userId && u.ApplicationStatus == "Initiated")
+            int initiated = dbcontext.CitizenApplications
+                .Where(u => u.CitizenId.ToString() == userId && u.Status == "pending")
                 .Count();
-            int incomplete = dbcontext.Applications
-                .Where(u => u.CitizenId.ToString() == userId && u.ApplicationStatus == "Incomplete")
+            int incomplete = dbcontext.CitizenApplications
+                .Where(u => u.CitizenId.ToString() == userId && u.Status == "Incomplete")
                 .Count();
-            int sanctioned = dbcontext.Applications
+            int sanctioned = dbcontext.CitizenApplications
                 .Where(u => u.CitizenId.ToString() == userId &&
-                           (u.ApplicationStatus == "Sanctioned" || u.ApplicationStatus == "Dispatched" || u.ApplicationStatus == "Deposited" || u.ApplicationStatus == "Disbursed" || u.ApplicationStatus == "Failure"))
+                           (u.Status == "Sanctioned" || u.Status == "Dispatched" || u.Status == "Deposited" || u.Status == "Disbursed" || u.Status == "Failure"))
                 .Count();
-            int paymentDisbursed = dbcontext.Applications.Where(u => u.CitizenId.ToString() == userId && u.ApplicationStatus == "Disbursed").Count();
-            int paymentFailed = dbcontext.Applications.Where(u => u.CitizenId.ToString() == userId && u.ApplicationStatus == "Failure").Count();
+            int paymentDisbursed = dbcontext.CitizenApplications.Where(u => u.CitizenId.ToString() == userId && u.Status == "Disbursed").Count();
+            int paymentFailed = dbcontext.CitizenApplications.Where(u => u.CitizenId.ToString() == userId && u.Status == "Failure").Count();
 
             var userDetails = dbcontext.Users.FirstOrDefault(u => u.UserId.ToString() == userId);
 
@@ -75,66 +76,66 @@ namespace ReactMvcApp.Controllers.User
 
 
 
-        public IActionResult GetApplicationDetails(string applicationId)
-        {
-            var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails, documents) = helper.GetUserDetailsAndRelatedData(applicationId);
+        // public IActionResult GetApplicationDetails(string applicationId)
+        // {
+        //     var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails, documents) = helper.GetUserDetailsAndRelatedData(applicationId);
 
-            var generalDetails = new List<KeyValuePair<string, object>>
-            {
-                new("Reference Number", userDetails.ApplicationId),
-                new("Applicant Name", userDetails.ApplicantName),
-                new("Applicant Image", userDetails.ApplicantImage),
-                new("Email", userDetails.Email),
-                new("Mobile Number", userDetails.MobileNumber),
-                new("Parentage", userDetails.RelationName + $"({userDetails.Relation})"),
-                new("Date Of Birth", userDetails.DateOfBirth),
-                new("Category", userDetails.Category),
-                new("Submission Date", userDetails.SubmissionDate)
-            };
+        //     var generalDetails = new List<KeyValuePair<string, object>>
+        //     {
+        //         new("Reference Number", userDetails.ApplicationId),
+        //         new("Applicant Name", userDetails.ApplicantName),
+        //         new("Applicant Image", userDetails.ApplicantImage),
+        //         new("Email", userDetails.Email),
+        //         new("Mobile Number", userDetails.MobileNumber),
+        //         new("Parentage", userDetails.RelationName + $"({userDetails.Relation})"),
+        //         new("Date Of Birth", userDetails.DateOfBirth),
+        //         new("Category", userDetails.Category),
+        //         new("Submission Date", userDetails.SubmissionDate)
+        //     };
 
-            foreach (var kvp in serviceSpecific!)
-            {
-                string key = kvp.Key;
-                string value = kvp.Value;
-                bool isDigitOnly = value.All(char.IsDigit);
-                if (!isDigitOnly)
-                {
-                    generalDetails.Insert(8, new KeyValuePair<string, object>(FormatKey(key), value));
-                }
-            }
+        //     foreach (var kvp in serviceSpecific!)
+        //     {
+        //         string key = kvp.Key;
+        //         string value = kvp.Value;
+        //         bool isDigitOnly = value.All(char.IsDigit);
+        //         if (!isDigitOnly)
+        //         {
+        //             generalDetails.Insert(8, new KeyValuePair<string, object>(FormatKey(key), value));
+        //         }
+        //     }
 
-            var presentAddressDetails = new List<KeyValuePair<string, object>>{
-                new("Address",preAddressDetails.Address!),
-                new("District",preAddressDetails.District!),
-                new("Tehsil",preAddressDetails.Tehsil!),
-                new("Block",preAddressDetails.Block!),
-                new("Panchayat/Muncipality",preAddressDetails.PanchayatMuncipality!),
-                new("Village",preAddressDetails.Village!),
-                new("Ward",preAddressDetails.Ward!),
-                new("Pincode",preAddressDetails.Pincode!),
-            };
+        //     var presentAddressDetails = new List<KeyValuePair<string, object>>{
+        //         new("Address",preAddressDetails.Address!),
+        //         new("District",preAddressDetails.District!),
+        //         new("Tehsil",preAddressDetails.Tehsil!),
+        //         new("Block",preAddressDetails.Block!),
+        //         new("Panchayat/Muncipality",preAddressDetails.PanchayatMuncipality!),
+        //         new("Village",preAddressDetails.Village!),
+        //         new("Ward",preAddressDetails.Ward!),
+        //         new("Pincode",preAddressDetails.Pincode!),
+        //     };
 
-            var permanentAddressDetails = new List<KeyValuePair<string, object>>{
-                new("Address",perAddressDetails.Address!),
-                new("District",perAddressDetails.District!),
-                new("Tehsil",perAddressDetails.Tehsil!),
-                new("Block",perAddressDetails.Block!),
-                new("Panchayat/Muncipality",perAddressDetails.PanchayatMuncipality!),
-                new("Village",perAddressDetails.Village!),
-                new("Ward",perAddressDetails.Ward!),
-                new("Pincode",perAddressDetails.Pincode!),
-            };
+        //     var permanentAddressDetails = new List<KeyValuePair<string, object>>{
+        //         new("Address",perAddressDetails.Address!),
+        //         new("District",perAddressDetails.District!),
+        //         new("Tehsil",perAddressDetails.Tehsil!),
+        //         new("Block",perAddressDetails.Block!),
+        //         new("Panchayat/Muncipality",perAddressDetails.PanchayatMuncipality!),
+        //         new("Village",perAddressDetails.Village!),
+        //         new("Ward",perAddressDetails.Ward!),
+        //         new("Pincode",perAddressDetails.Pincode!),
+        //     };
 
-            var BankDetails = new List<KeyValuePair<string, object>>{
-                new("Bank Name",bankDetails.BankName),
-                new("Branch Name",bankDetails.BranchName),
-                new("IFSC Code",bankDetails.IfscCode),
-                new("Account Number",bankDetails.AccountNumber),
-            };
+        //     var BankDetails = new List<KeyValuePair<string, object>>{
+        //         new("Bank Name",bankDetails.BankName),
+        //         new("Branch Name",bankDetails.BranchName),
+        //         new("IFSC Code",bankDetails.IfscCode),
+        //         new("Account Number",bankDetails.AccountNumber),
+        //     };
 
 
-            return Json(new { generalDetails, presentAddressDetails, permanentAddressDetails, BankDetails, documents });
-        }
+        //     return Json(new { generalDetails, presentAddressDetails, permanentAddressDetails, BankDetails, documents });
+        // }
 
         [HttpGet]
         public IActionResult GetDistricts()
@@ -164,62 +165,62 @@ namespace ReactMvcApp.Controllers.User
             return Json(new { status = true, tehsils });
         }
 
-        [HttpGet]
-        public IActionResult GetBlocks(string districtId)
-        {
-            int DistrictId = Convert.ToInt32(districtId);
-            var blocks = dbcontext.Blocks.Where(u => u.DistrictId == DistrictId).ToList();
-            return Json(new { status = true, blocks });
-        }
+        // [HttpGet]
+        // public IActionResult GetBlocks(string districtId)
+        // {
+        //     int DistrictId = Convert.ToInt32(districtId);
+        //     var blocks = dbcontext.Blocks.Where(u => u.DistrictId == DistrictId).ToList();
+        //     return Json(new { status = true, blocks });
+        // }
 
-        [HttpGet]
-        public async Task<IActionResult> GetApplicationHistory(string ApplicationId, int page, int size)
-        {
-            if (string.IsNullOrEmpty(ApplicationId))
-            {
-                return BadRequest("ApplicationId is required.");
-            }
+        // [HttpGet]
+        // public async Task<IActionResult> GetApplicationHistory(string ApplicationId, int page, int size)
+        // {
+        //     if (string.IsNullOrEmpty(ApplicationId))
+        //     {
+        //         return BadRequest("ApplicationId is required.");
+        //     }
 
-            var parameter = new SqlParameter("@ApplicationId", ApplicationId);
+        //     var parameter = new SqlParameter("@ApplicationId", ApplicationId);
 
-            var history = await dbcontext.Database
-                                         .SqlQuery<ApplicationsHistoryModal>($"EXEC GetApplicationsHistory @ApplicationId = {parameter}")
-                                         .ToListAsync();
+        //     var history = await dbcontext.Database
+        //                                  .SqlQuery<ApplicationsHistoryModal>($"EXEC GetApplicationsHistory @ApplicationId = {parameter}")
+        //                                  .ToListAsync();
 
-            Dictionary<string, string> actionMap = new()
-            {
-                {"Pending","Pending"},
-                {"Forwarded","Forwarded"},
-                {"Sanctioned","Sanctioned"},
-                {"Returned","Returned"},
-                {"Rejected","Rejected"},
-                {"ReturnToEdit","Returned to citizen for edition"},
-                {"Deposited","Inserted to Bank File"},
-                {"Dispatched","Payment Under Process"},
-                {"Disbursed","Payment Disbursed"},
-                {"Failure","Payment Failed"},
-            };
+        //     Dictionary<string, string> actionMap = new()
+        //     {
+        //         {"Pending","Pending"},
+        //         {"Forwarded","Forwarded"},
+        //         {"Sanctioned","Sanctioned"},
+        //         {"Returned","Returned"},
+        //         {"Rejected","Rejected"},
+        //         {"ReturnToEdit","Returned to citizen for edition"},
+        //         {"Deposited","Inserted to Bank File"},
+        //         {"Dispatched","Payment Under Process"},
+        //         {"Disbursed","Payment Disbursed"},
+        //         {"Failure","Payment Failed"},
+        //     };
 
-            var columns = new List<dynamic>
-            {
-                new { label = "S.No", value="sno" },
-                new { label = "Receive On",value="receivedOn" },
-                new { label = "Currently With", value="currentlyWith" },
-                new { label = "Action Taken",value="actionTaken" },
-                new { label = "Remarks",value="remarks" }
-            };
+        //     var columns = new List<dynamic>
+        //     {
+        //         new { label = "S.No", value="sno" },
+        //         new { label = "Receive On",value="receivedOn" },
+        //         new { label = "Currently With", value="currentlyWith" },
+        //         new { label = "Action Taken",value="actionTaken" },
+        //         new { label = "Remarks",value="remarks" }
+        //     };
 
-            var data = history.Select((item, index) => new
-            {
-                sno = index + 1,
-                receivedOn = item.TakenAt,
-                currentlyWith = item.ActionTaken == "Dispatched" ? "Bank" : item.ActionTaken == "Disbursed" || item.ActionTaken == "Failure" ? "NULL" : item.Designation,
-                actionTaken = actionMap[item.ActionTaken!],
-                remarks = item.Remarks
-            }).AsEnumerable().Skip(page * size).Take(size).ToList();
+        //     var data = history.Select((item, index) => new
+        //     {
+        //         sno = index + 1,
+        //         receivedOn = item.TakenAt,
+        //         currentlyWith = item.ActionTaken == "Dispatched" ? "Bank" : item.ActionTaken == "Disbursed" || item.ActionTaken == "Failure" ? "NULL" : item.Designation,
+        //         actionTaken = actionMap[item.ActionTaken!],
+        //         remarks = item.Remarks
+        //     }).AsEnumerable().Skip(page * size).Take(size).ToList();
 
-            return Json(new { status = true, data, columns, totalCount = data.Count });
-        }
+        //     return Json(new { status = true, data, columns, totalCount = data.Count });
+        // }
 
         public int GetCountPerDistrict(int districtId, int serviceId)
         {
@@ -298,72 +299,163 @@ namespace ReactMvcApp.Controllers.User
             return Json(result);
         }
 
+        public dynamic GetFormattedValue(dynamic item, dynamic data)
+        {
+            var values = new List<object>();
+            foreach (var key in item.Fields)
+            {
+                // If GetValue is true and the key requires a lookup (e.g. District or Tehsil), get the looked‑up value.
+                // Otherwise, simply grab the raw value from data.
+                string fieldValue = (item.GetValue != null && item.GetValue == true &&
+                                     (key.Contains("District") || key.Contains("Tehsil")))
+                    ? GetStringValue(key, data)
+                    : data[key];
+                values.Add(fieldValue);
+            }
+
+            // If a TransformString template is provided, format it with all values;
+            // otherwise, return the first value's string representation.
+            string formattedValue = item.TransformString != null
+                   ? string.Format(item.TransformString, values.ToArray())
+                   : (values.FirstOrDefault()?.ToString() ?? "");
+
+            // Note: fix the typo here: use item.Label, not item.Lable.
+            return new { Label = item.Label, Value = formattedValue };
+        }
+
+        public string GetStringValue(string fieldName, dynamic data)
+        {
+            int value = Convert.ToInt32(data[fieldName]);
+            if (fieldName.Contains("District"))
+                return dbcontext.Districts.FirstOrDefault(d => d.DistrictId == value)!.DistrictName!;
+            else if (fieldName.Contains("Tehsil"))
+                return dbcontext.Tehsils.FirstOrDefault(t => t.TehsilId == value)!.TehsilName!;
+            else
+                return "Unknown Value";
+        }
+
+
         private dynamic FetchAcknowledgementDetails(string applicationId)
         {
-            // Retrieve ApplicationId from JWT claim
 
-            if (string.IsNullOrEmpty(applicationId))
+
+            var acknowledgement = new dynamic[]
             {
-                return new { }; // Return an empty dictionary
+                    new
+                    {
+                        Fields = new List<string> { "RelationName", "Relation" },
+                        Label = "PARENTAGE",
+                        TransformString = "{0} ({1})",
+                        GetValue = (bool?)null
+                    },
+                    new
+                    {
+                        Fields = new List<string> { "PensionType" },
+                        Label = "PENSION TYPE",
+                        TransformString = (string)null!,
+                        GetValue = (bool?)null
+                    },
+                    new
+                    {
+                        Fields = new List<string> { "District" },
+                        Label = "APPLIED DISTRICT",
+                        TransformString = (string)null!,
+                        GetValue = true
+                    },
+                    new
+                    {
+                        Fields = new List<string> { "BankName" },
+                        Label = "BANK NAME",
+                        TransformString = (string)null!,
+                        GetValue = (bool?)null
+                    },
+                    new
+                    {
+                        Fields = new List<string> { "AccountNumber" },
+                        Label = "ACCOUNT NUMBER",
+                        TransformString = (string)null!,
+                        GetValue = (bool?)null
+                    },
+                    new
+                    {
+                        Fields = new List<string> { "IfscCode" },
+                        Label = "IFSC CODE",
+                        TransformString = (string)null!,
+                        GetValue = (bool?)null
+                    },
+                    new
+                    {
+                        Fields = new List<string> { "PresentAddress", "PresentTehsil", "PresentDistrict", "PresentPincode" },
+                        Label = "Present Address",
+                        TransformString = "{0}  TEHSIL:{2} DISTRICT:{1} PINCODE:{3}",
+                        GetValue = true
+                    },
+                    new
+                    {
+                        Fields = new List<string> { "PermanentAddress","PermanentTehsil", "PermanentDistrict",  "PermanentPincode" },
+                        Label = "Permanent Address",
+                        TransformString = "{0}  TEHSIL:{2} DISTRICT:{1} PINCODE:{3}",
+                        GetValue = true
+                    }
+            };
+
+            var details = dbcontext.CitizenApplications
+                            .FirstOrDefault(ca => ca.ReferenceNumber == applicationId);
+            var data = JsonConvert.DeserializeObject<dynamic>(details!.FormDetails!);
+
+            var acknowledgementDetails = new OrderedDictionary()
+            {
+                { "REFERENCE NUMBER", details.ReferenceNumber}
             }
+            ;
+
+            foreach (var item in acknowledgement)
+            {
+                dynamic obj = GetFormattedValue(item, data);
+                acknowledgementDetails.Add(obj.Label, obj.Value);
+            }
+
+            acknowledgementDetails.Insert(7, "DATE OF SUBMISSION", details.CreatedAt!);
+
+            _pdfService.CreateAcknowledgement(acknowledgementDetails, applicationId);
 
             string path = "files/" + applicationId.Replace("/", "_") + "Acknowledgement.pdf";
 
-            var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails, docs) = helper.GetUserDetailsAndRelatedData(applicationId);
-            int districtCode = Convert.ToInt32(serviceSpecific["District"]);
-            string appliedDistrict = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == districtCode)?.DistrictName ?? "Unknown District";
-
-            var details = new Dictionary<string, string>
-            {
-                ["REFERENCE NUMBER"] = userDetails.ApplicationId,
-                ["APPLICANT NAME"] = userDetails.ApplicantName,
-                ["PARENTAGE"] = userDetails.RelationName + $" ({userDetails.Relation.ToUpper()})",
-                ["MOTHER NAME"] = serviceSpecific["MotherName"],
-                ["APPLIED DISTRICT"] = appliedDistrict.ToUpper(),
-                ["BANK NAME"] = bankDetails["BankName"],
-                ["ACCOUNT NUMBER"] = bankDetails["AccountNumber"],
-                ["IFSC CODE"] = bankDetails["IfscCode"],
-                ["DATE OF MARRIAGE"] = serviceSpecific["DateOfMarriage"],
-                ["DATE OF SUBMISSION"] = userDetails.SubmissionDate!,
-                ["PRESENT ADDRESS"] = $"{preAddressDetails.Address}, TEHSIL: {preAddressDetails.Tehsil}, DISTRICT: {preAddressDetails.District}, PIN CODE: {preAddressDetails.Pincode}",
-                ["PERMANENT ADDRESS"] = $"{perAddressDetails.Address}, TEHSIL: {perAddressDetails.Tehsil}, DISTRICT: {perAddressDetails.District}, PIN CODE: {perAddressDetails.Pincode}"
-            };
-
-            return new { details, path };
+            return new { path };
         }
 
-        public IActionResult GetEditForm(string applicationId)
-        {
-            var application = dbcontext.Applications.FirstOrDefault(app => app.ApplicationId == applicationId);
-            var editList = JsonConvert.DeserializeObject<string[]>(application!.EditList);
-            var serviceSpecific = JsonConvert.DeserializeObject<dynamic>(application.ServiceSpecific);
-            var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == application.ServiceId);
-            var formElements = JsonConvert.DeserializeObject<dynamic>(service!.FormElement!);
-            List<dynamic> EditFields = [];
-            foreach (var element in formElements!)
-            {
-                var fields = element.fields;
-                foreach (var field in fields)
-                {
-                    string fieldName = field.name.ToString();
-                    string value = "";
-                    if (editList!.Contains(fieldName))
-                    {
-                        if (application.GetType().GetProperty(fieldName) != null)
-                            value = application.GetType().GetProperty(fieldName)!.GetValue(application)!.ToString()!;
-                        else
-                            value = serviceSpecific![fieldName];
+        // public IActionResult GetEditForm(string applicationId)
+        // {
+        //     var application = dbcontext.Applications.FirstOrDefault(app => app.ApplicationId == applicationId);
+        //     var editList = JsonConvert.DeserializeObject<string[]>(application!.EditList);
+        //     var serviceSpecific = JsonConvert.DeserializeObject<dynamic>(application.ServiceSpecific);
+        //     var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == application.ServiceId);
+        //     var formElements = JsonConvert.DeserializeObject<dynamic>(service!.FormElement!);
+        //     List<dynamic> EditFields = [];
+        //     foreach (var element in formElements!)
+        //     {
+        //         var fields = element.fields;
+        //         foreach (var field in fields)
+        //         {
+        //             string fieldName = field.name.ToString();
+        //             string value = "";
+        //             if (editList!.Contains(fieldName))
+        //             {
+        //                 if (application.GetType().GetProperty(fieldName) != null)
+        //                     value = application.GetType().GetProperty(fieldName)!.GetValue(application)!.ToString()!;
+        //                 else
+        //                     value = serviceSpecific![fieldName];
 
-                        field["value"] = value;
-                        EditFields.Add(field);
-                    }
-                }
-            }
+        //                 field["value"] = value;
+        //                 EditFields.Add(field);
+        //             }
+        //         }
+        //     }
 
 
 
-            return Json(new { EditFields });
-        }
+        //     return Json(new { EditFields });
+        // }
 
         public static bool HasProperty<T>(string propertyName)
         {

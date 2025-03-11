@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -49,11 +50,15 @@ namespace ReactMvcApp.Controllers
             var random = new Random();
             return new string(Enumerable.Range(0, length).Select(_ => random.Next(0, 10).ToString()[0]).ToArray());
         }
+     
 
         public IActionResult Index()
         {
+        
+
             return View();
         }
+
 
         [HttpPost]
         public async Task<IActionResult> OfficerRegistration([FromForm] IFormCollection form)
@@ -140,8 +145,8 @@ namespace ReactMvcApp.Controllers
                 {
                     new(ClaimTypes.NameIdentifier, user.UserId.ToString()), // UserId as NameIdentifier
                     new(ClaimTypes.Name, form["username"].ToString()),                // Username
-                    new(ClaimTypes.Role, user.UserType),                   // UserType as Role
-                    new("Profile", user.Profile),                          // Custom claim for Profile
+                    new(ClaimTypes.Role, user.UserType!),                   // UserType as Role
+                    new("Profile", user.Profile!),                          // Custom claim for Profile
                 };
 
                 // Include designation if applicable
@@ -272,7 +277,7 @@ namespace ReactMvcApp.Controllers
                     var user = _dbContext.Users.FirstOrDefault(u => u.UserId.ToString() == userIdClaim);
                     if (user != null)
                     {
-                        var backupCodes = JsonConvert.DeserializeObject<Dictionary<string, List<string>>>(user.BackupCodes);
+                        var backupCodes = JsonConvert.DeserializeObject<Dictionary<string, List<string>>>(user.BackupCodes!);
                         if (backupCodes != null && backupCodes.TryGetValue("unused", out var unused) && backupCodes.TryGetValue("used", out var used))
                         {
                             if (unused.Contains(backupCode))
@@ -330,24 +335,24 @@ namespace ReactMvcApp.Controllers
             return Json(new { status = true, designations });
         }
 
-        [HttpPost]
-        public IActionResult Contact([FromForm] IFormCollection form)
-        {
-            var fullName = form["fullName"].ToString();
-            var email = form["email"].ToString();
-            var message = form["message"].ToString();
+        // [HttpPost]
+        // public IActionResult Contact([FromForm] IFormCollection form)
+        // {
+        //     var fullName = form["fullName"].ToString();
+        //     var email = form["email"].ToString();
+        //     var message = form["message"].ToString();
 
-            _dbContext.Contacts.Add(new Contact
-            {
-                FullName = fullName,
-                Email = email,
-                Message = message,
-                SubmissionDate = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")
-            });
-            _dbContext.SaveChanges();
+        //     _dbContext.Contacts.Add(new Contact
+        //     {
+        //         FullName = fullName,
+        //         Email = email,
+        //         Message = message,
+        //         SubmissionDate = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")
+        //     });
+        //     _dbContext.SaveChanges();
 
-            return Json(new { status = true, message = "Submitted successfully." });
-        }
+        //     return Json(new { status = true, message = "Submitted successfully." });
+        // }
 
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

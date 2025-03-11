@@ -9,9 +9,5 @@ public partial class Tehsil
 
     public int TehsilId { get; set; }
 
-    public string TehsilName { get; set; } = null!;
-
-    public virtual District District { get; set; } = null!;
-
-    public virtual ICollection<Village> Villages { get; set; } = new List<Village>();
+    public string? TehsilName { get; set; }
 }

@@ -249,7 +249,7 @@ namespace ReactMvcApp.Controllers.Officer
 
             foreach (var details in response)
             {
-                var formDetails = JsonConvert.DeserializeObject<dynamic>(details.FormDetails);
+                var formDetails = JsonConvert.DeserializeObject<dynamic>(details.FormDetails!);
                 data.Add(new
                 {
                     referenceNumber = details.ReferenceNumber,
@@ -272,8 +272,8 @@ namespace ReactMvcApp.Controllers.Officer
             var details = dbcontext.CitizenApplications
                           .FirstOrDefault(ca => ca.ReferenceNumber == applicationId);
 
-            var formDetails = JsonConvert.DeserializeObject<dynamic>(details!.FormDetails);
-            var officerDetails = JsonConvert.DeserializeObject<dynamic>(details.WorkFlow);
+            var formDetails = JsonConvert.DeserializeObject<dynamic>(details!.FormDetails!);
+            var officerDetails = JsonConvert.DeserializeObject<dynamic>(details.WorkFlow!);
             int currentPlayer = details.CurrentPlayer;
 
             // Convert officerDetails to a JArray so we can filter it.

@@ -42,6 +42,7 @@ export default function CreateWorkflow() {
     status: "",
     completedAt: null,
     remarks: "",
+    canPull: false,
   });
 
   // State for service selection and services list
@@ -233,6 +234,7 @@ export default function CreateWorkflow() {
       status: "",
       completedAt: null,
       remarks: "",
+      canPull: false,
     });
   };
 

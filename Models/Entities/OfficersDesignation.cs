@@ -7,9 +7,9 @@ public partial class OfficersDesignation
 {
     public int Uuid { get; set; }
 
-    public string Designation { get; set; } = null!;
+    public string? Designation { get; set; }
 
-    public string DesignationShort { get; set; } = null!;
+    public string? DesignationShort { get; set; }
 
-    public string AccessLevel { get; set; } = null!;
+    public string? AccessLevel { get; set; }
 }

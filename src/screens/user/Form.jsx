@@ -14,7 +14,7 @@ import {
 } from "@mui/material";
 import { Col, Row } from "react-bootstrap";
 import { GetServiceContent } from "../../assets/fetch";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import axiosInstance from "../../axiosConfig";
 
 const commonStyles = {
@@ -45,6 +45,7 @@ const DynamicStepForm = () => {
   const [services, setServices] = useState([]); // State for services list
   const [selectedServiceId, setSelectedServiceId] = useState(""); // State for selected service
   const location = useLocation();
+  const navigate = useNavigate();
   // State for checkbox
   const [isCopyAddressChecked, setIsCopyAddressChecked] = useState(false);
 
@@ -170,8 +171,6 @@ const DynamicStepForm = () => {
       });
     });
 
-    console.log("Final flat data:", finalFormData);
-
     // Create a FormData object to send to the server.
     const formdata = new FormData();
     formdata.append("serviceId", selectedServiceId);
@@ -190,7 +189,11 @@ const DynamicStepForm = () => {
       "/User/InsertFormDetails",
       formdata
     );
-    console.log(response);
+    const result = response.data;
+    if (result.status)
+      navigate("/user/acknowledge", {
+        state: { applicationId: result.referenceNumber },
+      });
   };
 
   // When a district field changes, fetch tehsils and update the corresponding tehsil field's options

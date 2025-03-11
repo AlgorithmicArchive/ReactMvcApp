@@ -56,115 +56,115 @@ namespace ReactMvcApp.Controllers.Admin
             return Json(new { serviceList });
         }
 
-        [HttpGet]
-        public IActionResult GetApplicationsCount(int? ServiceId = null, int? DistrictId = null)
-        {
-            var officerDetails = GetOfficerDetails();
+        // [HttpGet]
+        // public IActionResult GetApplicationsCount(int? ServiceId = null, int? DistrictId = null)
+        // {
+        //     var officerDetails = GetOfficerDetails();
 
-            var authorities = dbcontext.WorkFlows.FirstOrDefault(wf => wf.ServiceId == ServiceId && wf.Role == officerDetails!.Role);
+        //     var authorities = dbcontext.WorkFlows.FirstOrDefault(wf => wf.ServiceId == ServiceId && wf.Role == officerDetails!.Role);
 
-            var districts = dbcontext.Districts
-            .Where(d => dbcontext.OfficerDetails
-                .Any(od => (od.AccessLevel == "Division" && od.AccessCode == d.Division) ||
-                            od.AccessLevel == "State"))
-            .Select(d => new
-            {
-                label = d.DistrictName,
-                value = d.DistrictId
-            })
-            .ToList();
-
-
-            var services = dbcontext.Services
-                .Select(s => new
-                {
-                    label = s.ServiceName,
-                    value = s.ServiceId
-                })
-                .ToList();
-
-            // Populate lists directly
-            List<dynamic> Districts = districts.Cast<dynamic>().ToList();
-            List<dynamic> Services = services.Cast<dynamic>().ToList();
+        //     var districts = dbcontext.Districts
+        //     .Where(d => dbcontext.OfficerDetails
+        //         .Any(od => (od.AccessLevel == "Division" && od.AccessCode == d.Division) ||
+        //                     od.AccessLevel == "State"))
+        //     .Select(d => new
+        //     {
+        //         label = d.DistrictName,
+        //         value = d.DistrictId
+        //     })
+        //     .ToList();
 
 
-            var serviceIdParam = new SqlParameter("@ServiceId", (object)ServiceId! ?? DBNull.Value);
-            var districtIdParam = new SqlParameter("@DistrictId", (object)DistrictId! ?? DBNull.Value);
-            var accessLevelParam = new SqlParameter("@AccessLevel", officerDetails.AccessLevel);
-            var accessCodeParam = new SqlParameter("@AccessCode", officerDetails.AccessCode);
+        //     var services = dbcontext.Services
+        //         .Select(s => new
+        //         {
+        //             label = s.ServiceName,
+        //             value = s.ServiceId
+        //         })
+        //         .ToList();
 
-            // Execute the stored procedure with parameters
-            var counts = dbcontext.Database
-                .SqlQueryRaw<StatusCountsSA>(
-                    "EXEC GetStatusCount_SA @ServiceId, @DistrictId, @AccessLevel, @AccessCode",
-                     serviceIdParam, districtIdParam, accessLevelParam, accessCodeParam)
-                .AsEnumerable()
-                .FirstOrDefault();
-
-            List<dynamic> countList = [];
-            countList.Add(new { label = "Total", count = counts!.TotalApplications, bgColor = "#F0C38E", textColor = "#312C51" });
-            countList.Add(new { label = "Pending", count = counts!.PendingCount, bgColor = "#FFC107", textColor = "#000000" });
-            countList.Add(new { label = "Sanctioned", count = counts!.SanctionCount, bgColor = "#81C784", textColor = "#1B5E20" });
-            countList.Add(new { label = "Disbursed", count = counts!.DisbursedCount, bgColor = "#4CAF50", textColor = "#FFFFFF" });
-            countList.Add(new { label = "Citizen Pending", count = counts!.ReturnToEditCount, bgColor = "#CE93D8", textColor = "#4A148C" });
-            countList.Add(new { label = "Rejected", count = counts!.RejectCount, bgColor = "#FF7043", textColor = "#B71C1C" });
-
-            return Json(new { countList, Districts, Services });
-        }
-
-        public IActionResult GetApplicationDetails(int? ServiceId = null, int? DistrictId = null, string? ApplicationStatus = null, int page = 0, int size = 10)
-        {
-            var officerDetails = GetOfficerDetails();
-            var serviceIdParam = new SqlParameter("@ServiceId", ServiceId ?? (object)DBNull.Value);
-            var districtIdParam = new SqlParameter("@DistrictId", DistrictId ?? (object)DBNull.Value);
-            var accessLevelParam = new SqlParameter("@AccessLevel", officerDetails.AccessLevel ?? (object)DBNull.Value);
-            var accessCodeParam = new SqlParameter("@AccessCode", officerDetails.AccessCode);
-            var appStatusParam = new SqlParameter("@ApplicationStatus", ApplicationStatus ?? (object)DBNull.Value);
-
-            var applications = dbcontext.Database
-                .SqlQueryRaw<ApplicationDetailsSA>(
-                    "EXEC GetApplications_SA @ServiceId, @DistrictId, @AccessLevel, @AccessCode, @ApplicationStatus",
-                     serviceIdParam, districtIdParam, accessLevelParam, accessCodeParam, appStatusParam)
-                .ToList();
-
-            var columns = new List<dynamic>
-            {
-                new { label = "S.No", value = "sno" },
-                new { label = "Reference Number", value = "referenceNumber" },
-                new { label = "Applicant Name", value = "applicantName" },
-                new { label = "Submission Date", value = "submissionDate" },
-                new { label = "Applied District", value = "appliedDistrict" },
-                new { label = "Applied Service", value = "appliedService" },
-                new { label = "Currently With", value = "currentlyWith" },
-                new { label = "Status", value = "status" }
-            };
-
-            List<dynamic> data = [];
-            int index = 1;
-
-            foreach (var item in applications)
-            {
-                var cell = new
-                {
-                    sno = index,
-                    referenceNumber = item.ReferenceNumber,
-                    applicantName = item.ApplicantName,
-                    submissionDate = item.SubmissionDate,
-                    appliedDistrict = item.AppliedDistrict,
-                    appliedService = item.AppliedService,
-                    currentlyWith = item.CurrentlyWith,
-                    status = item.Status
-                };
-                data.Add(cell);
-                index++;
-            }
+        //     // Populate lists directly
+        //     List<dynamic> Districts = districts.Cast<dynamic>().ToList();
+        //     List<dynamic> Services = services.Cast<dynamic>().ToList();
 
 
-            var paginatedData = data.AsEnumerable()
-                .Skip(page * size)
-                .Take(size).ToList();
-            return Json(new { columns, data = paginatedData, totalCount = data.Count });
-        }
+        //     var serviceIdParam = new SqlParameter("@ServiceId", (object)ServiceId! ?? DBNull.Value);
+        //     var districtIdParam = new SqlParameter("@DistrictId", (object)DistrictId! ?? DBNull.Value);
+        //     var accessLevelParam = new SqlParameter("@AccessLevel", officerDetails.AccessLevel);
+        //     var accessCodeParam = new SqlParameter("@AccessCode", officerDetails.AccessCode);
+
+        //     // Execute the stored procedure with parameters
+        //     var counts = dbcontext.Database
+        //         .SqlQueryRaw<StatusCountsSA>(
+        //             "EXEC GetStatusCount_SA @ServiceId, @DistrictId, @AccessLevel, @AccessCode",
+        //              serviceIdParam, districtIdParam, accessLevelParam, accessCodeParam)
+        //         .AsEnumerable()
+        //         .FirstOrDefault();
+
+        //     List<dynamic> countList = [];
+        //     countList.Add(new { label = "Total", count = counts!.TotalApplications, bgColor = "#F0C38E", textColor = "#312C51" });
+        //     countList.Add(new { label = "Pending", count = counts!.PendingCount, bgColor = "#FFC107", textColor = "#000000" });
+        //     countList.Add(new { label = "Sanctioned", count = counts!.SanctionCount, bgColor = "#81C784", textColor = "#1B5E20" });
+        //     countList.Add(new { label = "Disbursed", count = counts!.DisbursedCount, bgColor = "#4CAF50", textColor = "#FFFFFF" });
+        //     countList.Add(new { label = "Citizen Pending", count = counts!.ReturnToEditCount, bgColor = "#CE93D8", textColor = "#4A148C" });
+        //     countList.Add(new { label = "Rejected", count = counts!.RejectCount, bgColor = "#FF7043", textColor = "#B71C1C" });
+
+        //     return Json(new { countList, Districts, Services });
+        // }
+
+        // public IActionResult GetApplicationDetails(int? ServiceId = null, int? DistrictId = null, string? ApplicationStatus = null, int page = 0, int size = 10)
+        // {
+        //     var officerDetails = GetOfficerDetails();
+        //     var serviceIdParam = new SqlParameter("@ServiceId", ServiceId ?? (object)DBNull.Value);
+        //     var districtIdParam = new SqlParameter("@DistrictId", DistrictId ?? (object)DBNull.Value);
+        //     var accessLevelParam = new SqlParameter("@AccessLevel", officerDetails.AccessLevel ?? (object)DBNull.Value);
+        //     var accessCodeParam = new SqlParameter("@AccessCode", officerDetails.AccessCode);
+        //     var appStatusParam = new SqlParameter("@ApplicationStatus", ApplicationStatus ?? (object)DBNull.Value);
+
+        //     var applications = dbcontext.Database
+        //         .SqlQueryRaw<ApplicationDetailsSA>(
+        //             "EXEC GetApplications_SA @ServiceId, @DistrictId, @AccessLevel, @AccessCode, @ApplicationStatus",
+        //              serviceIdParam, districtIdParam, accessLevelParam, accessCodeParam, appStatusParam)
+        //         .ToList();
+
+        //     var columns = new List<dynamic>
+        //     {
+        //         new { label = "S.No", value = "sno" },
+        //         new { label = "Reference Number", value = "referenceNumber" },
+        //         new { label = "Applicant Name", value = "applicantName" },
+        //         new { label = "Submission Date", value = "submissionDate" },
+        //         new { label = "Applied District", value = "appliedDistrict" },
+        //         new { label = "Applied Service", value = "appliedService" },
+        //         new { label = "Currently With", value = "currentlyWith" },
+        //         new { label = "Status", value = "status" }
+        //     };
+
+        //     List<dynamic> data = [];
+        //     int index = 1;
+
+        //     foreach (var item in applications)
+        //     {
+        //         var cell = new
+        //         {
+        //             sno = index,
+        //             referenceNumber = item.ReferenceNumber,
+        //             applicantName = item.ApplicantName,
+        //             submissionDate = item.SubmissionDate,
+        //             appliedDistrict = item.AppliedDistrict,
+        //             appliedService = item.AppliedService,
+        //             currentlyWith = item.CurrentlyWith,
+        //             status = item.Status
+        //         };
+        //         data.Add(cell);
+        //         index++;
+        //     }
+
+
+        //     var paginatedData = data.AsEnumerable()
+        //         .Skip(page * size)
+        //         .Take(size).ToList();
+        //     return Json(new { columns, data = paginatedData, totalCount = data.Count });
+        // }
 
 
         // public IActionResult Dashboard()
