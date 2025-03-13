@@ -28,6 +28,8 @@ namespace ReactMvcApp.Controllers.User
             int userId = Convert.ToInt32(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
             int serviceId = Convert.ToInt32(form["serviceId"].ToString());
             string formDetailsJson = form["formDetails"].ToString();
+            string status = form["status"].ToString();
+            string referenceNumber = form["referenceNumber"].ToString();
 
             // Parse the JSON into a JObject (flat structure)
             var formDetailsObj = JObject.Parse(formDetailsJson);
@@ -61,41 +63,63 @@ namespace ReactMvcApp.Controllers.User
                 }
             }
 
-            int count = GetCountPerDistrict(districtId, serviceId);
-            var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
 
-            var workFlow = service!.OfficerEditableField;
-
-            // Update the first player's status to "pending" if workflow is not null/empty.
-            if (!string.IsNullOrEmpty(workFlow))
+            if (string.IsNullOrEmpty(referenceNumber))
             {
-                var players = JArray.Parse(workFlow);
-                if (players.Count > 0)
+                int count = GetCountPerDistrict(districtId, serviceId);
+                var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
+
+                var workFlow = service!.OfficerEditableField;
+
+                // Update the first player's status to "pending" if workflow is not null/empty.
+                if (!string.IsNullOrEmpty(workFlow))
                 {
-                    players[0]["status"] = "pending";
+                    var players = JArray.Parse(workFlow);
+                    if (players.Count > 0)
+                    {
+                        players[0]["status"] = "pending";
+                    }
+                    workFlow = players.ToString(Formatting.None);
                 }
-                workFlow = players.ToString(Formatting.None);
+
+                var finYear = helper.GetCurrentFinancialYear();
+                referenceNumber = "JK-" + service.NameShort + "/" + finYear + "/" + count;
+                var createdAt = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
+
+                // Store the updated JSON (with file paths) in the database.
+                var newFormDetails = new CitizenApplication
+                {
+                    ReferenceNumber = referenceNumber,
+                    CitizenId = userId,
+                    ServiceId = serviceId,
+                    FormDetails = formDetailsObj.ToString(),
+                    WorkFlow = workFlow!,
+                    Status = status,
+                    CreatedAt = createdAt
+                };
+
+                dbcontext.CitizenApplications.Add(newFormDetails);
+            }
+            else
+            {
+                var application = dbcontext.CitizenApplications.FirstOrDefault(a => a.ReferenceNumber == referenceNumber);
+                application!.FormDetails = formDetailsObj.ToString();
+                if (application.Status != status)
+                {
+                    application.Status = status;
+                }
+                application.CreatedAt = DateTime.Now.ToString("dd MMM yyyyy hh:mm:ss tt");
             }
 
-            var finYear = helper.GetCurrentFinancialYear();
-            var referenceNumber = "JK-" + service.NameShort + "/" + finYear + "/" + count;
-            var createdAt = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
-
-            // Store the updated JSON (with file paths) in the database.
-            var newFormDetails = new CitizenApplication
-            {
-                ReferenceNumber = referenceNumber,
-                CitizenId = userId,
-                ServiceId = serviceId,
-                FormDetails = formDetailsObj.ToString(),
-                WorkFlow = workFlow!,
-                CreatedAt = createdAt
-            };
-
-            dbcontext.CitizenApplications.Add(newFormDetails);
             dbcontext.SaveChanges();
 
-            return Json(new { status = true, referenceNumber });
+            if (status == "Inititated")
+            {
+                helper.InsertHistory(referenceNumber, "Application Submission", "Citizen");
+                return Json(new { status = true, referenceNumber, type = "Submit" });
+            }
+            else
+                return Json(new { status = true, referenceNumber, type = "Save" });
         }
 
 

@@ -391,22 +391,125 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
         )}
         {/* For enclosure type, just show one options input */}
         {formData.type === "enclosure" && (
-          <TextField
-            fullWidth
-            label="Options (comma-separated)"
-            value={formData.options.map((opt) => opt.label).join(", ")}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                options: e.target.value.split(",").map((optStr) => {
-                  const trimmed = optStr.trim();
-                  return { value: trimmed, label: trimmed };
-                }),
-              })
-            }
-            margin="dense"
-          />
+          <>
+            {/* Checkbox to determine if the enclosure is dependent */}
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={formData.isDependentEnclosure || false}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      isDependentEnclosure: e.target.checked,
+                      dependentField: e.target.checked ? "" : null, // Reset when unchecked
+                      dependentValues: e.target.checked ? [] : null, // Reset when unchecked
+                    })
+                  }
+                />
+              }
+              label="Is Dependent on Another Field?"
+            />
+
+            {/* Dependency Configuration Section */}
+            {formData.isDependentEnclosure && (
+              <>
+                {/* Select the field on which the enclosure depends */}
+                <FormControl fullWidth margin="dense">
+                  <InputLabel id="dependent-field-label">
+                    Dependent Field
+                  </InputLabel>
+                  <Select
+                    labelId="dependent-field-label"
+                    value={formData.dependentField || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        dependentField: e.target.value,
+                      })
+                    }
+                  >
+                    {sections
+                      .flatMap((section) => section.fields)
+                      .filter((field) => field.type === "select") // Only dropdown fields
+                      .map((field) => (
+                        <MenuItem key={field.name} value={field.name}>
+                          {field.label}
+                        </MenuItem>
+                      ))}
+                  </Select>
+                </FormControl>
+
+                {/* Select the specific values from the dependent field */}
+                {formData.dependentField && (
+                  <FormControl fullWidth margin="dense">
+                    <InputLabel id="dependent-values-label">
+                      Dependent Values (Select Multiple)
+                    </InputLabel>
+                    <Select
+                      labelId="dependent-values-label"
+                      multiple
+                      value={formData.dependentValues || []}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          dependentValues: e.target.value,
+                        })
+                      }
+                      renderValue={(selected) =>
+                        selected
+                          .map(
+                            (val) =>
+                              sections
+                                .flatMap((section) => section.fields)
+                                .find(
+                                  (field) =>
+                                    field.name === formData.dependentField
+                                )
+                                ?.options.find((opt) => opt.value === val)
+                                ?.label
+                          )
+                          .join(", ")
+                      }
+                    >
+                      {(() => {
+                        const allFields = sections.flatMap(
+                          (section) => section.fields
+                        );
+                        const parentField = allFields.find(
+                          (field) => field.name === formData.dependentField
+                        );
+
+                        return parentField?.options?.map((option) => (
+                          <MenuItem key={option.value} value={option.value}>
+                            {option.label}
+                          </MenuItem>
+                        ));
+                      })()}
+                    </Select>
+                  </FormControl>
+                )}
+              </>
+            )}
+
+            {/* Enclosure Options Section */}
+            <TextField
+              fullWidth
+              label="Options (comma-separated)"
+              value={formData.options.map((opt) => opt.label).join(", ")}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  options: e.target.value.split(",").map((optStr) => {
+                    const trimmed = optStr.trim();
+                    return { value: trimmed, label: trimmed };
+                  }),
+                })
+              }
+              margin="dense"
+            />
+          </>
         )}
+
         {formData.type === "file" && (
           <TextField
             fullWidth

@@ -250,6 +250,17 @@ namespace ReactMvcApp.Controllers.Officer
             foreach (var details in response)
             {
                 var formDetails = JsonConvert.DeserializeObject<dynamic>(details.FormDetails!);
+                var officers = JsonConvert.DeserializeObject<dynamic>(details.WorkFlow!) as JArray;
+                if (type == "Forwarded" || type == "Returned")
+                {
+                    var currentOfficer = officers!.FirstOrDefault(o => (string)o["designation"]! == officerDetails.Role);
+                    _logger.LogInformation($"----------- CAN PULL: {currentOfficer!["canPull"]}-----");
+                    if ((bool)currentOfficer!["canPull"]!)
+                    {
+                        customActions.Clear();
+                        customActions.Add(new { type = "Pull", tooltip = "Pull", color = "#F0C38E", actionFunction = "pullApplication" });
+                    }
+                }
                 data.Add(new
                 {
                     referenceNumber = details.ReferenceNumber,
@@ -281,7 +292,15 @@ namespace ReactMvcApp.Controllers.Officer
             // Get the officer details for the current player.
             var currentOfficer = officerArray?.FirstOrDefault(o => (int)o["playerId"]! == currentPlayer);
 
-            List<dynamic> list = new List<dynamic>();
+            var previousOfficer = officerArray?.FirstOrDefault(o => (int)o["playerId"]! == (currentPlayer - 1));
+            if (previousOfficer != null) previousOfficer["canPull"] = false;
+            var nextOfficer = officerArray?.FirstOrDefault(o => (int)o["playerId"]! == (currentPlayer + 1));
+            if (nextOfficer != null) nextOfficer["canPull"] = false;
+
+            details.WorkFlow = JsonConvert.SerializeObject(officerArray);
+            dbcontext.SaveChanges();
+
+            List<dynamic> list = [];
 
             // Initialize dictionary for accumulating key/value pairs.
             var obj = new Dictionary<string, string>();
@@ -334,9 +353,38 @@ namespace ReactMvcApp.Controllers.Officer
             return Json(new { list, currentOfficerDetails = currentOfficer });
         }
 
+
+        [HttpGet]
+        public IActionResult PullApplication(string applicationId)
+        {
+            var officer = GetOfficerDetails();
+            var details = dbcontext.CitizenApplications.FirstOrDefault(ca => ca.ReferenceNumber == applicationId);
+            var players = JsonConvert.DeserializeObject<dynamic>(details?.WorkFlow!) as JArray;
+            var currentPlayer = players?.FirstOrDefault(p => (string)p["designation"]! == officer.Role);
+            string status = (string)currentPlayer?["status"]!;
+
+            dynamic otherPlayer = new { };
+            if (status == "forwarded")
+            {
+                otherPlayer = players?.FirstOrDefault(p => (int)p["playerId"]! == ((int)currentPlayer?["playerId"]! + 1))!;
+            }
+            else if (status == "returned")
+            {
+                otherPlayer = players?.FirstOrDefault(p => (int)p["playerId"]! == ((int)currentPlayer?["playerId"]! - 1))!;
+            }
+            otherPlayer["status"] = status == "forwarded" ? "" : "forwarded";
+            currentPlayer!["status"] = "pending";
+
+            details!.WorkFlow = JsonConvert.SerializeObject(players);
+            details.CurrentPlayer = (int)currentPlayer["playerId"]!;
+            dbcontext.SaveChanges();
+            helper.InsertHistory(applicationId, "Pulled Application", (string)currentPlayer["designation"]!);
+            return Json(new { status = true });
+        }
         [HttpPost]
         public IActionResult HandleAction([FromForm] IFormCollection form)
         {
+            var officer = GetOfficerDetails();
             string applicationId = form["applicationId"].ToString();
             string action = form["defaultAction"].ToString();
             string remarks = form["Remarks"].ToString();
@@ -355,12 +403,14 @@ namespace ReactMvcApp.Controllers.Officer
                         if (action == "Forward")
                         {
                             players[currentPlayer]["status"] = "forwarded";
+                            players[currentPlayer]["canPull"] = true;
                             players[currentPlayer + 1]["status"] = "pending";
                             formdetails.CurrentPlayer = currentPlayer + 1;
                         }
-                        else if (action == "Return")
+                        else if (action == "ReturnToPlayer")
                         {
                             players[currentPlayer]["status"] = "returned";
+                            players[currentPlayer]["canPull"] = true;
                             players[currentPlayer - 1]["status"] = "pending";
                             formdetails.CurrentPlayer = currentPlayer - 1;
                         }
@@ -372,6 +422,10 @@ namespace ReactMvcApp.Controllers.Officer
                         {
                             players[currentPlayer]["status"] = "sanctioned";
                         }
+                        else if (action == "Reject")
+                        {
+                            players[currentPlayer]["status"] = "rejected";
+                        }
                         players[currentPlayer]["remarks"] = remarks;
                         players[currentPlayer]["completedAt"] = DateTime.Now.ToString("dd MMMM yyyy hh:mm:ss tt");
                     }
@@ -379,6 +433,7 @@ namespace ReactMvcApp.Controllers.Officer
                 }
                 formdetails.WorkFlow = workFlow;
                 dbcontext.SaveChanges();
+                helper.InsertHistory(applicationId, action, officer.Role!);
                 return Json(new { status = true });
 
             }

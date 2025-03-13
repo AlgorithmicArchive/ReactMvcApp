@@ -146,8 +146,6 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
         modelBuilder.Entity<Service>(entity =>
         {
-            entity.HasNoKey();
-
             entity.Property(e => e.BankDetails).IsUnicode(false);
             entity.Property(e => e.CreatedAt)
                 .HasMaxLength(50)

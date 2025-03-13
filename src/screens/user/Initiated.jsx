@@ -4,6 +4,7 @@ import CustomTable from "../../components/CustomTable";
 import { fetchData } from "../../assets/fetch";
 import BasicModal from "../../components/BasicModal";
 import { useNavigate } from "react-router-dom";
+import ServerSideTable from "../../components/ServerSideTable";
 
 export default function Initiated() {
   const [open, setOpen] = useState(false);
@@ -14,15 +15,22 @@ export default function Initiated() {
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
   const navigate = useNavigate();
+
+  const actionFunctions = {
+    CreateTimeLine: (row) => {
+      const userdata = row.original;
+      handleOpen();
+      setTable({
+        url: "/User/GetApplicationHistory",
+        params: { ApplicationId: userdata.referenceNumber },
+      });
+    },
+  };
+
   const handleButtonAction = async (functionName, parameters) => {
     const applicationId = parameters[0];
     setApplicationId(applicationId);
     if (functionName == "CreateTimeLine") {
-      handleOpen();
-      setTable({
-        url: "/User/GetApplicationHistory",
-        params: { ApplicationId: applicationId },
-      });
     } else if (functionName == "EditForm") {
       navigate("/user/editform", {
         state: { applicationId: applicationId },
@@ -41,11 +49,10 @@ export default function Initiated() {
       }}
     >
       <Box sx={{ width: { xs: "100%", md: "80%" } }}>
-        <CustomTable
-          title={"Initiated Applications"}
-          fetchData={fetchData}
+        <ServerSideTable
           url="/User/GetInitiatedApplications"
-          buttonActionHandler={handleButtonAction}
+          extraParams={{}}
+          actionFunctions={actionFunctions}
         />
       </Box>
       <BasicModal

@@ -61,7 +61,7 @@ export default function Verification() {
     <Box
       sx={{
         width: "100vw",
-        height: "80vh",
+        height: "60vh",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
@@ -69,11 +69,7 @@ export default function Verification() {
         gap: 3,
       }}
     >
-      <Typography
-        variant="h4"
-        component="h1"
-        sx={{ mb: 3, fontWeight: "bold" }}
-      >
+      <Typography variant="h4" component="h1" sx={{ fontWeight: "bold" }}>
         Verification
       </Typography>
 
@@ -101,7 +97,6 @@ export default function Verification() {
       {selectedOption === "otp" && (
         <Box
           sx={{
-            mt: 4,
             width: "100%",
             maxWidth: 400,
             backgroundColor: "primary.main",
@@ -133,7 +128,6 @@ export default function Verification() {
       {selectedOption === "backup" && (
         <Box
           sx={{
-            mt: 4,
             width: "100%",
             maxWidth: 400,
             backgroundColor: "primary.main",

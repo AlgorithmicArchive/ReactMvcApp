@@ -42,12 +42,30 @@ const DynamicStepForm = () => {
   const [formSections, setFormSections] = useState([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [services, setServices] = useState([]); // State for services list
+  const [buttonLoading, setButtonLoading] = useState(false);
+  const [referenceNumber, setReferenceNumber] = useState("");
   const [selectedServiceId, setSelectedServiceId] = useState(""); // State for selected service
   const location = useLocation();
   const navigate = useNavigate();
   // State for checkbox
   const [isCopyAddressChecked, setIsCopyAddressChecked] = useState(false);
+  const applicantImageFile = watch("ApplicantImage");
+
+  // State to hold the preview URL
+  const [applicantImagePreview, setApplicantImagePreview] = useState(
+    "/assets/images/profile.jpg"
+  );
+
+  useEffect(() => {
+    if (applicantImageFile && applicantImageFile instanceof File) {
+      // Create a preview URL for the uploaded file
+      const objectUrl = URL.createObjectURL(applicantImageFile);
+      setApplicantImagePreview(objectUrl);
+
+      // Clean up the URL when the component unmounts or file changes
+      return () => URL.revokeObjectURL(objectUrl);
+    }
+  }, [applicantImageFile]);
 
   // Fetch services on mount
   useEffect(() => {
@@ -129,10 +147,10 @@ const DynamicStepForm = () => {
     setCurrentStep((prev) => prev - 1);
   };
 
-  const onSubmit = async (data) => {
+  const onSubmit = async (data, operationType) => {
     // This will hold all fields in a flat structure.
     const finalFormData = {};
-
+    setButtonLoading(true);
     // Recursive function to process a field and any nested additional fields.
     const processField = (field, data) => {
       const fieldValue = data[field.name] || "";
@@ -184,16 +202,26 @@ const DynamicStepForm = () => {
         }
       }
     }
-
+    formdata.append(
+      "status",
+      operationType == "submit" ? "Initiated" : "Incomplete"
+    );
+    formdata.append("referenceNumber", referenceNumber);
     const response = await axiosInstance.post(
       "/User/InsertFormDetails",
       formdata
     );
     const result = response.data;
-    if (result.status)
-      navigate("/user/acknowledge", {
-        state: { applicationId: result.referenceNumber },
-      });
+    setButtonLoading(false);
+    if (result.status) {
+      if (result.type == "submit") {
+        navigate("/user/acknowledge", {
+          state: { applicationId: result.referenceNumber },
+        });
+      } else {
+        setReferenceNumber(result.referenceNumber);
+      }
+    }
   };
 
   // When a district field changes, fetch tehsils and update the corresponding tehsil field's options
@@ -283,7 +311,7 @@ const DynamicStepForm = () => {
             rules={{
               validate: async (value) => await runValidations(field, value),
             }}
-            render={({ field: { onChange, ref } }) => (
+            render={({ field: { onChange, ref, value } }) => (
               <FormControl
                 fullWidth
                 margin="normal"
@@ -299,7 +327,10 @@ const DynamicStepForm = () => {
                   <input
                     type="file"
                     hidden
-                    onChange={(e) => onChange(e.target.files[0])}
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      onChange(file);
+                    }}
                     ref={ref}
                     accept={field.accept}
                   />
@@ -425,9 +456,34 @@ const DynamicStepForm = () => {
               selected: field.options[0]?.value || "",
               file: null,
             }}
-            // Adjust composite validation as needed.
             rules={{}}
             render={({ field: { onChange, value, ref } }) => {
+              const isDependent = field.isDependentEnclosure;
+              const parentValue = isDependent
+                ? watch(field.dependentField)
+                : null;
+
+              // Check if the enclosure should be hidden
+              if (
+                isDependent &&
+                (!parentValue || !field.dependentValues.includes(parentValue))
+              ) {
+                return null; // Do not render anything
+              }
+
+              // Get available options based on dependency
+              let options = field.options;
+
+              // Reset selection if the parent field changes
+              useEffect(() => {
+                if (
+                  isDependent &&
+                  !options.find((opt) => opt.value === value.selected)
+                ) {
+                  onChange({ selected: "", file: null });
+                }
+              }, [parentValue]);
+
               return (
                 <FormControl
                   fullWidth
@@ -444,10 +500,12 @@ const DynamicStepForm = () => {
                     value={value.selected || ""}
                     label={field.label}
                     onChange={(e) => {
-                      const newVal = { ...value, selected: e.target.value };
+                      const newVal = {
+                        ...value,
+                        selected: e.target.value,
+                        file: null,
+                      };
                       onChange(newVal);
-                      const isDistrict =
-                        field.name.toLowerCase().includes("district") || false;
                     }}
                     inputRef={ref}
                     sx={{
@@ -457,7 +515,7 @@ const DynamicStepForm = () => {
                       color: "#312C51",
                     }}
                   >
-                    {field.options.map((option) => (
+                    {options.map((option) => (
                       <MenuItem key={option.value} value={option.value}>
                         {option.label}
                       </MenuItem>
@@ -466,10 +524,32 @@ const DynamicStepForm = () => {
                   <FormHelperText>
                     {errors[field.name]?.message || ""}
                   </FormHelperText>
+
+                  {/* Show file name above the button and allow viewing */}
+                  {value.file && (
+                    <FormHelperText
+                      sx={{
+                        cursor: "pointer",
+                        color: "#312C51",
+                        textDecoration: "underline",
+                        fontSize: 16,
+                        textAlign: "center",
+                        "&:hover": { color: "#1A1736" },
+                      }}
+                      onClick={() => {
+                        const fileURL = URL.createObjectURL(value.file);
+                        window.open(fileURL, "_blank");
+                      }}
+                    >
+                      {value.file.name}
+                    </FormHelperText>
+                  )}
+
                   <Button
                     variant="contained"
                     component="label"
                     sx={{ mt: 2, backgroundColor: "#312C51", color: "#fff" }}
+                    disabled={!value.selected} // Disable if no selection
                   >
                     Upload File
                     <input
@@ -510,7 +590,10 @@ const DynamicStepForm = () => {
         padding: 10,
       }}
     >
-      <form onSubmit={handleSubmit(onSubmit)} style={{ width: "100%" }}>
+      <form
+        onSubmit={handleSubmit((data) => onSubmit(data, "submit"))}
+        style={{ width: "100%" }}
+      >
         {/* Show form sections only if they exist */}
         {formSections.length > 0 ? (
           <>
@@ -518,8 +601,13 @@ const DynamicStepForm = () => {
             {formSections.map((section, index) => {
               if (index !== currentStep) return null;
               return (
-                <div key={section.id}>
-                  <h2>{section.section}</h2>
+                <div
+                  style={{ display: "flex", flexDirection: "column" }}
+                  key={section.id}
+                >
+                  <h1 style={{ textAlign: "center", marginBottom: 50 }}>
+                    {section.section}
+                  </h1>
                   {section.section === "Permanent Address Details" && (
                     <FormControlLabel
                       control={
@@ -532,6 +620,22 @@ const DynamicStepForm = () => {
                         />
                       }
                       label="Same As Present Address"
+                    />
+                  )}
+                  {section.section == "Applicant Details" && (
+                    <Box
+                      id="applicantImageHolder"
+                      component="img"
+                      src={applicantImagePreview} // Updated to use the preview URL
+                      alt="Applicant Image"
+                      sx={{
+                        width: 150,
+                        height: 150,
+                        borderRadius: "8px", // Rounded corners
+                        objectFit: "cover", // Maintain aspect ratio
+                        boxShadow: 2, // Adds a slight shadow
+                        margin: "0 auto",
+                      }}
                     />
                   )}
                   <Row>
@@ -576,6 +680,21 @@ const DynamicStepForm = () => {
                   color="#F0C38E"
                   width={"40%"}
                   type="submit"
+                />
+              )}
+            </Box>
+            <Box
+              sx={{ display: "flex", justifyContent: "center", marginTop: 5 }}
+            >
+              {currentStep != formSections.length - 1 && (
+                <CustomButton
+                  text="Save"
+                  bgColor="#312C51"
+                  color="#F0C38E"
+                  isLoading={buttonLoading}
+                  width={"40%"}
+                  type="button"
+                  onClick={handleSubmit((data) => onSubmit(data, "save"))}
                 />
               )}
             </Box>

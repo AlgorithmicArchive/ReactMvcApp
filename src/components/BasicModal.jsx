@@ -6,6 +6,7 @@ import { fetchData } from "../assets/fetch";
 import CustomButton from "./CustomButton";
 import UserDetailsAccordion from "./UserDetailsAccordion";
 import CancelIcon from "@mui/icons-material/Cancel";
+import ServerSideTable from "./ServerSideTable";
 
 // Modal style
 const style = {
@@ -57,11 +58,10 @@ const BasicModal = ({
         )}
         <Box sx={{ mt: 2 }}>
           {table != null && (
-            <CustomTable
-              fetchData={fetchData}
+            <ServerSideTable
               url={table.url}
-              params={table.params}
-              buttonActionHandler={handleActionButton}
+              extraParams={table.params}
+              actionFunctions={{}}
             />
           )}
           {pdf != null && <PdfViewer pdfUrl={pdf} />}

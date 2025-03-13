@@ -7,6 +7,7 @@ using Newtonsoft.Json;
 using SendEmails;
 using ReactMvcApp.Models.Entities;
 using System.Security.Claims;
+using Newtonsoft.Json.Linq;
 
 namespace ReactMvcApp.Controllers.User
 {
@@ -112,98 +113,79 @@ namespace ReactMvcApp.Controllers.User
         //     return View(ApplicationDetails);
         // }
 
-        // public IActionResult GetInitiatedApplications(int page, int size)
-        // {
-        //     var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        public IActionResult GetInitiatedApplications()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        //     // Ensure that you filter by the correct "Initiated" status
-        //     var applications = dbcontext.Applications
-        //                                 .Where(u => u.CitizenId.ToString() == userIdClaim && u.ApplicationStatus != "Incomplete")
-        //                                 .ToList();
+            // Ensure that you filter by the correct "Initiated" status
+            var applications = dbcontext.CitizenApplications
+                                        .Where(u => u.CitizenId.ToString() == userIdClaim && u.Status != "Incomplete")
+                                        .ToList();
 
-        //     // Initialize columns
-        //     var columns = new List<dynamic>
-        //     {
-        //         new { label = "S.No", value = "sno" },
-        //         new { label = "Reference Number", value = "referenceNumber" },
-        //         new { label = "Applicant Name", value = "applicantName" },
-        //         new { label = "Currently With", value = "withOfficer" },
-        //         new { label = "Status", value = "status" },
-        //         new { label = "Action", value = "button" }
-        //     };
+            // Initialize columns
+            var columns = new List<dynamic>
+            {
+                new { header = "S.No", accessorKey = "sno" },
+                new { header = "Reference Number", accessorKey = "referenceNumber" },
+                new { header = "Applicant Name", accessorKey = "applicantName" },
+                new { header = "Currently With", accessorKey = "currentlyWith" },
+                new { header = "Status", accessorKey = "status" },
+            };
 
-        //     // Correctly initialize data list
-        //     List<dynamic> data = [];
-        //     int index = 1;
-        //     Dictionary<string, string> actionMap = new()
-        //     {
-        //         {"Pending","Pending"},
-        //         {"Forwarded","Forwarded"},
-        //         {"Sanctioned","Sanctioned"},
-        //         {"Returned","Returned"},
-        //         {"Rejected","Rejected"},
-        //         {"ReturnToEdit","Returned to citizen for edition"},
-        //         {"Deposited","Inserted to Bank File"},
-        //         {"Dispatched","Payment Under Process"},
-        //         {"Disbursed","Payment Disbursed"},
-        //         {"Failure","Payment Failed"},
-        //     };
+            // Correctly initialize data list
+            List<dynamic> data = [];
+            List<dynamic> customActions = [];
+            int index = 1;
+            Dictionary<string, string> actionMap = new()
+            {
+                {"pending","Pending"},
+                {"forwarded","Forwarded"},
+                {"sanctioned","Sanctioned"},
+                {"returned","Returned"},
+                {"rejected","Rejected"},
+                {"returntoedit","Returned to citizen for edition"},
+                {"Deposited","Inserted to Bank File"},
+                {"Dispatched","Payment Under Process"},
+                {"Disbursed","Payment Disbursed"},
+                {"Failure","Payment Failed"},
+            };
 
+            foreach (var application in applications)
+            {
+                var formDetails = JsonConvert.DeserializeObject<dynamic>(application.FormDetails!);
+                var officers = JsonConvert.DeserializeObject<dynamic>(application.WorkFlow!) as JArray;
+                var currentPlayer = application.CurrentPlayer;
+                data.Add(new
+                {
+                    sno = index,
+                    referenceNumber = application.ReferenceNumber,
+                    applicantName = formDetails!["ApplicantName"].ToString(),
+                    currentlyWith = officers![currentPlayer]["designation"],
+                    status = actionMap[(string)officers[currentPlayer]["status"]!]
+                });
 
-        //     foreach (var application in applications)
-        //     {
-        //         var applicationStatus = dbcontext.ApplicationStatuses
-        //                                         .FirstOrDefault(status => status.ApplicationId == application.ApplicationId);
+                if ((string)officers[currentPlayer]["status"]! != "ReturnToCitizen")
+                {
+                    customActions.Add(new { type = "Open", tooltip = "View", color = "#F0C38E", actionFunction = "CreateTimeLine" });
+                }
+                else
+                {
+                    customActions.Add(new { type = "Open", tooltip = "Edit Form", color = "#F0C38E", actionFunction = "EditForm" });
+                }
+                index++;
+            }
 
-        //         if (applicationStatus != null)
-        //         {
-        //             // Fetch officerRole safely and handle if no officer is found
-        //             var officer = dbcontext.OfficerDetails
-        //                                    .FirstOrDefault(od => od.OfficerId == applicationStatus.CurrentlyWith);
-        //             string officerRole = officer?.Role ?? "Unknown";
+            // Ensure size is positive for pagination
+            return Json(new { data, columns, customActions });
+        }
 
-        //             // Add extra button if status is "ReturnToEdit"
-        //             if (applicationStatus.Status == "ReturnToEdit")
-        //             {
-        //                 if (!columns.Any(c => c.value == "buttonExtra"))
-        //                 {
-        //                     columns.Add(new { label = "Extra Actions", value = "buttonExtra" });
-        //                 }
-        //             }
-
-        //             var button = new { function = "CreateTimeLine", parameters = new[] { application.ApplicationId }, buttonText = "View" };
-        //             var button2 = new { function = "EditForm", parameters = new[] { application.ApplicationId }, buttonText = "Edit Form" };
-        //             dynamic buttonExtra = applicationStatus.Status == "ReturnToEdit" ? button2 : (object)"NO Action";
-
-        //             var cell = new
-        //             {
-        //                 sno = index,
-        //                 referenceNumber = application.ApplicationId,
-        //                 applicantName = application.ApplicantName,
-        //                 withOfficer = applicationStatus.Status == "Dispatched" ? "Bank" : applicationStatus.Status == "Disbursed" || applicationStatus.Status == "Failure" ? "NULL" : officerRole,
-        //                 status = actionMap[applicationStatus.Status],
-        //                 button,
-        //                 buttonExtra
-        //             };
-
-        //             data.Add(cell); // Add the cell to the data list
-        //             index++;
-        //         }
-        //     }
-
-        //     // Ensure size is positive for pagination
-        //     var pagedData = data.Skip(page * Math.Max(size, 1)).Take(size).ToList();
-
-        //     return Json(new { status = true, data = pagedData, columns, totalCount = data.Count });
-        // }
-
-        // public IActionResult IncompleteApplications()
-        // {
-        //     var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        //     var applications = dbcontext.Applications.Where(u => u.CitizenId.ToString() == userIdClaim && u.ApplicationStatus == "Incomplete").ToList();
-
-        //     return View(applications);
-        // }
+        public IActionResult IncompleteApplications()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var applications = dbcontext.CitizenApplications.Where(u => u.CitizenId.ToString() == userIdClaim && u.Status == "Incomplete").ToList();
+            
+            return View(applications);
+        }
 
         // public IActionResult EditForm([FromForm] IFormCollection form)
         // {

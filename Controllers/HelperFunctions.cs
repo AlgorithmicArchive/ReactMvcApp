@@ -1,4 +1,5 @@
 using System.Dynamic;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
@@ -164,7 +165,7 @@ public class UserHelperFunctions(IWebHostEnvironment webHostEnvironment, SocialW
 
         return officer; // Returns a User or null
     }
-    
+
     // public (CitizenApplication UserDetails, AddressJoin PreAddressDetails, AddressJoin PerAddressDetails, dynamic ServiceSpecific, dynamic BankDetails, dynamic Documents) GetUserDetailsAndRelatedData(string applicationId)
     // {
     //     var userDetails = dbcontext.CitizenApplications.FirstOrDefault(u => u.ReferenceNumber == applicationId);
@@ -321,6 +322,19 @@ public class UserHelperFunctions(IWebHostEnvironment webHostEnvironment, SocialW
     //     }
 
     // }
+
+    public void InsertHistory(string referenceNumber, string ActionTaken, string ActionTaker)
+    {
+        var history = new ActionHistory
+        {
+            ReferenceNumber = referenceNumber,
+            ActionTaken = ActionTaken,
+            ActionTaker = ActionTaker,
+            ActionTakenDate = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")
+        };
+        dbcontext.ActionHistories.Add(history);
+        dbcontext.SaveChanges();
+    }
 
 }
 

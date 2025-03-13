@@ -74,7 +74,7 @@ export default function LoginScreen() {
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
-        height: { xs: "80vh", md: "80vh" },
+        height: { xs: "80vh", md: "60vh" },
       }}
     >
       {loading && <LoadingSpinner />}

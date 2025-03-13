@@ -40,7 +40,7 @@ const ServerSideTable = ({ url, actionFunctions, extraParams = {} }) => {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, []);
 
   return (
     <MaterialReactTable

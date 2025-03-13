@@ -69,6 +69,16 @@ export default function OfficerHome() {
         state: { applicationId: data.referenceNumber },
       });
     },
+    pullApplication: async (row) => {
+      const data = row.original;
+      const response = await axiosInstance.get("/Officer/PullApplication", {
+        params: { applicationId: data.referenceNumber },
+      });
+      const result = response.data;
+      if (result.status) {
+        window.location.reload();
+      }
+    },
   };
 
   // extraParams are computed from serviceId and type

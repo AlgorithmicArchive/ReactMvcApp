@@ -301,24 +301,24 @@ namespace ReactMvcApp.Controllers
         public IActionResult WorkFlowPlayers([FromForm] IFormCollection form)
         {
             string serviceIdString = form["serviceId"].ToString();
-            var WorkFlowPlayers = form["workflowplayers"].ToString();
+            var workFlowPlayers = form["workflowplayers"].ToString();
 
-            _logger.LogInformation($"--------------SERVICE ID: {serviceIdString}---------------------");
             if (!string.IsNullOrEmpty(serviceIdString))
             {
                 int serviceId = Convert.ToInt32(serviceIdString);
                 var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
-
                 if (service != null)
                 {
-                    service.OfficerEditableField = WorkFlowPlayers;
+                    _logger.LogInformation("-----------INSIDE IF----------------");
+                    service.OfficerEditableField = workFlowPlayers;
+                    dbcontext.Services.Update(service);
                 }
             }
             else
             {
                 var newService = new Service
                 {
-                    OfficerEditableField = WorkFlowPlayers
+                    OfficerEditableField = workFlowPlayers
                 };
                 dbcontext.Services.Add(newService);
             }
@@ -327,6 +327,7 @@ namespace ReactMvcApp.Controllers
 
             return Json(new { status = true });
         }
+
 
 
         [HttpGet]

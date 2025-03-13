@@ -1,5 +1,5 @@
 import React from "react";
-import { Button } from "@mui/material";
+import { Button, CircularProgress } from "@mui/material";
 
 export default function CustomButton({
   text = "Click Me",
@@ -9,13 +9,14 @@ export default function CustomButton({
   type = "button",
   disabled = false,
   width = null,
+  isLoading = false, // New prop for loading state
 }) {
   return (
     <Button
       variant="contained"
-      onClick={onClick || undefined} // Handle optional onClick
+      onClick={onClick || undefined}
       type={type}
-      disabled={disabled}
+      disabled={disabled || isLoading} // Disable if loading
       sx={{
         backgroundColor: bgColor,
         color: color,
@@ -28,7 +29,7 @@ export default function CustomButton({
         },
       }}
     >
-      {text}
+      {isLoading ? <CircularProgress size={24} color="inherit" /> : text}
     </Button>
   );
 }

@@ -173,54 +173,41 @@ namespace ReactMvcApp.Controllers.User
         //     return Json(new { status = true, blocks });
         // }
 
-        // [HttpGet]
-        // public async Task<IActionResult> GetApplicationHistory(string ApplicationId, int page, int size)
-        // {
-        //     if (string.IsNullOrEmpty(ApplicationId))
-        //     {
-        //         return BadRequest("ApplicationId is required.");
-        //     }
+        [HttpGet]
+        public async Task<IActionResult> GetApplicationHistory(string ApplicationId, int page, int size)
+        {
+            if (string.IsNullOrEmpty(ApplicationId))
+            {
+                return BadRequest("ApplicationId is required.");
+            }
 
-        //     var parameter = new SqlParameter("@ApplicationId", ApplicationId);
+            var parameter = new SqlParameter("@ApplicationId", ApplicationId);
 
-        //     var history = await dbcontext.Database
-        //                                  .SqlQuery<ApplicationsHistoryModal>($"EXEC GetApplicationsHistory @ApplicationId = {parameter}")
-        //                                  .ToListAsync();
+            var history = await dbcontext.ActionHistories.Where(ah => ah.ReferenceNumber == ApplicationId).ToListAsync();
 
-        //     Dictionary<string, string> actionMap = new()
-        //     {
-        //         {"Pending","Pending"},
-        //         {"Forwarded","Forwarded"},
-        //         {"Sanctioned","Sanctioned"},
-        //         {"Returned","Returned"},
-        //         {"Rejected","Rejected"},
-        //         {"ReturnToEdit","Returned to citizen for edition"},
-        //         {"Deposited","Inserted to Bank File"},
-        //         {"Dispatched","Payment Under Process"},
-        //         {"Disbursed","Payment Disbursed"},
-        //         {"Failure","Payment Failed"},
-        //     };
+            var columns = new List<dynamic>
+            {
+                new { header = "S.No", accessorKey="sno" },
+                new { header = "Action Taker", accessorKey="actionTaker" },
+                new { header = "Action Taken",accessorKey="actionTaken" },
+                new { header = "Action Taken On",accessorKey="actionTakenOn" },
+            };
+            int index = 1;
+            List<dynamic> data = [];
+            foreach (var item in history)
+            {
+                data.Add(new
+                {
+                    sno = index,
+                    actionTaker = item.ActionTaker,
+                    actionTaken = item.ActionTaken!,
+                    actionTakenOn = item.ActionTakenDate,
+                });
+                index++;
+            }
 
-        //     var columns = new List<dynamic>
-        //     {
-        //         new { label = "S.No", value="sno" },
-        //         new { label = "Receive On",value="receivedOn" },
-        //         new { label = "Currently With", value="currentlyWith" },
-        //         new { label = "Action Taken",value="actionTaken" },
-        //         new { label = "Remarks",value="remarks" }
-        //     };
-
-        //     var data = history.Select((item, index) => new
-        //     {
-        //         sno = index + 1,
-        //         receivedOn = item.TakenAt,
-        //         currentlyWith = item.ActionTaken == "Dispatched" ? "Bank" : item.ActionTaken == "Disbursed" || item.ActionTaken == "Failure" ? "NULL" : item.Designation,
-        //         actionTaken = actionMap[item.ActionTaken!],
-        //         remarks = item.Remarks
-        //     }).AsEnumerable().Skip(page * size).Take(size).ToList();
-
-        //     return Json(new { status = true, data, columns, totalCount = data.Count });
-        // }
+            return Json(new { data, columns, customActions = new { } });
+        }
 
         public int GetCountPerDistrict(int districtId, int serviceId)
         {
