@@ -504,6 +504,8 @@ namespace ReactMvcApp.Controllers.Officer
         {
             return dbcontext.Districts.FirstOrDefault(d => d.DistrictId == districtId)!.DistrictName;
         }
+  
+  
         public string GetTehsilName(int tehsilId)
         {
             return dbcontext.Tehsils.FirstOrDefault(d => d.TehsilId == tehsilId)!.TehsilName;

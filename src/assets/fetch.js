@@ -251,3 +251,10 @@ export async function fetchUserDetail(
   console.log(response.data.currentOfficerDetails.actionForm);
   setActionForm(response.data.currentOfficerDetails.actionForm);
 }
+
+export async function fetchFormDetails(applicationId) {
+  const response = await axiosInstance.get("/User/GetFormDetails", {
+    params: { applicationId: applicationId },
+  });
+  return response.data.formDetails;
+}

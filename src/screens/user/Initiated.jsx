@@ -1,7 +1,5 @@
 import React, { useState } from "react";
-import { Box, Container, Typography } from "@mui/material";
-import CustomTable from "../../components/CustomTable";
-import { fetchData } from "../../assets/fetch";
+import { Box } from "@mui/material";
 import BasicModal from "../../components/BasicModal";
 import { useNavigate } from "react-router-dom";
 import ServerSideTable from "../../components/ServerSideTable";

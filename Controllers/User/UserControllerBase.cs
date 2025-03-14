@@ -182,9 +182,40 @@ namespace ReactMvcApp.Controllers.User
         public IActionResult IncompleteApplications()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var applications = dbcontext.CitizenApplications.Where(u => u.CitizenId.ToString() == userIdClaim && u.Status == "Incomplete").ToList();
-            
-            return View(applications);
+
+            // Ensure that you filter by the correct "Initiated" status
+            var applications = dbcontext.CitizenApplications
+                                        .Where(u => u.CitizenId.ToString() == userIdClaim && u.Status == "Incomplete")
+                                        .ToList();
+
+            // Initialize columns
+            var columns = new List<dynamic>
+            {
+                new { header = "S.No", accessorKey = "sno" },
+                new { header = "Reference Number", accessorKey = "referenceNumber" },
+            };
+
+            // Correctly initialize data list
+            List<dynamic> data = [];
+            List<dynamic> customActions = [];
+            int index = 1;
+
+            customActions.Add(new { type = "Open", tooltip = "Edit", color = "#F0C38E", actionFunction = "IncompleteForm" });
+
+            foreach (var application in applications)
+            {
+                var formDetails = JsonConvert.DeserializeObject<dynamic>(application.FormDetails!);
+                data.Add(new
+                {
+                    sno = index,
+                    referenceNumber = application.ReferenceNumber,
+                    serviceId = application.ServiceId,
+                });
+                index++;
+            }
+
+            // Ensure size is positive for pagination
+            return Json(new { data, columns, customActions });
         }
 
         // public IActionResult EditForm([FromForm] IFormCollection form)

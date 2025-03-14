@@ -31,6 +31,7 @@ import CreateService from "../screens/designer/CreateService";
 import DynamicStepForm from "../screens/designer/Form";
 import CreateWorkflow from "../screens/designer/CreateWorkFlow";
 import ViewUserDetails from "../screens/officer/ViewUserDetails";
+import IncompleteForm from "../screens/user/IncompleteForm";
 
 const RoutesComponent = () => {
   return (
@@ -54,6 +55,7 @@ const RoutesComponent = () => {
           <Route path="acknowledge" element={<Acknowledgement />} />
           <Route path="initiated" element={<Initiated />} />
           <Route path="incomplete" element={<Incomplete />} />
+          <Route path="incompleteform" element={<IncompleteForm />} />
           <Route path="editform" element={<EditForm />} />
         </Route>
       </Route>
