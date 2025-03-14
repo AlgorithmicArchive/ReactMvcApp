@@ -166,11 +166,11 @@ namespace ReactMvcApp.Controllers.User
 
                 if ((string)officers[currentPlayer]["status"]! != "ReturnToCitizen")
                 {
-                    customActions.Add(new { type = "Open", tooltip = "View", color = "#F0C38E", actionFunction = "CreateTimeLine" });
+                    customActions.Add(new { id = index, tooltip = "View", color = "#F0C38E", actionFunction = "CreateTimeLine" });
                 }
                 else
                 {
-                    customActions.Add(new { type = "Open", tooltip = "Edit Form", color = "#F0C38E", actionFunction = "EditForm" });
+                    customActions.Add(new { id = index, tooltip = "Edit Form", color = "#F0C38E", actionFunction = "EditForm" });
                 }
                 index++;
             }
@@ -200,7 +200,6 @@ namespace ReactMvcApp.Controllers.User
             List<dynamic> customActions = [];
             int index = 1;
 
-            customActions.Add(new { type = "Open", tooltip = "Edit", color = "#F0C38E", actionFunction = "IncompleteForm" });
 
             foreach (var application in applications)
             {
@@ -211,6 +210,7 @@ namespace ReactMvcApp.Controllers.User
                     referenceNumber = application.ReferenceNumber,
                     serviceId = application.ServiceId,
                 });
+                customActions.Add(new { id = index, tooltip = "Edit", color = "#F0C38E", actionFunction = "IncompleteForm" });
                 index++;
             }
 

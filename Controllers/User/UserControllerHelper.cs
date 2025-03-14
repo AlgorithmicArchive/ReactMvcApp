@@ -182,7 +182,10 @@ namespace ReactMvcApp.Controllers.User
             }
 
             var parameter = new SqlParameter("@ApplicationId", ApplicationId);
-
+            var application = await dbcontext.CitizenApplications.FirstOrDefaultAsync(ca => ca.ReferenceNumber == ApplicationId);
+            var players = JsonConvert.DeserializeObject<dynamic>(application!.WorkFlow!) as JArray;
+            int currentPlayerIndex = application.CurrentPlayer;
+            var currentPlayer = players!.FirstOrDefault(o => (int)o["playerId"]! == currentPlayerIndex);
             var history = await dbcontext.ActionHistories.Where(ah => ah.ReferenceNumber == ApplicationId).ToListAsync();
 
             var columns = new List<dynamic>
@@ -204,6 +207,17 @@ namespace ReactMvcApp.Controllers.User
                     actionTakenOn = item.ActionTakenDate,
                 });
                 index++;
+            }
+
+            if ((string)currentPlayer!["status"]! == "pending")
+            {
+                data.Add(new
+                {
+                    sno = index,
+                    actionTaker = currentPlayer["designation"],
+                    actionTaken = currentPlayer["status"],
+                    actionTakenOn = "",
+                });
             }
 
             return Json(new { data, columns, customActions = new { } });

@@ -177,8 +177,6 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasNoKey();
-
             entity.Property(e => e.BackupCodes).IsUnicode(false);
             entity.Property(e => e.Email)
                 .HasMaxLength(100)

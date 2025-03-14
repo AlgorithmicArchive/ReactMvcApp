@@ -32,8 +32,8 @@ export default function Settings() {
     const formdata = new FormData();
     formdata.append("profile", profile.file);
     const response = await axiosInstance.post("/Profile/ChangeImage", formdata);
-    console.log(response.data);
     setProfile(response.filePath);
+    setSave(false);
   };
 
   async function GetUserDetails() {

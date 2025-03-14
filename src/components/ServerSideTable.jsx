@@ -79,15 +79,17 @@ const ServerSideTable = ({ url, actionFunctions, extraParams = {} }) => {
             // Look up the function using the function name provided by the API
             const onClickHandler = actionFunctions[action.actionFunction];
             return (
-              <Button
-                key={index}
-                variant="contained"
-                color={action.color || "inherit"}
-                sx={{ backgroundColor: "#F0C38E", color: "#312C51" }}
-                onClick={() => onClickHandler && onClickHandler(row)}
-              >
-                {action.name || action.tooltip}
-              </Button>
+              row.original.sno == action.id && (
+                <Button
+                  key={index}
+                  variant="contained"
+                  color={action.color || "inherit"}
+                  sx={{ backgroundColor: "#F0C38E", color: "#312C51" }}
+                  onClick={() => onClickHandler && onClickHandler(row)}
+                >
+                  {action.name || action.tooltip}
+                </Button>
+              )
             );
           })}
         </Box>

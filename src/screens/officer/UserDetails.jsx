@@ -1,13 +1,15 @@
 import { Box } from "@mui/system";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { fetchUserDetail } from "../../assets/fetch";
 import { Col, Row } from "react-bootstrap";
 import {
   Button,
+  Checkbox,
   Collapse,
   Divider,
   FormControl,
+  FormControlLabel,
   FormHelperText,
   InputLabel,
   MenuItem,
@@ -122,7 +124,6 @@ export default function UserDetails() {
   const {
     control,
     handleSubmit,
-    reset,
     watch,
     getValues,
     formState: { errors },
@@ -132,6 +133,21 @@ export default function UserDetails() {
     // fetchUserDetail is assumed to set both formDetails and actionForm
     fetchUserDetail(applicationId, setFormDetails, setActionForm);
   }, [applicationId]);
+
+  // Create an array of user details options by flattening formDetails
+  const userDetailsOptions = useMemo(() => {
+    const options = [];
+    formDetails.forEach((section) => {
+      Object.keys(section).forEach((key) => {
+        options.push({ value: key, label: formatKey(key) });
+      });
+    });
+    // Remove duplicates if any
+    return options.filter(
+      (option, index, self) =>
+        index === self.findIndex((o) => o.value === option.value)
+    );
+  }, [formDetails]);
 
   // Render an individual field using Controller
   const renderField = (field, sectionIndex) => {
@@ -175,6 +191,7 @@ export default function UserDetails() {
             )}
           />
         );
+
       case "file":
         return (
           <Controller
@@ -212,6 +229,7 @@ export default function UserDetails() {
             )}
           />
         );
+
       case "select":
         return (
           <Controller
@@ -231,7 +249,6 @@ export default function UserDetails() {
               const normalizedFieldName = field.name
                 .toLowerCase()
                 .replace(/\s/g, "");
-
               const isDistrict = districtFields.includes(normalizedFieldName);
               let options;
               if (field.optionsType === "dependent" && field.dependentOn) {
@@ -258,7 +275,7 @@ export default function UserDetails() {
                     label={field.label}
                     onChange={(e) => {
                       onChange(e);
-                      // Optionally, handle district changes here.
+                      // Additional logic (if needed) can be added here.
                     }}
                     inputRef={ref}
                     sx={{
@@ -306,6 +323,7 @@ export default function UserDetails() {
             }}
           />
         );
+
       case "enclosure":
         return (
           <Controller
@@ -374,11 +392,13 @@ export default function UserDetails() {
             }}
           />
         );
+
       default:
         return null;
     }
   };
 
+  // onSubmit handles the action form submission.
   const onSubmit = async (data) => {
     console.log("Submitted Data:", data);
 
@@ -388,9 +408,6 @@ export default function UserDetails() {
     // Iterate over each key in the data object
     Object.keys(data).forEach((key) => {
       const value = data[key];
-
-      // If the value is an object (and not a File), you might want to stringify it.
-      // Adjust this logic as needed if you have nested objects.
       if (value instanceof File) {
         formData.append(key, value);
       } else if (typeof value === "object" && value !== null) {
@@ -445,9 +462,71 @@ export default function UserDetails() {
       >
         <form onSubmit={handleSubmit(onSubmit)} style={{ width: "100%" }}>
           {actionForm.length > 0 &&
-            actionForm.map((field, index) => (
-              <Box key={index}>{renderField(field, index)}</Box>
-            ))}
+            actionForm.map((field, index) => {
+              // For select fields, watch the current value.
+              const selectedValue =
+                field.type === "select" ? watch(field.name) : null;
+              return (
+                <Box key={index}>
+                  {renderField(field, index)}
+                  {/* If field is a select and its value is ReturnToCitizen, render a scrollable list of checkboxes */}
+                  {field.type === "select" &&
+                    selectedValue === "ReturnToCitizen" && (
+                      <Controller
+                        name={`returnFields_${index}`}
+                        control={control}
+                        defaultValue={[]}
+                        rules={{
+                          validate: (value) =>
+                            value.length > 0 ||
+                            "Select at least one user detail field.",
+                        }}
+                        render={({ field: { onChange, value } }) => (
+                          <Box
+                            sx={{
+                              border: "1px solid #312C51",
+                              borderRadius: 2,
+                              maxHeight: 200,
+                              overflowY: "auto",
+                              padding: 1,
+                              marginTop: 2,
+                              display: "flex",
+                              flexDirection: "column",
+                            }}
+                          >
+                            {userDetailsOptions.map((option) => (
+                              <FormControlLabel
+                                key={option.value}
+                                control={
+                                  <Checkbox
+                                    checked={value.includes(option.value)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        onChange([...value, option.value]);
+                                      } else {
+                                        onChange(
+                                          value.filter(
+                                            (v) => v !== option.value
+                                          )
+                                        );
+                                      }
+                                    }}
+                                    sx={{
+                                      color: "#312C51",
+                                      "&.Mui-checked": { color: "#312C51" },
+                                    }}
+                                  />
+                                }
+                                label={option.label}
+                              />
+                            ))}
+                          </Box>
+                        )}
+                      />
+                    )}
+                </Box>
+              );
+            })}
 
           <CustomButton
             text="Take Action"

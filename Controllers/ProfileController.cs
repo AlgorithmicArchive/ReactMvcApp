@@ -32,7 +32,7 @@ namespace ReactMvcApp.Controllers.Profile
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             string? userType = User.FindFirst(ClaimTypes.Role)!.Value;
             var user = _dbcontext.Users.FirstOrDefault(u => u.UserId.ToString() == userId);
-            string Profile = user!.Profile;
+            string Profile = user!.Profile!;
             ViewData["UserType"] = userType;
             ViewData["UserName"] = user!.Username;
             ViewData["Profile"] = Profile;
@@ -172,6 +172,7 @@ namespace ReactMvcApp.Controllers.Profile
 
             // Save the new file and update the user's profile picture path
             var filePath = await _helper.GetFilePath(uploadedFile, "profile");
+            _logger.LogInformation($"------File Path: {filePath}");
             user.Profile = filePath; // Set the new path to user.Profile property
             _dbcontext.SaveChanges(); // Save changes to the database
 

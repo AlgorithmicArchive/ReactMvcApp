@@ -1,403 +1,716 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useController, useForm } from "react-hook-form";
-import CustomInputField from "./CustomInputField";
-import CustomSelectField from "./CustomSelectField";
-import CustomFileSelector from "./CustomFileSelector";
-import CustomCheckbox from "./CustomCheckBox";
-import CustomRadioButton from "./CustomRadioButton";
-import CustomDateInput from "./CustomDateInput";
+import { useForm, Controller } from "react-hook-form";
+import { runValidations } from "../../assets/formvalidations";
 import {
-  runValidations,
-  CapitalizeAlphabets,
-} from "../../assets/formvalidations";
-import { Typography, Box } from "@mui/material";
-import CustomButton from "../CustomButton";
+  Box,
+  Checkbox,
+  FormControlLabel,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormHelperText,
+  Button,
+} from "@mui/material";
+import { Col, Row } from "react-bootstrap";
+import { fetchFormDetails, GetServiceContent } from "../../assets/fetch";
+import { useLocation, useNavigate } from "react-router-dom";
 import axiosInstance from "../../axiosConfig";
-import { fetchBlocks, fetchDistricts, fetchTehsils } from "../../assets/fetch";
-import { useNavigate } from "react-router-dom";
-import { dummyDataList, insertDummyData } from "../../assets/dummyData";
-import LoadingSpinner from "../LoadingSpinner";
-import { Col, Container, Row } from "react-bootstrap";
+import CustomButton from "../../components/CustomButton";
 
-const DynamicStepForm = ({ formConfig, serviceId }) => {
+const commonStyles = {
+  "& .MuiOutlinedInput-root": {
+    "& fieldset": { borderColor: "#312C51" },
+    "&:hover fieldset": { borderColor: "#312C51" },
+    "&.Mui-focused fieldset": { borderColor: "#312C51" },
+  },
+  "& .MuiInputLabel-root": { color: "#312C51" },
+  "& .MuiInputBase-input::placeholder": { color: "#312C51" },
+  color: "#312C51",
+};
+
+const DynamicStepForm = ({ mode = "new" }) => {
   const {
     control,
     handleSubmit,
-    setValue,
-    getValues,
+    trigger,
     watch,
+    getValues,
+    setValue,
+    reset,
     formState: { errors },
-  } = useForm({
-    mode: "onChange",
-  });
+  } = useForm({ mode: "onChange" });
 
-  const [step, setStep] = useState(0);
-  const [ApplicationId, setApplicationId] = useState(null);
-  const [PreAddressId, setPreAddressId] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [districtOptions, setDistrictOptions] = useState([]);
-  const [tehsilOptions, setTehsilOptions] = useState([]);
-  const [blockOptions, setBlockOptions] = useState([]);
-  const [appliedDistrict, setAppliedDistrict] = useState(0);
-  const [selectedDistrict, setSelectedDistrict] = useState(0);
-  const [loading, setLoading] = useState(false);
-
+  const [formSections, setFormSections] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [buttonLoading, setButtonLoading] = useState(false);
+  const [referenceNumber, setReferenceNumber] = useState("");
+  const [selectedServiceId, setSelectedServiceId] = useState("");
+  const [initialData, setInitialData] = useState(null);
+  const [isCopyAddressChecked, setIsCopyAddressChecked] = useState(false);
+  const applicantImageFile = watch("ApplicantImage");
+  const [applicantImagePreview, setApplicantImagePreview] = useState(
+    "/assets/images/profile.jpg"
+  );
   const navigate = useNavigate();
-  const sameAsPresent = watch("SameAsPresent");
-  const formTopRef = useRef(null);
-  const fileInputRefs = useRef({}); // To store refs for file selectors
+  const location = useLocation();
 
-  const apiEndpoints = [
-    "/User/InsertGeneralDetails",
-    "/User/InsertPresentAddressDetails",
-    "/User/InsertPermanentAddressDetails",
-    "/User/InsertBankDetails",
-    "/User/InsertDocuments",
-  ];
+  // To avoid duplicate defaults
+  const hasRunRef = useRef(false);
 
+  // Update image preview when the applicant file changes
   useEffect(() => {
-    fetchDistricts(setDistrictOptions);
-  }, []);
-
-  // Fetch Tehsils and Blocks when the district changes
-  useEffect(() => {
-    if (selectedDistrict) {
-      fetchTehsils(selectedDistrict, setTehsilOptions);
-      fetchBlocks(selectedDistrict, setBlockOptions);
+    if (applicantImageFile && applicantImageFile instanceof File) {
+      const objectUrl = URL.createObjectURL(applicantImageFile);
+      setApplicantImagePreview(objectUrl);
+      return () => URL.revokeObjectURL(objectUrl);
     }
-  }, [selectedDistrict]);
+  }, [applicantImageFile]);
 
-  // Scroll to top whenever 'step' changes
+  // Load service content and, if mode === "incomplete", also fetch existing form details
   useEffect(() => {
-    if (formTopRef.current) {
-      formTopRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [step]);
-
-  // Handle 'SameAsPresent' checkbox functionality
-  useEffect(() => {
-    if (sameAsPresent) {
-      const presentAddress = {
-        PermanentAddress: getValues("PresentAddress") || "",
-        PermanentDistrict: getValues("PresentDistrict") || "",
-        PermanentTehsil: getValues("PresentTehsil") || "",
-        PermanentBlock: getValues("PresentBlock") || "",
-        PermanentPanchayatMuncipality:
-          getValues("PresentPanchayatMuncipality") || "",
-        PermanentVillage: getValues("PresentVillage") || "",
-        PermanentWard: getValues("PresentWard") || "",
-        PermanentPincode: getValues("PresentPincode") || "",
-      };
-
-      Object.entries(presentAddress).forEach(([field, value]) => {
-        setValue(field, value, { shouldValidate: true, shouldDirty: true });
-      });
-    } else {
-      const permanentFields = [
-        "PermanentAddress",
-        "PermanentDistrict",
-        "PermanentTehsil",
-        "PermanentBlock",
-        "PermanentPanchayatMuncipality",
-        "PermanentVillage",
-        "PermanentWard",
-        "PermanentPincode",
-      ];
-
-      permanentFields.forEach((field) => {
-        setValue(field, "", { shouldValidate: true, shouldDirty: true });
-      });
-    }
-  }, [sameAsPresent, setValue, getValues]);
-
-  const onSubmit = async (data) => {
-    try {
-      setIsSubmitting(true);
-      setLoading(true);
-      const formData = new FormData();
-      const serviceSpecific = {};
-
-      const currentStepFields = formConfig[step].fields.map(
-        (field) => field.name
-      );
-
-      Object.keys(data).forEach((key) => {
-        if (currentStepFields.includes(key)) {
-          const fieldConfig = formConfig[step].fields.find(
-            (field) => field.name === key
-          );
-
-          if (fieldConfig && fieldConfig.isFormSpecific) {
-            serviceSpecific[key] = data[key];
-          } else {
-            formData.append(key, data[key]);
+    async function loadForm() {
+      try {
+        // Expect ServiceId and optionally referenceNumber from location.state
+        const { ServiceId, referenceNumber } = location.state || {};
+        setSelectedServiceId(ServiceId);
+        if (referenceNumber) {
+          setReferenceNumber(referenceNumber);
+        }
+        const result = await GetServiceContent(ServiceId);
+        if (result && result.status) {
+          try {
+            const config = JSON.parse(result.formElement);
+            setFormSections(config);
+          } catch (err) {
+            console.error("Error parsing formElements:", err);
+            setFormSections([]);
           }
         }
-      });
-
-      if (Object.keys(serviceSpecific).length > 0) {
-        formData.append("ServiceSpecific", JSON.stringify(serviceSpecific));
-      }
-
-      if (step === 4) {
-        const labels = [
-          ...new Set(
-            formConfig[step].fields.map((item) =>
-              item.label.split(" ").join("")
-            )
-          ),
-        ];
-        formData.append("labels", JSON.stringify(labels));
-        formData.append("AccessCode", appliedDistrict);
-      }
-
-      if (ApplicationId) formData.append("ApplicationId", ApplicationId);
-      if (PreAddressId) formData.append("PresentAddressId", PreAddressId);
-      if (serviceId) formData.append("ServiceId", serviceId);
-
-      const endpoint = apiEndpoints[step];
-
-      const response = await axiosInstance.post(endpoint, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      const { status, applicationId, presentAddressId } = response.data;
-      if (status) {
-        if (!ApplicationId) setApplicationId(applicationId);
-        if (!PreAddressId) setPreAddressId(presentAddressId);
-        if (step < formConfig.length - 1) {
-          setStep((prev) => prev + 1);
-        } else {
-          alert("Form submitted successfully!");
-          navigate("/user/acknowledge", {
-            state: { applicationId: ApplicationId },
-          });
+        if (mode === "incomplete" && referenceNumber) {
+          const details = await fetchFormDetails(referenceNumber);
+          setInitialData(details);
+          reset(details);
         }
-      } else {
-        alert("Submission failed. Please check your input.");
+      } catch (error) {
+        console.error("Error fetching service content:", error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.log(error);
-      alert("An error occurred while submitting the form. Please try again.");
-    } finally {
-      setLoading(false);
-      setIsSubmitting(false);
+    }
+    loadForm();
+  }, [location.state, mode, reset]);
+
+  // Set default file for fields that require it (e.g., applicant image)
+  const setDefaultFile = async (path) => {
+    const response = await fetch(path);
+    const blob = await response.blob();
+    const file = new File([blob], "profile.jpg", { type: blob.type });
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    setValue("ApplicantImage", dataTransfer.files[0]);
+  };
+
+  // Once the form sections and initialData are available, set any dependent defaults (districts, files, etc.)
+  useEffect(() => {
+    if (!formSections.length || !initialData) return;
+    if (hasRunRef.current) return;
+    hasRunRef.current = true;
+
+    formSections.forEach((section, sectionIndex) => {
+      section.fields.forEach((field) => {
+        if (
+          field.name.toLowerCase().includes("district") &&
+          initialData[field.name]
+        ) {
+          handleDistrictChange(sectionIndex, field, initialData[field.name]);
+        }
+        if (
+          field.name.toLowerCase().includes("applicantimage") &&
+          initialData[field.name]
+        ) {
+          setApplicantImagePreview(initialData[field.name]);
+          setDefaultFile(initialData[field.name]);
+        }
+      });
+    });
+  }, [formSections, initialData, setValue]);
+
+  // Copy address from Present to Permanent if checked
+  const handleCopyAddress = (checked, sectionIndex) => {
+    if (checked) {
+      const presentSection = formSections.find(
+        (sec) => sec.section === "Present Address Details"
+      );
+      const permanentSection = formSections.find(
+        (sec) => sec.section === "Permanent Address Details"
+      );
+      const permanentDistrictField = permanentSection.fields.find((field) =>
+        field.name.includes("District")
+      );
+      if (presentSection) {
+        presentSection.fields.forEach((field) => {
+          const presentFieldName = field.name;
+          const permanentFieldName = presentFieldName.replace(
+            "Present",
+            "Permanent"
+          );
+          const presentValue = getValues(presentFieldName);
+          setValue(permanentFieldName, presentValue);
+          if (permanentFieldName.includes("District")) {
+            handleDistrictChange(
+              sectionIndex,
+              permanentDistrictField,
+              presentValue
+            );
+          }
+        });
+      }
     }
   };
 
-  const renderField = (field) => {
-    const {
-      type,
-      label,
-      name,
-      options = [],
-      placeholder,
-      accept,
-      maxLength,
-    } = field;
+  // Navigation between steps
+  const [currentStep, setCurrentStep] = useState(0);
+  const handleNext = async () => {
+    const currentFieldNames = formSections[currentStep].fields.map(
+      (field) => field.name
+    );
+    const valid = await trigger(currentFieldNames);
+    if (valid) {
+      setCurrentStep((prev) => prev + 1);
+    }
+  };
+  const handlePrev = () => {
+    setCurrentStep((prev) => prev - 1);
+  };
 
-    const handleTransformation = (e) => {
-      if (field.transformationFunctions?.includes("CapitalizeAlphabets")) {
-        const transformedValue = CapitalizeAlphabets(field, e.target.value);
-        setValue(field.name, transformedValue, { shouldValidate: true });
+  // When a district field changes, fetch tehsils and update the tehsil field options
+  const handleDistrictChange = async (sectionIndex, districtField, value) => {
+    try {
+      const response = await fetch(
+        `/Base/GetTeshilForDistrict?districtId=${value}`
+      );
+      const data = await response.json();
+      if (data.status && data.tehsils) {
+        const newOptions = data.tehsils.map((tehsil) => ({
+          value: tehsil.tehsilId,
+          label: tehsil.tehsilName,
+        }));
+        setFormSections((prevSections) => {
+          const newSections = [...prevSections];
+          const section = newSections[sectionIndex];
+          // Assume the tehsil field's name is derived by replacing "District" with "Tehsil"
+          const tehsilFieldName = districtField.name.replace(
+            "District",
+            "Tehsil"
+          );
+          section.fields = section.fields.map((field) =>
+            field.name === tehsilFieldName
+              ? { ...field, options: newOptions }
+              : field
+          );
+          return newSections;
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching tehsils:", error);
+    }
+  };
+
+  // Process the form data and submit
+  const onSubmit = async (data, operationType) => {
+    const finalFormData = {};
+    setButtonLoading(true);
+
+    // Recursively process each field and any additional nested fields
+    const processField = (field, data) => {
+      const fieldValue = data[field.name] || "";
+      if (field.type === "enclosure") {
+        finalFormData[field.name + "Enclosure"] = fieldValue.selected || "";
+        finalFormData[field.name + "File"] = fieldValue.file || "";
+      } else {
+        finalFormData[field.name] = fieldValue;
+      }
+      if (field.additionalFields) {
+        const selectedValue = data[field.name];
+        const additionalFields = field.additionalFields[selectedValue];
+        if (additionalFields) {
+          additionalFields.forEach((additionalField) => {
+            const nestedFieldName =
+              additionalField.name || `${field.name}_${additionalField.id}`;
+            processField({ ...additionalField, name: nestedFieldName }, data);
+          });
+        }
       }
     };
 
-    switch (type) {
+    formSections.forEach((section) => {
+      section.fields.forEach((field) => {
+        processField(field, data);
+      });
+    });
+
+    const formdata = new FormData();
+    formdata.append("serviceId", selectedServiceId);
+    formdata.append("formDetails", JSON.stringify(finalFormData));
+    for (const key in finalFormData) {
+      if (
+        finalFormData.hasOwnProperty(key) &&
+        finalFormData[key] instanceof File
+      ) {
+        formdata.append(key, finalFormData[key]);
+      }
+    }
+    formdata.append(
+      "status",
+      operationType === "submit" ? "Initiated" : "Incomplete"
+    );
+    formdata.append("referenceNumber", referenceNumber);
+
+    const response = await axiosInstance.post(
+      "/User/InsertFormDetails",
+      formdata
+    );
+    const result = response.data;
+    setButtonLoading(false);
+    if (result.status) {
+      if (result.type === "Submit") {
+        navigate("/user/acknowledge", {
+          state: { applicationId: result.referenceNumber },
+        });
+      } else {
+        setReferenceNumber(result.referenceNumber);
+      }
+    }
+  };
+
+  // Render each field based on its type
+  const renderField = (field, sectionIndex) => {
+    switch (field.type) {
       case "text":
       case "email":
-        return (
-          <CustomInputField
-            key={name}
-            label={label}
-            name={name}
-            type={type}
-            control={control}
-            placeholder={placeholder}
-            maxLength={maxLength}
-            rules={{
-              validate: async (value) => {
-                const error = await runValidations(field, value);
-                return error === true || error === "" ? true : error;
-              },
-            }}
-            onChange={handleTransformation}
-            errors={errors}
-          />
-        );
       case "date":
         return (
-          <CustomDateInput
-            key={name}
-            label={label}
-            name={name}
+          <Controller
+            name={field.name}
             control={control}
+            defaultValue={""}
             rules={{
-              validate: async (value) => {
-                const error = await runValidations(field, value);
-                return error === true || error === "" ? true : error;
-              },
+              validate: async (value) =>
+                await runValidations(field, value, getValues()),
             }}
-            errors={errors}
+            render={({ field: { onChange, value, ref } }) => (
+              <TextField
+                type={field.type}
+                id={field.id}
+                label={field.label}
+                value={value || ""}
+                onChange={onChange}
+                inputRef={ref}
+                error={Boolean(errors[field.name])}
+                helperText={errors[field.name]?.message || ""}
+                fullWidth
+                margin="normal"
+                inputProps={{
+                  maxLength: field.validationFunctions?.includes(
+                    "specificLength"
+                  )
+                    ? field.maxLength
+                    : undefined,
+                }}
+                sx={{
+                  ...commonStyles,
+                  "& .MuiInputBase-input": { color: "#312C51" },
+                }}
+              />
+            )}
           />
         );
-      case "select":
-        let selectOptions = options.map((option) => ({
-          label: option,
-          value: option,
-        }));
 
-        if (name.toLowerCase().includes("district")) {
-          selectOptions = districtOptions;
-        } else if (name.toLowerCase().includes("tehsil")) {
-          selectOptions = tehsilOptions;
-        } else if (name.toLowerCase().includes("block")) {
-          selectOptions = blockOptions;
-        }
-
-        selectOptions = [
-          { label: "Select Option", value: "" },
-          ...selectOptions,
-        ];
-        return (
-          <CustomSelectField
-            key={name}
-            label={label}
-            name={name}
-            control={control}
-            options={selectOptions}
-            placeholder={placeholder}
-            rules={{
-              validate: (value) => runValidations(field, value),
-            }}
-            onChange={(value) => {
-              console.log("HERE");
-              if (name === "District") setAppliedDistrict(value);
-              if (name.toLowerCase().includes("district"))
-                setSelectedDistrict(value);
-            }}
-            errors={errors}
-          />
-        );
       case "file":
         return (
-          <CustomFileSelector
-            key={name}
-            label={label}
-            name={name}
+          <Controller
+            name={field.name}
             control={control}
-            accept={accept}
-            ref={(el) => (fileInputRefs.current[name] = el)}
+            defaultValue={null}
             rules={{
-              validate: (value) => runValidations(field, value),
+              validate: async (value) => await runValidations(field, value),
             }}
-            errors={errors}
+            render={({ field: { onChange, ref } }) => (
+              <FormControl
+                fullWidth
+                margin="normal"
+                error={Boolean(errors[field.name])}
+                sx={commonStyles}
+              >
+                <Button
+                  variant="contained"
+                  component="label"
+                  sx={{ backgroundColor: "#312C51", color: "#fff" }}
+                >
+                  {field.label}
+                  <input
+                    type="file"
+                    hidden
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      onChange(file);
+                    }}
+                    ref={ref}
+                    accept={field.accept}
+                  />
+                </Button>
+                <FormHelperText>
+                  {errors[field.name]?.message || ""}
+                </FormHelperText>
+              </FormControl>
+            )}
           />
         );
-      case "checkbox":
+
+      case "select":
         return (
-          <CustomCheckbox
-            key={name}
-            label={label}
-            name={name}
+          <Controller
+            name={field.name}
             control={control}
+            defaultValue={field.options[0]?.value || ""}
             rules={{
-              validate: (value) => runValidations(field, value),
+              validate: async (value) =>
+                await runValidations(field, value, getValues()),
             }}
-            errors={errors}
+            render={({ field: { onChange, value, ref } }) => {
+              // Handle dependent options (e.g., district fields)
+              const districtFields = [
+                "district",
+                "presentdistrict",
+                "permanentdistrict",
+              ];
+              const normalizedFieldName = field.name
+                .toLowerCase()
+                .replace(/\s/g, "");
+              const isDistrict = districtFields.includes(normalizedFieldName);
+              let options;
+              if (field.optionsType === "dependent" && field.dependentOn) {
+                const parentValue = watch(field.dependentOn);
+                options =
+                  field.dependentOptions && field.dependentOptions[parentValue]
+                    ? field.dependentOptions[parentValue]
+                    : [];
+              } else {
+                options = field.options;
+              }
+              return (
+                <FormControl
+                  fullWidth
+                  margin="normal"
+                  error={Boolean(errors[field.name])}
+                  sx={commonStyles}
+                >
+                  <InputLabel id={`${field.id}-label`}>
+                    {field.label}
+                  </InputLabel>
+                  <Select
+                    labelId={`${field.id}-label`}
+                    id={field.id}
+                    value={value || ""}
+                    label={field.label}
+                    onChange={(e) => {
+                      onChange(e);
+                      if (isDistrict) {
+                        handleDistrictChange(
+                          sectionIndex,
+                          field,
+                          e.target.value
+                        );
+                      }
+                    }}
+                    inputRef={ref}
+                    sx={{
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#312C51",
+                      },
+                      color: "#312C51",
+                    }}
+                  >
+                    {options.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>
+                    {errors[field.name]?.message || ""}
+                  </FormHelperText>
+                  {field.additionalFields &&
+                    field.additionalFields[value] &&
+                    field.additionalFields[value].map((additionalField) => {
+                      const additionalFieldName =
+                        additionalField.name ||
+                        `${field.name}_${additionalField.id}`;
+                      return (
+                        <div
+                          key={additionalField.id}
+                          style={{ marginBottom: 16 }}
+                        >
+                          <InputLabel
+                            htmlFor={additionalField.id}
+                            sx={{ color: "#312C51" }}
+                          >
+                            {additionalField.label}
+                          </InputLabel>
+                          {renderField(
+                            { ...additionalField, name: additionalFieldName },
+                            sectionIndex
+                          )}
+                        </div>
+                      );
+                    })}
+                </FormControl>
+              );
+            }}
           />
         );
-      case "radio":
+
+      case "enclosure":
         return (
-          <CustomRadioButton
-            key={name}
-            label={label}
-            name={name}
+          <Controller
+            name={field.name}
             control={control}
-            options={options}
-            rules={{
-              validate: (value) => runValidations(field, value),
+            defaultValue={{
+              selected: field.options[0]?.value || "",
+              file: null,
             }}
-            errors={errors}
+            rules={{}}
+            render={({ field: { onChange, value, ref } }) => {
+              const isDependent = field.isDependentEnclosure;
+              const parentValue = isDependent
+                ? watch(field.dependentField)
+                : null;
+              if (
+                isDependent &&
+                (!parentValue || !field.dependentValues.includes(parentValue))
+              ) {
+                return null;
+              }
+              let options = field.options;
+              // Reset selection if parent changes
+              useEffect(() => {
+                if (
+                  isDependent &&
+                  !options.find((opt) => opt.value === value.selected)
+                ) {
+                  onChange({ selected: "", file: null });
+                }
+              }, [parentValue]); // eslint-disable-line react-hooks/exhaustive-deps
+
+              return (
+                <FormControl
+                  fullWidth
+                  margin="normal"
+                  error={Boolean(errors[field.name])}
+                  sx={commonStyles}
+                >
+                  <InputLabel id={`${field.id}_select-label`}>
+                    {field.label}
+                  </InputLabel>
+                  <Select
+                    labelId={`${field.id}_select-label`}
+                    id={`${field.id}_select`}
+                    value={value.selected || ""}
+                    label={field.label}
+                    onChange={(e) => {
+                      const newVal = {
+                        ...value,
+                        selected: e.target.value,
+                        file: null,
+                      };
+                      onChange(newVal);
+                    }}
+                    inputRef={ref}
+                    sx={{
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#312C51",
+                      },
+                      color: "#312C51",
+                    }}
+                  >
+                    {options.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>
+                    {errors[field.name]?.message || ""}
+                  </FormHelperText>
+                  {value.file && (
+                    <FormHelperText
+                      sx={{
+                        cursor: "pointer",
+                        color: "#312C51",
+                        textDecoration: "underline",
+                        fontSize: 16,
+                        textAlign: "center",
+                        "&:hover": { color: "#1A1736" },
+                      }}
+                      onClick={() => {
+                        const fileURL = URL.createObjectURL(value.file);
+                        window.open(fileURL, "_blank");
+                      }}
+                    >
+                      {value.file.name}
+                    </FormHelperText>
+                  )}
+                  <Button
+                    variant="contained"
+                    component="label"
+                    sx={{ mt: 2, backgroundColor: "#312C51", color: "#fff" }}
+                    disabled={!value.selected}
+                  >
+                    Upload File
+                    <input
+                      type="file"
+                      hidden
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        onChange({ ...value, file });
+                      }}
+                      accept={field.accept}
+                    />
+                  </Button>
+                </FormControl>
+              );
+            }}
           />
         );
+
       default:
         return null;
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <Box>
-        {loading && <LoadingSpinner />}
-        <Typography
-          variant="h4"
-          sx={{ color: "background.paper", mb: 5, textAlign: "center" }}
-        >
-          {formConfig[step].section}
-        </Typography>
-        <Box
-          sx={{
-            width: "max-content",
-            margin: "0 auto",
-            marginBottom: "10px",
-          }}
-        >
-          <CustomButton
-            text="Insert Dummy Data"
-            onClick={() =>
-              insertDummyData(
-                setValue,
-                setSelectedDistrict,
-                formConfig,
-                step,
-                fileInputRefs
-              )
-            }
-            type="button"
-            bgColor="secondary.main"
-            color="background.paper"
-          />
-        </Box>
+  if (loading) return <div>Loading form...</div>;
 
-        <Container>
-          <Row sx={{ flex: 1 }}>
-            {formConfig[step].fields.map((field) => (
-              <Col
-                md={step === 3 || field.type === "checkbox" ? 12 : 6}
-                xs={12}
-                key={field.name}
-              >
-                {renderField(field)}
-              </Col>
-            ))}
-          </Row>
-        </Container>
-      </Box>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          marginTop: "20px",
-          gap: 5,
-        }}
-      >
-        {step > 0 && (
-          <CustomButton
-            text="Previous"
-            onClick={() => setStep((prev) => prev - 1)}
-            type="button"
-          />
+  return (
+    <Box
+      sx={{
+        width: "50vw",
+        margin: "0 auto",
+        backgroundColor: "#F0C38E",
+        borderRadius: 5,
+        color: "#312C51",
+        padding: 10,
+      }}
+    >
+      <form onSubmit={handleSubmit((data) => onSubmit(data, "submit"))}>
+        {formSections.length > 0 ? (
+          <>
+            {formSections.map((section, index) => {
+              if (index !== currentStep) return null;
+              return (
+                <div
+                  key={section.id}
+                  style={{ display: "flex", flexDirection: "column" }}
+                >
+                  <h1 style={{ textAlign: "center", marginBottom: 50 }}>
+                    {section.section}
+                  </h1>
+                  {section.section === "Permanent Address Details" && (
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={isCopyAddressChecked}
+                          onChange={(e) => {
+                            setIsCopyAddressChecked(e.target.checked);
+                            handleCopyAddress(e.target.checked, index);
+                          }}
+                        />
+                      }
+                      label="Same As Present Address"
+                    />
+                  )}
+                  {section.section === "Applicant Details" && (
+                    <Box
+                      component="img"
+                      src={applicantImagePreview}
+                      alt="Applicant Image"
+                      sx={{
+                        width: 150,
+                        height: 150,
+                        borderRadius: "8px",
+                        objectFit: "cover",
+                        boxShadow: 2,
+                        margin: "0 auto",
+                      }}
+                    />
+                  )}
+                  <Row>
+                    {section.fields.map((field) => (
+                      <Col xs={12} lg={field.span} key={field.id}>
+                        <Box sx={{ display: "flex", flexDirection: "column" }}>
+                          {renderField(field, index)}
+                        </Box>
+                      </Col>
+                    ))}
+                  </Row>
+                </div>
+              );
+            })}
+
+            <Box
+              sx={{ display: "flex", justifyContent: "center", marginTop: 5 }}
+            >
+              {currentStep > 0 && (
+                <CustomButton
+                  text="Previous"
+                  bgColor="#312C51"
+                  color="#F0C38E"
+                  width={"40%"}
+                  onClick={handlePrev}
+                />
+              )}
+              {currentStep < formSections.length - 1 && (
+                <CustomButton
+                  text="Next"
+                  bgColor="#312C51"
+                  color="#F0C38E"
+                  width={"40%"}
+                  onClick={handleNext}
+                />
+              )}
+              {currentStep === formSections.length - 1 && (
+                <CustomButton
+                  text="Submit"
+                  bgColor="#312C51"
+                  color="#F0C38E"
+                  width={"40%"}
+                  type="button"
+                  onClick={handleSubmit((data) => onSubmit(data, "submit"))}
+                />
+              )}
+            </Box>
+            <Box
+              sx={{ display: "flex", justifyContent: "center", marginTop: 5 }}
+            >
+              {currentStep !== formSections.length - 1 && (
+                <CustomButton
+                  text="Save"
+                  bgColor="#312C51"
+                  color="#F0C38E"
+                  isLoading={buttonLoading}
+                  width={"40%"}
+                  type="button"
+                  onClick={handleSubmit((data) => onSubmit(data, "save"))}
+                />
+              )}
+            </Box>
+          </>
+        ) : (
+          !loading && <div>No form configuration available.</div>
         )}
-        <CustomButton
-          text={step < formConfig.length - 1 ? "Next" : "Submit"}
-          type="submit"
-          disabled={isSubmitting}
-          bgColor="background.paper"
-          color="primary.main"
-        />
-      </div>
-    </form>
+      </form>
+    </Box>
   );
 };
 

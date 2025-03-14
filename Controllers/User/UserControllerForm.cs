@@ -38,15 +38,11 @@ namespace ReactMvcApp.Controllers.User
             foreach (var file in form.Files)
             {
                 // Save the file and get its storage location
-                string filePath = await helper.GetFilePath(file);
-
-
-                // Update the flat JSON: if a property key matches the file's name, replace its value with the file path.
-                if (formDetailsObj.TryGetValue(file.Name, out JToken token))
-                {
-                    formDetailsObj[file.Name] = filePath;
-                }
+                string filePath = await helper.GetFilePath(file)!;
+                formDetailsObj[file.Name] = filePath;
             }
+
+
 
             // Example: Extract district id from the flat JSON if needed.
             // Here we look for any key that contains "District" (case-insensitive) and try to parse its value as an integer.
@@ -113,7 +109,7 @@ namespace ReactMvcApp.Controllers.User
 
             dbcontext.SaveChanges();
 
-            if (status == "Inititated")
+            if (status == "Initiated")
             {
                 helper.InsertHistory(referenceNumber, "Application Submission", "Citizen");
                 return Json(new { status = true, referenceNumber, type = "Submit" });
