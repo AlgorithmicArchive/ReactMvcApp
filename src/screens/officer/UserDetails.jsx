@@ -21,21 +21,31 @@ import { formatKey, runValidations } from "../../assets/formvalidations";
 import { Controller, useForm } from "react-hook-form";
 import CustomButton from "../../components/CustomButton";
 import axiosInstance from "../../axiosConfig";
+import BasicModal from "../../components/BasicModal";
+import SectionSelectCheckboxes from "../../components/SectionSelectCheckboxes";
 
-// Modified CollapsibleFormDetails now receives its open state from props.
+// Updated CollapsibleFormDetails accepts an onViewPdf prop
 const CollapsibleFormDetails = ({
   formDetails,
   formatKey,
   detailsOpen,
   setDetailsOpen,
+  onViewPdf,
 }) => {
+  // Transform formDetails (object) to an array of sections if needed.
+  const sections = useMemo(() => {
+    return Array.isArray(formDetails)
+      ? formDetails
+      : Object.entries(formDetails).map(([key, value]) => ({ [key]: value }));
+  }, [formDetails]);
+
   return (
     <>
       <Button
         onClick={() => setDetailsOpen((prev) => !prev)}
         sx={{
-          backgroundColor: "#CCA682",
-          color: "#312C51",
+          backgroundColor: "divider",
+          color: "text.primary",
           fontWeight: "bold",
         }}
       >
@@ -50,51 +60,119 @@ const CollapsibleFormDetails = ({
             border: "2px solid #CCA682",
             borderRadius: 5,
             padding: 5,
-            backgroundColor: "#312C51",
+            backgroundColor: "background.default",
             margin: { lg: "0 auto" },
           }}
         >
-          {formDetails.map((section, index) => (
-            <Row key={index} style={{ marginBottom: 40 }}>
-              {Object.entries(section).map(([key, value]) => (
-                <Col
-                  xs={12}
-                  lg={Object.keys(section).length === 1 ? 12 : 6}
-                  key={key}
-                  style={{ marginBottom: 10 }}
-                >
-                  <Box sx={{ display: "flex", flexDirection: "column" }}>
-                    <Typography
-                      variant="subtitle2"
-                      sx={{
-                        fontSize: 14,
-                        fontWeight: "bold",
-                        width: "250px",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
+          {sections.map((section, index) => (
+            <Box key={index} sx={{ marginBottom: 4 }}>
+              {/* SECTION NAME */}
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: "bold",
+                  marginBottom: 2,
+                  borderColor: "divider",
+                  borderBottom: "1px solid",
+                  paddingBottom: 1,
+                }}
+              >
+                {Object.keys(section)[0]}
+              </Typography>
+
+              <Row>
+                {Object.entries(section).map(([sectionName, fields]) =>
+                  fields.map((field, fieldIndex) => (
+                    <Col
+                      xs={12}
+                      lg={6}
+                      key={fieldIndex}
+                      style={{ marginBottom: 10 }}
                     >
-                      {formatKey(key)}
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        border: "2px solid #CCA682",
-                        borderRadius: 3,
-                        padding: 2,
-                      }}
-                    >
-                      {value}
-                    </Typography>
-                  </Box>
-                </Col>
-              ))}
+                      <Box sx={{ display: "flex", flexDirection: "column" }}>
+                        <Typography
+                          variant="subtitle2"
+                          sx={{
+                            fontSize: 14,
+                            fontWeight: "bold",
+                            width: "250px",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {field.label || field.name}
+                        </Typography>
+
+                        {/* Render file/image fields differently */}
+                        {field.File && field.File !== "" ? (
+                          field.File.toLowerCase().match(
+                            /\.(jpg|jpeg|png|gif)$/
+                          ) ? (
+                            // Image Field
+                            <Box
+                              component="img"
+                              src={field.File}
+                              alt={field.label}
+                              sx={{
+                                width: "100%",
+                                maxHeight: 200,
+                                objectFit: "contain",
+                                borderRadius: 2,
+                                borderColor: "divider",
+                                border: "1px solid",
+                                padding: 1,
+                                mt: 1,
+                              }}
+                            />
+                          ) : (
+                            // Document (PDF) Field
+                            <Box sx={{ mt: 1 }}>
+                              <Button
+                                variant="outlined"
+                                onClick={() => onViewPdf(field.File)}
+                              >
+                                View Document
+                              </Button>
+                              {field.Enclosure && (
+                                <Typography
+                                  variant="caption"
+                                  display="block"
+                                  sx={{ mt: 1 }}
+                                >
+                                  Enclosure: {field.Enclosure}
+                                </Typography>
+                              )}
+                            </Box>
+                          )
+                        ) : (
+                          // Regular text fields
+                          <Typography
+                            variant="body1"
+                            sx={{
+                              border: "1px solid",
+                              borderColor: "divider",
+                              borderRadius: 3,
+                              padding: 2,
+                              mt: 1,
+                            }}
+                          >
+                            {field.value !== undefined && field.value !== null
+                              ? field.value
+                              : "--"}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Col>
+                  ))
+                )}
+              </Row>
+
               <Divider
                 orientation="horizontal"
-                sx={{ borderColor: "#CCA682", my: 5 }}
+                sx={{ borderColor: "divider", my: 5 }}
               />
-            </Row>
+            </Box>
           ))}
         </Box>
       </Collapse>
@@ -104,22 +182,39 @@ const CollapsibleFormDetails = ({
 
 const commonStyles = {
   "& .MuiOutlinedInput-root": {
-    "& fieldset": { borderColor: "#312C51" },
-    "&:hover fieldset": { borderColor: "#312C51" },
-    "&.Mui-focused fieldset": { borderColor: "#312C51" },
+    "& fieldset": {
+      borderColor: "divider",
+    },
+    "&:hover fieldset": {
+      borderColor: "primary.main",
+    },
+    "&.Mui-focused fieldset": {
+      borderColor: "primary.main",
+      borderWidth: "2px",
+    },
+    backgroundColor: "background.paper",
+    color: "text.primary",
   },
-  "& .MuiInputLabel-root": { color: "#312C51" },
-  "& .MuiInputBase-input::placeholder": { color: "#312C51" },
-  color: "#312C51",
+  "& .MuiInputLabel-root": {
+    color: "text.primary",
+    "&.Mui-focused": {
+      color: "primary.main",
+    },
+  },
+  marginBottom: 5,
 };
 
 export default function UserDetails() {
   const location = useLocation();
   const { applicationId } = location.state || {};
-  const [formDetails, setFormDetails] = useState([]);
+  // Initialize formDetails as an object (if that's what fetchUserDetail returns)
+  const [formDetails, setFormDetails] = useState({});
   const [actionForm, setActionForm] = useState([]);
-  // Lift the open/closed state for user details
+  // State for collapsing details
   const [detailsOpen, setDetailsOpen] = useState(true);
+  // State for PDF modal
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState("");
   const navigate = useNavigate();
   const {
     control,
@@ -134,20 +229,11 @@ export default function UserDetails() {
     fetchUserDetail(applicationId, setFormDetails, setActionForm);
   }, [applicationId]);
 
-  // Create an array of user details options by flattening formDetails
-  const userDetailsOptions = useMemo(() => {
-    const options = [];
-    formDetails.forEach((section) => {
-      Object.keys(section).forEach((key) => {
-        options.push({ value: key, label: formatKey(key) });
-      });
-    });
-    // Remove duplicates if any
-    return options.filter(
-      (option, index, self) =>
-        index === self.findIndex((o) => o.value === option.value)
-    );
-  }, [formDetails]);
+  // Function to handle PDF viewing
+  const handleViewPdf = (url) => {
+    setPdfUrl(url);
+    setPdfModalOpen(true);
+  };
 
   // Render an individual field using Controller
   const renderField = (field, sectionIndex) => {
@@ -275,7 +361,6 @@ export default function UserDetails() {
                     label={field.label}
                     onChange={(e) => {
                       onChange(e);
-                      // Additional logic (if needed) can be added here.
                     }}
                     inputRef={ref}
                     sx={{
@@ -401,11 +486,7 @@ export default function UserDetails() {
   // onSubmit handles the action form submission.
   const onSubmit = async (data) => {
     console.log("Submitted Data:", data);
-
-    // Create a new FormData instance
     const formData = new FormData();
-
-    // Iterate over each key in the data object
     Object.keys(data).forEach((key) => {
       const value = data[key];
       if (value instanceof File) {
@@ -416,17 +497,20 @@ export default function UserDetails() {
         formData.append(key, value);
       }
     });
-
     formData.append("applicationId", applicationId);
     console.log(formData);
-
-    const response = await axiosInstance.post(
-      "/Officer/HandleAction",
-      formData
-    );
-    const result = response.data;
-    if (result.status) navigate("/officer/home");
-    else alert(result.response);
+    try {
+      const response = await axiosInstance.post(
+        "/Officer/HandleAction",
+        formData
+      );
+      const result = response.data;
+      if (result.status) navigate("/officer/home");
+      else alert(result.response);
+    } catch (error) {
+      console.error("Submission error:", error);
+      alert("Error submitting form. Please try again.");
+    }
   };
 
   return (
@@ -445,6 +529,7 @@ export default function UserDetails() {
         formatKey={formatKey}
         detailsOpen={detailsOpen}
         setDetailsOpen={setDetailsOpen}
+        onViewPdf={handleViewPdf}
       />
       <Typography variant="h3" sx={{ marginTop: detailsOpen ? 40 : 5 }}>
         Action Form
@@ -454,26 +539,24 @@ export default function UserDetails() {
           width: "50vw",
           height: "auto",
           margin: "0 auto",
-          backgroundColor: "#F0C38E",
+          backgroundColor: "background.paper",
           borderRadius: 5,
           color: "#312C51",
           padding: 10,
         }}
       >
-        <form onSubmit={handleSubmit(onSubmit)} style={{ width: "100%" }}>
+        <form style={{ width: "100%" }}>
           {actionForm.length > 0 &&
             actionForm.map((field, index) => {
-              // For select fields, watch the current value.
               const selectedValue =
                 field.type === "select" ? watch(field.name) : null;
               return (
                 <Box key={index}>
                   {renderField(field, index)}
-                  {/* If field is a select and its value is ReturnToCitizen, render a scrollable list of checkboxes */}
                   {field.type === "select" &&
                     selectedValue === "ReturnToCitizen" && (
                       <Controller
-                        name={`returnFields_${index}`}
+                        name={`returnFields`}
                         control={control}
                         defaultValue={[]}
                         rules={{
@@ -484,7 +567,8 @@ export default function UserDetails() {
                         render={({ field: { onChange, value } }) => (
                           <Box
                             sx={{
-                              border: "1px solid #312C51",
+                              borderColor: "divider",
+                              border: "1px solid",
                               borderRadius: 2,
                               maxHeight: 200,
                               overflowY: "auto",
@@ -494,32 +578,14 @@ export default function UserDetails() {
                               flexDirection: "column",
                             }}
                           >
-                            {userDetailsOptions.map((option) => (
-                              <FormControlLabel
-                                key={option.value}
-                                control={
-                                  <Checkbox
-                                    checked={value.includes(option.value)}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        onChange([...value, option.value]);
-                                      } else {
-                                        onChange(
-                                          value.filter(
-                                            (v) => v !== option.value
-                                          )
-                                        );
-                                      }
-                                    }}
-                                    sx={{
-                                      color: "#312C51",
-                                      "&.Mui-checked": { color: "#312C51" },
-                                    }}
-                                  />
-                                }
-                                label={option.label}
-                              />
-                            ))}
+                            <SectionSelectCheckboxes
+                              formDetails={formDetails}
+                              control={control}
+                              name={`returnFields`}
+                              value={value}
+                              onChange={onChange}
+                              formatKey={formatKey}
+                            />
                           </Box>
                         )}
                       />
@@ -527,16 +593,22 @@ export default function UserDetails() {
                 </Box>
               );
             })}
-
           <CustomButton
             text="Take Action"
-            bgColor="#312C51"
-            color="#F0C38E"
+            bgColor="primary.main"
+            color="background.paper"
             width={"100%"}
             onClick={handleSubmit(onSubmit)}
           />
         </form>
       </Box>
+      {/* PDF Modal - displays pdf inside modal */}
+      <BasicModal
+        open={pdfModalOpen}
+        handleClose={() => setPdfModalOpen(false)}
+        Title="Document Viewer"
+        pdf={pdfUrl}
+      />
     </Box>
   );
 }

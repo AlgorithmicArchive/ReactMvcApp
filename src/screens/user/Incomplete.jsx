@@ -29,8 +29,7 @@ export default function Incomplete() {
   return (
     <Box
       sx={{
-        width: "100vw",
-        height: { xs: "100vh", md: "70vh" },
+        height: { xs: "100vh", md: "50vh" },
         display: "flex",
         justifyContent: "center",
         alignItems: "center",

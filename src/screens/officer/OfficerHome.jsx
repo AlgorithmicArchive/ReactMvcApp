@@ -23,7 +23,6 @@ export default function OfficerHome() {
   const {
     control,
     formState: { errors },
-    handleSubmit,
     reset,
   } = useForm();
 
@@ -47,6 +46,7 @@ export default function OfficerHome() {
 
   // When a card is clicked, update the type, show the table, and scroll to it.
   const handleCardClick = async (statusName) => {
+    console.log(statusName);
     setType(statusName);
     setShowTable(true);
     // Allow the table to render then scroll
@@ -94,13 +94,11 @@ export default function OfficerHome() {
   return (
     <Box
       sx={{
-        width: "100vw",
         height: "auto",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
         flexDirection: "column",
-        marginTop: "30vh",
         marginBottom: "5vh",
         gap: 5,
       }}
@@ -135,9 +133,13 @@ export default function OfficerHome() {
       {showTable && (
         <Container ref={tableRef}>
           <ServerSideTable
+            key={`${serviceId}-${type}`}
             url="/Officer/GetApplications"
             extraParams={extraParams}
             actionFunctions={actionFunctions}
+            canSanction={canSanction}
+            pendingApplications={type == "Pending"}
+            serviceId={serviceId}
           />
         </Container>
       )}

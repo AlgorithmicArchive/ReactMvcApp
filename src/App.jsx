@@ -2,19 +2,23 @@ import React, { useContext, useEffect, useState } from "react";
 import { BrowserRouter as Router, useNavigate } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
 import { CssBaseline, Container, Box } from "@mui/material";
-import { TwilightBlossom } from "./themes/TwilightBlossom";
+import { GovSoftTheme, TwilightBlossom } from "./themes/TwilightBlossom";
 import RoutesComponent from "./components/RoutesComponent"; // Import the RoutesComponent
 import Header from "./components/Header";
 import { UserProvider, UserContext } from "./UserContext";
+import ScrollToTop from "./components/ScrollToTop";
+import Footer from "./components/Footer";
 
 const App = () => {
   return (
-    <ThemeProvider theme={TwilightBlossom}>
+    <ThemeProvider theme={GovSoftTheme}>
       <UserProvider>
         <CssBaseline /> {/* Normalize CSS across browsers */}
         <Router>
+          <ScrollToTop />
           <Header />
           <MainContent />
+          <Footer />
         </Router>
       </UserProvider>
     </ThemeProvider>
@@ -48,12 +52,7 @@ const MainContent = () => {
   return (
     <Box
       sx={{
-        width: "100vw",
-        backgroundColor: "background.default",
-        marginTop: {
-          xs: "10vh", // Extra-small screens (default, below sm)
-          md: "30vh", // Medium screens (900px and up)
-        },
+        width: "100%",
       }}
     >
       <RoutesComponent />

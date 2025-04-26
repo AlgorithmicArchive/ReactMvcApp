@@ -1,7 +1,5 @@
-// CustomInputField.js
-
 import React from "react";
-import { Box, Typography } from "@mui/material";
+import { Box, TextField, Typography } from "@mui/material";
 import { Controller } from "react-hook-form";
 
 export default function CustomInputField({
@@ -12,14 +10,18 @@ export default function CustomInputField({
   control,
   placeholder = "Enter text...",
   rules = {},
-  onChange, // Accept onChange as a prop
-  maxLength, // Accept maxLength as a prop
+  onChange,
+  maxLength,
 }) {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", mb: 2 }}>
       {label && (
         <Typography
-          sx={{ fontWeight: "bold", mb: 1, color: "background.default" }}
+          sx={{
+            mb: 1,
+            color: "text.primary", // from theme
+            fontSize: 14,
+          }}
         >
           {label}
         </Typography>
@@ -28,40 +30,47 @@ export default function CustomInputField({
       <Controller
         name={name}
         control={control}
-        defaultValue={value} // Default to empty string
+        defaultValue={value}
         rules={rules}
         render={({ field, fieldState: { error } }) => (
-          <>
-            <input
-              {...field}
-              type={type}
-              placeholder={placeholder}
-              value={field.value || ""}
-              onChange={(e) => {
-                field.onChange(e); // Update the field value in react-hook-form
-                if (onChange) onChange(e); // Apply transformation if onChange prop is provided
-              }}
-              onBlur={field.onBlur}
-              maxLength={maxLength} // Set the maxLength here
-              style={{
-                padding: "10px",
+          <TextField
+            {...field}
+            type={type}
+            placeholder={placeholder}
+            variant="outlined"
+            fullWidth
+            error={!!error}
+            helperText={error ? error.message : ""}
+            onChange={(e) => {
+              field.onChange(e);
+              if (onChange) onChange(e);
+            }}
+            onBlur={field.onBlur}
+            InputProps={{
+              sx: {
                 fontSize: "16px",
-                border: error ? "2px solid red" : "2px solid #48426D",
                 borderRadius: "5px",
-                outline: "none",
-                transition: "border-color 0.3s",
-                width: "100%",
-                backgroundColor: "transparent",
-                color: "#48426D",
-              }}
-            />
-            {/* Display error message */}
-            {error && (
-              <Typography variant="body2" sx={{ color: "red", mt: 1 }}>
-                {error.message}
-              </Typography>
-            )}
-          </>
+                backgroundColor: "background.paper", // soft input background
+                color: "text.primary",
+                border: error ? "2px solid red" : "1px solid", // use theme border color
+                borderColor: error ? "error.main" : "divider",
+                "& input::placeholder": {
+                  color: "text.secondary", // theme-based placeholder
+                },
+                "&:hover": {
+                  borderColor: "primary.main",
+                },
+                "&.Mui-focused": {
+                  borderColor: "primary.main",
+                },
+                boxShadow: "none",
+                padding: 0,
+              },
+              inputProps: {
+                maxLength,
+              },
+            }}
+          />
         )}
       />
     </Box>

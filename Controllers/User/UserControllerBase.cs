@@ -38,22 +38,23 @@ namespace ReactMvcApp.Controllers.User
             return View(details);
         }
 
-        public IActionResult GetServices(int page, int size)
+        public IActionResult GetServices(int pageIndex, int pageSize)
         {
             // Fetch services from the database
-            var services = dbcontext.Services.FromSqlRaw("SELECT * FROM Services WHERE Active=1;");
+            var services = dbcontext.Services.FromSqlRaw("SELECT * FROM Services WHERE Active=1");
 
-            // Define the columns for the frontend
+            _logger.LogInformation($"----------SERVICES COUNT: {services.Count()}---------------------------");
+            // Initialize columns
             var columns = new List<dynamic>
             {
-                new { label = "S.No", value="sno" },
-                new { label = "Service Name",value="servicename" },
-                new { label = "Department", value="department" },
-                new { label = "Action",value="button" }
+                new { header = "S.No", accessorKey = "sno" },
+                new { header = "Service Name", accessorKey = "servicename" },
+                new { header = "Department", accessorKey = "department" },
             };
 
-            // Prepare the data list
-            var data = new List<dynamic>();
+            // Initialize data list
+            List<dynamic> data = [];
+            List<dynamic> customActions = [];
             int index = 1;
 
             foreach (var item in services)
@@ -64,21 +65,37 @@ namespace ReactMvcApp.Controllers.User
                     parameters = new[] { item.ServiceId },
                     buttonText = "Apply"
                 };
-                var cell = new
+
+                data.Add(new
                 {
                     sno = index,
                     servicename = item.ServiceName,
                     department = item.Department,
-                    button
-                };
-                data.Add(cell);
+                    serviceId = item.ServiceId
+                });
+
+                customActions.Add(new
+                {
+                    id = index,
+                    tooltip = "Apply",
+                    color = "#F0C38E",
+                    actionFunction = "OpenForm"
+                });
+
                 index++;
             }
 
             // Pagination logic
-            var pagedData = data.Skip(page * size).Take(size).ToList();
+            var pagedData = data.Skip(pageIndex * pageSize).Take(pageSize).ToList();
 
-            return Json(new { status = true, data = pagedData, columns, totalCount = data.Count });
+            return Json(new
+            {
+                status = true,
+                data = pagedData,
+                columns,
+                customActions,
+                totalCount = data.Count
+            });
         }
 
         // public IActionResult ServiceForm(string? ApplicationId, bool? returnToEdit)
@@ -113,112 +130,7 @@ namespace ReactMvcApp.Controllers.User
         //     return View(ApplicationDetails);
         // }
 
-        public IActionResult GetInitiatedApplications()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            // Ensure that you filter by the correct "Initiated" status
-            var applications = dbcontext.CitizenApplications
-                                        .Where(u => u.CitizenId.ToString() == userIdClaim && u.Status != "Incomplete")
-                                        .ToList();
-
-            // Initialize columns
-            var columns = new List<dynamic>
-            {
-                new { header = "S.No", accessorKey = "sno" },
-                new { header = "Reference Number", accessorKey = "referenceNumber" },
-                new { header = "Applicant Name", accessorKey = "applicantName" },
-                new { header = "Currently With", accessorKey = "currentlyWith" },
-                new { header = "Status", accessorKey = "status" },
-            };
-
-            // Correctly initialize data list
-            List<dynamic> data = [];
-            List<dynamic> customActions = [];
-            int index = 1;
-            Dictionary<string, string> actionMap = new()
-            {
-                {"pending","Pending"},
-                {"forwarded","Forwarded"},
-                {"sanctioned","Sanctioned"},
-                {"returned","Returned"},
-                {"rejected","Rejected"},
-                {"returntoedit","Returned to citizen for edition"},
-                {"Deposited","Inserted to Bank File"},
-                {"Dispatched","Payment Under Process"},
-                {"Disbursed","Payment Disbursed"},
-                {"Failure","Payment Failed"},
-            };
-
-            foreach (var application in applications)
-            {
-                var formDetails = JsonConvert.DeserializeObject<dynamic>(application.FormDetails!);
-                var officers = JsonConvert.DeserializeObject<dynamic>(application.WorkFlow!) as JArray;
-                var currentPlayer = application.CurrentPlayer;
-                data.Add(new
-                {
-                    sno = index,
-                    referenceNumber = application.ReferenceNumber,
-                    applicantName = formDetails!["ApplicantName"].ToString(),
-                    currentlyWith = officers![currentPlayer]["designation"],
-                    status = actionMap[(string)officers[currentPlayer]["status"]!]
-                });
-
-                if ((string)officers[currentPlayer]["status"]! != "ReturnToCitizen")
-                {
-                    customActions.Add(new { id = index, tooltip = "View", color = "#F0C38E", actionFunction = "CreateTimeLine" });
-                }
-                else
-                {
-                    customActions.Add(new { id = index, tooltip = "Edit Form", color = "#F0C38E", actionFunction = "EditForm" });
-                }
-                index++;
-            }
-
-            // Ensure size is positive for pagination
-            return Json(new { data, columns, customActions });
-        }
-
-        public IActionResult IncompleteApplications()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            // Ensure that you filter by the correct "Initiated" status
-            var applications = dbcontext.CitizenApplications
-                                        .Where(u => u.CitizenId.ToString() == userIdClaim && u.Status == "Incomplete")
-                                        .ToList();
-
-            // Initialize columns
-            var columns = new List<dynamic>
-            {
-                new { header = "S.No", accessorKey = "sno" },
-                new { header = "Reference Number", accessorKey = "referenceNumber" },
-            };
-
-            // Correctly initialize data list
-            List<dynamic> data = [];
-            List<dynamic> customActions = [];
-            int index = 1;
-
-
-            foreach (var application in applications)
-            {
-                var formDetails = JsonConvert.DeserializeObject<dynamic>(application.FormDetails!);
-                data.Add(new
-                {
-                    sno = index,
-                    referenceNumber = application.ReferenceNumber,
-                    serviceId = application.ServiceId,
-                });
-                customActions.Add(new { id = index, tooltip = "Edit", color = "#F0C38E", actionFunction = "IncompleteForm" });
-                index++;
-            }
-
-            // Ensure size is positive for pagination
-            return Json(new { data, columns, customActions });
-        }
-
-        // public IActionResult EditForm([FromForm] IFormCollection form)
+         // public IActionResult EditForm([FromForm] IFormCollection form)
         // {
         //     string applicationId = form["ApplicationId"].ToString();
         //     foreach (var key in form.Keys)

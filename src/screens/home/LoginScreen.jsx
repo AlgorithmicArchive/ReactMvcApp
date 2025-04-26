@@ -1,6 +1,6 @@
 import React, { useContext, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Box, Typography } from "@mui/material";
+import { Box, Button, Typography } from "@mui/material";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import CustomInputField from "../../components/form/CustomInputField";
@@ -9,7 +9,7 @@ import { Login } from "../../assets/fetch"; // Assuming the Login function is in
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../../UserContext";
 import LoadingSpinner from "../../components/LoadingSpinner";
-import { Container } from "react-bootstrap";
+import { ToastContainer, toast } from "react-toastify";
 
 // Define a validation schema using Yup
 const schema = yup.object().shape({
@@ -58,6 +58,15 @@ export default function LoginScreen() {
         setVerified(false);
         setDesignation(response.designation);
         navigate("/Verification");
+      } else {
+        toast.error(response.response, {
+          position: "top-right",
+          autoClose: 3000, // Close after 3 seconds
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
       }
     } catch (error) {
       console.error("Login failed:", error);
@@ -74,16 +83,19 @@ export default function LoginScreen() {
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
-        height: { xs: "80vh", md: "60vh" },
+        height: { xs: "100vh", lg: "70vh" },
+        marginTop: { xs: 10, lg: 0 },
       }}
     >
       {loading && <LoadingSpinner />}
       <Box
         sx={{
-          backgroundColor: "primary.main",
-          padding: 5,
-          borderRadius: 5,
-          width: { xs: "90%", md: "50%" },
+          backgroundColor: "#FFFFFF",
+          padding: 8,
+          borderRadius: 10,
+          width: { xs: "90%", md: "60%", lg: "30%" },
+          height: { xs: "80%", lg: "100%" },
+          boxShadow: 20,
         }}
       >
         <Typography
@@ -91,18 +103,18 @@ export default function LoginScreen() {
           component="h1"
           sx={{
             mb: 3,
-            textAlign: "center",
-            color: "background.paper",
+            color: "text.primary",
             fontWeight: "bold",
           }}
         >
-          Login
+          Login to your account
         </Typography>
         <Box
           component="form"
           noValidate
           autoComplete="off"
           onSubmit={handleSubmit(onSubmit)}
+          sx={{ display: "flex", flexDirection: "column", gap: 5 }}
         >
           {/* Username Field */}
           <CustomInputField
@@ -123,23 +135,45 @@ export default function LoginScreen() {
             placeholder="Enter your password"
             rules={{
               required: "Password is required",
-              minLength: {
-                value: 6,
-                message: "Password must be at least 6 characters",
-              },
             }}
             errors={errors}
           />
 
           {/* Submit Button */}
-          <Box sx={{ display: "flex", justifyContent: "center" }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+            }}
+          >
             <CustomButton
-              text="Login"
-              bgColor="background.paper"
-              color="primary.main"
+              text="LOG IN"
+              bgColor="primary.main"
+              color="background.default"
               onClick={handleSubmit(onSubmit)} // Use handleSubmit here
               type="submit" // Set type to "submit" for correct form behavior
+              width={"100%"}
             />
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                padding: 3,
+              }}
+            >
+              <Typography sx={{ textAlign: "center", fontSize: 14 }}>
+                Don't have an account?
+              </Typography>
+              <Button
+                sx={{ color: "darkblue" }}
+                onClick={() => navigate("/register")}
+              >
+                Sign up now
+              </Button>
+            </Box>
+            <ToastContainer />
           </Box>
         </Box>
       </Box>

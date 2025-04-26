@@ -247,8 +247,7 @@ export async function fetchUserDetail(
   const response = await axiosInstance.get("/Officer/GetUserDetails", {
     params: { applicationId: applicationId },
   });
-  setFormDetails(response.data.list);
-  console.log(response.data.currentOfficerDetails.actionForm);
+  setFormDetails(response.data.list); 
   setActionForm(response.data.currentOfficerDetails.actionForm);
 }
 
@@ -256,5 +255,8 @@ export async function fetchFormDetails(applicationId) {
   const response = await axiosInstance.get("/User/GetFormDetails", {
     params: { applicationId: applicationId },
   });
-  return response.data.formDetails;
+  return {
+    formDetails: response.data.formDetails,
+    additionalDetails: response.data.additionalDetails,
+  };
 }

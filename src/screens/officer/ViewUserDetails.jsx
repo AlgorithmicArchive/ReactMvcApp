@@ -1,13 +1,15 @@
 import { Box } from "@mui/system";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { fetchUserDetail } from "../../assets/fetch";
 import { Col, Row } from "react-bootstrap";
 import {
   Button,
+  Checkbox,
   Collapse,
   Divider,
   FormControl,
+  FormControlLabel,
   FormHelperText,
   InputLabel,
   MenuItem,
@@ -19,26 +21,36 @@ import { formatKey, runValidations } from "../../assets/formvalidations";
 import { Controller, useForm } from "react-hook-form";
 import CustomButton from "../../components/CustomButton";
 import axiosInstance from "../../axiosConfig";
+import BasicModal from "../../components/BasicModal";
+import SectionSelectCheckboxes from "../../components/SectionSelectCheckboxes";
 
-// Modified CollapsibleFormDetails now receives its open state from props.
+// Updated CollapsibleFormDetails accepts an onViewPdf prop
 const CollapsibleFormDetails = ({
   formDetails,
   formatKey,
   detailsOpen,
   setDetailsOpen,
+  onViewPdf,
 }) => {
+  // Transform formDetails (object) to an array of sections if needed.
+  const sections = useMemo(() => {
+    return Array.isArray(formDetails)
+      ? formDetails
+      : Object.entries(formDetails).map(([key, value]) => ({ [key]: value }));
+  }, [formDetails]);
+
   return (
     <>
-      <Button
+      {/* <Button
         onClick={() => setDetailsOpen((prev) => !prev)}
         sx={{
-          backgroundColor: "#CCA682",
-          color: "#312C51",
+          backgroundColor: "divider",
+          color: "text.primary",
           fontWeight: "bold",
         }}
       >
         {detailsOpen ? "Collapse" : "Expand"} Details
-      </Button>
+      </Button> */}
       <Collapse in={detailsOpen}>
         <Box
           sx={{
@@ -48,51 +60,119 @@ const CollapsibleFormDetails = ({
             border: "2px solid #CCA682",
             borderRadius: 5,
             padding: 5,
-            backgroundColor: "#312C51",
+            backgroundColor: "background.default",
             margin: { lg: "0 auto" },
           }}
         >
-          {formDetails.map((section, index) => (
-            <Row key={index} style={{ marginBottom: 40 }}>
-              {Object.entries(section).map(([key, value]) => (
-                <Col
-                  xs={12}
-                  lg={Object.keys(section).length === 1 ? 12 : 6}
-                  key={key}
-                  style={{ marginBottom: 10 }}
-                >
-                  <Box sx={{ display: "flex", flexDirection: "column" }}>
-                    <Typography
-                      variant="subtitle2"
-                      sx={{
-                        fontSize: 14,
-                        fontWeight: "bold",
-                        width: "250px",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
+          {sections.map((section, index) => (
+            <Box key={index} sx={{ marginBottom: 4 }}>
+              {/* SECTION NAME */}
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: "bold",
+                  marginBottom: 2,
+                  borderColor: "divider",
+                  borderBottom: "1px solid",
+                  paddingBottom: 1,
+                }}
+              >
+                {Object.keys(section)[0]}
+              </Typography>
+
+              <Row>
+                {Object.entries(section).map(([sectionName, fields]) =>
+                  fields.map((field, fieldIndex) => (
+                    <Col
+                      xs={12}
+                      lg={6}
+                      key={fieldIndex}
+                      style={{ marginBottom: 10 }}
                     >
-                      {formatKey(key)}
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        border: "2px solid #CCA682",
-                        borderRadius: 3,
-                        padding: 2,
-                      }}
-                    >
-                      {value}
-                    </Typography>
-                  </Box>
-                </Col>
-              ))}
+                      <Box sx={{ display: "flex", flexDirection: "column" }}>
+                        <Typography
+                          variant="subtitle2"
+                          sx={{
+                            fontSize: 14,
+                            fontWeight: "bold",
+                            width: "250px",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {field.label || field.name}
+                        </Typography>
+
+                        {/* Render file/image fields differently */}
+                        {field.File && field.File !== "" ? (
+                          field.File.toLowerCase().match(
+                            /\.(jpg|jpeg|png|gif)$/
+                          ) ? (
+                            // Image Field
+                            <Box
+                              component="img"
+                              src={field.File}
+                              alt={field.label}
+                              sx={{
+                                width: "100%",
+                                maxHeight: 200,
+                                objectFit: "contain",
+                                borderRadius: 2,
+                                borderColor: "divider",
+                                border: "1px solid",
+                                padding: 1,
+                                mt: 1,
+                              }}
+                            />
+                          ) : (
+                            // Document (PDF) Field
+                            <Box sx={{ mt: 1 }}>
+                              <Button
+                                variant="outlined"
+                                onClick={() => onViewPdf(field.File)}
+                              >
+                                View Document
+                              </Button>
+                              {field.Enclosure && (
+                                <Typography
+                                  variant="caption"
+                                  display="block"
+                                  sx={{ mt: 1 }}
+                                >
+                                  Enclosure: {field.Enclosure}
+                                </Typography>
+                              )}
+                            </Box>
+                          )
+                        ) : (
+                          // Regular text fields
+                          <Typography
+                            variant="body1"
+                            sx={{
+                              border: "1px solid",
+                              borderColor: "divider",
+                              borderRadius: 3,
+                              padding: 2,
+                              mt: 1,
+                            }}
+                          >
+                            {field.value !== undefined && field.value !== null
+                              ? field.value
+                              : "--"}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Col>
+                  ))
+                )}
+              </Row>
+
               <Divider
                 orientation="horizontal"
-                sx={{ borderColor: "#CCA682", my: 5 }}
+                sx={{ borderColor: "divider", my: 5 }}
               />
-            </Row>
+            </Box>
           ))}
         </Box>
       </Collapse>
@@ -114,15 +194,18 @@ const commonStyles = {
 export default function ViewUserDetails() {
   const location = useLocation();
   const { applicationId } = location.state || {};
-  const [formDetails, setFormDetails] = useState([]);
+  // Initialize formDetails as an object (if that's what fetchUserDetail returns)
+  const [formDetails, setFormDetails] = useState({});
   const [actionForm, setActionForm] = useState([]);
-  // Lift the open/closed state for user details
+  // State for collapsing details
   const [detailsOpen, setDetailsOpen] = useState(true);
+  // State for PDF modal
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState("");
   const navigate = useNavigate();
   const {
     control,
     handleSubmit,
-    reset,
     watch,
     getValues,
     formState: { errors },
@@ -132,6 +215,12 @@ export default function ViewUserDetails() {
     // fetchUserDetail is assumed to set both formDetails and actionForm
     fetchUserDetail(applicationId, setFormDetails, setActionForm);
   }, [applicationId]);
+
+  // Function to handle PDF viewing
+  const handleViewPdf = (url) => {
+    setPdfUrl(url);
+    setPdfModalOpen(true);
+  };
 
   // Render an individual field using Controller
   const renderField = (field, sectionIndex) => {
@@ -175,6 +264,7 @@ export default function ViewUserDetails() {
             )}
           />
         );
+
       case "file":
         return (
           <Controller
@@ -212,6 +302,7 @@ export default function ViewUserDetails() {
             )}
           />
         );
+
       case "select":
         return (
           <Controller
@@ -231,7 +322,6 @@ export default function ViewUserDetails() {
               const normalizedFieldName = field.name
                 .toLowerCase()
                 .replace(/\s/g, "");
-
               const isDistrict = districtFields.includes(normalizedFieldName);
               let options;
               if (field.optionsType === "dependent" && field.dependentOn) {
@@ -258,7 +348,6 @@ export default function ViewUserDetails() {
                     label={field.label}
                     onChange={(e) => {
                       onChange(e);
-                      // Optionally, handle district changes here.
                     }}
                     inputRef={ref}
                     sx={{
@@ -306,6 +395,7 @@ export default function ViewUserDetails() {
             }}
           />
         );
+
       case "enclosure":
         return (
           <Controller
@@ -374,48 +464,15 @@ export default function ViewUserDetails() {
             }}
           />
         );
+
       default:
         return null;
     }
   };
 
-  const onSubmit = async (data) => {
-    console.log("Submitted Data:", data);
-
-    // Create a new FormData instance
-    const formData = new FormData();
-
-    // Iterate over each key in the data object
-    Object.keys(data).forEach((key) => {
-      const value = data[key];
-
-      // If the value is an object (and not a File), you might want to stringify it.
-      // Adjust this logic as needed if you have nested objects.
-      if (value instanceof File) {
-        formData.append(key, value);
-      } else if (typeof value === "object" && value !== null) {
-        formData.append(key, JSON.stringify(value));
-      } else {
-        formData.append(key, value);
-      }
-    });
-
-    formData.append("applicationId", applicationId);
-    console.log(formData);
-
-    const response = await axiosInstance.post(
-      "/Officer/HandleAction",
-      formData
-    );
-    const result = response.data;
-    if (result.status) navigate("/officer/home");
-    else alert(result.response);
-  };
-
   return (
     <Box
       sx={{
-        height: "80vh",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -428,36 +485,15 @@ export default function ViewUserDetails() {
         formatKey={formatKey}
         detailsOpen={detailsOpen}
         setDetailsOpen={setDetailsOpen}
+        onViewPdf={handleViewPdf}
       />
-      {/* <Typography variant="h3" sx={{ marginTop: detailsOpen ? 40 : 5 }}>
-        Action Form
-      </Typography>
-      <Box
-        sx={{
-          width: "50vw",
-          height: "auto",
-          margin: "0 auto",
-          backgroundColor: "#F0C38E",
-          borderRadius: 5,
-          color: "#312C51",
-          padding: 10,
-        }}
-      >
-        <form onSubmit={handleSubmit(onSubmit)} style={{ width: "100%" }}>
-          {actionForm.length > 0 &&
-            actionForm.map((field, index) => (
-              <Box key={index}>{renderField(field, index)}</Box>
-            ))}
-
-          <CustomButton
-            text="Take Action"
-            bgColor="#312C51"
-            color="#F0C38E"
-            width={"100%"}
-            onClick={handleSubmit(onSubmit)}
-          />
-        </form>
-      </Box> */}
+      {/* PDF Modal - displays pdf inside modal */}
+      <BasicModal
+        open={pdfModalOpen}
+        handleClose={() => setPdfModalOpen(false)}
+        Title="Document Viewer"
+        pdf={pdfUrl}
+      />
     </Box>
   );
 }

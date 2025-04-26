@@ -23,6 +23,15 @@ export default function Initiated() {
         params: { ApplicationId: userdata.referenceNumber },
       });
     },
+    EditForm: (row) => {
+      const userdata = row.original;
+      navigate("/user/editform", {
+        state: {
+          referenceNumber: userdata.referenceNumber,
+          ServiceId: userdata.serviceId,
+        },
+      });
+    },
   };
 
   const handleButtonAction = async (functionName, parameters) => {
@@ -39,7 +48,6 @@ export default function Initiated() {
   return (
     <Box
       sx={{
-        width: "100vw",
         height: { xs: "100vh", md: "70vh" },
         display: "flex",
         justifyContent: "center",

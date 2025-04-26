@@ -50,11 +50,11 @@ namespace ReactMvcApp.Controllers
             var random = new Random();
             return new string(Enumerable.Range(0, length).Select(_ => random.Next(0, 10).ToString()[0]).ToArray());
         }
-     
+
 
         public IActionResult Index()
         {
-        
+
 
             return View();
         }
@@ -334,6 +334,23 @@ namespace ReactMvcApp.Controllers
             var designations = _dbContext.OfficersDesignations.ToList();
             return Json(new { status = true, designations });
         }
+
+
+        [HttpGet]
+        public IActionResult CheckUsername(string username)
+        {
+            var exists = _dbContext.Users.FirstOrDefault(u => u.Username == username);
+            bool isUnique = exists == null; // unique if no matching user is found
+            return Json(new { isUnique });
+        }
+        [HttpGet]
+        public IActionResult CheckEmail(string email)
+        {
+            var exists = _dbContext.Users.FirstOrDefault(u => u.Email == email);
+            bool isUnique = exists == null; // unique if no matching user is found
+            return Json(new { isUnique });
+        }
+
 
         // [HttpPost]
         // public IActionResult Contact([FromForm] IFormCollection form)

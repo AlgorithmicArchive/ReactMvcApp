@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Data.SqlClient;
@@ -21,17 +22,23 @@ namespace ReactMvcApp.Controllers
 
 
 
-        public OfficerDetailsModal GetOfficerDetails()
+        public OfficerDetailsModal? GetOfficerDetails()
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            // Fetch the officer details
+            if (string.IsNullOrEmpty(userId))
+            {
+                // Log the issue for debugging
+                _logger.LogWarning("GetOfficerDetails: UserId is null. User is not authenticated or NameIdentifier claim is missing.");
+                return null;
+            }
+
             var parameter = new SqlParameter("@UserId", userId);
             var officer = dbcontext.Database
-                                    .SqlQuery<OfficerDetailsModal>($"EXEC GetOfficerDetails @UserId = {parameter}")
-                                    .AsEnumerable()
-                                    .FirstOrDefault();
+                .SqlQuery<OfficerDetailsModal>($"EXEC GetOfficerDetails @UserId = {parameter}")
+                .AsEnumerable()
+                .FirstOrDefault();
 
-            return officer!;
+            return officer;
         }
 
         public IActionResult UsernameAlreadyExist(string Username)
@@ -197,6 +204,144 @@ namespace ReactMvcApp.Controllers
         //     return Json(new { countList, Districts, Services });
         // }
 
+        public IActionResult GetApplicationsCount(int? ServiceId = null, int? DistrictId = null)
+        {
+            // Get the current officer's details.
+            var officer = GetOfficerDetails();
+            if (officer == null)
+            {
+                return Unauthorized();
+            }
+
+            // Retrieve the service record.
+            var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == ServiceId);
+            if (service == null)
+            {
+                return NotFound();
+            }
+
+            // Deserialize the OfficerEditableField JSON.
+            // Assuming the JSON is an array of objects.
+            var workflow = JsonConvert.DeserializeObject<List<dynamic>>(service.OfficerEditableField!);
+            if (workflow == null || workflow.Count == 0)
+            {
+                return Json(new { countList = new List<dynamic>(), canSanction = false });
+            }
+
+            // Find the authority record for the officer's role.
+            // The JSON field names must match those in your stored JSON.
+            dynamic authorities = workflow.FirstOrDefault(p => p.designation == officer.Role)!;
+            if (authorities == null)
+            {
+                return Json(new { countList = new List<dynamic>(), canSanction = false });
+            }
+
+            // Create SQL parameters for a parameterized stored procedure call.
+            var paramTakenBy = new SqlParameter("@TakenBy", officer.Role);
+            var paramAccessLevel = new SqlParameter("@AccessLevel", officer.AccessLevel);
+            var paramAccessCode = new SqlParameter("@AccessCode", DistrictId);
+            var paramServiceId = new SqlParameter("@ServiceId", ServiceId);
+
+            // Execute the stored procedure and retrieve counts.
+            var counts = dbcontext.Database
+                .SqlQueryRaw<StatusCounts>(
+                    "EXEC GetStatusCount @TakenBy, @AccessLevel, @AccessCode, @ServiceId",
+                    paramTakenBy, paramAccessLevel, paramAccessCode, paramServiceId)
+                .AsEnumerable()
+                .FirstOrDefault() ?? new StatusCounts();
+
+            // Build the count list based on the available authority permissions.
+            var countList = new List<dynamic>();
+
+            countList.Add(new
+            {
+                label = "Total Applications",
+                count = counts.TotalApplications,
+                bgColor = "#000000",
+                textColor = "#FFFFFF"
+            });
+
+            // Pending is always included.
+            countList.Add(new
+            {
+                label = "Pending",
+                count = counts.PendingCount,
+                bgColor = "#FFC107",
+                textColor = "#212121"
+            });
+
+            // Forwarded (if allowed)
+            if ((bool)authorities.canForwardToPlayer)
+            {
+                countList.Add(new
+                {
+                    label = "Forwarded",
+                    count = counts.ForwardedCount,
+                    bgColor = "#64B5F6",
+                    textColor = "#0D47A1"
+                });
+            }
+
+            // Returned (if allowed)
+            if ((bool)authorities.canReturnToPlayer)
+            {
+                countList.Add(new
+                {
+                    label = "Returned",
+                    count = counts.ReturnedCount,
+                    bgColor = "#E0E0E0",
+                    textColor = "#212121"
+                });
+            }
+
+            // Citizen Pending (if allowed)
+            if ((bool)authorities.canReturnToCitizen)
+            {
+                countList.Add(new
+                {
+                    label = "Citizen Pending",
+                    count = counts.ReturnToEditCount,
+                    bgColor = "#CE93D8",
+                    textColor = "#4A148C"
+                });
+            }
+
+            // Rejected (if allowed)
+            if ((bool)authorities.canReject)
+            {
+                countList.Add(new
+                {
+                    label = "Rejected",
+                    count = counts.RejectCount,
+                    bgColor = "#FF7043",
+                    textColor = "#B71C1C"
+                });
+            }
+
+            // Sanctioned (if allowed)
+            if ((bool)authorities.canSanction)
+            {
+                countList.Add(new
+                {
+                    label = "Sanctioned",
+                    count = counts.SanctionedCount,
+                    bgColor = "#81C784",
+                    textColor = "#1B5E20"
+                });
+            }
+
+            countList.Add(new
+            {
+                label = "Disbursed",
+                count = counts.DisbursedCount,
+                bgColor = "#ABCDEF",
+                textColor = "#123456"
+            });
+
+            // Return the count list and whether the officer can sanction.
+            return Json(new { countList, canSanction = (bool)authorities.canSanction });
+        }
+
         // public IActionResult GetApplicationDetails(int? ServiceId = null, int? DistrictId = null, string? ApplicationStatus = null, int page = 0, int size = 10)
         // {
         //     var officerDetails = GetOfficerDetails();
@@ -262,7 +407,15 @@ namespace ReactMvcApp.Controllers
         [HttpGet]
         public IActionResult GetServices()
         {
-            var services = dbcontext.Services.Where(ser => ser.Active == true).ToList();
+            var officer = GetOfficerDetails();
+
+            // Fetch the service list for the given role
+            var roleParameter = new SqlParameter("@Role", officer!.Role);
+            var services = dbcontext.Database
+                                       .SqlQuery<OfficerServiceListModal>($"EXEC GetServicesByRole @Role = {roleParameter}")
+                                       .AsEnumerable() // To avoid composability errors
+                                       .ToList();
+
             return Json(new { status = true, services });
         }
 
@@ -340,7 +493,13 @@ namespace ReactMvcApp.Controllers
         [HttpGet]
         public IActionResult GetDistricts()
         {
-            var districts = dbcontext.Districts.ToList();
+            var officer = GetOfficerDetails();
+            if (officer!.AccessLevel == "Tehsil")
+            {
+                var tehsils = dbcontext.Tehsils.Where(t => t.TehsilId == officer.AccessCode).ToList();
+                return Json(new { status = true, tehsils });
+            }
+            var districts = dbcontext.Districts.Where(d => (officer.AccessLevel == "State") || (officer!.AccessLevel == "Division" && d.Division == officer.AccessCode) || (officer.AccessLevel == "District" && d.DistrictId == officer.AccessCode)).ToList();
             return Json(new { status = true, districts });
         }
 

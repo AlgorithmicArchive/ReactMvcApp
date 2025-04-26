@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using ReactMvcApp.Models.Entities;
 
 namespace ReactMvcApp.Controllers.Officer
@@ -502,16 +503,63 @@ namespace ReactMvcApp.Controllers.Officer
 
         public string GetDistrictName(int districtId)
         {
-            return dbcontext.Districts.FirstOrDefault(d => d.DistrictId == districtId)!.DistrictName;
+            return dbcontext.Districts.FirstOrDefault(d => d.DistrictId == districtId)!.DistrictName!;
         }
-  
-  
+
+
         public string GetTehsilName(int tehsilId)
         {
-            return dbcontext.Tehsils.FirstOrDefault(d => d.TehsilId == tehsilId)!.TehsilName;
+            return dbcontext.Tehsils.FirstOrDefault(d => d.TehsilId == tehsilId)!.TehsilName!;
+        }
+
+        public string GetFieldValue(string fieldName, dynamic data)
+        {
+            foreach (var section in data)
+            {
+                if (section.First is JArray fields)
+                {
+                    foreach (var field in fields)
+                    {
+                        if (field["name"] != null && field["name"]?.ToString() == fieldName)
+                        {
+                            return field["value"]?.ToString() ?? "";
+                        }
+                    }
+                }
+            }
+            return "";
         }
 
 
+        public IActionResult UpdatePool(int ServiceId, string list)
+        {
+            var officer = GetOfficerDetails();
+            var PoolList = dbcontext.Pools.FirstOrDefault(p => p.ServiceId == Convert.ToInt32(ServiceId) && p.AccessLevel == officer.AccessLevel && p.AccessCode == officer.AccessCode);
+            var pool = PoolList != null && !string.IsNullOrWhiteSpace(PoolList!.List) ? JsonConvert.DeserializeObject<List<string>>(PoolList.List) : [];
+            var poolList = JsonConvert.DeserializeObject<List<string>>(list);
+            foreach (var item in poolList!)
+            {
+                pool!.Add(item);
+            }
+
+            _logger.LogInformation($"----------------POOL After ADD: {JsonConvert.SerializeObject(pool)}---------------------------");
+            if (PoolList == null)
+            {
+                var newPool = new Pool
+                {
+                    ServiceId = ServiceId,
+                    AccessLevel = officer.AccessLevel!,
+                    AccessCode = (int)officer.AccessCode!,
+                    List = JsonConvert.SerializeObject(pool)
+                };
+                dbcontext.Pools.Add(newPool);
+            }
+            else
+                PoolList!.List = JsonConvert.SerializeObject(pool);
+
+            dbcontext.SaveChanges();
+            return Json(new { status = true, ServiceId, list });
+        }
         // Officer Actions
         // public void ActionForward(int serviceId, string applicationId, int officerId, string officerDesignation, string remarks, string filePath, string accessLevel, int accessCode)
         // {

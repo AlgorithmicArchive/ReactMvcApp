@@ -4,28 +4,38 @@ import { Button, CircularProgress } from "@mui/material";
 export default function CustomButton({
   text = "Click Me",
   onClick = null,
-  bgColor = "primary.main",
-  color = "background.paper",
+  bgColor = "primary.main", // use theme shorthand
+  color = "background.paper", // use theme shorthand
   type = "button",
   disabled = false,
   width = null,
-  isLoading = false, // New prop for loading state
+  isLoading = false,
 }) {
   return (
     <Button
       variant="contained"
       onClick={onClick || undefined}
       type={type}
-      disabled={disabled || isLoading} // Disable if loading
+      disabled={disabled || isLoading}
       sx={{
         backgroundColor: bgColor,
         color: color,
         fontWeight: "bold",
         width: width,
         margin: "0 auto",
+        textTransform: "none",
+        fontSize: 24,
+        borderRadius: 10,
+
+        // Use theme-friendly styles for disabled
         "&:disabled": {
-          backgroundColor: "gray",
-          color: "#fff",
+          backgroundColor: "divider",
+          color: "text.secondary",
+        },
+
+        // Optional: hover state styling
+        "&:hover": {
+          backgroundColor: "primary.dark", // fallback if defined
         },
       }}
     >

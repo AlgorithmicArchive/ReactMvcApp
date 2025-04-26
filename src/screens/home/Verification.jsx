@@ -19,20 +19,17 @@ export default function Verification() {
   const { setVerified } = useContext(UserContext);
   const navigate = useNavigate();
 
-  // Handle option selection
   const handleOptionSelect = (option) => {
     setSelectedOption(option);
   };
 
   const onSubmit = async (data) => {
-    // Prepare form data
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
       formData.append(key, value);
     });
 
     try {
-      // Send verification data to the server
       const response = await Validate(formData);
 
       if (response.status) {
@@ -47,7 +44,6 @@ export default function Verification() {
             : "/user/home";
         navigate(url);
       } else {
-        // Handle verification failure
         console.error("Verification failed:", response.message);
         setErrorMessage(response.message || "Verification failed.");
       }
@@ -67,97 +63,99 @@ export default function Verification() {
         alignItems: "center",
         flexDirection: "column",
         gap: 3,
+        px: 2,
       }}
     >
-      <Typography variant="h4" component="h1" sx={{ fontWeight: "bold" }}>
+      <Typography
+        variant="h4"
+        component="h1"
+        sx={{ fontWeight: "bold", color: "text.primary" }}
+      >
         Verification
       </Typography>
 
-      {/* Show options if no option is selected */}
       {!selectedOption && (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <Button
             variant="contained"
-            sx={{ backgroundColor: "primary.main", color: "background.paper" }}
             onClick={() => handleOptionSelect("otp")}
+            sx={{
+              backgroundColor: "primary.main",
+              color: "background.paper",
+              borderRadius: 3,
+              fontWeight: "bold",
+              textTransform: "none",
+              "&:hover": {
+                backgroundColor: "primary.dark",
+              },
+            }}
           >
             Use OTP Verification
           </Button>
           <Button
             variant="contained"
-            sx={{ backgroundColor: "background.paper", color: "primary.main" }}
             onClick={() => handleOptionSelect("backup")}
+            sx={{
+              backgroundColor: "background.paper",
+              color: "primary.main",
+              borderRadius: 3,
+              fontWeight: "bold",
+              textTransform: "none",
+              "&:hover": {
+                backgroundColor: "background.paper",
+              },
+            }}
           >
             Use Backup Codes
           </Button>
         </Box>
       )}
 
-      {/* Conditionally render the input field based on selected option */}
-      {selectedOption === "otp" && (
+      {selectedOption && (
         <Box
           sx={{
             width: "100%",
             maxWidth: 400,
-            backgroundColor: "primary.main",
+            backgroundColor: "background.paper",
             padding: 5,
-            borderRadius: 5,
+            borderRadius: 4,
             display: "flex",
             flexDirection: "column",
-            justifyContent: "center",
+            gap: 2,
+            boxShadow: 3,
           }}
         >
           <CustomInputField
-            label="Enter Otp set to your mail."
-            name="otp"
-            placeholder="OTP"
+            label={
+              selectedOption === "otp"
+                ? "Enter OTP sent to your email."
+                : "Enter your backup code."
+            }
+            name={selectedOption === "otp" ? "otp" : "backupCode"}
+            placeholder={selectedOption === "otp" ? "OTP" : "Backup Code"}
             type="text"
             control={control}
-            rules={{ required: "OTP is required." }}
+            rules={{
+              required:
+                selectedOption === "otp"
+                  ? "OTP is required."
+                  : "Backup Code is required.",
+            }}
             errors={errors}
           />
-          <CustomButton
-            text="Submit"
-            onClick={handleSubmit(onSubmit)}
-            bgColor="background.paper"
-            color="primary.main"
-          />
-        </Box>
-      )}
 
-      {selectedOption === "backup" && (
-        <Box
-          sx={{
-            width: "100%",
-            maxWidth: 400,
-            backgroundColor: "primary.main",
-            padding: 5,
-            borderRadius: 5,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-          }}
-        >
-          <CustomInputField
-            label="Enter Backup Code."
-            name="backupCode"
-            placeholder="Backup Code"
-            type="text"
-            control={control}
-            rules={{ required: "Backup Code is required." }}
-            errors={errors}
-          />
           <CustomButton
             text="Submit"
             onClick={handleSubmit(onSubmit)}
-            bgColor="background.paper"
-            color="primary.main"
+            bgColor="primary.main"
+            color="background.paper"
+            width="100%"
           />
         </Box>
       )}
 
       {errorMessage && (
-        <Typography color="error" variant="body1">
+        <Typography color="error" variant="body2" sx={{ mt: 2 }}>
           {errorMessage}
         </Typography>
       )}

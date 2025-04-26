@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Box, Typography, Container } from "@mui/material";
+import { Box, Typography, Container, Button } from "@mui/material";
 import { useForm } from "react-hook-form";
 import CustomInputField from "../../components/form/CustomInputField";
 import CustomButton from "../../components/CustomButton";
@@ -18,7 +18,40 @@ export default function RegisterScreen() {
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   const [userId, setUserId] = useState(0);
   const [loading, setLoading] = useState(false);
-  const naviagate = useNavigate();
+  const navigate = useNavigate();
+
+  // Async validation function for username
+  const validateUsername = async (value) => {
+    if (!value) return "Username is required";
+    try {
+      const response = await axios.get("/Home/CheckUsername", {
+        params: { username: value },
+      });
+      if (!response.data.isUnique) {
+        return "Username already exists";
+      }
+      return true;
+    } catch (error) {
+      return "Error validating username";
+    }
+  };
+
+  // Async validation function for email
+  const validateEmail = async (value) => {
+    if (!value) return "Email is required";
+    try {
+      const response = await axios.get("/Home/CheckEmail", {
+        params: { email: value },
+      });
+      if (!response.data.isUnique) {
+        return "Email already exists";
+      }
+      return true;
+    } catch (error) {
+      return "Error validating email";
+    }
+  };
+
   // Handle form submission
   const onSubmit = async (data) => {
     setLoading(true);
@@ -26,39 +59,47 @@ export default function RegisterScreen() {
     Object.entries(data).forEach(([key, value]) => {
       formData.append(key, value);
     });
-    const response = await axios.post("/Home/Register", formData);
-    const { status, userId } = response.data;
-    if (status) {
+    try {
+      const response = await axios.post("/Home/Register", formData);
+      const { status, userId } = response.data;
+      if (status) {
+        setIsOtpModalOpen(true);
+        setUserId(userId);
+      }
+    } catch (error) {
+      console.error("Registration error", error);
+    } finally {
       setLoading(false);
-      setIsOtpModalOpen(true);
-      setUserId(userId);
     }
   };
 
   const handleOtpSubmit = async (otp) => {
     setLoading(true);
-    const formdata = new FormData();
-    formdata.append("otp", otp);
-    formdata.append("UserId", userId);
-    const response = await axios.post("/Home/OTPValidation", formdata);
-    const { status } = response.data;
-    if (status) {
+    const formData = new FormData();
+    formData.append("otp", otp);
+    formData.append("UserId", userId);
+    try {
+      const response = await axios.post("/Home/OTPValidation", formData);
+      if (response.data.status) {
+        navigate("/login");
+      }
+    } catch (error) {
+      console.error("OTP validation error", error);
+    } finally {
       setLoading(false);
-      naviagate("/login");
     }
   };
 
   return (
-    <Box sx={{ backgroundColor: "background.default" }}>
+    <Box>
       <Box
         sx={{
-          marginTop: "",
-          width: "100vw",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
           gap: 3,
+          height: "100vh",
         }}
       >
         {loading && (
@@ -87,11 +128,10 @@ export default function RegisterScreen() {
         <Container
           maxWidth="sm"
           sx={{
-            mt: 5,
-            bgcolor: "primary.main",
+            bgcolor: "background.default",
             p: 4,
             borderRadius: 5,
-            boxShadow: 20,
+            boxShadow: 5,
           }}
         >
           <Typography
@@ -100,7 +140,7 @@ export default function RegisterScreen() {
             sx={{
               mb: 3,
               textAlign: "center",
-              color: "background.paper",
+              color: "primary.main",
               fontWeight: "bold",
             }}
           >
@@ -113,7 +153,7 @@ export default function RegisterScreen() {
             autoComplete="off"
             onSubmit={handleSubmit(onSubmit)}
           >
-            <Box sx={{}}>
+            <Box>
               <CustomInputField
                 rules={{ required: "This Field is required" }}
                 label="Full Name"
@@ -123,7 +163,10 @@ export default function RegisterScreen() {
                 errors={errors}
               />
               <CustomInputField
-                rules={{ required: "This Field is required" }}
+                rules={{
+                  required: "This Field is required",
+                  validate: validateUsername,
+                }}
                 label="Username"
                 name="username"
                 control={control}
@@ -132,9 +175,12 @@ export default function RegisterScreen() {
               />
             </Box>
 
-            <Box sx={{}}>
+            <Box>
               <CustomInputField
-                rules={{ required: "This Field is required" }}
+                rules={{
+                  required: "This Field is required",
+                  validate: validateEmail,
+                }}
                 label="Email"
                 name="email"
                 control={control}
@@ -143,16 +189,23 @@ export default function RegisterScreen() {
                 errors={errors}
               />
               <CustomInputField
-                rules={{ required: "This Field is required" }}
+                rules={{
+                  required: "This Field is required",
+                  pattern: {
+                    value: /^[0-9]{10}$/,
+                    message: "Mobile number must be exactly 10 digits",
+                  },
+                }}
                 label="Mobile Number"
                 name="mobileNumber"
                 control={control}
                 placeholder="Mobile Number"
                 errors={errors}
+                maxLength={10}
               />
             </Box>
 
-            <Box sx={{}}>
+            <Box>
               <CustomInputField
                 rules={{ required: "This Field is required" }}
                 label="Password"
@@ -176,10 +229,29 @@ export default function RegisterScreen() {
             <Box sx={{ display: "flex", justifyContent: "center" }}>
               <CustomButton
                 text="Register"
-                bgColor="background.paper"
-                color="primary.main"
-                type="submit" // Set type to "submit" for correct form behavior
+                bgColor="primary.main"
+                color="background.paper"
+                type="submit"
+                width="100%"
               />
+            </Box>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                padding: 3,
+              }}
+            >
+              <Typography sx={{ textAlign: "center", fontSize: 14 }}>
+                Already have an account?
+              </Typography>
+              <Button
+                sx={{ color: "darkblue" }}
+                onClick={() => navigate("/login")}
+              >
+                Sign in now
+              </Button>
             </Box>
           </Box>
         </Container>

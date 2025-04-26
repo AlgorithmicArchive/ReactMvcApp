@@ -1,20 +1,31 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { MaterialReactTable } from "material-react-table";
-import { CircularProgress, Box, Button } from "@mui/material";
+import { CircularProgress, Box, Button, useTheme } from "@mui/material";
 import axiosInstance from "../axiosConfig";
 
-const ServerSideTable = ({ url, actionFunctions, extraParams = {} }) => {
+const ServerSideTable = ({
+  url,
+  actionFunctions,
+  extraParams = {},
+  canSanction = false,
+  pendingApplications = false,
+  serviceId,
+}) => {
+  const theme = useTheme();
+
   const [columns, setColumns] = useState([]);
-  const [data, setData] = useState([]);
+  const [inboxData, setInboxData] = useState([]);
+  const [poolData, setPoolData] = useState([]);
   const [customActions, setCustomActions] = useState([]);
   const [pageCount, setPageCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [rowSelection, setRowSelection] = useState({});
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
   });
+  const [viewType, setViewType] = useState("Inbox"); // 'Inbox' or 'Pool'
 
-  // Function to fetch data using axios; extraParams are spread into the request
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -22,79 +33,220 @@ const ServerSideTable = ({ url, actionFunctions, extraParams = {} }) => {
         params: {
           pageIndex: pagination.pageIndex,
           pageSize: pagination.pageSize,
-          ...extraParams, // Merge extra params here
+          ...extraParams,
         },
       });
       const json = response.data;
-      // Expected API response shape:
-      // { columns, data, customActions, pageCount }
-      setColumns(json.columns);
-      setData(json.data);
+      setColumns(json.columns || []);
+      setInboxData(json.data || []);
+      setPoolData(json.poolData || []);
       setCustomActions(json.customActions || []);
-      setPageCount(json.pageCount);
+      setPageCount(json.pageCount || 0);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
     setIsLoading(false);
-  }, [url, pagination, extraParams]);
+  }, [url, pagination.pageIndex, pagination.pageSize, extraParams]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
+
+  const isPoolView = viewType === "Pool";
+  const tableData = isPoolView ? poolData : inboxData;
+  const showToggleButtons = poolData && poolData.length > 0;
 
   return (
-    <MaterialReactTable
-      columns={columns}
-      data={data}
-      state={{ isLoading }}
-      manualPagination
-      pageCount={pageCount}
-      mrtTheme={(theme) => ({
-        baseBackgroundColor: "#312C51", // default background for toolbar and table
-        draggingBorderColor: theme.palette.primary.main,
-        selectedRowBackgroundColor: theme.palette.action.selected,
-      })}
-      muiTablePaperProps={{
-        sx: {
-          borderRadius: "20px",
-          color: "#F0C38E",
-          "& .MuiSvgIcon-root": {
-            color: "#F0C38E",
-          },
-        },
-      }}
-      muiTablePaginationProps={{
-        rowsPerPageOptions: [10, 25, 50],
-      }}
-      onPaginationChange={(newPagination) => setPagination(newPagination)}
-      renderBottomToolbarCustomActions={() =>
-        isLoading && <CircularProgress size={24} />
-      }
-      title="Server-side Data Table"
-      enableRowActions={customActions.length > 0}
-      positionActionsColumn="last"
-      renderRowActions={({ row }) => (
-        <Box sx={{ display: "flex", gap: "8px" }}>
-          {customActions.map((action, index) => {
-            // Look up the function using the function name provided by the API
-            const onClickHandler = actionFunctions[action.actionFunction];
-            return (
-              row.original.sno == action.id && (
-                <Button
-                  key={index}
-                  variant="contained"
-                  color={action.color || "inherit"}
-                  sx={{ backgroundColor: "#F0C38E", color: "#312C51" }}
-                  onClick={() => onClickHandler && onClickHandler(row)}
-                >
-                  {action.name || action.tooltip}
-                </Button>
-              )
-            );
-          })}
+    <>
+      {showToggleButtons && (
+        <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+          <Button
+            variant={viewType === "Inbox" ? "contained" : "outlined"}
+            onClick={() => setViewType("Inbox")}
+          >
+            Inbox
+          </Button>
+          <Button
+            variant={viewType === "Pool" ? "contained" : "outlined"}
+            onClick={() => setViewType("Pool")}
+          >
+            Pool
+          </Button>
         </Box>
       )}
-    />
+
+      <MaterialReactTable
+        columns={columns}
+        data={tableData}
+        state={{
+          isLoading,
+          ...(canSanction && pendingApplications && { rowSelection }),
+          ...(viewType === "Inbox" && { pagination }),
+        }}
+        onPaginationChange={viewType === "Inbox" ? setPagination : undefined}
+        onRowSelectionChange={
+          canSanction && pendingApplications ? setRowSelection : undefined
+        }
+        manualPagination={viewType === "Inbox"}
+        enableRowSelection={canSanction && pendingApplications}
+        pageCount={viewType === "Inbox" ? pageCount : undefined}
+        muiTablePaperProps={{
+          sx: {
+            borderRadius: "20px",
+            backgroundColor: theme.palette.background.paper,
+            color: theme.palette.text.primary,
+            border: `2px solid ${theme.palette.primary.main}`,
+            overflow: "hidden",
+            boxShadow: "none",
+          },
+        }}
+        muiTableContainerProps={{
+          sx: {
+            backgroundColor: theme.palette.background.default,
+            border: `1px solid ${theme.palette.divider}`,
+          },
+        }}
+        muiTableHeadCellProps={{
+          sx: {
+            backgroundColor: theme.palette.background.default,
+            color: theme.palette.text.primary,
+            fontWeight: "bold",
+            borderBottom: `2px solid ${theme.palette.divider}`,
+            borderRight: `1px solid ${theme.palette.divider}`,
+            "&:last-child": {
+              borderRight: "none",
+            },
+          },
+        }}
+        muiTableBodyCellProps={{
+          sx: {
+            color: theme.palette.text.primary,
+            backgroundColor: theme.palette.background.paper,
+            borderRight: `1px solid ${theme.palette.divider}`,
+            borderBottom: `1px solid ${theme.palette.divider}`,
+            "&:last-child": {
+              borderRight: "none",
+            },
+          },
+        }}
+        muiTableFooterRowProps={{
+          sx: {
+            borderTop: `2px solid ${theme.palette.divider}`,
+          },
+        }}
+        muiTablePaginationProps={{
+          rowsPerPageOptions: [10, 25, 50],
+          sx: {
+            color: theme.palette.text.primary,
+            backgroundColor: theme.palette.background.paper,
+            borderTop: `1px solid ${theme.palette.divider}`,
+          },
+        }}
+        renderBottomToolbarCustomActions={() =>
+          isLoading && <CircularProgress size={24} />
+        }
+        enableRowActions={customActions.length > 0}
+        positionActionsColumn="last"
+        renderRowActions={({ row }) => (
+          <Box sx={{ display: "flex", gap: "8px" }}>
+            {customActions.map((action, index) => {
+              const onClickHandler = actionFunctions[action.actionFunction];
+              return (
+                row.original.sno === action.id && (
+                  <Button
+                    key={index}
+                    variant="contained"
+                    color={action.color || "primary"}
+                    sx={{
+                      backgroundColor: theme.palette.primary.main,
+                      color: theme.palette.background.paper,
+                      textTransform: "none",
+                      fontWeight: "bold",
+                      "&:hover": {
+                        backgroundColor: theme.palette.primary.dark,
+                      },
+                    }}
+                    onClick={() => onClickHandler && onClickHandler(row)}
+                  >
+                    {action.name || action.tooltip}
+                  </Button>
+                )
+              );
+            })}
+          </Box>
+        )}
+        renderTopToolbarCustomActions={
+          canSanction && pendingApplications && viewType === "Inbox"
+            ? ({ table }) => {
+                const selectedRows = table.getSelectedRowModel().rows;
+                return (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    disabled={selectedRows.length === 0}
+                    onClick={async () => {
+                      const selectedData = selectedRows.map(
+                        (row) => row.original.referenceNumber
+                      );
+                      const list = JSON.stringify(selectedData);
+                      const response = await axiosInstance.get(
+                        "/Officer/UpdatePool",
+                        {
+                          params: {
+                            serviceId: serviceId,
+                            list: list,
+                          },
+                        }
+                      );
+                      console.log(response.data);
+                    }}
+                    sx={{
+                      fontWeight: "bold",
+                      textTransform: "none",
+                      color: theme.palette.background.paper,
+                    }}
+                  >
+                    Push to Pool
+                  </Button>
+                );
+              }
+            : ({ table }) => {
+                const selectedRows = table.getSelectedRowModel().rows;
+                return (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    disabled={selectedRows.length === 0}
+                    onClick={async () => {
+                      const selectedData = selectedRows.map(
+                        (row) => row.original.referenceNumber
+                      );
+                      const list = JSON.stringify(selectedData);
+                      console.log(list);
+                      // const response = await axiosInstance.get(
+                      //   "/Officer/UpdatePool",
+                      //   {
+                      //     params: {
+                      //       serviceId: serviceId,
+                      //       list: list,
+                      //     },
+                      //   }
+                      // );
+                      // console.log(response.data);
+                    }}
+                    sx={{
+                      fontWeight: "bold",
+                      textTransform: "none",
+                      color: theme.palette.background.paper,
+                    }}
+                  >
+                    Bulk Sanction
+                  </Button>
+                );
+              }
+        }
+      />
+    </>
   );
 };
 

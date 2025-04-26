@@ -4,7 +4,7 @@ import DynamicStepForm from "../../components/form/DynamicStepForm";
 
 export default function Form() {
   return (
-    <Box>
+    <Box sx={{ paddingBottom: 10 }}>
       <DynamicStepForm />
     </Box>
   );

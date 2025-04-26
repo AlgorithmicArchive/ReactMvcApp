@@ -33,7 +33,7 @@ namespace ReactMvcApp.Controllers.User
             }
 
             int initiated = dbcontext.CitizenApplications
-                .Where(u => u.CitizenId.ToString() == userId && u.Status == "pending")
+                .Where(u => u.CitizenId.ToString() == userId && u.Status != "Incomplete")
                 .Count();
             int incomplete = dbcontext.CitizenApplications
                 .Where(u => u.CitizenId.ToString() == userId && u.Status == "Incomplete")
@@ -300,6 +300,23 @@ namespace ReactMvcApp.Controllers.User
             return Json(result);
         }
 
+        public string GetFieldValue(string fieldName, dynamic data)
+        {
+            foreach (var section in data)
+            {
+                if (section.First is JArray fields)
+                {
+                    foreach (var field in fields)
+                    {
+                        if (field["name"] != null && field["name"]?.ToString() == fieldName)
+                        {
+                            return field["value"]?.ToString() ?? "";
+                        }
+                    }
+                }
+            }
+            return "";
+        }
         public dynamic GetFormattedValue(dynamic item, dynamic data)
         {
             var values = new List<object>();
@@ -310,7 +327,7 @@ namespace ReactMvcApp.Controllers.User
                 string fieldValue = (item.GetValue != null && item.GetValue == true &&
                                      (key.Contains("District") || key.Contains("Tehsil")))
                     ? GetStringValue(key, data)
-                    : data[key];
+                    : GetFieldValue(key, data);
                 values.Add(fieldValue);
             }
 
@@ -326,15 +343,30 @@ namespace ReactMvcApp.Controllers.User
 
         public string GetStringValue(string fieldName, dynamic data)
         {
-            int value = Convert.ToInt32(data[fieldName]);
-            if (fieldName.Contains("District"))
-                return dbcontext.Districts.FirstOrDefault(d => d.DistrictId == value)!.DistrictName!;
-            else if (fieldName.Contains("Tehsil"))
-                return dbcontext.Tehsils.FirstOrDefault(t => t.TehsilId == value)!.TehsilName!;
-            else
-                return "Unknown Value";
-        }
+            foreach (var section in data)
+            {
+                if (section.First is JArray fields)
+                {
+                    foreach (var field in fields)
+                    {
+                        if (field["name"] != null && field["name"]?.ToString() == fieldName)
+                        {
+                            int value = Convert.ToInt32(field["value"]);
 
+                            if (fieldName.Contains("District"))
+                                return dbcontext.Districts.FirstOrDefault(d => d.DistrictId == value)?.DistrictName ?? "Unknown District";
+
+                            else if (fieldName.Contains("Tehsil"))
+                                return dbcontext.Tehsils.FirstOrDefault(t => t.TehsilId == value)?.TehsilName ?? "Unknown Tehsil";
+
+                            else
+                                return "Unknown Value";
+                        }
+                    }
+                }
+            }
+            return "Unknown Value";
+        }
 
         private dynamic FetchAcknowledgementDetails(string applicationId)
         {

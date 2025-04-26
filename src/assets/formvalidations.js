@@ -33,7 +33,6 @@ export function specificLength(field, value) {
 export function isAgeGreaterThan(field, value, formData) {
   let maxLengthValue;
 
-  console.log(field, value, formData);
   // If maxLength is an object with a dependentOn key, get the dependent field's value.
   if (typeof field.maxLength === "object" && field.maxLength.dependentOn) {
     // Use the dependentOn field id to look up its current value in formData.
@@ -49,7 +48,6 @@ export function isAgeGreaterThan(field, value, formData) {
   } else {
     maxLengthValue = field.maxLength;
   }
-  console.log("MAX LENGHT", maxLengthValue);
   const currentDate = new Date();
   const compareDate = new Date(
     currentDate.getFullYear() - maxLengthValue,
@@ -57,7 +55,6 @@ export function isAgeGreaterThan(field, value, formData) {
     currentDate.getDate()
   );
   const inputDate = new Date(value);
-  console.log(inputDate, compareDate);
   if (inputDate >= compareDate) {
     return `Age should be greater than or equal to ${maxLengthValue}.`;
   }
@@ -106,9 +103,10 @@ export async function duplicateAccountNumber(field, value) {
 export async function validateFile(field, value) {
   try {
     const formData = new FormData();
-
+    console.log(field.accept);
     if (field.accept.includes(".jpg")) formData.append("fileType", "image");
     else if (field.accept.includes(".pdf")) formData.append("fileType", "pdf");
+    else return;
 
     formData.append("file", value);
 
@@ -162,7 +160,7 @@ export const runValidations = async (field, value, formData) => {
     if (typeof fun !== "function") continue;
 
     try {
-      const error = await fun(field, value || "", formData);
+      let error = await fun(field, value || "", formData);
       if (error !== true) return error;
     } catch (err) {
       return "Validation failed due to an unexpected error.";

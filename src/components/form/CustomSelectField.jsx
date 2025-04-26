@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle, useRef } from "react";
-import { Box, Typography } from "@mui/material";
+import { Box, MenuItem, TextField, Typography, useTheme } from "@mui/material";
 import { Controller } from "react-hook-form";
 
 const CustomSelectField = forwardRef(
@@ -13,77 +13,109 @@ const CustomSelectField = forwardRef(
       placeholder = "Select an option...",
       rules = {},
       errors,
-      onChange, // Add onChange prop
+      onChange,
     },
     ref
   ) => {
+    const theme = useTheme();
     const selectFieldRef = useRef(null);
 
     useImperativeHandle(ref, () => ({
       setSelectValue: (value) => {
         if (selectFieldRef.current) {
-          selectFieldRef.current.onChange(value); // Call internal onChange to trigger form update
+          selectFieldRef.current.onChange(value);
         }
       },
     }));
 
     return (
       <Box sx={{ display: "flex", flexDirection: "column", mb: 2 }}>
-        {label && (
-          <Typography
-            sx={{ fontWeight: "bold", mb: 1, color: "background.default" }}
-          >
-            {label}
-          </Typography>
-        )}
-
         <Controller
           name={name}
           control={control}
           rules={rules}
           defaultValue={value}
-          render={({ field }) => {
+          render={({ field, fieldState: { error } }) => {
             selectFieldRef.current = field;
-
             return (
-              <select
-                {...field}
+              <TextField
+                select
+                label={label}
                 value={field.value || ""}
                 onChange={(e) => {
                   const value = e.target.value;
-                  field.onChange(value); // Update react-hook-form state
-                  if (onChange) onChange(value); // Call parent onChange if provided
+                  field.onChange(value);
+                  if (onChange) onChange(value);
                 }}
-                style={{
-                  padding: "10px",
-                  fontSize: "16px",
-                  border: errors[name] ? "2px solid red" : "2px solid #48426D",
-                  borderRadius: "5px",
-                  outline: "none",
-                  width: "100%",
-                  backgroundColor: "transparent",
-                  color: "#48426D",
+                error={!!error}
+                helperText={error ? error.message : ""}
+                fullWidth
+                margin="normal"
+                InputLabelProps={{
+                  shrink: true,
+                  sx: {
+                    color: theme.palette.text.primary, // #999999
+                    "&.Mui-focused": {
+                      color: theme.palette.text.primary, // #D2946A
+                    },
+                  },
+                }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    padding: "10px",
+                    fontSize: "16px",
+                    border: error
+                      ? `2px solid ${theme.palette.error.main}`
+                      : `1px solid ${theme.palette.divider}`, // #D8D8D8
+                    borderRadius: "5px",
+                    backgroundColor: theme.palette.background.paper, // #F9F7F4
+                    color: theme.palette.text.primary, // #333333
+                    "&:hover": {
+                      borderColor: theme.palette.text.primary, // #D2946A
+                    },
+                    "&.Mui-focused": {
+                      borderColor: theme.palette.text.primary, // #D2946A
+                      boxShadow: `0 0 0 2px ${theme.palette.primary.light}`,
+                    },
+                  },
+                  marginBottom: 2,
                 }}
               >
-                <option value="" disabled>
+                <MenuItem
+                  value=""
+                  disabled
+                  sx={{ color: theme.palette.text.secondary }}
+                >
                   {placeholder}
-                </option>
+                </MenuItem>
                 {options.map((option, index) => (
-                  <option
+                  <MenuItem
                     key={index}
                     value={option.value}
-                    style={{ color: "#000" }}
+                    sx={{
+                      color: theme.palette.text.primary,
+                      "&:hover": {
+                        backgroundColor: theme.palette.primary.light,
+                      },
+                      "&.Mui-selected": {
+                        backgroundColor: theme.palette.primary.main,
+                        color: theme.palette.background.paper,
+                      },
+                    }}
                   >
                     {option.label}
-                  </option>
+                  </MenuItem>
                 ))}
-              </select>
+              </TextField>
             );
           }}
         />
 
         {errors?.[name] && (
-          <Typography variant="body2" sx={{ color: "red", mt: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{ color: theme.palette.error.main, mt: 1 }}
+          >
             {errors[name].message}
           </Typography>
         )}

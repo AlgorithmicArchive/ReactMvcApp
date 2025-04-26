@@ -32,4 +32,6 @@ public partial class Service
     public string? CreatedAt { get; set; }
 
     public bool Active { get; set; }
+
+    public virtual ICollection<Pool> Pools { get; set; } = new List<Pool>();
 }

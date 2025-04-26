@@ -242,7 +242,15 @@ namespace ReactMvcApp.Controllers.Officer
             List<dynamic> data = [];
             List<dynamic> customActions = [];
 
+            // var serviceDetails = dbcontext.Services.FirstOrDefault(s => s.ServiceId == ServiceId);
+            // bool? ApproveListEnabled = serviceDetails!.ApprovalListEnabled;
+            // var poolList = !string.IsNullOrWhiteSpace(serviceDetails.Pool) ? JsonConvert.DeserializeObject<List<string>>(serviceDetails.Pool!) : [];
+            // var approveList = !string.IsNullOrWhiteSpace(serviceDetails.Pool) ? JsonConvert.DeserializeObject<List<string>>(serviceDetails.Approve!) : [];
 
+            var officer = GetOfficerDetails();
+            var PoolList = dbcontext.Pools.FirstOrDefault(p => p.ServiceId == ServiceId && p.AccessLevel == officer.AccessLevel && p.AccessCode == officer.AccessCode);
+            var pool = PoolList != null && !string.IsNullOrWhiteSpace(PoolList!.List) ? JsonConvert.DeserializeObject<List<string>>(PoolList.List) : [];
+            List<dynamic> poolData = [];
             if (type == "Pending")
                 customActions.Add(new { type = "Open", tooltip = "View", color = "#F0C38E", actionFunction = "handleOpenApplication" });
             else customActions.Add(new { type = "View", tooltip = "View", color = "#F0C38E", actionFunction = "handleViewApplication" });
@@ -251,10 +259,24 @@ namespace ReactMvcApp.Controllers.Officer
             {
                 var formDetails = JsonConvert.DeserializeObject<dynamic>(details.FormDetails!);
                 var officers = JsonConvert.DeserializeObject<dynamic>(details.WorkFlow!) as JArray;
+                if (pool!.Contains(details.ReferenceNumber) && type == "Pending")
+                {
+                    poolData.Add(new
+                    {
+                        referenceNumber = details.ReferenceNumber,
+                        applicantName = GetFieldValue("ApplicantName", formDetails),
+                        submissionDate = details.CreatedAt,
+
+                    });
+                    customActions.Clear();
+                    customActions.Add(new { type = "View", tooltip = "View", color = "#F0C38E", actionFunction = "handleOpenApplication" });
+                    continue;
+                }
+
+
                 if (type == "Forwarded" || type == "Returned")
                 {
                     var currentOfficer = officers!.FirstOrDefault(o => (string)o["designation"]! == officerDetails.Role);
-                    _logger.LogInformation($"----------- CAN PULL: {currentOfficer!["canPull"]}-----");
                     if ((bool)currentOfficer!["canPull"]!)
                     {
                         customActions.Clear();
@@ -264,7 +286,7 @@ namespace ReactMvcApp.Controllers.Officer
                 data.Add(new
                 {
                     referenceNumber = details.ReferenceNumber,
-                    applicantName = formDetails!["ApplicantName"],
+                    applicantName = GetFieldValue("ApplicantName", formDetails),
                     submissionDate = details.CreatedAt,
                 });
             }
@@ -273,85 +295,77 @@ namespace ReactMvcApp.Controllers.Officer
             {
                 data,
                 columns,
-                customActions
+                customActions,
+                poolData,
             });
         }
 
         [HttpGet]
         public IActionResult GetUserDetails(string applicationId)
         {
+            // Retrieve the application details.
             var details = dbcontext.CitizenApplications
                           .FirstOrDefault(ca => ca.ReferenceNumber == applicationId);
 
-            var formDetails = JsonConvert.DeserializeObject<dynamic>(details!.FormDetails!);
+            if (details == null)
+            {
+                return Json(new { error = "Application not found" });
+            }
+
+            // Deserialize form details into a JToken so we can traverse and update it.
+            JToken formDetailsToken = JToken.Parse(details.FormDetails!);
+
+            // Deserialize officer details.
             var officerDetails = JsonConvert.DeserializeObject<dynamic>(details.WorkFlow!);
             int currentPlayer = details.CurrentPlayer;
 
-            // Convert officerDetails to a JArray so we can filter it.
+            // Convert officerDetails to a JArray and get current, previous, and next officer.
             JArray? officerArray = officerDetails as JArray;
-            // Get the officer details for the current player.
             var currentOfficer = officerArray?.FirstOrDefault(o => (int)o["playerId"]! == currentPlayer);
-
             var previousOfficer = officerArray?.FirstOrDefault(o => (int)o["playerId"]! == (currentPlayer - 1));
             if (previousOfficer != null) previousOfficer["canPull"] = false;
             var nextOfficer = officerArray?.FirstOrDefault(o => (int)o["playerId"]! == (currentPlayer + 1));
             if (nextOfficer != null) nextOfficer["canPull"] = false;
 
+            // Save the updated workflow details.
             details.WorkFlow = JsonConvert.SerializeObject(officerArray);
             dbcontext.SaveChanges();
 
-            List<dynamic> list = [];
-
-            // Initialize dictionary for accumulating key/value pairs.
-            var obj = new Dictionary<string, string>();
-
-            foreach (var detail in formDetails!)
+            // Iterate through each section in the form details JSON.
+            foreach (JProperty section in formDetailsToken.Children<JProperty>())
             {
-                // If the current detail is AccountNumber, process it, then split out this group.
-                if (detail.Name == "AccountNumber")
+                // Each section's value is expected to be an array of field objects.
+                foreach (JObject field in section.Value.Children<JObject>())
                 {
-                    obj[detail.Name] = detail.Value.ToString();
-                    list.Add(obj);
-                    obj = new Dictionary<string, string>();  // New object after AccountNumber.
-                    continue; // Skip further processing in this iteration.
-                }
-
-                // Other keys that trigger a new object before processing:
-                if (detail.Name == "ApplicantName" ||
-                    detail.Name == "PresentAddress" ||
-                    detail.Name == "PermanentAddress" ||
-                    detail.Name == "BankName")
-                {
-                    list.Add(obj);
-                    obj = new Dictionary<string, string>();
-                }
-
-                // Process keys with special handling.
-                if (detail.Name == "District" ||
-                    detail.Name == "PresentDistrict" ||
-                    detail.Name == "PermanentDistrict")
-                {
-                    obj[detail.Name] = GetDistrictName(Convert.ToInt32(detail.Value));
-                }
-                else if (detail.Name.Contains("Tehsil"))
-                {
-                    obj[detail.Name] = GetTehsilName(Convert.ToInt32(detail.Value));
-                }
-                else
-                {
-                    obj[detail.Name] = detail.Value.ToString();
+                    string fieldName = field["name"]?.ToString() ?? "";
+                    // Check for District fields.
+                    if (fieldName.Equals("District", StringComparison.OrdinalIgnoreCase) ||
+                        fieldName.EndsWith("District", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Convert the numeric district code to a district name.
+                        int districtCode = field["value"]!.Value<int>();
+                        string districtName = GetDistrictName(districtCode);
+                        field["value"] = districtName;
+                    }
+                    // Check for Tehsil fields.
+                    else if (fieldName.Equals("Tehsil", StringComparison.OrdinalIgnoreCase) ||
+                             fieldName.EndsWith("Tehsil", StringComparison.OrdinalIgnoreCase))
+                    {
+                        int tehsilCode = field["value"]!.Value<int>();
+                        string tehsilName = GetTehsilName(tehsilCode);
+                        field["value"] = tehsilName;
+                    }
                 }
             }
 
-            // Add any remaining data as the final group.
-            if (obj.Count > 0)
+            // Return the updated form details along with current officer details.
+            return Json(new
             {
-                list.Add(obj);
-            }
-
-            // Return the list along with the officer details for the current player.
-            return Json(new { list, currentOfficerDetails = currentOfficer });
+                list = formDetailsToken,
+                currentOfficerDetails = currentOfficer
+            });
         }
+
 
 
         [HttpGet]
@@ -417,6 +431,18 @@ namespace ReactMvcApp.Controllers.Officer
                         else if (action == "ReturnToCitizen")
                         {
                             players[currentPlayer]["status"] = "returntoedit";
+                            JObject jObject;
+                            if (string.IsNullOrEmpty(formdetails.AdditionalDetails))
+                            {
+                                jObject = [];
+                            }
+                            else
+                            {
+                                jObject = JObject.Parse(formdetails.AdditionalDetails);
+                            }
+
+                            jObject["returnFields"] = form["returnFields"].ToString();
+                            formdetails.AdditionalDetails = jObject.ToString();
                         }
                         else if (action == "Sanction")
                         {

@@ -9,24 +9,27 @@ const ServiceSelectionForm = ({ services, errors, onServiceSelect }) => {
   const [selectedValue, setSelectedValue] = useState("");
 
   const onSubmit = (data) => {
-    onServiceSelect(data.Service); // Pass only the selected service ID to OfficerHome
+    onServiceSelect(data.Service);
   };
 
   useEffect(() => {
-    if (services.length === 1) {
+    if (services.length > 0) {
+      // Always select the first service by default
       const defaultService = services[0].value;
       setSelectedValue(defaultService);
-      setValue("Service", defaultService); // Set default value in form
+      setValue("Service", defaultService);
 
-      // Trigger form submission after setting the value
-      handleSubmit(onSubmit)();
+      // If there's only one service, auto-submit
+      if (services.length === 1) {
+        handleSubmit(onSubmit)();
+      }
     }
   }, [services]);
 
   return (
     <Box
       sx={{
-        backgroundColor: "primary.main",
+        backgroundColor: "background.paper",
         padding: 1,
         borderRadius: 5,
         margin: "0 auto",
@@ -35,6 +38,7 @@ const ServiceSelectionForm = ({ services, errors, onServiceSelect }) => {
         alignItems: "center",
         paddingRight: 2,
         paddingLeft: 2,
+        color: "primary.main",
       }}
     >
       <CustomSelectField
@@ -45,15 +49,18 @@ const ServiceSelectionForm = ({ services, errors, onServiceSelect }) => {
         name="Service"
         rules={{ required: "This field is required" }}
         errors={errors}
+        onChange={(e) => setSelectedValue(e.target.value)}
       />
-      <CustomButton
-        type="submit"
-        onClick={handleSubmit(onSubmit)} // Use handleSubmit to handle form submission
-        text="Get Details"
-        bgColor="background.default"
-        color="primary.main"
-        width="50%"
-      />
+      {services.length > 1 && (
+        <CustomButton
+          type="submit"
+          onClick={handleSubmit(onSubmit)}
+          text="Get Details"
+          bgColor="primary.main"
+          color="background.paper"
+          width="50%"
+        />
+      )}
     </Box>
   );
 };

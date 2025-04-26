@@ -4,10 +4,18 @@ import CustomTable from "../../components/CustomTable";
 import { fetchData, SetServiceId } from "../../assets/fetch";
 import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import ServerSideTable from "../../components/ServerSideTable";
 
 export default function Services() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+
+  const actionFunctions = {
+    OpenForm: (row) => {
+      const userdata = row.original;
+      navigate("/user/form", { state: { ServiceId: userdata.serviceId } });
+    },
+  };
 
   const handleButtonAction = async (functionName, parameters) => {
     if (functionName === "OpenForm") {
@@ -25,15 +33,14 @@ export default function Services() {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        height: { md: "70vh" },
+        height: { xs: "100vh", lg: "70vh" },
       }}
     >
       <Box sx={{ width: { xs: "100%", md: "80%" } }}>
-        <CustomTable
-          title={"Services"}
-          fetchData={fetchData}
-          url="/User/GetServices"
-          buttonActionHandler={handleButtonAction}
+        <ServerSideTable
+          url="User/GetServices"
+          extraParams={{}}
+          actionFunctions={actionFunctions}
         />
       </Box>
     </Box>

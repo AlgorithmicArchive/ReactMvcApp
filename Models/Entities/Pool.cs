@@ -1,0 +1,19 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace ReactMvcApp.Models.Entities;
+
+public partial class Pool
+{
+    public int PoolId { get; set; }
+
+    public int ServiceId { get; set; }
+
+    public string AccessLevel { get; set; } = null!;
+
+    public int AccessCode { get; set; }
+
+    public string? List { get; set; }
+
+    public virtual Service Service { get; set; } = null!;
+}

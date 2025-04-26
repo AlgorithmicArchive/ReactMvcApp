@@ -1,237 +1,390 @@
-import { Box, Typography } from "@mui/material";
-import React, { useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
-import CustomButton from "../../components/CustomButton";
-import CustomInputField from "../../components/form/CustomInputField";
-import CustomTextarea from "../../components/form/CustomTextArea";
-import { Email, Phone, LocationOn, AccessTime } from "@mui/icons-material";
-import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { Box, TextField, Typography } from "@mui/material";
+import React, { useEffect, useRef } from "react";
 import { Col, Container, Row } from "react-bootstrap";
+import CustomCard from "../../components/CustomCard";
+import LocalPhoneIcon from "@mui/icons-material/LocalPhone";
+import AlternateEmailIcon from "@mui/icons-material/AlternateEmail";
+import PlaceIcon from "@mui/icons-material/Place";
+import { useNavigate } from "react-router-dom";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-// Define validation schema using Yup
-const schema = yup.object().shape({
-  fullName: yup.string().required("Full Name is required"),
-  email: yup.string().email("Invalid email").required("Email is required"),
-  message: yup.string().required("Message is required"),
-});
+gsap.registerPlugin(ScrollTrigger);
 
 export default function HomeScreen() {
-  // Initialize useForm
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm({
-    resolver: yupResolver(schema),
-  });
+  const navigate = useNavigate();
+  const section1Ref = useRef();
+  const card1Ref = useRef();
+  const card2Ref = useRef();
+  const card3Ref = useRef();
+  const section3Ref = useRef();
 
-  // Create a ref for Section 3
-  const section3Ref = useRef(null);
-
-  const [contactMsg, setContactMsg] = useState("");
-
-  // Scroll to Section 3 when triggered
   useEffect(() => {
-    const handleScrollToSection = (event) => {
-      if (event.detail === "section3") {
-        section3Ref.current?.scrollIntoView({ behavior: "smooth" });
+    gsap.fromTo(
+      section1Ref.current,
+      { opacity: 1 }, // initial state: fully visible, at its original position
+      {
+        opacity: 0, // fade out
+        duration: 1,
+        scrollTrigger: {
+          trigger: section1Ref.current,
+          start: "bottom 90%", // trigger when the section starts entering the viewport
+          scrub: true, // scrub ensures the animation stays in sync with the scroll position
+          toggleActions: "restart none none none", // restart animation when re-triggered
+        },
       }
-    };
+    );
 
-    window.addEventListener("scrollToSection", handleScrollToSection);
+    gsap.fromTo(
+      [card1Ref.current, card2Ref.current, card3Ref.current], // Array of elements to animate
+      {
+        x: -200, // Initial position to the left
+        opacity: 0, // Initial opacity is 0
+      },
+      {
+        x: 0, // Final position (center)
+        opacity: 1, // Final opacity (fully visible)
+        duration: 1,
+        delay: 0.2,
+        stagger: 0.2, // Stagger animation for each card
+        ease: "power2.out", // Ease function for smooth animation
+        scrollTrigger: {
+          trigger: card1Ref.current, // Trigger animation when the first card is in view
+          start: "top 80%", // Start when the top of the trigger is 80% from the top of the viewport
+          end: "bottom 20%", // End when the bottom of the trigger is 20% from the top of the viewport
+          toggleActions: "play reverse play reverse", // Play on enter, reverse on leave (both directions)
+        },
+      }
+    );
+
+    gsap.fromTo(
+      section3Ref.current,
+      { x: -200, opacity: 0 }, // Initial state: invisible, positioned to the left
+      {
+        x: 0, // Move to its original position
+        opacity: 1, // Fade in
+        duration: 1,
+        stagger: 0.2, // Stagger each element (if needed)
+        ease: "power2.out", // Animation easing
+        scrollTrigger: {
+          trigger: section3Ref.current,
+          start: "top 50%", // Animation starts when the section comes into view
+          toggleActions: "restart none reverse none", // Reset animation on scroll back up
+        },
+      }
+    );
 
     return () => {
-      window.removeEventListener("scrollToSection", handleScrollToSection);
+      ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
     };
   }, []);
 
-  // Handle form submission
-  const onSubmit = async (data) => {
-    console.log("Form Data:", data);
-    const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      formData.append(key, value);
-    });
-
-    const response = await axios.post("/Home/Contact", formData);
-    const result = response.data;
-    if (result.status) setContactMsg(result.message);
-  };
-  const navigate = useNavigate();
-
   return (
-    <Box
-      sx={{
-        paddingBottom: "50px",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <Row className="gap-3 mb-5">
-        <Col md={12} xs={12} className="d-flex justify-content-center">
-          <Box
-            component={"img"}
-            src="/assets/images/socialwelfare.png"
-            sx={{
-              backgroundColor: "primary.main",
-              borderRadius: 5,
-              width: { xs: "80vw", md: "25vw" },
-            }}
-          />
-        </Col>
-        <Col md={12} xs={12} className="d-flex justify-content-center">
-          <CustomButton
-            text={"Get Started"}
-            onClick={() => navigate("/login")}
-          />
-        </Col>
-      </Row>
-      <Row className="mt-5 mb-5">
-        <Col md={12} xs={12} className="mb-5">
-          <Typography sx={{ textAlign: "center", fontSize: "48px" }}>
-            Services
-          </Typography>
-        </Col>
-        {[
-          { url: "LadliBeti.png", label: "Ladli Beti" },
-          { url: "Pension.png", label: "Pension Scheme" },
-          { url: "marriage.png", label: "Marriage Assistance" },
-        ].map((service, index) => (
-          <Col
-            key={index}
-            md={4}
-            xs={12}
-            className="d-flex flex-column justify-content-center align-items-center"
-          >
-            <Box
-              component={"img"}
-              src={`/assets/images/${service.url}`}
-              sx={{
-                position: "relative",
-                width: { xs: "80vw", md: "25vw" },
-                borderRadius: 5,
-                backgroundColor: "primary.main",
-              }}
-            />
-            <Typography
-              sx={{
-                color: "primary.main",
-                fontWeight: "bold",
-                textAlign: "center",
-                width: "85%",
+    <Box sx={{ width: "100%" }}>
+      {/* Section 1 */}
+      <Box
+        ref={section1Ref}
+        sx={{
+          height: "70vh",
+          width: "100%",
+        }}
+      >
+        <Container>
+          <Row>
+            <Col xs={12} lg={6}>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-evenly",
+                  gap: 5,
+                }}
+              >
+                <Typography
+                  variant="h2"
+                  sx={{
+                    fontWeight: "bold",
+                    wordBreak: "break-word", // ensures words break properly
+                    maxWidth: "500px", // set your desired width
+                  }}
+                >
+                  Facilitating Financial Assistance for Every Citizen
+                </Typography>
+
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    color: "text.secondary",
+                    maxWidth: "500px", // match width if you want consistent layout
+                    wordBreak: "break-word",
+                  }}
+                >
+                  Submit your application for welfare schemes through a
+                  transparent and structured process. Each form is carefully
+                  evaluated and processed across designated phases before
+                  approval and sanction.
+                </Typography>
+
+                <Box
+                  component="button"
+                  sx={{
+                    border: "none",
+                    backgroundColor: "primary.main",
+                    padding: 1,
+                    width: "50%",
+                    color: "#FDF6F0",
+                    fontWeight: "bold",
+                  }}
+                  onClick={() => navigate("/login")}
+                >
+                  Get Started
+                </Box>
+              </Box>
+            </Col>
+            <Col
+              xs={12}
+              lg={6}
+              style={{
+                display: "flex",
+                justifyContent: "end",
               }}
             >
-              {service.label}
-            </Typography>
-          </Col>
-        ))}
-      </Row>
-      <Row className="mt-5 gap-md-0 gap-5">
-        <Col md={6} xs={12}>
-          <Box
-            sx={{
-              flex: 1,
-              backgroundColor: "primary.main",
-              padding: "50px",
-              boxShadow: "0px 10px 30px rgba(0, 0, 0, 0.1)",
-              borderRadius: "10px",
-              color: "background.paper",
-              width: "100%",
-            }}
-          >
-            <Typography variant="h3" sx={{ fontWeight: "bold", mb: 2 }}>
-              Contact Us
-            </Typography>
-            <Typography variant="body1" sx={{ mb: 4 }}>
-              Feel free to contact us any time. We will get back to you as soon
-              as we can!
-            </Typography>
-
-            <form onSubmit={handleSubmit(onSubmit)} autoComplete="off">
-              <CustomInputField
-                label="Full Name"
-                name="fullName"
-                control={control}
-                placeholder="Enter your full name"
-                rules={{ required: "Full Name is required" }}
-                errors={errors}
+              <Box
+                component={"img"}
+                src="/assets/images/socialwelfare.png"
+                sx={{
+                  width: 500,
+                  backgroundColor: "background.default",
+                  borderRadius: 5,
+                }}
               />
-              <CustomInputField
-                label="Email"
-                name="email"
-                control={control}
-                type="email"
-                placeholder="Enter your email"
-                rules={{ required: "Email is required" }}
-                errors={errors}
-              />
-              <CustomTextarea
-                label="Message"
-                name="message"
-                control={control}
-                placeholder="Enter your message"
-                rules={{ required: "Message is required" }}
-              />
-
-              <CustomButton
-                text="SEND"
-                bgColor="background.paper"
-                color="primary.main"
-                type="submit"
-              />
-              {contactMsg != "" && (
-                <Typography sx={{ color: "background.paper" }}>
-                  {contactMsg}
-                </Typography>
-              )}
-            </form>
-          </Box>
-        </Col>
-        <Col
-          md={6}
-          xs={12}
-          className="d-flex justify-content-center align-items-center"
+            </Col>
+          </Row>
+        </Container>
+      </Box>
+      {/* Section 2 */}
+      <Box
+        sx={{
+          height: "100vh",
+          width: "100%",
+          backgroundColor: "background.default",
+        }}
+      >
+        <Container
+          style={{
+            height: "100%",
+          }}
         >
           <Box
             sx={{
-              backgroundColor: "text.primary",
-              color: "background.paper",
-              padding: "50px",
-              borderRadius: "10px",
               display: "flex",
               flexDirection: "column",
-              justifyContent: "space-between",
-              width: "100%",
+              gap: 10,
+              padding: 10,
             }}
           >
-            <Typography variant="h4" sx={{ fontWeight: "bold", mb: 4 }}>
-              Info
-            </Typography>
-
-            <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-              <Email sx={{ mr: 2 }} />
-              <Typography>info@getintouch.we</Typography>
-            </Box>
-            <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-              <Phone sx={{ mr: 2 }} />
-              <Typography>+24 56 89 146</Typography>
-            </Box>
-            <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-              <LocationOn sx={{ mr: 2 }} />
-              <Typography>14 Greenroad St.</Typography>
-            </Box>
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <AccessTime sx={{ mr: 2 }} />
-              <Typography>09:00 - 18:00</Typography>
-            </Box>
+            <Row>
+              <Col
+                xs={12}
+                lg={12}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                }}
+              >
+                <Typography variant="h1" sx={{ textAlign: "center" }}>
+                  Services Provided
+                </Typography>
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    textAlign: "center",
+                    color: "text.secondary",
+                    wordBreak: "break-word",
+                    padding: 5,
+                  }}
+                >
+                  Our platform offers a wide array of government-backed
+                  financial assistance services designed to support economically
+                  and socially vulnerable citizens. From scheme-specific
+                  applications to transparent processing and sanctioning, each
+                  service is aimed at promoting inclusive development and
+                  ensuring timely support reaches those who need it most.
+                </Typography>
+              </Col>
+            </Row>
+            <Row>
+              <Col xs={12} lg={4}>
+                <div ref={card1Ref}>
+                  <CustomCard
+                    heading={"Ladli Beti"}
+                    discription={
+                      "Aimed at promoting the education and well-being of the girl child, this scheme provides financial support to families for the upbringing and education of daughters. Eligible beneficiaries receive structured monetary assistance at different stages of the child's development to reduce gender disparity and encourage empowerment."
+                    }
+                  />
+                </div>
+              </Col>
+              <Col xs={12} lg={4}>
+                <div ref={card2Ref}>
+                  <CustomCard
+                    heading={"Marriage Assistance"}
+                    discription={
+                      "This scheme extends financial assistance to economically disadvantaged women at the time of their marriage. It is intended to support families facing financial constraints, ensuring dignity and reducing the economic burden associated with marriage expenses."
+                    }
+                  />
+                </div>
+              </Col>
+              <Col xs={12} lg={4}>
+                <div ref={card3Ref}>
+                  <CustomCard
+                    heading={"JKISSS Pension"}
+                    discription={
+                      "This comprehensive pension program offers financial security to senior citizens, persons with disabilities, women in distress, and transgender individuals. Monthly pension support ensures dignity, inclusion, and sustenance for those in need, contributing to social justice and welfare."
+                    }
+                  />
+                </div>
+              </Col>
+            </Row>
           </Box>
-        </Col>
-      </Row>
+        </Container>
+      </Box>
+      {/* Section 3 */}
+      <Box
+        ref={section3Ref}
+        sx={{
+          height: "100vh",
+          width: "100%",
+        }}
+      >
+        <Container
+          style={{
+            height: "100%",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "100%",
+            }}
+          >
+            <Row>
+              <Col xs={12} lg={6}>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  <TextField
+                    name="FullName"
+                    placeholder="Full Name"
+                    label="Full Name"
+                    sx={{ width: "80%", borderColor: "text.primary" }}
+                  />
+                  <TextField
+                    name="Email"
+                    placeholder="Email"
+                    label="Email"
+                    sx={{ width: "80%", borderColor: "text.primary" }}
+                  />
+                  <TextField
+                    name="Subject"
+                    placeholder="Subject"
+                    label="Subject"
+                    sx={{ width: "80%", borderColor: "text.primary" }}
+                  />
+                  <TextField
+                    name="Message"
+                    placeholder="Message"
+                    label="Message"
+                    multiline
+                    rows={5}
+                    sx={{ width: "80%", borderColor: "text.primary" }}
+                  />
+                  <Box
+                    component="button"
+                    sx={{
+                      border: "none",
+                      backgroundColor: "primary.main",
+                      padding: 1,
+                      width: "50%",
+                      color: "#FDF6F0",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Send Message
+                  </Box>
+                </Box>
+              </Col>
+              <Col xs={12} lg={6}>
+                <Typography variant="h5" sx={{ color: "text.primary" }}>
+                  Contact Us
+                </Typography>
+                <Typography variant="h3" sx={{ color: "text.primary" }}>
+                  Get In Touch
+                </Typography>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ color: "text.secondary" }}
+                >
+                  We are here to assist you with any queries regarding welfare
+                  schemes, application processes, or general information.
+                  Whether you're looking to apply, follow up on an existing
+                  request, or simply learn more about our services, feel free to
+                  reach out. Our team is committed to providing prompt,
+                  transparent, and supportive responses to ensure every citizen
+                  receives the help they need. Your questions matter to us, and
+                  we're just a message or call away.
+                </Typography>
+                <Row>
+                  <Col xs={6} lg={6}>
+                    <Box sx={{ display: "flex", marginTop: 5 }}>
+                      <LocalPhoneIcon sx={{ fontSize: 50 }} />
+                      <Box sx={{ display: "flex", flexDirection: "column" }}>
+                        <Typography>Call Us</Typography>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{ color: "text.secondary" }}
+                        >
+                          91XXXXX9238
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Col>
+                  <Col xs={6} lg={6}>
+                    <Box sx={{ display: "flex", marginTop: 5 }}>
+                      <AlternateEmailIcon sx={{ fontSize: 50 }} />
+                      <Box sx={{ display: "flex", flexDirection: "column" }}>
+                        <Typography>Email Us</Typography>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{ color: "text.secondary" }}
+                        >
+                          example@gmail.com
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Col>
+                </Row>
+                <Row>
+                  <Col xs={6} lg={6}>
+                    <Box sx={{ display: "flex", marginTop: 5 }}>
+                      <PlaceIcon sx={{ fontSize: 50 }} />
+                      <Box sx={{ display: "flex", flexDirection: "column" }}>
+                        <Typography>Address</Typography>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{ color: "text.secondary" }}
+                        >
+                          22,B.Baker Street
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Col>
+                </Row>
+              </Col>
+            </Row>
+          </Box>
+        </Container>
+      </Box>
     </Box>
   );
 }

@@ -29,6 +29,8 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     public virtual DbSet<OfficersDesignation> OfficersDesignations { get; set; }
 
+    public virtual DbSet<Pool> Pools { get; set; }
+
     public virtual DbSet<Service> Services { get; set; }
 
     public virtual DbSet<Tehsil> Tehsils { get; set; }
@@ -142,6 +144,20 @@ public partial class SocialWelfareDepartmentContext : DbContext
                 .HasMaxLength(100)
                 .IsUnicode(false);
             entity.Property(e => e.Uuid).HasColumnName("UUID");
+        });
+
+        modelBuilder.Entity<Pool>(entity =>
+        {
+            entity.ToTable("Pool");
+
+            entity.Property(e => e.AccessLevel)
+                .HasMaxLength(255)
+                .IsUnicode(false);
+
+            entity.HasOne(d => d.Service).WithMany(p => p.Pools)
+                .HasForeignKey(d => d.ServiceId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Pool_Services");
         });
 
         modelBuilder.Entity<Service>(entity =>

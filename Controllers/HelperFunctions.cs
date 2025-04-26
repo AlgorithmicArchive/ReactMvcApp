@@ -336,5 +336,33 @@ public class UserHelperFunctions(IWebHostEnvironment webHostEnvironment, SocialW
         dbcontext.SaveChanges();
     }
 
+    public bool DeleteFile(string filePath)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(filePath))
+            {
+                return false; // Nothing to delete
+            }
+
+            // Assuming the file path is relative, adjust base path as per your setup
+            var fullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", filePath.TrimStart('/'));
+
+            if (System.IO.File.Exists(fullPath))
+            {
+                System.IO.File.Delete(fullPath);
+                return true;
+            }
+
+            return false; // File not found
+        }
+        catch (Exception ex)
+        {
+            // Log exception if needed
+            Console.WriteLine($"Error deleting file: {ex.Message}");
+            return false;
+        }
+    }
+
 }
 

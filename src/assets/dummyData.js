@@ -329,7 +329,7 @@ export const defaultFormConfig = [
         accept: "",
         sectionId: "section-1",
         optionsType: "independent",
-        editable: false,
+        editable: true,
       },
     ],
     editable: false,
