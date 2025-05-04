@@ -12,4 +12,6 @@ public partial class District
     public string? DistrictShort { get; set; }
 
     public int Division { get; set; }
+
+    public int? Uuid { get; set; }
 }

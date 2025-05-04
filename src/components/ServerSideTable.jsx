@@ -175,76 +175,80 @@ const ServerSideTable = ({
             })}
           </Box>
         )}
-        renderTopToolbarCustomActions={
-          canSanction && pendingApplications && viewType === "Inbox"
-            ? ({ table }) => {
-                const selectedRows = table.getSelectedRowModel().rows;
-                return (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    disabled={selectedRows.length === 0}
-                    onClick={async () => {
-                      const selectedData = selectedRows.map(
-                        (row) => row.original.referenceNumber
-                      );
-                      const list = JSON.stringify(selectedData);
-                      const response = await axiosInstance.get(
-                        "/Officer/UpdatePool",
-                        {
-                          params: {
-                            serviceId: serviceId,
-                            list: list,
-                          },
-                        }
-                      );
-                      console.log(response.data);
-                    }}
-                    sx={{
-                      fontWeight: "bold",
-                      textTransform: "none",
-                      color: theme.palette.background.paper,
-                    }}
-                  >
-                    Push to Pool
-                  </Button>
-                );
-              }
-            : ({ table }) => {
-                const selectedRows = table.getSelectedRowModel().rows;
-                return (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    disabled={selectedRows.length === 0}
-                    onClick={async () => {
-                      const selectedData = selectedRows.map(
-                        (row) => row.original.referenceNumber
-                      );
-                      const list = JSON.stringify(selectedData);
-                      console.log(list);
-                      // const response = await axiosInstance.get(
-                      //   "/Officer/UpdatePool",
-                      //   {
-                      //     params: {
-                      //       serviceId: serviceId,
-                      //       list: list,
-                      //     },
-                      //   }
-                      // );
-                      // console.log(response.data);
-                    }}
-                    sx={{
-                      fontWeight: "bold",
-                      textTransform: "none",
-                      color: theme.palette.background.paper,
-                    }}
-                  >
-                    Bulk Sanction
-                  </Button>
-                );
-              }
-        }
+        renderTopToolbarCustomActions={({ table }) => {
+          const selectedRows = table.getSelectedRowModel().rows;
+          
+          if (canSanction && pendingApplications && viewType === "Inbox") {
+            // Show "Push to Pool" button
+            return (
+              <Button
+                variant="contained"
+                color="primary"
+                disabled={selectedRows.length === 0}
+                onClick={async () => {
+                  const selectedData = selectedRows.map(
+                    (row) => row.original.referenceNumber
+                  );
+                  const list = JSON.stringify(selectedData);
+                  const response = await axiosInstance.get(
+                    "/Officer/UpdatePool",
+                    {
+                      params: {
+                        serviceId: serviceId,
+                        list: list,
+                      },
+                    }
+                  );
+                  console.log(response.data);
+                }}
+                sx={{
+                  fontWeight: "bold",
+                  textTransform: "none",
+                  color: theme.palette.background.paper,
+                }}
+              >
+                Push to Pool
+              </Button>
+            );
+          } else if (canSanction && viewType == "Pool") {
+            // Show "Bulk Sanction" button
+            return (
+              <Button
+                variant="contained"
+                color="primary"
+                disabled={selectedRows.length === 0}
+                onClick={async () => {
+                  const selectedData = selectedRows.map(
+                    (row) => row.original.referenceNumber
+                  );
+                  const list = JSON.stringify(selectedData);
+                  console.log(list);
+                  // Uncomment and use API if needed
+                  // const response = await axiosInstance.get(
+                  //   "/Officer/UpdatePool",
+                  //   {
+                  //     params: {
+                  //       serviceId: serviceId,
+                  //       list: list,
+                  //     },
+                  //   }
+                  // );
+                  // console.log(response.data);
+                }}
+                sx={{
+                  fontWeight: "bold",
+                  textTransform: "none",
+                  color: theme.palette.background.paper,
+                }}
+              >
+                Bulk Sanction
+              </Button>
+            );
+          } else {
+            return null; // Nothing to show if canSanction is false
+          }
+        }}
+        
       />
     </>
   );

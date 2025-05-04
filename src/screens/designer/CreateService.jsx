@@ -24,6 +24,7 @@ import SortableSection from "../../components/designer/SortableSections";
 import FieldEditModal from "../../components/designer/FieldEditModal";
 import AdditionalFieldsModal from "../../components/designer/AdditionalFieldsModal";
 import { defaultFormConfig } from "../../assets/dummyData";
+import axiosInstance from "../../axiosConfig";
 
 export default function CreateService() {
   // State for our dynamic form config.
@@ -38,14 +39,13 @@ export default function CreateService() {
 
   // Fetch active services for selection.
   useEffect(() => {
-    fetch("/Base/GetServices")
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.status && data.services) {
-          setServices(data.services);
-        }
-      })
-      .catch((error) => console.error("Error fetching services:", error));
+    async function fetchData(){
+      const response = await axiosInstance.get('/Base/GetServices');
+      if(response.data.status && response.data.services){
+        setServices(response.data.services);
+      }
+    }
+    fetchData();
   }, []);
 
   // When a service is selected, parse its formElements config.

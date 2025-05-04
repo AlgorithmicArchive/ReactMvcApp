@@ -22,6 +22,7 @@ import {
 } from "@dnd-kit/sortable";
 import { SortableItem } from "../../components/designer/SortableItem"; // Create this component
 import PlayerEditModal from "../../components/designer/PlayerEditModal"; // Create this component
+import axiosInstance from "../../axiosConfig";
 
 // Helper: generate a default action field based on player's permissions.
 
@@ -172,14 +173,13 @@ export default function CreateWorkflow() {
 
   // Fetch active services for selection
   useEffect(() => {
-    fetch("/Base/GetServices")
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.status && data.services) {
-          setServices(data.services);
-        }
-      })
-      .catch((error) => console.error("Error fetching services:", error));
+    async function fetchData(){
+      const response = await axiosInstance.get('/Base/GetServices');
+      if(response.data.status && response.data.services){
+        setServices(response.data.services);
+      }
+    }
+    fetchData();
   }, []);
 
   // When a service is selected, load its workflow (if it exists)

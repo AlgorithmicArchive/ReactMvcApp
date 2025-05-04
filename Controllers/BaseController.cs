@@ -408,6 +408,12 @@ namespace ReactMvcApp.Controllers
         public IActionResult GetServices()
         {
             var officer = GetOfficerDetails();
+            
+
+            if(officer!.Role =="Designer"){
+                var Services = dbcontext.Services.ToList();
+                return Json(new{status=true,services = Services});
+            }
 
             // Fetch the service list for the given role
             var roleParameter = new SqlParameter("@Role", officer!.Role);
@@ -494,6 +500,10 @@ namespace ReactMvcApp.Controllers
         public IActionResult GetDistricts()
         {
             var officer = GetOfficerDetails();
+            if(officer == null){
+                var Districts = dbcontext.Districts.ToList();
+                return Json(new { status = true, districts = Districts });
+            }
             if (officer!.AccessLevel == "Tehsil")
             {
                 var tehsils = dbcontext.Tehsils.Where(t => t.TehsilId == officer.AccessCode).ToList();

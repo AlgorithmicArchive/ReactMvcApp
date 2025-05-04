@@ -66,7 +66,7 @@ namespace ReactMvcApp.Controllers.Officer
         public IActionResult GetServiceList()
         {
             var officer = GetOfficerDetails();
-
+            _logger.LogInformation($"------- Role: {officer.Role}----------------------");
             // Fetch the service list for the given role
             var roleParameter = new SqlParameter("@Role", officer.Role);
             var serviceList = dbcontext.Database
@@ -119,8 +119,8 @@ namespace ReactMvcApp.Controllers.Officer
             // Execute the stored procedure and retrieve counts.
             var counts = dbcontext.Database
                 .SqlQueryRaw<StatusCounts>(
-                    "EXEC GetStatusCount @TakenBy, @AccessLevel, @AccessCode, @ServiceId",
-                    paramTakenBy, paramAccessLevel, paramAccessCode, paramServiceId)
+                    "EXEC GetStatusCount  @AccessLevel, @AccessCode, @ServiceId, @TakenBy",
+                    paramAccessLevel, paramAccessCode, paramServiceId,paramTakenBy)
                 .AsEnumerable()
                 .FirstOrDefault() ?? new StatusCounts();
 

@@ -516,11 +516,12 @@ export default function UserDetails() {
   return (
     <Box
       sx={{
-        height: "80vh",
+        height: "90vh",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         gap: 3,
+        paddingBottom:5
       }}
     >
       <Typography variant="h3">USER DETAILS</Typography>

@@ -107,17 +107,20 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
         modelBuilder.Entity<District>(entity =>
         {
-            entity
-                .HasNoKey()
-                .ToTable("District");
+            entity.HasKey(e => e.DistrictId).HasName("District_PK");
 
-            entity.Property(e => e.DistrictId).HasColumnName("DistrictID");
+            entity.ToTable("District");
+
+            entity.Property(e => e.DistrictId)
+                .ValueGeneratedNever()
+                .HasColumnName("DistrictID");
             entity.Property(e => e.DistrictName)
                 .HasMaxLength(255)
                 .IsUnicode(false);
             entity.Property(e => e.DistrictShort)
                 .HasMaxLength(50)
                 .IsUnicode(false);
+            entity.Property(e => e.Uuid).HasColumnName("UUID");
         });
 
         modelBuilder.Entity<OfficerDetail>(entity =>
@@ -134,8 +137,9 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
         modelBuilder.Entity<OfficersDesignation>(entity =>
         {
-            entity.HasNoKey();
+            entity.HasKey(e => e.Uuid).HasName("OfficersDesignations_PK");
 
+            entity.Property(e => e.Uuid).HasColumnName("UUID");
             entity.Property(e => e.AccessLevel)
                 .HasMaxLength(40)
                 .IsUnicode(false);
@@ -143,12 +147,13 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.DesignationShort)
                 .HasMaxLength(100)
                 .IsUnicode(false);
-            entity.Property(e => e.Uuid).HasColumnName("UUID");
         });
 
         modelBuilder.Entity<Pool>(entity =>
         {
             entity.ToTable("Pool");
+
+            entity.HasIndex(e => e.ServiceId, "IX_Pool_ServiceId");
 
             entity.Property(e => e.AccessLevel)
                 .HasMaxLength(255)
@@ -181,14 +186,16 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
         modelBuilder.Entity<Tehsil>(entity =>
         {
-            entity
-                .HasNoKey()
-                .ToTable("Tehsil");
+            entity.HasKey(e => e.TehsilId).HasName("Tehsil_PK");
 
+            entity.ToTable("Tehsil");
+
+            entity.Property(e => e.TehsilId).ValueGeneratedNever();
             entity.Property(e => e.DistrictId).HasColumnName("DistrictID");
             entity.Property(e => e.TehsilName)
                 .HasMaxLength(255)
                 .IsUnicode(false);
+            entity.Property(e => e.Uuid).HasColumnName("UUID");
         });
 
         modelBuilder.Entity<User>(entity =>

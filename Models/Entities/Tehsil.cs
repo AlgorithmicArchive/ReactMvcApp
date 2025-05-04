@@ -10,4 +10,6 @@ public partial class Tehsil
     public int TehsilId { get; set; }
 
     public string? TehsilName { get; set; }
+
+    public int? Uuid { get; set; }
 }

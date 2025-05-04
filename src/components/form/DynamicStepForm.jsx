@@ -775,12 +775,12 @@ const DynamicStepForm = ({ mode = "new", data }) => {
   return (
     <Box
       sx={{
-        width: "50vw",
+        width: {xs:"80vw",lg:'50vw'},
         margin: "0 auto",
         backgroundColor: "#FFFFFF",
         borderRadius: 5,
         color: "priamry.main",
-        padding: 10,
+        padding: {xs:3,lg:10},
         boxShadow: 20,
       }}
     >
@@ -907,7 +907,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     backgroundColor: "primary.main",
                     borderRadius: 10,
                     color: "#FFFFFF",
-                    fontSize: 24,
+                    fontSize: {xs:18,lg:24},
                     width: "40%",
                   }}
                   onClick={handlePrev}
@@ -921,7 +921,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     backgroundColor: "primary.main",
                     borderRadius: 10,
                     color: "#FFFFFF",
-                    fontSize: 24,
+                    fontSize: {xs:18,lg:24},
                     width: "40%",
                   }}
                   onClick={handleNext}
@@ -935,7 +935,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     backgroundColor: "primary.main",
                     borderRadius: 10,
                     color: "#FFFFFF",
-                    fontSize: 24,
+                    fontSize: {xs:18,lg:24},
                     width: "40%",
                   }}
                   onClick={handleSubmit((data) => onSubmit(data, "submit"))}
@@ -953,7 +953,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     backgroundColor: "primary.main",
                     borderRadius: 10,
                     color: "#FFFFFF",
-                    fontSize: 24,
+                    fontSize: {xs:18,lg:24},
                     width: "40%",
                   }}
                   onClick={handleSubmit((data) => onSubmit(data, "save"))}

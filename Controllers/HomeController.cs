@@ -54,8 +54,6 @@ namespace ReactMvcApp.Controllers
 
         public IActionResult Index()
         {
-
-
             return View();
         }
 

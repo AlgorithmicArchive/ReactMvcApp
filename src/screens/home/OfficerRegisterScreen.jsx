@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Box, Typography, Container } from "@mui/material";
+import { Box, Typography, Container, Button } from "@mui/material";
 import { useForm } from "react-hook-form";
 import CustomInputField from "../../components/form/CustomInputField";
 import CustomButton from "../../components/CustomButton";
@@ -8,8 +8,7 @@ import { fetchDesignation, fetchDistricts } from "../../assets/fetch";
 import OtpModal from "../../components/OtpModal";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import LoadingSpinner from "../../components/LoadingSpinner";
-import { Col, Row } from "react-bootstrap";
+import ReactLoading from "react-loading";
 
 export default function OfficerRegisterScreen() {
   const {
@@ -21,37 +20,64 @@ export default function OfficerRegisterScreen() {
 
   const [designations, setDesignations] = useState([]);
   const [districtOptions, setDistrictOptions] = useState([]);
-  const [tehsilOptions, setTehsilOptions] = useState([]); // State for Tehsil values
+  const [tehsilOptions, setTehsilOptions] = useState([]);
   const [accessLevelMap, setAccessLevelMap] = useState({});
   const selectedDesignation = watch("designation");
-  const selectedDistrict = watch("District"); // Watch for changes in District
+  const selectedDistrict = watch("District");
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   const [userId, setUserId] = useState(0);
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
+  // Async validation for username
+  const validateUsername = async (value) => {
+    if (!value) return "Username is required";
+    try {
+      const response = await axios.get("/Home/CheckUsername", {
+        params: { username: value },
+      });
+      if (!response.data.isUnique) {
+        return "Username already exists";
+      }
+      return true;
+    } catch (error) {
+      return "Error validating username";
+    }
+  };
+
+  // Async validation for email
+  const validateEmail = async (value) => {
+    if (!value) return "Email is required";
+    try {
+      const response = await axios.get("/Home/CheckEmail", {
+        params: { email: value },
+      });
+      if (!response.data.isUnique) {
+        return "Email already exists";
+      }
+      return true;
+    } catch (error) {
+      return "Error validating email";
+    }
+  };
+
   useEffect(() => {
     fetchDesignation(setDesignations, setAccessLevelMap);
     fetchDistricts(setDistrictOptions);
   }, []);
 
-  // Fetch Tehsil values when the District selection changes.
+  // Fetch Tehsil values when District changes
   useEffect(() => {
     if (selectedDistrict) {
       axios
         .get(`/Base/GetTeshilForDistrict?districtId=${selectedDistrict}`)
         .then((response) => {
-          console.log(response);
           if (response.data.status) {
-            console.log(response.data);
-            // Convert tehsils to an array of objects with label and value properties
-            const tehsilOptionsFormatted = response.data.tehsils.map(
-              (tehsil) => ({
-                label: tehsil.tehsilName,
-                value: tehsil.tehsilId,
-              })
-            );
+            const tehsilOptionsFormatted = response.data.tehsils.map((tehsil) => ({
+              label: tehsil.tehsilName,
+              value: tehsil.tehsilId,
+            }));
             setTehsilOptions(tehsilOptionsFormatted);
           }
         })
@@ -77,52 +103,79 @@ export default function OfficerRegisterScreen() {
           : data["District"]
         : 0
     );
-    console.log(formData);
     try {
       const response = await axios.post("/Home/OfficerRegistration", formData);
       const { status, userId } = response.data;
-      setLoading(false);
       if (status) {
         setIsOtpModalOpen(true);
         setUserId(userId);
       }
     } catch (error) {
-      setLoading(false);
       console.error("Registration error", error);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Handle OTP submission
   const handleOtpSubmit = async (otp) => {
-    const formdata = new FormData();
-    formdata.append("otp", otp);
-    formdata.append("UserId", userId);
-    const response = await axios.post("/Home/OTPValidation", formdata);
-    const { status } = response.data;
-    if (status) navigate("/login");
+    setLoading(true);
+    const formData = new FormData();
+    formData.append("otp", otp);
+    formData.append("UserId", userId);
+    try {
+      const response = await axios.post("/Home/OTPValidation", formData);
+      if (response.data.status) {
+        navigate("/login");
+      }
+    } catch (error) {
+      console.error("OTP validation error", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Box sx={{ backgroundColor: "background.default" }}>
-      {loading && <LoadingSpinner />}
       <Box
         sx={{
-          marginTop: "",
-          width: "100vw",
-          height: "80vh",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
           gap: 3,
+          height: "120vh",
         }}
       >
+        {loading && (
+          <Container
+            maxWidth={false}
+            sx={{
+              position: "absolute",
+              width: "20vw",
+              backgroundColor: "transparent",
+              top: "50%",
+              borderRadius: 10,
+              zIndex: 1100,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <ReactLoading
+              type="spinningBubbles"
+              color="#48426D"
+              height={200}
+              width={200}
+            />
+          </Container>
+        )}
         <Container
           maxWidth="sm"
           sx={{
-            bgcolor: "primary.main",
+            bgcolor: "background.default",
             p: 4,
             borderRadius: 5,
-            boxShadow: 20,
+            boxShadow: 5,
           }}
         >
           <Typography
@@ -131,11 +184,11 @@ export default function OfficerRegisterScreen() {
             sx={{
               mb: 3,
               textAlign: "center",
-              color: "background.paper",
+              color: "primary.main",
               fontWeight: "bold",
             }}
           >
-            Registration
+            Officer Registration
           </Typography>
 
           <Box
@@ -144,137 +197,148 @@ export default function OfficerRegisterScreen() {
             autoComplete="off"
             onSubmit={handleSubmit(onSubmit)}
           >
-            <Row>
-              <Col xs={12} lg={6}>
-                <Box>
-                  <CustomInputField
-                    rules={{ required: "This Field is required" }}
-                    label="Full Name"
-                    name="fullName"
-                    control={control}
-                    placeholder="Full Name"
-                    errors={errors}
-                  />
-                  <CustomInputField
-                    rules={{ required: "This Field is required" }}
-                    label="Username"
-                    name="username"
-                    control={control}
-                    placeholder="Username"
-                    errors={errors}
-                  />
-                </Box>
-              </Col>
-              <Col xs={12} lg={6}>
-                <Box>
-                  <CustomInputField
-                    rules={{ required: "This Field is required" }}
-                    label="Email"
-                    name="email"
-                    control={control}
-                    placeholder="Email"
-                    type="email"
-                    errors={errors}
-                  />
-                  <CustomInputField
-                    rules={{ required: "This Field is required" }}
-                    label="Mobile Number"
-                    name="mobileNumber"
-                    control={control}
-                    placeholder="Mobile Number"
-                    errors={errors}
-                  />
-                </Box>
-              </Col>
-              <Col xs={12} lg={6}>
-                <Box>
-                  <CustomInputField
-                    rules={{ required: "This Field is required" }}
-                    label="Password"
-                    name="password"
-                    control={control}
-                    placeholder="Password"
-                    type="password"
-                    errors={errors}
-                  />
-                </Box>
-              </Col>
-              <Col xs={12} lg={6}>
-                <Box>
-                  <CustomInputField
-                    rules={{ required: "This Field is required" }}
-                    label="Confirm Password"
-                    name="confirmPassword"
-                    control={control}
-                    placeholder="Confirm Password"
-                    type="password"
-                    errors={errors}
-                  />
-                </Box>
-              </Col>
-              <Col xs={12} lg={6}>
-                <Box>
-                  <CustomSelectField
-                    label="Select Designation"
-                    name="designation"
-                    control={control}
-                    placeholder="Designation"
-                    options={designations}
-                    rules={{ required: "This field is required" }}
-                    errors={errors}
-                  />
-                </Box>
-              </Col>
-              <Col xs={12} lg={6}>
-                <Box>
-                  {(accessLevelMap[selectedDesignation] === "District" ||
-                    accessLevelMap[selectedDesignation] === "Tehsil") && (
-                    <CustomSelectField
-                      label="Select District"
-                      name="District"
-                      control={control}
-                      placeholder="Select District"
-                      options={districtOptions}
-                      rules={{ required: "This field is required" }}
-                      errors={errors}
-                    />
-                  )}
-                </Box>
-              </Col>
-              <Col xs={12} lg={6}>
-                <Box>
-                  {accessLevelMap[selectedDesignation] === "Tehsil" && (
-                    <CustomSelectField
-                      label="Select Tehsil"
-                      name="Tehsil"
-                      control={control}
-                      placeholder="Select Tehsil"
-                      options={tehsilOptions} // Use fetched tehsil options here
-                      rules={{ required: "This field is required" }}
-                      errors={errors}
-                    />
-                  )}
-                </Box>
-              </Col>
-              <Col xs={12} lg={12}>
-                <Box sx={{ display: "flex", justifyContent: "center" }}>
-                  <CustomButton
-                    text="Register"
-                    bgColor="background.paper"
-                    color="primary.main"
-                    type="submit" // Set type to "submit" for form submission
-                  />
-                </Box>
-              </Col>
-              <OtpModal
-                open={isOtpModalOpen}
-                onClose={() => setIsOtpModalOpen(false)}
-                onSubmit={handleOtpSubmit}
+            <Box>
+              <CustomInputField
+                rules={{ required: "This Field is required" }}
+                label="Full Name"
+                name="fullName"
+                control={control}
+                placeholder="Full Name"
+                errors={errors}
               />
-            </Row>
+              <CustomInputField
+                rules={{
+                  required: "This Field is required",
+                  validate: validateUsername,
+                }}
+                label="Username"
+                name="username"
+                control={control}
+                placeholder="Username"
+                errors={errors}
+              />
+            </Box>
+
+            <Box>
+              <CustomInputField
+                rules={{
+                  required: "This Field is required",
+                  validate: validateEmail,
+                }}
+                label="Email"
+                name="email"
+                control={control}
+                placeholder="Email"
+                type="email"
+                errors={errors}
+              />
+              <CustomInputField
+                rules={{
+                  required: "This Field is required",
+                  pattern: {
+                    value: /^[0-9]{10}$/,
+                    message: "Mobile number must be exactly 10 digits",
+                  },
+                }}
+                label="Mobile Number"
+                name="mobileNumber"
+                control={control}
+                placeholder="Mobile Number"
+                errors={errors}
+                maxLength={10}
+              />
+            </Box>
+
+            <Box>
+              <CustomInputField
+                rules={{ required: "This Field is required" }}
+                label="Password"
+                name="password"
+                control={control}
+                placeholder="Password"
+                type="password"
+                errors={errors}
+              />
+              <CustomInputField
+                rules={{ required: "This Field is required" }}
+                label="Confirm Password"
+                name="confirmPassword"
+                control={control}
+                placeholder="Confirm Password"
+                type="password"
+                errors={errors}
+              />
+            </Box>
+
+            <Box>
+              <CustomSelectField
+                label="Select Designation"
+                name="designation"
+                control={control}
+                placeholder="Designation"
+                options={designations}
+                rules={{ required: "This field is required" }}
+                errors={errors}
+              />
+              {(accessLevelMap[selectedDesignation] === "District" ||
+                accessLevelMap[selectedDesignation] === "Tehsil") && (
+                <CustomSelectField
+                  label="Select District"
+                  name="District"
+                  control={control}
+                  placeholder="Select District"
+                  options={districtOptions}
+                  rules={{ required: "This field is required" }}
+                  errors={errors}
+                />
+              )}
+              {accessLevelMap[selectedDesignation] === "Tehsil" && (
+                <CustomSelectField
+                  label="Select Tehsil"
+                  name="Tehsil"
+                  control={control}
+                  placeholder="Select Tehsil"
+                  options={tehsilOptions}
+                  rules={{ required: "This field is required" }}
+                  errors={errors}
+                />
+              )}
+            </Box>
+
+            <Box sx={{ display: "flex", justifyContent: "center" }}>
+              <CustomButton
+                text="Register"
+                bgColor="primary.main"
+                color="background.paper"
+                type="submit"
+                width="100%"
+              />
+            </Box>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                padding: 3,
+              }}
+            >
+              <Typography sx={{ textAlign: "center", fontSize: 14 }}>
+                Already have an account?
+              </Typography>
+              <Button
+                sx={{ color: "darkblue" }}
+                onClick={() => navigate("/login")}
+              >
+                Sign in now
+              </Button>
+            </Box>
           </Box>
         </Container>
+        <OtpModal
+          open={isOtpModalOpen}
+          onClose={() => setIsOtpModalOpen(false)}
+          onSubmit={handleOtpSubmit}
+        />
       </Box>
-    </Box>
   );
 }

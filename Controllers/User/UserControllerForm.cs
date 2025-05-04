@@ -57,7 +57,7 @@ namespace ReactMvcApp.Controllers.User
             {
                 int count = GetCountPerDistrict(districtId, serviceId);
                 var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
-
+                string? districtShort = dbcontext.Districts.FirstOrDefault(s=>s.DistrictId == districtId)!.DistrictShort;
                 var workFlow = service!.OfficerEditableField;
 
                 // Update the first player's status to "pending" if workflow is not null/empty.
@@ -72,7 +72,7 @@ namespace ReactMvcApp.Controllers.User
                 }
 
                 var finYear = helper.GetCurrentFinancialYear();
-                referenceNumber = "JK-" + service.NameShort + "/" + finYear + "/" + count;
+                referenceNumber = "JK-" + service.NameShort +"-"+ districtShort+ "/" + finYear + "/" + count;
                 var createdAt = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
 
                 // Store the updated JSON (with file paths) in the database.
