@@ -531,92 +531,61 @@ namespace ReactMvcApp.Controllers.User
 
         private dynamic FetchAcknowledgementDetails(string applicationId)
         {
-
-
-            var acknowledgement = new dynamic[]
-            {
-                    new
-                    {
-                        Fields = new List<string> { "RelationName", "Relation" },
-                        Label = "PARENTAGE",
-                        TransformString = "{0} ({1})",
-                        GetValue = (bool?)null
-                    },
-                    new
-                    {
-                        Fields = new List<string> { "PensionType" },
-                        Label = "PENSION TYPE",
-                        TransformString = (string)null!,
-                        GetValue = (bool?)null
-                    },
-                    new
-                    {
-                        Fields = new List<string> { "District" },
-                        Label = "APPLIED DISTRICT",
-                        TransformString = (string)null!,
-                        GetValue = true
-                    },
-                    new
-                    {
-                        Fields = new List<string> { "BankName" },
-                        Label = "BANK NAME",
-                        TransformString = (string)null!,
-                        GetValue = (bool?)null
-                    },
-                    new
-                    {
-                        Fields = new List<string> { "AccountNumber" },
-                        Label = "ACCOUNT NUMBER",
-                        TransformString = (string)null!,
-                        GetValue = (bool?)null
-                    },
-                    new
-                    {
-                        Fields = new List<string> { "IfscCode" },
-                        Label = "IFSC CODE",
-                        TransformString = (string)null!,
-                        GetValue = (bool?)null
-                    },
-                    new
-                    {
-                        Fields = new List<string> { "PresentAddress", "PresentTehsil", "PresentDistrict", "PresentPincode" },
-                        Label = "Present Address",
-                        TransformString = "{0}  TEHSIL:{2} DISTRICT:{1} PINCODE:{3}",
-                        GetValue = true
-                    },
-                    new
-                    {
-                        Fields = new List<string> { "PermanentAddress","PermanentTehsil", "PermanentDistrict",  "PermanentPincode" },
-                        Label = "Permanent Address",
-                        TransformString = "{0}  TEHSIL:{2} DISTRICT:{1} PINCODE:{3}",
-                        GetValue = true
-                    }
-            };
-
+            // 1) Load the application record
             var details = dbcontext.CitizenApplications
-                            .FirstOrDefault(ca => ca.ReferenceNumber == applicationId);
-            var data = JsonConvert.DeserializeObject<dynamic>(details!.FormDetails!);
+                .FirstOrDefault(ca => ca.ReferenceNumber == applicationId)
+                ?? throw new InvalidOperationException("Application not found.");
 
-            var acknowledgementDetails = new OrderedDictionary()
+            // 2) Load and parse the Letters JSON from the related service
+            var lettersJson = dbcontext.Services
+                .FirstOrDefault(s => s.ServiceId == Convert.ToInt32(details.ServiceId))?.Letters;
+
+            if (lettersJson is null)
+                throw new InvalidOperationException("No letters JSON configured for this service.");
+
+            var parsedLetters = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(lettersJson!)
+                ?? throw new InvalidOperationException("Letters JSON parsing failed.");
+
+            // 3) Get the Acknowledgement section
+            if (!parsedLetters.TryGetValue("Acknowledgement", out dynamic ackSection))
+                throw new InvalidOperationException("Acknowledgement section missing in Letters JSON.");
+
+            var tableFields = (IEnumerable<dynamic>)ackSection.tableFields;
+
+            // 4) Deserialize the form data for field lookup
+            var formData = JsonConvert.DeserializeObject<JObject>(details.FormDetails!)
+                ?? throw new InvalidOperationException("Form details parsing failed.");
+
+            // 5) Build the key-value list for the PDF
+            var acknowledgementDetails = new OrderedDictionary();
+
+            // Add Reference Number explicitly
+            acknowledgementDetails["REFERENCE NUMBER"] = details.ReferenceNumber;
+
+            // Add all fields from tableFields config (replace if duplicate keys)
+            foreach (var fieldConfig in tableFields)
             {
-                { "REFERENCE NUMBER", details.ReferenceNumber}
-            }
-            ;
-
-            foreach (var item in acknowledgement)
-            {
-                dynamic obj = GetFormattedValue(item, data);
-                acknowledgementDetails.Add(obj.Label, obj.Value);
+                var formatted = GetFormattedValue(fieldConfig, formData);
+                if (formatted.Label == "REFERENCE NUMBER") continue;
+                acknowledgementDetails[formatted.Label] = formatted.Value;
             }
 
-            acknowledgementDetails.Insert(7, "DATE OF SUBMISSION", details.CreatedAt!);
+            // Add Date of Submission explicitly (replace if duplicate key)
+            acknowledgementDetails["DATE OF SUBMISSION"] = details.CreatedAt?.ToString() ?? string.Empty;
 
+            // 6) Generate the PDF
             _pdfService.CreateAcknowledgement(acknowledgementDetails, applicationId);
 
-            string path = "files/" + applicationId.Replace("/", "_") + "Acknowledgement.pdf";
+            // 7) Return the file path
+            string fileName = applicationId.Replace("/", "_") + "Acknowledgement.pdf";
+            string path = $"files/{fileName}";
 
             return new { path };
         }
+
+
+
+
 
         // public IActionResult GetEditForm(string applicationId)
         // {

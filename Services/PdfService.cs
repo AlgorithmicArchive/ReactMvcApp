@@ -133,22 +133,48 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
 
         document.Add(new Paragraph($"{information}")
             .SetFontSize(10));
+        // 1) “NO: …” on the left, “ISSUING AUTHORITY” on the right
+        Table idTable = new Table(UnitValue.CreatePercentArray([50, 50]))
+            .UseAllAvailableWidth();
 
-        document.Add(new Paragraph($"NO: {ApplicationId}\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t ISSUING AUTHORITY")).SetFontSize(8).SetFontColor(ColorConstants.BLUE).SetBold();
+        idTable.AddCell(new Cell()
+            .Add(new Paragraph($"NO: {ApplicationId}")
+                .SetFontSize(8)
+                .SetFontColor(ColorConstants.BLUE)
+                .SetBold())
+            .SetBorder(Border.NO_BORDER)
+            .SetTextAlignment(TextAlignment.LEFT));
 
-        Table footerTable = new Table(UnitValue.CreatePercentArray([50, 50])).UseAllAvailableWidth();
+        idTable.AddCell(new Cell()
+            .Add(new Paragraph("ISSUING AUTHORITY")
+                .SetFontSize(10)
+                .SetBold())
+            .SetBorder(Border.NO_BORDER)
+            .SetTextAlignment(TextAlignment.RIGHT));
+
+        document.Add(idTable);
+
+        // 2) Your Date / Officer line (you already have this)
+        Table footerTable = new Table(UnitValue.CreatePercentArray([50, 50]))
+            .UseAllAvailableWidth();
 
         footerTable.AddCell(new Cell()
-            .Add(new Paragraph($"Date: {DateTime.Today:dd/MM/yyyy}").SetFontSize(8).SetFontColor(ColorConstants.BLUE).SetBold())
+            .Add(new Paragraph($"Date: {DateTime.Today:dd/MM/yyyy}")
+                .SetFontSize(8)
+                .SetFontColor(ColorConstants.BLUE)
+                .SetBold())
             .SetBorder(Border.NO_BORDER)
             .SetTextAlignment(TextAlignment.LEFT));
 
         footerTable.AddCell(new Cell()
-            .Add(new Paragraph($"{Officer.Role}, {GetArreaName(Officer.AccessLevel, Officer.AccessCode)}").SetBold())
+            .Add(new Paragraph($"{Officer.Role}, {GetArreaName(Officer.AccessLevel, Officer.AccessCode)}")
+                .SetFontSize(10)
+                .SetBold())
             .SetBorder(Border.NO_BORDER)
             .SetTextAlignment(TextAlignment.RIGHT));
 
         document.Add(footerTable);
+
     }
 
     public void CreateAcknowledgement(OrderedDictionary details, string applicationId)

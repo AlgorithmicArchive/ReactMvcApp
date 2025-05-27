@@ -457,6 +457,10 @@ namespace ReactMvcApp.Controllers.Officer
                         players[currentPlayer]["completedAt"] = DateTime.Now.ToString("dd MMMM yyyy hh:mm:ss tt");
                     }
                     workFlow = players.ToString(Formatting.None);
+                    if (action == "Reject" || action == "Sanction")
+                    {
+                        formdetails.Status = action + "ed";
+                    }
                 }
                 formdetails.WorkFlow = workFlow;
                 dbcontext.SaveChanges();
@@ -500,6 +504,7 @@ namespace ReactMvcApp.Controllers.Officer
                         path = Url.Content($"~/files/{fileName}")
                     });
                 }
+
 
                 return Json(new { status = true });
 

@@ -73,9 +73,14 @@ namespace ReactMvcApp.Controllers.User
                     serviceId = application.ServiceId
                 });
 
-                if ((string)officers[currentPlayer]["status"]! != "returntoedit")
+                if ((string)officers[currentPlayer]["status"]! != "returntoedit" && (string)officers[currentPlayer]["status"]! != "sanctioned")
                 {
                     customActions.Add(new { id = index, tooltip = "View", color = "#F0C38E", actionFunction = "CreateTimeLine" });
+                }
+                else if ((string)officers[currentPlayer]["status"]! == "sanctioned")
+                {
+                    customActions.Add(new { id = index, tooltip = "View", color = "#F0C38E", actionFunction = "CreateTimeLine" });
+                    customActions.Add(new { id = index, tooltip = "Download", color = "#F0C38E", actionFunction = "DownloadSanctionLetter" });
                 }
                 else
                 {

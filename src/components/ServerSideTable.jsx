@@ -177,7 +177,7 @@ const ServerSideTable = ({
         )}
         renderTopToolbarCustomActions={({ table }) => {
           const selectedRows = table.getSelectedRowModel().rows;
-          
+
           if (canSanction && pendingApplications && viewType === "Inbox") {
             // Show "Push to Pool" button
             return (
@@ -248,7 +248,6 @@ const ServerSideTable = ({
             return null; // Nothing to show if canSanction is false
           }
         }}
-        
       />
     </>
   );

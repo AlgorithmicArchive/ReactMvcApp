@@ -10,16 +10,20 @@ export default function Acknowledgement() {
   const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
   const [path, setPath] = useState("");
   const [loading, setLoading] = useState(true);
-  const location = useLocation();
-  const { applicationId } = location.state || {};
+
+  const { state } = useLocation();
+  const applicationId = state?.applicationId;
+
   useEffect(() => {
-    async function getPdfBlob() {
+    if (!applicationId) return;
+
+    const getPdfBlob = async () => {
       try {
         const { path, completePath } = await fetchAcknowledgement(
           applicationId
         );
+
         if (completePath) {
-          // Fetch the PDF as a blob using axios
           const response = await axios.get(completePath, {
             responseType: "blob",
           });
@@ -37,11 +41,12 @@ export default function Acknowledgement() {
       } finally {
         setLoading(false);
       }
-    }
-    setTimeout(() => {
-      getPdfBlob();
-    }, 1000);
-  }, []);
+    };
+
+    const timeoutId = setTimeout(getPdfBlob, 1000);
+
+    return () => clearTimeout(timeoutId); // cleanup
+  }, [applicationId]);
 
   return (
     <Box
@@ -54,14 +59,19 @@ export default function Acknowledgement() {
         marginTop: "100px",
       }}
     >
-      {loading && <LoadingSpinner />}
-      <Typography variant="h2" gutterBottom>
-        Acknowledgement
-      </Typography>
-      {pdfBlobUrl ? (
-        <PdfViewer pdfUrl={pdfBlobUrl} path={path} exportButton={true} />
+      {loading ? (
+        <LoadingSpinner />
       ) : (
-        <Typography variant="body1">Loading PDF...</Typography>
+        <>
+          <Typography variant="h2" gutterBottom>
+            Acknowledgement
+          </Typography>
+          {pdfBlobUrl ? (
+            <PdfViewer pdfUrl={pdfBlobUrl} path={path} exportButton={true} />
+          ) : (
+            <Typography variant="body1">Unable to load PDF.</Typography>
+          )}
+        </>
       )}
     </Box>
   );
