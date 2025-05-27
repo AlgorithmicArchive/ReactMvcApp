@@ -32,7 +32,6 @@ const CollapsibleFormDetails = ({
   setDetailsOpen,
   onViewPdf,
 }) => {
-  // Transform formDetails (object) to an array of sections if needed.
   const sections = useMemo(() => {
     return Array.isArray(formDetails)
       ? formDetails
@@ -66,13 +65,11 @@ const CollapsibleFormDetails = ({
         >
           {sections.map((section, index) => (
             <Box key={index} sx={{ marginBottom: 4 }}>
-              {/* SECTION NAME */}
               <Typography
                 variant="h6"
                 sx={{
                   fontWeight: "bold",
                   marginBottom: 2,
-                  borderColor: "divider",
                   borderBottom: "1px solid",
                   paddingBottom: 1,
                 }}
@@ -104,12 +101,8 @@ const CollapsibleFormDetails = ({
                           {field.label || field.name}
                         </Typography>
 
-                        {/* Render file/image fields differently */}
                         {field.File && field.File !== "" ? (
-                          field.File.toLowerCase().match(
-                            /\.(jpg|jpeg|png|gif)$/
-                          ) ? (
-                            // Image Field
+                          /\.(jpg|jpeg|png|gif)$/i.test(field.File) ? (
                             <Box
                               component="img"
                               src={field.File}
@@ -119,14 +112,12 @@ const CollapsibleFormDetails = ({
                                 maxHeight: 200,
                                 objectFit: "contain",
                                 borderRadius: 2,
-                                borderColor: "divider",
                                 border: "1px solid",
                                 padding: 1,
                                 mt: 1,
                               }}
                             />
                           ) : (
-                            // Document (PDF) Field
                             <Box sx={{ mt: 1 }}>
                               <Button
                                 variant="outlined"
@@ -146,7 +137,6 @@ const CollapsibleFormDetails = ({
                             </Box>
                           )
                         ) : (
-                          // Regular text fields
                           <Typography
                             variant="body1"
                             sx={{
@@ -157,9 +147,7 @@ const CollapsibleFormDetails = ({
                               mt: 1,
                             }}
                           >
-                            {field.value !== undefined && field.value !== null
-                              ? field.value
-                              : "--"}
+                            {field.value ?? "--"}
                           </Typography>
                         )}
                       </Box>
@@ -182,12 +170,8 @@ const CollapsibleFormDetails = ({
 
 const commonStyles = {
   "& .MuiOutlinedInput-root": {
-    "& fieldset": {
-      borderColor: "divider",
-    },
-    "&:hover fieldset": {
-      borderColor: "primary.main",
-    },
+    "& fieldset": { borderColor: "divider" },
+    "&:hover fieldset": { borderColor: "primary.main" },
     "&.Mui-focused fieldset": {
       borderColor: "primary.main",
       borderWidth: "2px",
@@ -197,9 +181,7 @@ const commonStyles = {
   },
   "& .MuiInputLabel-root": {
     color: "text.primary",
-    "&.Mui-focused": {
-      color: "primary.main",
-    },
+    "&.Mui-focused": { color: "primary.main" },
   },
   marginBottom: 5,
 };
@@ -207,12 +189,9 @@ const commonStyles = {
 export default function UserDetails() {
   const location = useLocation();
   const { applicationId } = location.state || {};
-  // Initialize formDetails as an object (if that's what fetchUserDetail returns)
   const [formDetails, setFormDetails] = useState({});
   const [actionForm, setActionForm] = useState([]);
-  // State for collapsing details
   const [detailsOpen, setDetailsOpen] = useState(true);
-  // State for PDF modal
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState("");
   const navigate = useNavigate();
@@ -225,17 +204,14 @@ export default function UserDetails() {
   } = useForm({ mode: "onChange" });
 
   useEffect(() => {
-    // fetchUserDetail is assumed to set both formDetails and actionForm
     fetchUserDetail(applicationId, setFormDetails, setActionForm);
   }, [applicationId]);
 
-  // Function to handle PDF viewing
   const handleViewPdf = (url) => {
     setPdfUrl(url);
     setPdfModalOpen(true);
   };
 
-  // Render an individual field using Controller
   const renderField = (field, sectionIndex) => {
     switch (field.type) {
       case "text":
@@ -243,9 +219,10 @@ export default function UserDetails() {
       case "date":
         return (
           <Controller
+            key={field.name}
             name={field.name}
             control={control}
-            defaultValue={""}
+            defaultValue=""
             rules={{
               validate: async (value) =>
                 await runValidations(field, value, getValues()),
@@ -281,6 +258,7 @@ export default function UserDetails() {
       case "file":
         return (
           <Controller
+            key={field.name}
             name={field.name}
             control={control}
             defaultValue={null}
@@ -319,6 +297,7 @@ export default function UserDetails() {
       case "select":
         return (
           <Controller
+            key={field.name}
             name={field.name}
             control={control}
             defaultValue={field.options[0]?.value || ""}
@@ -336,6 +315,7 @@ export default function UserDetails() {
                 .toLowerCase()
                 .replace(/\s/g, "");
               const isDistrict = districtFields.includes(normalizedFieldName);
+
               let options;
               if (field.optionsType === "dependent" && field.dependentOn) {
                 const parentValue = watch(field.dependentOn);
@@ -343,7 +323,10 @@ export default function UserDetails() {
                   field.dependentOptions && field.dependentOptions[parentValue]
                     ? field.dependentOptions[parentValue]
                     : [];
-              } else options = field.options;
+              } else {
+                options = field.options;
+              }
+
               return (
                 <FormControl
                   fullWidth
@@ -359,9 +342,7 @@ export default function UserDetails() {
                     id={field.id}
                     value={value || ""}
                     label={field.label}
-                    onChange={(e) => {
-                      onChange(e);
-                    }}
+                    onChange={onChange}
                     inputRef={ref}
                     sx={{
                       "& .MuiOutlinedInput-notchedOutline": {
@@ -371,7 +352,10 @@ export default function UserDetails() {
                     }}
                   >
                     {options.map((option) => (
-                      <MenuItem key={option.value} value={option.value}>
+                      <MenuItem
+                        key={`${field.name}-${option.value}`}
+                        value={option.value}
+                      >
                         {option.label}
                       </MenuItem>
                     ))}
@@ -379,6 +363,8 @@ export default function UserDetails() {
                   <FormHelperText>
                     {errors[field.name]?.message || ""}
                   </FormHelperText>
+
+                  {/* Render additional fields conditionally */}
                   {field.additionalFields &&
                     field.additionalFields[value] &&
                     field.additionalFields[value].map((additionalField) => {
@@ -412,69 +398,70 @@ export default function UserDetails() {
       case "enclosure":
         return (
           <Controller
+            key={field.name}
             name={field.name}
             control={control}
             defaultValue={{
               selected: field.options[0]?.value || "",
               file: null,
             }}
-            rules={{}}
-            render={({ field: { onChange, value, ref } }) => {
-              return (
-                <FormControl
-                  fullWidth
-                  margin="normal"
-                  error={Boolean(errors[field.name])}
-                  sx={commonStyles}
+            render={({ field: { onChange, value, ref } }) => (
+              <FormControl
+                fullWidth
+                margin="normal"
+                error={Boolean(errors[field.name])}
+                sx={commonStyles}
+              >
+                <InputLabel id={`${field.id}_select-label`}>
+                  {field.label}
+                </InputLabel>
+                <Select
+                  labelId={`${field.id}_select-label`}
+                  id={`${field.id}_select`}
+                  value={value?.selected || ""}
+                  label={field.label}
+                  onChange={(e) => {
+                    const newVal = { ...value, selected: e.target.value };
+                    onChange(newVal);
+                  }}
+                  inputRef={ref}
+                  sx={{
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#312C51",
+                    },
+                    color: "#312C51",
+                  }}
                 >
-                  <InputLabel id={`${field.id}_select-label`}>
-                    {field.label}
-                  </InputLabel>
-                  <Select
-                    labelId={`${field.id}_select-label`}
-                    id={`${field.id}_select`}
-                    value={value.selected || ""}
-                    label={field.label}
+                  {field.options.map((option) => (
+                    <MenuItem
+                      key={`${field.name}-${option.value}`}
+                      value={option.value}
+                    >
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+                <FormHelperText>
+                  {errors[field.name]?.message || ""}
+                </FormHelperText>
+                <Button
+                  variant="contained"
+                  component="label"
+                  sx={{ mt: 2, backgroundColor: "#312C51", color: "#fff" }}
+                >
+                  Upload File
+                  <input
+                    type="file"
+                    hidden
                     onChange={(e) => {
-                      const newVal = { ...value, selected: e.target.value };
-                      onChange(newVal);
+                      const file = e.target.files[0];
+                      onChange({ ...value, file });
                     }}
-                    inputRef={ref}
-                    sx={{
-                      "& .MuiOutlinedInput-notchedOutline": {
-                        borderColor: "#312C51",
-                      },
-                      color: "#312C51",
-                    }}
-                  >
-                    {field.options.map((option) => (
-                      <MenuItem key={option.value} value={option.value}>
-                        {option.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  <FormHelperText>
-                    {errors[field.name]?.message || ""}
-                  </FormHelperText>
-                  <Button
-                    variant="contained"
-                    component="label"
-                    sx={{ mt: 2, backgroundColor: "#312C51", color: "#fff" }}
-                  >
-                    Upload File
-                    <input
-                      type="file"
-                      hidden
-                      onChange={(e) => {
-                        const file = e.target.files[0];
-                        onChange({ ...value, file });
-                      }}
-                      accept={field.accept}
-                    />
-                  </Button>
-                </FormControl>
-              );
-            }}
+                    accept={field.accept}
+                  />
+                </Button>
+              </FormControl>
+            )}
           />
         );
 
@@ -483,45 +470,101 @@ export default function UserDetails() {
     }
   };
 
-  // onSubmit handles the action form submission.
-  const onSubmit = async (data) => {
-    console.log("Submitted Data:", data);
+  async function signPdf(pdfBlob) {
     const formData = new FormData();
-    Object.keys(data).forEach((key) => {
-      const value = data[key];
+    formData.append("pdf", pdfBlob, "document.pdf");
+    // Note: We don’t append 'original_path' to get the signed PDF bytes back
+
+    try {
+      const response = await fetch("http://localhost:8000/sign", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Signing failed: ${errorText}`);
+      }
+
+      return await response.blob();
+    } catch (error) {
+      throw new Error("Error signing PDF: " + error.message);
+    }
+  }
+
+  const onSubmit = async (data) => {
+    const formData = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
       if (value instanceof File) {
         formData.append(key, value);
-      } else if (typeof value === "object" && value !== null) {
+      } else if (value && typeof value === "object") {
         formData.append(key, JSON.stringify(value));
       } else {
-        formData.append(key, value);
+        formData.append(key, value ?? "");
       }
     });
     formData.append("applicationId", applicationId);
-    console.log(formData);
+
     try {
-      const response = await axiosInstance.post(
+      const { data: result } = await axiosInstance.post(
         "/Officer/HandleAction",
         formData
       );
-      const result = response.data;
-      if (result.status) navigate("/officer/home");
-      else alert(result.response);
+
+      if (!result.status) {
+        return alert(result.response || "Something went wrong");
+      }
+
+      if (result.path) {
+        // Fetch the PDF from the server
+        const pdfResponse = await fetch(result.path);
+        if (!pdfResponse.ok) {
+          throw new Error("Failed to fetch PDF from server");
+        }
+        const pdfBlob = await pdfResponse.blob();
+
+        // Sign the PDF
+        const signedBlob = await signPdf(pdfBlob);
+
+        // Send the signed PDF back to overwrite the original
+        const updateFormData = new FormData();
+        updateFormData.append("signedPdf", signedBlob, "signed.pdf");
+        updateFormData.append("applicationId", applicationId);
+
+        const updateResponse = await axiosInstance.post(
+          `/Officer/UpdatePdf`,
+          updateFormData
+        );
+
+        if (!updateResponse.data.status) {
+          throw new Error(
+            "Failed to update PDF on server: " +
+              (updateResponse.data.response || "Unknown error")
+          );
+        }
+
+        // Create a blob URL and display in modal
+        const blobUrl = URL.createObjectURL(signedBlob);
+        setPdfUrl(blobUrl);
+        setPdfModalOpen(true);
+      } else {
+        navigate("/officer/home");
+      }
     } catch (error) {
-      console.error("Submission error:", error);
-      alert("Error submitting form. Please try again.");
+      console.error("Submission or signing error:", error);
+      alert("Error processing request: " + error.message);
     }
   };
 
   return (
     <Box
       sx={{
-        height: "90vh",
+        height: "120vh",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         gap: 3,
-        paddingBottom:5
+        paddingBottom: 5,
       }}
     >
       <Typography variant="h3">USER DETAILS</Typography>
@@ -532,14 +575,13 @@ export default function UserDetails() {
         setDetailsOpen={setDetailsOpen}
         onViewPdf={handleViewPdf}
       />
+
       <Typography variant="h3" sx={{ marginTop: detailsOpen ? 40 : 5 }}>
         Action Form
       </Typography>
       <Box
         sx={{
           width: "50vw",
-          height: "auto",
-          margin: "0 auto",
           backgroundColor: "background.paper",
           borderRadius: 5,
           color: "#312C51",
@@ -547,63 +589,63 @@ export default function UserDetails() {
         }}
       >
         <form style={{ width: "100%" }}>
-          {actionForm.length > 0 &&
-            actionForm.map((field, index) => {
-              const selectedValue =
-                field.type === "select" ? watch(field.name) : null;
-              return (
-                <Box key={index}>
-                  {renderField(field, index)}
-                  {field.type === "select" &&
-                    selectedValue === "ReturnToCitizen" && (
-                      <Controller
-                        name={`returnFields`}
-                        control={control}
-                        defaultValue={[]}
-                        rules={{
-                          validate: (value) =>
-                            value.length > 0 ||
-                            "Select at least one user detail field.",
-                        }}
-                        render={({ field: { onChange, value } }) => (
-                          <Box
-                            sx={{
-                              borderColor: "divider",
-                              border: "1px solid",
-                              borderRadius: 2,
-                              maxHeight: 200,
-                              overflowY: "auto",
-                              padding: 1,
-                              marginTop: 2,
-                              display: "flex",
-                              flexDirection: "column",
-                            }}
-                          >
-                            <SectionSelectCheckboxes
-                              formDetails={formDetails}
-                              control={control}
-                              name={`returnFields`}
-                              value={value}
-                              onChange={onChange}
-                              formatKey={formatKey}
-                            />
-                          </Box>
-                        )}
-                      />
-                    )}
-                </Box>
-              );
-            })}
+          {actionForm.map((field, index) => {
+            const selectedValue =
+              field.type === "select" ? watch(field.name) : null;
+            return (
+              <Box key={index}>
+                {renderField(field, index)}
+                {field.type === "select" &&
+                  selectedValue === "ReturnToCitizen" && (
+                    <Controller
+                      name="returnFields"
+                      control={control}
+                      defaultValue={[]}
+                      rules={{
+                        validate: (value) =>
+                          value.length > 0 ||
+                          "Select at least one user detail field.",
+                      }}
+                      render={({ field: { onChange, value } }) => (
+                        <Box
+                          sx={{
+                            border: "1px solid",
+                            borderColor: "divider",
+                            borderRadius: 2,
+                            maxHeight: 200,
+                            overflowY: "auto",
+                            padding: 1,
+                            marginTop: 2,
+                            display: "flex",
+                            flexDirection: "column",
+                          }}
+                        >
+                          <SectionSelectCheckboxes
+                            formDetails={formDetails}
+                            control={control}
+                            name="returnFields"
+                            value={value}
+                            onChange={onChange}
+                            formatKey={formatKey}
+                          />
+                        </Box>
+                      )}
+                    />
+                  )}
+              </Box>
+            );
+          })}
+
           <CustomButton
             text="Take Action"
             bgColor="primary.main"
             color="background.paper"
-            width={"100%"}
+            width="100%"
             onClick={handleSubmit(onSubmit)}
           />
         </form>
       </Box>
-      {/* PDF Modal - displays pdf inside modal */}
+
       <BasicModal
         open={pdfModalOpen}
         handleClose={() => setPdfModalOpen(false)}

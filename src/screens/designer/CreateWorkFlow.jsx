@@ -173,9 +173,9 @@ export default function CreateWorkflow() {
 
   // Fetch active services for selection
   useEffect(() => {
-    async function fetchData(){
-      const response = await axiosInstance.get('/Base/GetServices');
-      if(response.data.status && response.data.services){
+    async function fetchData() {
+      const response = await axiosInstance.get("/Base/GetServices");
+      if (response.data.status && response.data.services) {
         setServices(response.data.services);
       }
     }
@@ -187,6 +187,7 @@ export default function CreateWorkflow() {
     const serviceId = e.target.value;
     setSelectedServiceId(serviceId);
     const service = services.find((s) => s.serviceId === serviceId);
+    console.log(service);
     if (service && service.officerEditableField) {
       try {
         const workflow = JSON.parse(service.officerEditableField);

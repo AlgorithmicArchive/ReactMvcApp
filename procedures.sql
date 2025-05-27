@@ -46,6 +46,7 @@ BEGIN
         ca.ReferenceNumber -- Group by the unique column (ReferenceNumber)
 
 END;
+GO
 
 CREATE PROCEDURE [dbo].[GetDuplicateAccNo]
     @AccountNumber VARCHAR(50)
@@ -67,6 +68,7 @@ BEGIN
         AND bankDetails.value = @AccountNumber;
 
 END;
+GO
 
 CREATE PROCEDURE [dbo].[GetOfficerDetails]
     @UserId INT = NULL
@@ -95,6 +97,7 @@ BEGIN
     WHERE 
         (@UserId IS NULL OR u.UserId = @UserId);
 END;
+GO
 
 CREATE PROCEDURE [dbo].[GetServicesByRole]
     @Role VARCHAR(255)
@@ -115,6 +118,7 @@ BEGIN
         jsonValues.designation = @Role
         AND s.Active = 1;
 END;
+GO
 
 CREATE PROCEDURE [dbo].[GetStatusCount]
     @AccessLevel VARCHAR(20),
@@ -201,6 +205,7 @@ BEGIN
     FROM
         FilteredApplications fa;
 END;
+GO
 
 CREATE PROCEDURE [dbo].[InsertOfficerDetail]
     @OfficerId INT,
@@ -217,6 +222,7 @@ BEGIN
     -- Return the ID of the newly inserted record
     SELECT SCOPE_IDENTITY() AS NewDetailId;
 END;
+GO
 
 CREATE PROCEDURE [dbo].[RegisterUser]
     @Name VARCHAR(100),
@@ -244,6 +250,7 @@ BEGIN
     SELECT * FROM Users WHERE UserId = SCOPE_IDENTITY();
    
 END;
+GO
 
 CREATE PROCEDURE UpdateNullOfficer
     @NewOfficerId INT,
@@ -277,6 +284,7 @@ WHERE OfficerId IS NULL
   AND Role = @Role;
 
 END;
+GO
 
 CREATE PROCEDURE [dbo].[UserLogin]
     @Username NVARCHAR(50),
@@ -294,3 +302,4 @@ BEGIN
     FROM Users
     WHERE Username = @Username AND [Password] = @PasswordHash;
 END;
+GO

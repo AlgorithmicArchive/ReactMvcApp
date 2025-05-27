@@ -7,6 +7,7 @@ using Newtonsoft.Json.Linq;
 using ReactMvcApp.Models.Entities;
 using System.Collections.Specialized;
 using System.Security.Claims;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace ReactMvcApp.Controllers.User
@@ -174,6 +175,20 @@ namespace ReactMvcApp.Controllers.User
         // }
 
         [HttpGet]
+        public string GetDistrictName(int districtId)
+        {
+            string? districtName = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == districtId)!.DistrictName;
+            return districtName!;
+        }
+
+        [HttpGet]
+        public string GetTehsilName(int tehsilId)
+        {
+            string? tehsilName = dbcontext.Tehsils.FirstOrDefault(d => d.TehsilId == tehsilId)!.TehsilName;
+            return tehsilName!;
+        }
+
+        [HttpGet]
         public async Task<IActionResult> GetApplicationHistory(string ApplicationId, int page, int size)
         {
             if (string.IsNullOrEmpty(ApplicationId))
@@ -317,29 +332,142 @@ namespace ReactMvcApp.Controllers.User
             }
             return "";
         }
-        public dynamic GetFormattedValue(dynamic item, dynamic data)
+        // public dynamic GetFormattedValue(dynamic item, dynamic data)
+        // {
+        //     var values = new List<object>();
+        //     foreach (var key in item.Fields)
+        //     {
+        //         // If GetValue is true and the key requires a lookup (e.g. District or Tehsil), get the looked‑up value.
+        //         // Otherwise, simply grab the raw value from data.
+        //         string fieldValue = (item.GetValue != null && item.GetValue == true &&
+        //                              (key.Contains("District") || key.Contains("Tehsil")))
+        //             ? GetStringValue(key, data)
+        //             : GetFieldValue(key, data);
+        //         values.Add(fieldValue);
+        //     }
+
+        //     // If a TransformString template is provided, format it with all values;
+        //     // otherwise, return the first value's string representation.
+        //     string formattedValue = item.TransformString != null
+        //            ? string.Format(item.TransformString, values.ToArray())
+        //            : (values.FirstOrDefault()?.ToString() ?? "");
+
+        //     // Note: fix the typo here: use item.Label, not item.Lable.
+        //     return new { Label = item.Label, Value = formattedValue };
+        // }
+
+        private dynamic GetFormattedValue(dynamic item, JObject data)
         {
-            var values = new List<object>();
-            foreach (var key in item.Fields)
+            if (item == null)
+                return new { Label = "[No Label]", Value = "[Item is null]" };
+
+            string label = item.label?.ToString() ?? "[No Label]";
+            string fmt = item.transformString?.ToString() ?? "{0}";
+
+            // If there's no {n} at all, return static
+            if (!Regex.IsMatch(fmt, @"\{\d+\}"))
+                return new { Label = label, Value = fmt };
+
+            // 1) Build rawValues (recursive lookup + District/Tehsil)
+            var rawValues = (item.selectedFields as IEnumerable<object> ?? Enumerable.Empty<object>())
+                .Select(sf =>
+                {
+                    var name = sf?.ToString() ?? "";
+                    if (string.IsNullOrWhiteSpace(name)) return "";
+                    var fieldObj = FindFieldRecursively(data, name);
+                    return fieldObj == null ? ""
+                           : ExtractValueWithSpecials(fieldObj, name);
+                })
+                .ToList();
+
+            // 2) Find highest non-empty index
+            int lastIndex = rawValues.FindLastIndex(v => !string.IsNullOrWhiteSpace(v));
+            if (lastIndex < 0)
+                return new { Label = label, Value = "" };
+
+            // 3) Tokenize into placeholders and literals
+            var tokens = Regex.Split(fmt, @"(\{\d+\})").ToList();
+
+            // 4) Find the first placeholder whose index > lastIndex
+            int badTokenIdx = tokens
+                .Select((tok, idx) => new { tok, idx })
+                .FirstOrDefault(x =>
+                {
+                    var m = Regex.Match(x.tok, @"\{(\d+)\}");
+                    return m.Success && int.Parse(m.Groups[1].Value) > lastIndex;
+                })
+                ?.idx ?? tokens.Count;
+
+            // 5) Collect tokens up to badTokenIdx
+            var kept = tokens.Take(badTokenIdx).ToList();
+
+            // 6) If the last kept token is a literal and contains ')', trim it at the first ')'
+            if (kept.Count > 0 && !Regex.IsMatch(kept.Last(), @"\{\d+\}"))
             {
-                // If GetValue is true and the key requires a lookup (e.g. District or Tehsil), get the looked‑up value.
-                // Otherwise, simply grab the raw value from data.
-                string fieldValue = (item.GetValue != null && item.GetValue == true &&
-                                     (key.Contains("District") || key.Contains("Tehsil")))
-                    ? GetStringValue(key, data)
-                    : GetFieldValue(key, data);
-                values.Add(fieldValue);
+                var lit = kept.Last();
+                int p = lit.IndexOf(')');
+                if (p >= 0)
+                    kept[kept.Count - 1] = lit.Substring(0, p + 1);
             }
 
-            // If a TransformString template is provided, format it with all values;
-            // otherwise, return the first value's string representation.
-            string formattedValue = item.TransformString != null
-                   ? string.Format(item.TransformString, values.ToArray())
-                   : (values.FirstOrDefault()?.ToString() ?? "");
+            // 7) Now rebuild, replacing placeholders {i} <= lastIndex
+            var sb = new StringBuilder();
+            foreach (var tok in kept)
+            {
+                var m = Regex.Match(tok, @"\{(\d+)\}");
+                if (m.Success)
+                {
+                    int idx = int.Parse(m.Groups[1].Value);
+                    sb.Append(idx <= lastIndex ? rawValues[idx] : "");
+                }
+                else
+                {
+                    sb.Append(tok);
+                }
+            }
 
-            // Note: fix the typo here: use item.Label, not item.Lable.
-            return new { Label = item.Label, Value = formattedValue };
+            var result = sb.ToString().TrimEnd();
+            return new { Label = label, Value = result };
         }
+
+        // Recursive search for a JObject with ["name"] == fieldName
+        private JObject? FindFieldRecursively(JToken token, string fieldName)
+        {
+            if (token is JObject obj)
+            {
+                if (obj["name"]?.ToString() == fieldName) return obj;
+                foreach (var prop in obj.Properties())
+                    if (FindFieldRecursively(prop.Value, fieldName) is JObject found)
+                        return found;
+            }
+            else if (token is JArray arr)
+            {
+                foreach (var el in arr)
+                    if (FindFieldRecursively(el, fieldName) is JObject found)
+                        return found;
+            }
+            return null;
+        }
+
+        // Extracts the string value (or does District/Tehsil lookups)
+        private string ExtractValueWithSpecials(JObject fieldObj, string fieldName)
+        {
+            var tok = fieldObj["value"] ?? fieldObj["File"] ?? fieldObj["Enclosure"];
+            if (tok == null) return "";
+
+            var s = tok.ToString();
+            if (fieldName.Contains("District", StringComparison.OrdinalIgnoreCase)
+             && int.TryParse(s, out int did))
+                return GetDistrictName(did);
+
+            if (fieldName.Contains("Tehsil", StringComparison.OrdinalIgnoreCase)
+             && int.TryParse(s, out int tid))
+                return GetTehsilName(tid);
+
+            return s;
+        }
+
+
 
         public string GetStringValue(string fieldName, dynamic data)
         {
@@ -367,6 +495,39 @@ namespace ReactMvcApp.Controllers.User
             }
             return "Unknown Value";
         }
+
+        public dynamic GetSanctionDetails(string applicationId, string serviceId)
+        {
+            var formdetails = dbcontext.CitizenApplications.FirstOrDefault(fd => fd.ReferenceNumber == applicationId);
+            // Get the Letters JSON string
+            var lettersJson = dbcontext.Services
+                         .FirstOrDefault(s => s.ServiceId == Convert.ToInt32(formdetails!.ServiceId))?.Letters;
+
+            var parsed = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(lettersJson!);
+            var sanctionSection = parsed!.TryGetValue("Sanction", out dynamic sanction) ? sanction : null;
+            var tableFields = sanctionSection!.tableFields;
+            var sanctionLetterFor = sanctionSection.sanctionLetterFor;
+
+            var details = dbcontext.CitizenApplications
+                .FirstOrDefault(ca => ca.ReferenceNumber == applicationId);
+
+
+            var formData = JsonConvert.DeserializeObject<JObject>(details!.FormDetails!);
+
+            // Final key-value pair list for the PDF
+            var pdfFields = new Dictionary<string, string>();
+
+            foreach (var item in tableFields)
+            {
+                var formatted = GetFormattedValue(item, formData);
+                string label = formatted.Label ?? "[Label Missing]";
+                string value = formatted.Value ?? "";
+
+                pdfFields[label] = value;
+            }
+            return Json(new { success = true, sanctionDetails = pdfFields });
+        }
+
 
         private dynamic FetchAcknowledgementDetails(string applicationId)
         {

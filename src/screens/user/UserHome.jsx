@@ -18,169 +18,21 @@ export default function UserHome() {
     setProfile({ file: "", url: response.data.profile });
   }
 
+  async function GetSanctionDetils() {
+    const response = await axiosInstance.get("/User/GetSanctionDetails", {
+      params: { applicationId: "JK-PN-JMU/2025-2026/2", serviceId: "1" },
+    });
+    console.log(response.data);
+  }
+
   useEffect(() => {
     GetUserDetails();
+    GetSanctionDetils();
   }, []);
 
   if (loading) return <LoadingSpinner />;
 
   return (
-    // <Box sx={{ width: "100%", height: "70vh" }}>
-    //   <Container>
-    //     <Box
-    //       sx={{
-    //         width: "100%",
-    //         height: "100%",
-    //         display: "flex",
-    //         flexDirection: "column",
-    //         justifyContent: "center",
-    //         alignItems: "center",
-    //         gap: 10,
-    //         padding: 5,
-    //         borderRadius: 5,
-    //         boxShadow: 5,
-    //       }}
-    //     >
-    //       <Box
-    //         sx={{
-    //           display: "flex",
-    //           justifyContent: "center",
-    //           alignItems: "center",
-    //           width: "max-content",
-    //           gap: 5,
-    //         }}
-    //       >
-    //         <Box
-    //           component={"img"}
-    //           src={profile.url}
-    //           alt="User Profile Picture"
-    //           sx={{ width: 200, borderRadius: 25 }}
-    //         />
-    //       </Box>
-
-    //       <Row style={{ width: "100%" }}>
-    //         <Col
-    //           xs={12}
-    //           lg={4}
-    //           style={{
-    //             display: "flex",
-    //             flexDirection: "column",
-    //           }}
-    //           className="shadow-lg p-3"
-    //         >
-    //           <Typography
-    //             sx={{
-    //               fontWeight: "bold",
-    //               fontSize: "18px",
-    //               textAlign: "center",
-    //             }}
-    //           >
-    //             Initiated Applications
-    //           </Typography>
-    //           <Typography
-    //             sx={{
-    //               fontWeight: "bold",
-    //               fontSize: "18px",
-    //               textAlign: "center",
-    //             }}
-    //           >
-    //             {userDetails.initiated}
-    //           </Typography>
-    //         </Col>
-    //         <Col
-    //           xs={12}
-    //           lg={4}
-    //           style={{
-    //             display: "flex",
-    //             flexDirection: "column",
-    //           }}
-    //           className="shadow-lg p-3"
-    //         >
-    //           <Typography
-    //             sx={{
-    //               fontWeight: "bold",
-    //               fontSize: "18px",
-    //               textAlign: "center",
-    //             }}
-    //           >
-    //             Incomplete Applications
-    //           </Typography>
-    //           <Typography
-    //             sx={{
-    //               fontWeight: "bold",
-    //               fontSize: "18px",
-    //               textAlign: "center",
-    //             }}
-    //           >
-    //             {userDetails.incomplete}
-    //           </Typography>
-    //         </Col>
-    //         <Col
-    //           xs={12}
-    //           lg={4}
-    //           style={{
-    //             display: "flex",
-    //             flexDirection: "column",
-    //           }}
-    //           className="shadow-lg p-3"
-    //         >
-    //           <Typography
-    //             sx={{
-    //               fontWeight: "bold",
-    //               fontSize: "18px",
-    //               textAlign: "center",
-    //             }}
-    //           >
-    //             Sanctioned Applications
-    //           </Typography>
-    //           <Typography
-    //             sx={{
-    //               fontWeight: "bold",
-    //               fontSize: "18px",
-    //               textAlign: "center",
-    //             }}
-    //           >
-    //             {userDetails.sanctioned}
-    //           </Typography>
-    //         </Col>
-    //       </Row>
-    //       <Box sx={{ display: "flex", flexDirection: "column" }}>
-    //         <Typography sx={{ fontSize: 24, fontWeight: "bold" }}>
-    //           Full Name
-    //         </Typography>
-    //         <Typography>{userDetails.name}</Typography>
-    //         <Divider
-    //           orientation="horizontal"
-    //           flexItem
-    //           sx={{ borderColor: "text.primary" }}
-    //         />
-    //         <Typography sx={{ fontSize: 24, fontWeight: "bold" }}>
-    //           Username
-    //         </Typography>
-    //         <Typography>{userDetails.username}</Typography>
-    //         <Divider
-    //           orientation="horizontal"
-    //           flexItem
-    //           sx={{ borderColor: "text.primary" }}
-    //         />
-    //         <Typography sx={{ fontSize: 24, fontWeight: "bold" }}>
-    //           Email
-    //         </Typography>
-    //         <Typography>{userDetails.email}</Typography>
-    //         <Divider
-    //           orientation="horizontal"
-    //           flexItem
-    //           sx={{ borderColor: "text.primary" }}
-    //         />
-    //         <Typography sx={{ fontSize: 24, fontWeight: "bold" }}>
-    //           Mobile Number
-    //         </Typography>
-    //         <Typography>{userDetails.mobileNumber}</Typography>
-    //       </Box>
-    //     </Box>
-    //   </Container>
-    // </Box>
-
     <Box
       sx={{
         width: "100%",

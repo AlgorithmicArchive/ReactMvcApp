@@ -74,10 +74,12 @@ export default function OfficerRegisterScreen() {
         .get(`/Base/GetTeshilForDistrict?districtId=${selectedDistrict}`)
         .then((response) => {
           if (response.data.status) {
-            const tehsilOptionsFormatted = response.data.tehsils.map((tehsil) => ({
-              label: tehsil.tehsilName,
-              value: tehsil.tehsilId,
-            }));
+            const tehsilOptionsFormatted = response.data.tehsils.map(
+              (tehsil) => ({
+                label: tehsil.tehsilName,
+                value: tehsil.tehsilId,
+              })
+            );
             setTehsilOptions(tehsilOptionsFormatted);
           }
         })
@@ -100,7 +102,9 @@ export default function OfficerRegisterScreen() {
       accessLevelMap[selectedDesignation] !== "State"
         ? accessLevelMap[selectedDesignation].includes("Tehsil")
           ? data["Tehsil"]
-          : data["District"]
+          : accessLevelMap[selectedDesignation].includes("District")
+          ? data["District"]
+          : data["Division"]
         : 0
     );
     try {
@@ -136,209 +140,223 @@ export default function OfficerRegisterScreen() {
   };
 
   return (
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: 3,
-          height: "120vh",
-        }}
-      >
-        {loading && (
-          <Container
-            maxWidth={false}
-            sx={{
-              position: "absolute",
-              width: "20vw",
-              backgroundColor: "transparent",
-              top: "50%",
-              borderRadius: 10,
-              zIndex: 1100,
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <ReactLoading
-              type="spinningBubbles"
-              color="#48426D"
-              height={200}
-              width={200}
-            />
-          </Container>
-        )}
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        gap: 3,
+        height: "120vh",
+      }}
+    >
+      {loading && (
         <Container
-          maxWidth="sm"
+          maxWidth={false}
           sx={{
-            bgcolor: "background.default",
-            p: 4,
-            borderRadius: 5,
-            boxShadow: 5,
+            position: "absolute",
+            width: "20vw",
+            backgroundColor: "transparent",
+            top: "50%",
+            borderRadius: 10,
+            zIndex: 1100,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
           }}
         >
-          <Typography
-            variant="h4"
-            component="h1"
-            sx={{
-              mb: 3,
-              textAlign: "center",
-              color: "primary.main",
-              fontWeight: "bold",
-            }}
-          >
-            Officer Registration
-          </Typography>
+          <ReactLoading
+            type="spinningBubbles"
+            color="#48426D"
+            height={200}
+            width={200}
+          />
+        </Container>
+      )}
+      <Container
+        maxWidth="sm"
+        sx={{
+          bgcolor: "background.default",
+          p: 4,
+          borderRadius: 5,
+          boxShadow: 5,
+        }}
+      >
+        <Typography
+          variant="h4"
+          component="h1"
+          sx={{
+            mb: 3,
+            textAlign: "center",
+            color: "primary.main",
+            fontWeight: "bold",
+          }}
+        >
+          Officer Registration
+        </Typography>
 
-          <Box
-            component="form"
-            noValidate
-            autoComplete="off"
-            onSubmit={handleSubmit(onSubmit)}
-          >
-            <Box>
-              <CustomInputField
-                rules={{ required: "This Field is required" }}
-                label="Full Name"
-                name="fullName"
-                control={control}
-                placeholder="Full Name"
-                errors={errors}
-              />
-              <CustomInputField
-                rules={{
-                  required: "This Field is required",
-                  validate: validateUsername,
-                }}
-                label="Username"
-                name="username"
-                control={control}
-                placeholder="Username"
-                errors={errors}
-              />
-            </Box>
+        <Box
+          component="form"
+          noValidate
+          autoComplete="off"
+          onSubmit={handleSubmit(onSubmit)}
+        >
+          <Box>
+            <CustomInputField
+              rules={{ required: "This Field is required" }}
+              label="Full Name"
+              name="fullName"
+              control={control}
+              placeholder="Full Name"
+              errors={errors}
+            />
+            <CustomInputField
+              rules={{
+                required: "This Field is required",
+                validate: validateUsername,
+              }}
+              label="Username"
+              name="username"
+              control={control}
+              placeholder="Username"
+              errors={errors}
+            />
+          </Box>
 
-            <Box>
-              <CustomInputField
-                rules={{
-                  required: "This Field is required",
-                  validate: validateEmail,
-                }}
-                label="Email"
-                name="email"
-                control={control}
-                placeholder="Email"
-                type="email"
-                errors={errors}
-              />
-              <CustomInputField
-                rules={{
-                  required: "This Field is required",
-                  pattern: {
-                    value: /^[0-9]{10}$/,
-                    message: "Mobile number must be exactly 10 digits",
-                  },
-                }}
-                label="Mobile Number"
-                name="mobileNumber"
-                control={control}
-                placeholder="Mobile Number"
-                errors={errors}
-                maxLength={10}
-              />
-            </Box>
+          <Box>
+            <CustomInputField
+              rules={{
+                required: "This Field is required",
+                validate: validateEmail,
+              }}
+              label="Email"
+              name="email"
+              control={control}
+              placeholder="Email"
+              type="email"
+              errors={errors}
+            />
+            <CustomInputField
+              rules={{
+                required: "This Field is required",
+                pattern: {
+                  value: /^[0-9]{10}$/,
+                  message: "Mobile number must be exactly 10 digits",
+                },
+              }}
+              label="Mobile Number"
+              name="mobileNumber"
+              control={control}
+              placeholder="Mobile Number"
+              errors={errors}
+              maxLength={10}
+            />
+          </Box>
 
-            <Box>
-              <CustomInputField
-                rules={{ required: "This Field is required" }}
-                label="Password"
-                name="password"
-                control={control}
-                placeholder="Password"
-                type="password"
-                errors={errors}
-              />
-              <CustomInputField
-                rules={{ required: "This Field is required" }}
-                label="Confirm Password"
-                name="confirmPassword"
-                control={control}
-                placeholder="Confirm Password"
-                type="password"
-                errors={errors}
-              />
-            </Box>
+          <Box>
+            <CustomInputField
+              rules={{ required: "This Field is required" }}
+              label="Password"
+              name="password"
+              control={control}
+              placeholder="Password"
+              type="password"
+              errors={errors}
+            />
+            <CustomInputField
+              rules={{ required: "This Field is required" }}
+              label="Confirm Password"
+              name="confirmPassword"
+              control={control}
+              placeholder="Confirm Password"
+              type="password"
+              errors={errors}
+            />
+          </Box>
 
-            <Box>
+          <Box>
+            <CustomSelectField
+              label="Select Designation"
+              name="designation"
+              control={control}
+              placeholder="Designation"
+              options={designations}
+              rules={{ required: "This field is required" }}
+              errors={errors}
+            />
+            {(accessLevelMap[selectedDesignation] === "District" ||
+              accessLevelMap[selectedDesignation] === "Tehsil") && (
               <CustomSelectField
-                label="Select Designation"
-                name="designation"
+                label="Select District"
+                name="District"
                 control={control}
-                placeholder="Designation"
-                options={designations}
+                placeholder="Select District"
+                options={districtOptions}
                 rules={{ required: "This field is required" }}
                 errors={errors}
               />
-              {(accessLevelMap[selectedDesignation] === "District" ||
-                accessLevelMap[selectedDesignation] === "Tehsil") && (
-                <CustomSelectField
-                  label="Select District"
-                  name="District"
-                  control={control}
-                  placeholder="Select District"
-                  options={districtOptions}
-                  rules={{ required: "This field is required" }}
-                  errors={errors}
-                />
-              )}
-              {accessLevelMap[selectedDesignation] === "Tehsil" && (
-                <CustomSelectField
-                  label="Select Tehsil"
-                  name="Tehsil"
-                  control={control}
-                  placeholder="Select Tehsil"
-                  options={tehsilOptions}
-                  rules={{ required: "This field is required" }}
-                  errors={errors}
-                />
-              )}
-            </Box>
-
-            <Box sx={{ display: "flex", justifyContent: "center" }}>
-              <CustomButton
-                text="Register"
-                bgColor="primary.main"
-                color="background.paper"
-                type="submit"
-                width="100%"
+            )}
+            {accessLevelMap[selectedDesignation] === "Tehsil" && (
+              <CustomSelectField
+                label="Select Tehsil"
+                name="Tehsil"
+                control={control}
+                placeholder="Select Tehsil"
+                options={tehsilOptions}
+                rules={{ required: "This field is required" }}
+                errors={errors}
               />
-            </Box>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                padding: 3,
-              }}
-            >
-              <Typography sx={{ textAlign: "center", fontSize: 14 }}>
-                Already have an account?
-              </Typography>
-              <Button
-                sx={{ color: "darkblue" }}
-                onClick={() => navigate("/login")}
-              >
-                Sign in now
-              </Button>
-            </Box>
+            )}
+            {accessLevelMap[selectedDesignation] === "Division" && (
+              <CustomSelectField
+                label="Select Division"
+                name="Division"
+                control={control}
+                placeholder="Select Division"
+                options={[
+                  { label: "Jammu", value: 1 },
+                  { label: "Kashmir", value: 2 },
+                ]}
+                rules={{ required: "This field is required" }}
+                errors={errors}
+              />
+            )}
           </Box>
-        </Container>
-        <OtpModal
-          open={isOtpModalOpen}
-          onClose={() => setIsOtpModalOpen(false)}
-          onSubmit={handleOtpSubmit}
-        />
-      </Box>
+
+          <Box sx={{ display: "flex", justifyContent: "center" }}>
+            <CustomButton
+              text="Register"
+              bgColor="primary.main"
+              color="background.paper"
+              type="submit"
+              width="100%"
+            />
+          </Box>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              padding: 3,
+            }}
+          >
+            <Typography sx={{ textAlign: "center", fontSize: 14 }}>
+              Already have an account?
+            </Typography>
+            <Button
+              sx={{ color: "darkblue" }}
+              onClick={() => navigate("/login")}
+            >
+              Sign in now
+            </Button>
+          </Box>
+        </Box>
+      </Container>
+      <OtpModal
+        open={isOtpModalOpen}
+        onClose={() => setIsOtpModalOpen(false)}
+        onSubmit={handleOtpSubmit}
+      />
+    </Box>
   );
 }

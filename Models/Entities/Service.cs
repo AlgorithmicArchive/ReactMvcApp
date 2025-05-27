@@ -21,6 +21,8 @@ public partial class Service
 
     public string? DocumentFields { get; set; }
 
+    public string? Letters { get; set; }
+
     public string? Pool { get; set; }
 
     public string? Approve { get; set; }

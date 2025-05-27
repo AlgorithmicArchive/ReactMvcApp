@@ -120,7 +120,7 @@ namespace ReactMvcApp.Controllers.Officer
             var counts = dbcontext.Database
                 .SqlQueryRaw<StatusCounts>(
                     "EXEC GetStatusCount  @AccessLevel, @AccessCode, @ServiceId, @TakenBy",
-                    paramAccessLevel, paramAccessCode, paramServiceId,paramTakenBy)
+                    paramAccessLevel, paramAccessCode, paramServiceId, paramTakenBy)
                 .AsEnumerable()
                 .FirstOrDefault() ?? new StatusCounts();
 
@@ -224,13 +224,15 @@ namespace ReactMvcApp.Controllers.Officer
             var accessLevel = new SqlParameter("@AccessLevel", officerDetails.AccessLevel);
             var accessCode = new SqlParameter("@AccessCode", officerDetails.AccessCode);
             // If 'type' is null, supply DBNull.Value (or you could supply a default string)
-            var applicationStatus = new SqlParameter("@ApplicationStatus", (object)type ?? DBNull.Value);
+            var applicationStatus = new SqlParameter("@ApplicationStatus", (object)type.ToLower() ?? DBNull.Value);
             var serviceId = new SqlParameter("@ServiceId", ServiceId);
 
             var response = dbcontext.CitizenApplications
                 .FromSqlRaw("EXEC GetApplicationsForOfficer @Role, @AccessLevel, @AccessCode, @ApplicationStatus, @ServiceId",
                     role, accessLevel, accessCode, applicationStatus, serviceId)
                 .ToList();
+
+            _logger.LogInformation($"----------Type : {type}------------------");
 
             List<dynamic> columns =
             [
@@ -398,12 +400,11 @@ namespace ReactMvcApp.Controllers.Officer
         [HttpPost]
         public IActionResult HandleAction([FromForm] IFormCollection form)
         {
-            var officer = GetOfficerDetails();
+            OfficerDetailsModal officer = GetOfficerDetails();
             string applicationId = form["applicationId"].ToString();
             string action = form["defaultAction"].ToString();
             string remarks = form["Remarks"].ToString();
 
-            _logger.LogInformation($"----------- ACTION: {action} ------------------");
             try
             {
                 var formdetails = dbcontext.CitizenApplications.FirstOrDefault(fd => fd.ReferenceNumber == applicationId);
@@ -460,15 +461,54 @@ namespace ReactMvcApp.Controllers.Officer
                 formdetails.WorkFlow = workFlow;
                 dbcontext.SaveChanges();
                 helper.InsertHistory(applicationId, action, officer.Role!);
+                if (action == "Sanction")
+                {
+                    var lettersJson = dbcontext.Services
+                        .FirstOrDefault(s => s.ServiceId == Convert.ToInt32(formdetails.ServiceId))?.Letters;
+
+                    var parsed = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(lettersJson!);
+                    var sanctionSection = parsed!.TryGetValue("Sanction", out dynamic sanction) ? sanction : null;
+                    var tableFields = sanctionSection!.tableFields;
+                    var sanctionLetterFor = sanctionSection.sanctionLetterFor;
+                    var information = sanctionSection.information;
+
+                    var details = dbcontext.CitizenApplications
+                        .FirstOrDefault(ca => ca.ReferenceNumber == applicationId);
+
+
+
+                    var formData = JsonConvert.DeserializeObject<JObject>(details!.FormDetails!);
+
+                    // Final key-value pair list for the PDF
+                    var pdfFields = new Dictionary<string, string>();
+
+                    foreach (var item in tableFields)
+                    {
+                        var formatted = GetFormattedValue(item, formData);
+                        string label = formatted.Label ?? "[Label Missing]";
+                        string value = formatted.Value ?? "";
+
+                        pdfFields[label] = value;
+                    }
+
+                    // Call your PDF generator
+                    _pdfService.CreateSanctionPdf(pdfFields, sanctionLetterFor?.ToString() ?? "", information?.ToString() ?? "", officer, applicationId);
+                    string fileName = applicationId.Replace("/", "_") + "SanctionLetter.pdf";
+                    return Json(new
+                    {
+                        status = true,
+                        path = Url.Content($"~/files/{fileName}")
+                    });
+                }
+
                 return Json(new { status = true });
 
             }
-            catch (System.Exception)
+            catch (Exception ex)
             {
-
-                return Json(new { status = false, response = "Something went wrong, Please try again later." });
-
+                return Json(new { status = false, response = ex.Message, stackTrace = ex.StackTrace });
             }
+
 
         }
     }

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using ReactMvcApp.Models.Entities;
 
 namespace ReactMvcApp.Controllers
@@ -31,6 +32,8 @@ namespace ReactMvcApp.Controllers
                 _logger.LogWarning("GetOfficerDetails: UserId is null. User is not authenticated or NameIdentifier claim is missing.");
                 return null;
             }
+
+            _logger.LogInformation($"------- User ID: {userId} --------");
 
             var parameter = new SqlParameter("@UserId", userId);
             var officer = dbcontext.Database
@@ -408,11 +411,12 @@ namespace ReactMvcApp.Controllers
         public IActionResult GetServices()
         {
             var officer = GetOfficerDetails();
-            
+            _logger.LogInformation($"----- Officer ROLE: {officer!.Role} -------------------");
 
-            if(officer!.Role =="Designer"){
+            if (officer!.Role == "Designer")
+            {
                 var Services = dbcontext.Services.ToList();
-                return Json(new{status=true,services = Services});
+                return Json(new { status = true, services = Services });
             }
 
             // Fetch the service list for the given role
@@ -487,7 +491,30 @@ namespace ReactMvcApp.Controllers
             return Json(new { status = true });
         }
 
+        public IActionResult GetFormElements(string serviceId)
+        {
+            // Fetch the service JSON string
+            var service = dbcontext.Services
+                .FirstOrDefault(s => s.ServiceId == Convert.ToInt32(serviceId));
 
+            if (service == null || string.IsNullOrWhiteSpace(service.FormElement))
+            {
+                return BadRequest(new { error = "Invalid serviceId or no form elements found." });
+            }
+
+            // Parse the JSON into a JToken
+            JToken root = JToken.Parse(service.FormElement);
+
+            // Extract all "name" values anywhere in the structure
+            List<string> allNames = root
+                .SelectTokens("$..name")   // recursive descent for every 'name' property
+                .Select(token => (string)token!)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .ToList();
+
+            // Return as JSON
+            return Json(new { names = allNames });
+        }
 
         [HttpGet]
         public IActionResult GetService()
@@ -500,7 +527,8 @@ namespace ReactMvcApp.Controllers
         public IActionResult GetDistricts()
         {
             var officer = GetOfficerDetails();
-            if(officer == null){
+            if (officer == null)
+            {
                 var Districts = dbcontext.Districts.ToList();
                 return Json(new { status = true, districts = Districts });
             }
