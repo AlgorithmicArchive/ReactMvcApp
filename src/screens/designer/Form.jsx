@@ -13,6 +13,7 @@ import {
   Button,
 } from "@mui/material";
 import { Col, Row } from "react-bootstrap";
+import axiosInstance from "../../axiosConfig";
 
 const commonStyles = {
   "& .MuiOutlinedInput-root": {
@@ -47,15 +48,13 @@ const DynamicStepForm = () => {
 
   // Fetch services on mount
   useEffect(() => {
-    fetch("/Base/GetServices")
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.status && data.services) {
-          setServices(data.services);
-        }
-      })
-      .catch((error) => console.error("Error fetching services:", error))
-      .finally(() => setLoading(false));
+    async function fetchServices() {
+      const response = await axiosInstance.get("/Base/GetServices");
+      console.log(response.data);
+      setServices(response.data.services);
+      setLoading(false);
+    }
+    fetchServices();
   }, []);
 
   // When a service is selected, parse its formElements config

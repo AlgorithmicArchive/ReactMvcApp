@@ -248,30 +248,31 @@ namespace ReactMvcApp.Controllers
             // Execute the stored procedure and retrieve counts.
             var counts = dbcontext.Database
                 .SqlQueryRaw<StatusCounts>(
-                    "EXEC GetStatusCount @TakenBy, @AccessLevel, @AccessCode, @ServiceId",
-                    paramTakenBy, paramAccessLevel, paramAccessCode, paramServiceId)
+                    "EXEC GetStatusCount @AccessLevel, @AccessCode, @ServiceId, @TakenBy",
+                     paramAccessLevel, paramAccessCode, paramServiceId, paramTakenBy)
                 .AsEnumerable()
                 .FirstOrDefault() ?? new StatusCounts();
 
             // Build the count list based on the available authority permissions.
-            var countList = new List<dynamic>();
-
-            countList.Add(new
+            var countList = new List<dynamic>
             {
-                label = "Total Applications",
-                count = counts.TotalApplications,
-                bgColor = "#000000",
-                textColor = "#FFFFFF"
-            });
+                new
+                {
+                    label = "Total Applications",
+                    count = counts.TotalApplications,
+                    bgColor = "#000000",
+                    textColor = "#FFFFFF"
+                },
 
-            // Pending is always included.
-            countList.Add(new
-            {
-                label = "Pending",
-                count = counts.PendingCount,
-                bgColor = "#FFC107",
-                textColor = "#212121"
-            });
+                // Pending is always included.
+                new
+                {
+                    label = "Pending",
+                    count = counts.PendingCount,
+                    bgColor = "#FFC107",
+                    textColor = "#212121"
+                }
+            };
 
             // Forwarded (if allowed)
             if ((bool)authorities.canForwardToPlayer)
@@ -631,7 +632,7 @@ namespace ReactMvcApp.Controllers
             return Json(new { isValid = true, message = "" });
         }
 
-        private bool IsValidImage(byte[] header, string fileExtension)
+        private static bool IsValidImage(byte[] header, string fileExtension)
         {
             // PNG: 89 50 4E 47 (hex) / JPG: FF D8 FF E0 or FF D8 FF E1
             if (fileExtension == ".png" && header[0] == 0x89 && header[1] == 0x50 &&
@@ -648,11 +649,92 @@ namespace ReactMvcApp.Controllers
             return false;
         }
 
-        private bool IsValidPdf(byte[] header, string fileExtension)
+        private static bool IsValidPdf(byte[] header, string fileExtension)
         {
             // PDF files start with: 25 50 44 46 (hex)
             return fileExtension == ".pdf" && header[0] == 0x25 && header[1] == 0x50 &&
                 header[2] == 0x44 && header[3] == 0x46;
+        }
+
+
+        [HttpGet]
+        public IActionResult GetLetterDetails(int serviceId, string objField)
+        {
+            var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
+            if (service == null || string.IsNullOrWhiteSpace(service.Letters))
+            {
+                return NotFound("Service or Letters data not found.");
+            }
+
+            try
+            {
+                var json = JObject.Parse(service.Letters);
+
+                if (!json.TryGetValue(objField, out var requiredObj))
+                {
+                    return NotFound($"Field '{objField}' not found in Letters.");
+                }
+
+                return Json(new { requiredObj });
+            }
+            catch (JsonException ex)
+            {
+                return BadRequest($"Invalid JSON format: {ex.Message}");
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveLetterDetails(int serviceId, string objField, string letterData)
+        {
+            // Find the service by serviceId
+            var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
+            if (service == null)
+            {
+                return NotFound(new { status = false, message = "Service not found." });
+            }
+
+            try
+            {
+                // Validate inputs
+                if (string.IsNullOrWhiteSpace(objField))
+                {
+                    return BadRequest(new { status = false, message = "Object field (objField) cannot be empty." });
+                }
+                if (string.IsNullOrWhiteSpace(letterData))
+                {
+                    return BadRequest(new { status = false, message = "Letter data cannot be empty." });
+                }
+
+                // Parse incoming letterData
+                var newJson = JObject.Parse(letterData);
+                if (newJson[objField] == null)
+                {
+                    return BadRequest(new { status = false, message = $"Invalid letter data: '{objField}' object required." });
+                }
+
+                // Parse existing Letters JSON or initialize a new JObject if null/empty
+                JObject existingJson = string.IsNullOrWhiteSpace(service.Letters)
+                    ? new JObject()
+                    : JObject.Parse(service.Letters);
+
+                // Update the specified object in the existing JSON, preserving other objects
+                existingJson[objField] = newJson[objField];
+
+                // Update the Letters field with the merged JSON
+                service.Letters = existingJson.ToString();
+                dbcontext.Services.Update(service);
+                await dbcontext.SaveChangesAsync();
+
+                return Json(new { status = true, message = $"{objField} letter updated successfully." });
+            }
+            catch (JsonException ex)
+            {
+                return BadRequest(new { status = false, message = $"Invalid JSON format: {ex.Message}" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = $"Error updating {objField} letter: {ex.Message}" });
+            }
         }
 
     }

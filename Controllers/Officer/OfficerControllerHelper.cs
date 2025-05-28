@@ -124,64 +124,38 @@ namespace ReactMvcApp.Controllers.Officer
             string label = item.label?.ToString() ?? "[No Label]";
             string fmt = item.transformString?.ToString() ?? "{0}";
 
-            // If there's no {n} at all, return static
+            // If there's no {n} placeholders, return static string
             if (!Regex.IsMatch(fmt, @"\{\d+\}"))
                 return new { Label = label, Value = fmt };
 
-            // 1) Build rawValues (recursive lookup + District/Tehsil)
+            // Build rawValues (recursive lookup + District/Tehsil)
             var rawValues = (item.selectedFields as IEnumerable<object> ?? Enumerable.Empty<object>())
                 .Select(sf =>
                 {
                     var name = sf?.ToString() ?? "";
                     if (string.IsNullOrWhiteSpace(name)) return "";
                     var fieldObj = FindFieldRecursively(data, name);
-                    return fieldObj == null ? ""
-                           : ExtractValueWithSpecials(fieldObj, name);
+                    return fieldObj == null ? "" : ExtractValueWithSpecials(fieldObj, name);
                 })
                 .ToList();
 
-            // 2) Find highest non-empty index
-            int lastIndex = rawValues.FindLastIndex(v => !string.IsNullOrWhiteSpace(v));
-            if (lastIndex < 0)
-                return new { Label = label, Value = "" };
-
-            // 3) Tokenize into placeholders and literals
+            // Tokenize transformString into placeholders and literals
             var tokens = Regex.Split(fmt, @"(\{\d+\})").ToList();
 
-            // 4) Find the first placeholder whose index > lastIndex
-            int badTokenIdx = tokens
-                .Select((tok, idx) => new { tok, idx })
-                .FirstOrDefault(x =>
-                {
-                    var m = Regex.Match(x.tok, @"\{(\d+)\}");
-                    return m.Success && int.Parse(m.Groups[1].Value) > lastIndex;
-                })
-                ?.idx ?? tokens.Count;
-
-            // 5) Collect tokens up to badTokenIdx
-            var kept = tokens.Take(badTokenIdx).ToList();
-
-            // 6) If the last kept token is a literal and contains ')', trim it at the first ')'
-            if (kept.Count > 0 && !Regex.IsMatch(kept.Last(), @"\{\d+\}"))
-            {
-                var lit = kept.Last();
-                int p = lit.IndexOf(')');
-                if (p >= 0)
-                    kept[kept.Count - 1] = lit.Substring(0, p + 1);
-            }
-
-            // 7) Now rebuild, replacing placeholders {i} <= lastIndex
+            // Build the output string, processing all tokens
             var sb = new StringBuilder();
-            foreach (var tok in kept)
+            foreach (var tok in tokens)
             {
                 var m = Regex.Match(tok, @"\{(\d+)\}");
                 if (m.Success)
                 {
                     int idx = int.Parse(m.Groups[1].Value);
-                    sb.Append(idx <= lastIndex ? rawValues[idx] : "");
+                    // Include value if index is valid and value is non-empty; otherwise, skip with empty string
+                    sb.Append(idx < rawValues.Count && !string.IsNullOrWhiteSpace(rawValues[idx]) ? rawValues[idx] : "");
                 }
                 else
                 {
+                    // Append literal text
                     sb.Append(tok);
                 }
             }
@@ -191,7 +165,7 @@ namespace ReactMvcApp.Controllers.Officer
         }
 
         // Recursive search for a JObject with ["name"] == fieldName
-        private JObject? FindFieldRecursively(JToken token, string fieldName)
+        private static JObject? FindFieldRecursively(JToken token, string fieldName)
         {
             if (token is JObject obj)
             {
@@ -217,18 +191,15 @@ namespace ReactMvcApp.Controllers.Officer
 
             var s = tok.ToString();
             if (fieldName.Contains("District", StringComparison.OrdinalIgnoreCase)
-             && int.TryParse(s, out int did))
+                && int.TryParse(s, out int did))
                 return GetDistrictName(did);
 
             if (fieldName.Contains("Tehsil", StringComparison.OrdinalIgnoreCase)
-             && int.TryParse(s, out int tid))
+                && int.TryParse(s, out int tid))
                 return GetTehsilName(tid);
 
             return s;
         }
-
-
-
 
 
     }

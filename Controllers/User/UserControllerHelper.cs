@@ -559,16 +559,17 @@ namespace ReactMvcApp.Controllers.User
             // 5) Build the key-value list for the PDF
             var acknowledgementDetails = new OrderedDictionary();
 
-            // Add Reference Number explicitly
-            acknowledgementDetails["REFERENCE NUMBER"] = details.ReferenceNumber;
+
 
             // Add all fields from tableFields config (replace if duplicate keys)
             foreach (var fieldConfig in tableFields)
             {
                 var formatted = GetFormattedValue(fieldConfig, formData);
-                if (formatted.Label == "REFERENCE NUMBER") continue;
                 acknowledgementDetails[formatted.Label] = formatted.Value;
             }
+
+            // Add Reference Number explicitly
+            acknowledgementDetails["REFERENCE NUMBER"] = details.ReferenceNumber;
 
             // Add Date of Submission explicitly (replace if duplicate key)
             acknowledgementDetails["DATE OF SUBMISSION"] = details.CreatedAt?.ToString() ?? string.Empty;

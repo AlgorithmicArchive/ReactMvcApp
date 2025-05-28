@@ -32,7 +32,7 @@ import DynamicStepForm from "../screens/designer/Form";
 import CreateWorkflow from "../screens/designer/CreateWorkFlow";
 import ViewUserDetails from "../screens/officer/ViewUserDetails";
 import IncompleteForm from "../screens/user/IncompleteForm";
-import CreateSanctionPdf from "../screens/designer/CreateSanctionPdf";
+import CreateLetterPdf from "../screens/designer/CreateLetterPdf";
 
 const RoutesComponent = () => {
   return (
@@ -80,7 +80,7 @@ const RoutesComponent = () => {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="createservice" element={<CreateService />} />
           <Route path="createworkflow" element={<CreateWorkflow />} />
-          <Route path="createsanctionpdf" element={<CreateSanctionPdf />} />
+          <Route path="createletterpdf" element={<CreateLetterPdf />} />
           <Route path="dynamicform" element={<DynamicStepForm />} />
         </Route>
       </Route>

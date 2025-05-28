@@ -460,7 +460,15 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                 id={`field-${field.id}`}
                 label={field.label}
                 value={value || ""}
-                onChange={onChange}
+                onChange={(e) => {
+                  let val = e.target.value;
+                  if (
+                    field.transformationFunctions?.includes("CaptilizeAlphabet")
+                  ) {
+                    val = val.toUpperCase();
+                  }
+                  onChange(val);
+                }}
                 inputRef={ref}
                 disabled={isFieldDisabled(field.name)}
                 error={Boolean(errors[field.name])}
@@ -775,12 +783,12 @@ const DynamicStepForm = ({ mode = "new", data }) => {
   return (
     <Box
       sx={{
-        width: {xs:"80vw",lg:'50vw'},
+        width: { xs: "80vw", lg: "50vw" },
         margin: "0 auto",
         backgroundColor: "#FFFFFF",
         borderRadius: 5,
         color: "priamry.main",
-        padding: {xs:3,lg:10},
+        padding: { xs: 3, lg: 10 },
         boxShadow: 20,
       }}
     >
@@ -907,7 +915,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     backgroundColor: "primary.main",
                     borderRadius: 10,
                     color: "#FFFFFF",
-                    fontSize: {xs:18,lg:24},
+                    fontSize: { xs: 18, lg: 24 },
                     width: "40%",
                   }}
                   onClick={handlePrev}
@@ -921,7 +929,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     backgroundColor: "primary.main",
                     borderRadius: 10,
                     color: "#FFFFFF",
-                    fontSize: {xs:18,lg:24},
+                    fontSize: { xs: 18, lg: 24 },
                     width: "40%",
                   }}
                   onClick={handleNext}
@@ -935,7 +943,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     backgroundColor: "primary.main",
                     borderRadius: 10,
                     color: "#FFFFFF",
-                    fontSize: {xs:18,lg:24},
+                    fontSize: { xs: 18, lg: 24 },
                     width: "40%",
                   }}
                   onClick={handleSubmit((data) => onSubmit(data, "submit"))}
@@ -953,7 +961,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     backgroundColor: "primary.main",
                     borderRadius: 10,
                     color: "#FFFFFF",
-                    fontSize: {xs:18,lg:24},
+                    fontSize: { xs: 18, lg: 24 },
                     width: "40%",
                   }}
                   onClick={handleSubmit((data) => onSubmit(data, "save"))}

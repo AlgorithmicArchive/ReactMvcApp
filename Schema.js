@@ -18,15 +18,3 @@ const sanctionLetterFields = [
 
 
 
-const BankDetails = {
-    "Jammu":{
-        "AccountNumber":"1234567891123456",
-        "IfscCode":"JAKA1KEEPER",
-        "BranchOffice":"GANDHI NAGAR, JAMMU"
-    },
-    "Kashmir":{
-        "AccountNumber":"1234567891123458",
-        "IfscCode":"JAKA0KEEPER",
-        "BranchOffice":"TANKIPORA, SRINAGAR"
-    }
-}

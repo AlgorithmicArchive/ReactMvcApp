@@ -254,10 +254,11 @@ export default function Reports() {
     <Box
       sx={{
         width: "100%",
-        minHeight: "100vh",
+        minHeight: { xs: "auto", lg: "100vh" },
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
+        justifyContent: "center",
         p: { xs: 2, md: 4 },
       }}
     >
@@ -344,50 +345,60 @@ export default function Reports() {
       {countList.length > 0 && (
         <Box
           sx={{
-            width: { xs: "100%", md: "50%" },
+            width: "100%",
             display: "flex",
-            flexDirection: { xs: "column", md: "row" },
-            gap: 4,
+            justifyContent: "center", // Center horizontally
+            mt: 4,
           }}
         >
           <Box
             sx={{
-              flex: 1,
-              bgcolor: "#fff",
-              p: 2,
-              borderRadius: "8px",
-              boxShadow: 20,
+              width: { xs: "100%", md: "80%" },
+              display: "flex",
+              flexDirection: { xs: "column", md: "row" },
+              justifyContent: "center", // Ensure even row layout
+              gap: 4,
             }}
           >
-            <Typography variant="h6" sx={{ mb: 2, textAlign: "center" }}>
-              Application Status Counts
-            </Typography>
-            <Bar
-              data={chartData}
-              options={barOptions}
-              width={500}
-              height={500}
-            />
-          </Box>
+            <Box
+              sx={{
+                flex: 1,
+                bgcolor: "#fff",
+                p: 2,
+                borderRadius: "8px",
+                boxShadow: 20,
+              }}
+            >
+              <Typography variant="h6" sx={{ mb: 2, textAlign: "center" }}>
+                Application Status Counts
+              </Typography>
+              <Bar
+                data={chartData}
+                options={barOptions}
+                width={500}
+                height={500}
+              />
+            </Box>
 
-          <Box
-            sx={{
-              flex: 1,
-              bgcolor: "#fff",
-              p: 2,
-              borderRadius: "8px",
-              boxShadow: 20,
-            }}
-          >
-            <Typography variant="h6" sx={{ mb: 2, textAlign: "center" }}>
-              Status Distribution
-            </Typography>
-            <Pie
-              data={pieChartData}
-              options={pieOptions}
-              width={500}
-              height={500}
-            />
+            <Box
+              sx={{
+                flex: 1,
+                bgcolor: "#fff",
+                p: 2,
+                borderRadius: "8px",
+                boxShadow: 20,
+              }}
+            >
+              <Typography variant="h6" sx={{ mb: 2, textAlign: "center" }}>
+                Status Distribution
+              </Typography>
+              <Pie
+                data={pieChartData}
+                options={pieOptions}
+                width={500}
+                height={500}
+              />
+            </Box>
           </Box>
         </Box>
       )}

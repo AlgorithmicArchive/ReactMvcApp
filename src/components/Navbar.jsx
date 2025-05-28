@@ -374,9 +374,11 @@ const MyNavbar = () => {
                       Workflow
                     </NavDropdown.Item>
                     <NavDropdown.Item
-                      onClick={() => handleNavigate("/designer/createsanctionpdf")}
+                      onClick={() =>
+                        handleNavigate("/designer/createletterpdf")
+                      }
                     >
-                      Sanction Pdf
+                      Letter Pdf
                     </NavDropdown.Item>
                   </NavDropdown>
                 </div>

@@ -26,40 +26,42 @@ import AdditionalFieldsModal from "../../components/designer/AdditionalFieldsMod
 import { defaultFormConfig } from "../../assets/dummyData";
 import axiosInstance from "../../axiosConfig";
 
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 export default function CreateService() {
-  // State for our dynamic form config.
   const [sections, setSections] = useState(defaultFormConfig);
-  // State for service selection and services list.
   const [services, setServices] = useState([]);
   const [selectedServiceId, setSelectedServiceId] = useState("");
-  // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedField, setSelectedField] = useState(null);
   const [isAdditionalModalOpen, setIsAdditionalModalOpen] = useState(false);
 
-  // Fetch active services for selection.
   useEffect(() => {
-    async function fetchData(){
-      const response = await axiosInstance.get('/Base/GetServices');
-      if(response.data.status && response.data.services){
-        setServices(response.data.services);
+    async function fetchData() {
+      try {
+        const response = await axiosInstance.get("/Base/GetServices");
+        if (response.data.status && response.data.services) {
+          setServices(response.data.services);
+        }
+      } catch (err) {
+        toast.error("Failed to fetch services");
       }
     }
     fetchData();
   }, []);
 
-  // When a service is selected, parse its formElements config.
   const handleServiceChange = (e) => {
     const serviceId = e.target.value;
     setSelectedServiceId(serviceId);
     const service = services.find((s) => s.serviceId === serviceId);
     if (service && service.formElement) {
-      console.log(service.formElement);
       try {
         const config = JSON.parse(service.formElement);
         setSections(config);
       } catch (err) {
         console.error("Error parsing formElements:", err);
+        toast.error("Invalid form data format.");
         setSections([]);
       }
     } else {
@@ -67,7 +69,6 @@ export default function CreateService() {
     }
   };
 
-  // Add a new section (for new form configuration).
   const handleAddSection = () => {
     const newSection = {
       id: `section-${sections.length + 1}`,
@@ -78,21 +79,17 @@ export default function CreateService() {
     setSections((prev) => [...prev, newSection]);
   };
 
-  // Insert a new section after the section with the given id.
   const handleAddSectionAfter = (sectionId) => {
-    // Find the index of the section
     const index = sections.findIndex((section) => section.id === sectionId);
     if (index === -1) return;
 
-    // Create a new section. You may adjust the naming as needed.
     const newSection = {
-      id: `section-${Date.now()}`, // use a unique value for the id
+      id: `section-${Date.now()}`,
       section: `Section ${sections.length + 1}`,
       fields: [],
       editable: true,
     };
 
-    // Insert the new section right after the found index.
     const newSections = [
       ...sections.slice(0, index + 1),
       newSection,
@@ -101,7 +98,6 @@ export default function CreateService() {
     setSections(newSections);
   };
 
-  // Duplicate a section.
   const handleDuplicateSection = (sectionId) => {
     const sectionToDuplicate = sections.find(
       (section) => section.id === sectionId
@@ -122,12 +118,10 @@ export default function CreateService() {
     }
   };
 
-  //Remove Section
   const handleRemoveSection = (sectionId) => {
     setSections((prev) => prev.filter((section) => section.id !== sectionId));
   };
 
-  // Add a new field inside a section.
   const handleAddField = (sectionId) => {
     const newField = {
       id: `field-${Date.now()}`,
@@ -154,7 +148,6 @@ export default function CreateService() {
     );
   };
 
-  // Update section name.
   const handleSectionNameChange = (sectionId, newName) => {
     setSections((prev) =>
       prev.map((section) =>
@@ -163,7 +156,6 @@ export default function CreateService() {
     );
   };
 
-  // Update fields order in a section.
   const handleUpdateSectionFields = (sectionId, newFields) => {
     setSections((prev) =>
       prev.map((section) =>
@@ -172,24 +164,29 @@ export default function CreateService() {
     );
   };
 
-  // Log current form state.
   const handleLogForm = async () => {
     const formdata = new FormData();
     formdata.append("serviceId", selectedServiceId);
     formdata.append("formElement", JSON.stringify(sections));
 
-    console.log(sections);
-    const response = await fetch("/Base/FormElement", {
-      method: "POST",
-      body: formdata,
-    });
-    const result = await response.json();
-    console.log(result);
-
-    console.log(formdata);
+    try {
+      const response = await axiosInstance.post("/Base/FormElement", formdata);
+      const result = response.data;
+      if (result.status) {
+        toast.success(
+          selectedServiceId
+            ? "Service updated successfully!"
+            : "New service created successfully!"
+        );
+      } else {
+        toast.error(result.response || "Failed to save service.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An unexpected error occurred.");
+    }
   };
 
-  // Update a field after editing in the modal.
   const updateField = (updatedField) => {
     setSections((prev) =>
       prev.map((section) =>
@@ -218,7 +215,6 @@ export default function CreateService() {
     );
   };
 
-  // Update field value.
   const updateFieldValue = (sectionId, fieldId, newValue) => {
     setSections((prevSections) =>
       prevSections.map((section) =>
@@ -234,10 +230,6 @@ export default function CreateService() {
     );
   };
 
-  // DnD sensors for sections.
-  const { attributes, listeners, setNodeRef } = useSensor(PointerSensor, {
-    activationConstraint: { distance: 5 },
-  });
   const sectionSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -250,7 +242,6 @@ export default function CreateService() {
     setSections((prev) => arrayMove(prev, oldIndex, newIndex));
   };
 
-  // Open modal for editing a field.
   const handleEditField = (field) => {
     setSelectedField(field);
     setIsModalOpen(true);
@@ -276,7 +267,6 @@ export default function CreateService() {
         <Row style={{ width: "100%" }}>
           <Col lg={2} md={12} xs={12}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {/* Service selection dropdown */}
               <FormControl fullWidth>
                 <InputLabel id="service-select-label">
                   Select Service
@@ -304,9 +294,6 @@ export default function CreateService() {
           </Col>
           <Col lg={10} md={12} xs={12}>
             <Box
-              ref={setNodeRef}
-              {...attributes}
-              {...listeners}
               sx={{
                 borderRadius: 5,
                 backgroundColor: "white",
@@ -351,6 +338,7 @@ export default function CreateService() {
           </Col>
         </Row>
       </Box>
+
       {isModalOpen && selectedField && (
         <FieldEditModal
           selectedField={selectedField}
@@ -372,6 +360,16 @@ export default function CreateService() {
           updateField={updateField}
         />
       )}
+
+      {/* Toasts for feedback */}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+      />
     </Container>
   );
 }

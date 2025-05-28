@@ -4,7 +4,7 @@ import { Box } from "@mui/material";
 
 export default function UserLayout() {
   return (
-    <Box>
+    <Box sx={{ minHeight: "90vh" }}>
       <Outlet />
     </Box>
   );

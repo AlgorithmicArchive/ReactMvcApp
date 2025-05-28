@@ -1,17 +1,54 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
   Container,
   useMediaQuery,
   useTheme,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import GoogleTranslateWidget from "./GoogleTranslateWidget";
 import MyNavbar from "./Navbar";
+import {
+  decreaseFont,
+  getCurrentScale,
+  increaseFont,
+  resetFont,
+  setFontScale,
+} from "../assets/FontScaler";
 
 const Header = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
+  const [fontSizeValue, setFontSizeValue] = useState("normal");
+
+  useEffect(() => {
+    const currentScale = getCurrentScale();
+    if (currentScale === 1) setFontSizeValue("normal");
+    else if (currentScale > 1) setFontSizeValue("large");
+    else setFontSizeValue("small");
+  }, []);
+
+  const handleFontChange = (event) => {
+    const value = event.target.value;
+    setFontSizeValue(value);
+
+    switch (value) {
+      case "small":
+        setFontScale(0.9);
+        break;
+      case "normal":
+        setFontScale(1);
+        break;
+      case "large":
+        setFontScale(1.2);
+        break;
+      default:
+        setFontScale(1);
+    }
+  };
 
   return (
     <Box sx={{ width: "100%", height: "30vh" }}>
@@ -39,9 +76,12 @@ const Header = () => {
             <Box
               sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 3 }}
             >
-              <Typography sx={{ fontSize: "18px", fontWeight: "bold" }}>
-                Aa
-              </Typography>
+              <Select displayEmpty size="small" sx={{ minWidth: 60 }}>
+                <MenuItem onClick={decreaseFont}>A-</MenuItem>
+                <MenuItem onClick={resetFont}>A</MenuItem>
+                <MenuItem onClick={increaseFont}>A+</MenuItem>
+              </Select>
+
               <GoogleTranslateWidget />
             </Box>
           </Box>
