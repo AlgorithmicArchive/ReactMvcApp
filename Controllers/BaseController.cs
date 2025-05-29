@@ -737,5 +737,51 @@ namespace ReactMvcApp.Controllers
             }
         }
 
+
+        [HttpGet]
+        public IActionResult GetIFSCCode(string bankName, string branchName)
+        {
+            // Validate input parameters
+            if (string.IsNullOrWhiteSpace(bankName) || string.IsNullOrWhiteSpace(branchName))
+            {
+                return BadRequest(new { status = false, message = "BankName and BranchName are required." });
+            }
+
+            try
+            {
+                if (bankName == "JK GRAMEEN BANK")
+                {
+                    return Ok(new { status = true, ifscCode = "JAKA0GRAMEN" });
+                }
+                string cleanedBankName = bankName;
+                if (cleanedBankName.StartsWith("THE ", StringComparison.OrdinalIgnoreCase))
+                {
+                    cleanedBankName = cleanedBankName.Substring(4).TrimStart();
+                }
+                // Execute the stored procedure
+                var ifscCode = dbcontext.Database
+                .SqlQueryRaw<string>(
+                    "EXEC GetIfscCode @BankName, @BranchName",
+                    new SqlParameter("@BankName", cleanedBankName),
+                    new SqlParameter("@BranchName", branchName))
+                .AsNoTracking()
+                .AsEnumerable()
+                .FirstOrDefault();
+
+                if (!string.IsNullOrEmpty(ifscCode))
+                {
+                    return Ok(new { status = true, ifscCode });
+                }
+                else
+                {
+                    return NotFound(new { status = false, message = "No IFSC code found for the provided bank and branch." });
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception (use a logging framework like Serilog in production)
+                return StatusCode(500, new { status = false, message = "An error occurred while fetching the IFSC code.", error = ex.Message });
+            }
+        }
     }
 }

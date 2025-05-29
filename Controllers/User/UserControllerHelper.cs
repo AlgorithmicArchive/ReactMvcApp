@@ -218,7 +218,7 @@ namespace ReactMvcApp.Controllers.User
                 {
                     sno = index,
                     actionTaker = item.ActionTaker,
-                    actionTaken = item.ActionTaken!,
+                    actionTaken = item.ActionTaken! == "ReturnToCitizen" ? "Returned for correction" : item.ActionTaken,
                     actionTakenOn = item.ActionTakenDate,
                 });
                 index++;

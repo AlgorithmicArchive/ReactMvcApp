@@ -4,7 +4,7 @@ import DynamicStepForm from "../../components/form/DynamicStepForm";
 
 export default function EditForm() {
   return (
-    <Box>
+    <Box sx={{ minHeight: "100vh" }}>
       <DynamicStepForm mode="edit" />
     </Box>
   );

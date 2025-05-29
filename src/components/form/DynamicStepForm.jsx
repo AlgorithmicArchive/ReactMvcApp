@@ -36,28 +36,39 @@ const sectionIconMap = {
 
 // Helper function to flatten the nested formDetails structure
 const flattenFormDetails = (nestedDetails) => {
-  const flatData = {};
-  Object.keys(nestedDetails).forEach((section) => {
-    nestedDetails[section].forEach((field) => {
-      if (field.type === "enclosure") {
-        flatData[field.name] = {
-          // You can decide how to preselect; here we default to the first option.
-          selected:
-            field.options && field.options[0] ? field.options[0].value : "",
-          // Use the file path if available
+  const flat = {};
+  function recurse(fields) {
+    fields.forEach((field) => {
+      if (field.hasOwnProperty("Enclosure")) {
+        flat[field.name] = {
+          selected: field.Enclosure || "",
           file: field.File || "",
         };
+        // flat[`${field.name}_Enclosure`] = field.Enclosure;
+        // flat[`${field.name}_File`] = field.File;
       } else {
-        if (field.hasOwnProperty("value")) {
-          flatData[field.name] = field.value;
-        }
-        if (field.hasOwnProperty("File") && field.File) {
-          flatData[field.name] = field.File;
-        }
+        if ("value" in field) flat[field.name] = field.value;
+        if ("File" in field && field.File) flat[field.name] = field.File;
+      }
+
+      if (field.additionalFields) {
+        // handle both array‐ and map‐shaped additionalFields
+        const branches = Array.isArray(field.additionalFields)
+          ? field.additionalFields
+          : Object.values(field.additionalFields).flat();
+
+        recurse(
+          branches.map((af) => ({
+            ...af,
+            name: af.name || `${field.name}_${af.id}`,
+          }))
+        );
       }
     });
-  });
-  return flatData;
+  }
+
+  Object.values(nestedDetails).forEach((fields) => recurse(fields));
+  return flat;
 };
 
 const DynamicStepForm = ({ mode = "new", data }) => {
@@ -69,8 +80,12 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     getValues,
     setValue,
     reset,
-    formState: { errors },
-  } = useForm({ mode: "onChange" });
+    formState: { errors, dirtyFields },
+  } = useForm({
+    mode: "onChange",
+    shouldUnregister: false, // keep dynamically-rendered fields
+    defaultValues: {},
+  });
 
   const [formSections, setFormSections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -79,7 +94,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [currentStep, setCurrentStep] = useState(0);
   const [initialData, setInitialData] = useState(null);
-  // Store additionalDetails from the fetch so we can use returnFields
   const [additionalDetails, setAdditionalDetails] = useState(null);
   const [isCopyAddressChecked, setIsCopyAddressChecked] = useState(false);
   const applicantImageFile = watch("ApplicantImage");
@@ -89,17 +103,20 @@ const DynamicStepForm = ({ mode = "new", data }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // To avoid duplicate defaults
+  // Watch BankName and BranchName
+  const bankName = watch("BankName");
+  const branchName = watch("BranchName");
+  const [bankNameBlurred, setBankNameBlured] = useState(false);
+  const [branchNameBlurred, setBranchNameBlured] = useState(false);
+
   const hasRunRef = useRef(false);
 
-  // Helper to determine if a field should be disabled in "edit" mode.
   const isFieldDisabled = (fieldName) => {
     if (
       mode === "edit" &&
       additionalDetails &&
       additionalDetails.returnFields
     ) {
-      // Enable only if the field is included in returnFields; otherwise disable.
       return !additionalDetails.returnFields.includes(fieldName);
     }
     return false;
@@ -114,11 +131,40 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     }
   }, [applicantImageFile]);
 
+  // Fetch IFSC Code when both BankName and BranchName are present
+  useEffect(() => {
+    async function fetchIFSCCode() {
+      if (
+        bankName &&
+        branchName &&
+        bankName !== "Please Select" &&
+        branchName.trim()
+      ) {
+        try {
+          if (bankNameBlurred && branchNameBlurred) {
+            const response = await axiosInstance.get("/Base/GetIFSCCode", {
+              params: { bankName, branchName },
+            });
+            const data = await response.data;
+            if (data.status && data.result[0]) {
+              setValue("IfscCode", data.result[0], { shouldValidate: true });
+            } else {
+              setValue("IfscCode", "", { shouldValidate: false });
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching IFSC code:", error);
+          setValue("IfscCode", "", { shouldValidate: false });
+        }
+      }
+    }
+    fetchIFSCCode();
+  }, [bankName, branchName, bankNameBlurred, branchNameBlurred, setValue]);
+
   // Load service content and, if mode === "incomplete" or "edit", fetch and flatten existing form details
   useEffect(() => {
     async function loadForm() {
       try {
-        // Expect ServiceId and optionally referenceNumber from location.state
         const { ServiceId, referenceNumber } = location.state || {};
         setSelectedServiceId(ServiceId);
         if (referenceNumber) {
@@ -134,16 +180,30 @@ const DynamicStepForm = ({ mode = "new", data }) => {
             setFormSections([]);
           }
         }
-        // For incomplete or edit modes, fetch the existing form details along with additionalDetails.
         if ((mode === "incomplete" || mode === "edit") && referenceNumber) {
           const { formDetails, additionalDetails } = await fetchFormDetails(
             referenceNumber
           );
           const flatDetails = flattenFormDetails(formDetails);
           setInitialData(flatDetails);
-          reset(flatDetails);
+          const resetData = {
+            ...flatDetails,
+            // Explicitly set enclosure fields
+            ...Object.keys(flatDetails).reduce((acc, key) => {
+              if (
+                flatDetails[key] &&
+                typeof flatDetails[key] === "object" &&
+                "selected" in flatDetails[key]
+              ) {
+                acc[`${key}_select`] = flatDetails[key].selected;
+                acc[`${key}_file`] = flatDetails[key].file;
+              }
+              return acc;
+            }, {}),
+          };
+          reset(resetData);
           setAdditionalDetails(additionalDetails);
-        } else if (data !== undefined) {
+        } else if (data !== null && data !== undefined) {
           setInitialData(data);
           reset(data);
         }
@@ -154,45 +214,75 @@ const DynamicStepForm = ({ mode = "new", data }) => {
       }
     }
     loadForm();
-  }, [location.state, mode, reset, data]);
+  }, [location.state, mode, reset, data, getValues]);
 
-  // Set default file for fields that require it (e.g., applicant image)
+  // Set default file for fields that require it
   const setDefaultFile = async (path) => {
-    const response = await fetch(path);
-    const blob = await response.blob();
-    const file = new File([blob], "profile.jpg", { type: blob.type });
-    const dataTransfer = new DataTransfer();
-    dataTransfer.items.add(file);
-    console.log("FILE", dataTransfer.files[0]);
-    setValue("ApplicantImage", dataTransfer.files[0]);
+    try {
+      const response = await fetch(path);
+      if (!response.ok) throw new Error("Failed to fetch file");
+      const blob = await response.blob();
+      const file = new File([blob], path.split("/").pop(), { type: blob.type });
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      setValue("ApplicantImage", dataTransfer.files[0]);
+    } catch (error) {
+      console.error("Error setting default file:", error);
+    }
   };
 
-  // Once the form sections and initialData are available, set any dependent defaults (districts, files, etc.)
+  // Set dependent defaults and enclosure fields
   useEffect(() => {
     if (!formSections.length || !initialData) return;
     if (hasRunRef.current) return;
     hasRunRef.current = true;
 
-    formSections.forEach((section, sectionIndex) => {
-      section.fields.forEach((field) => {
-        if (
-          field.name.toLowerCase().includes("district") &&
-          initialData[field.name]
-        ) {
-          handleDistrictChange(sectionIndex, field, initialData[field.name]);
+    function recurseAndSet(fields, sectionIndex) {
+      fields.forEach((field) => {
+        const name = field.name;
+        const value = initialData[name];
+
+        // ── 1️⃣ District → populate Tehsils ─────────────────────
+        if (name.toLowerCase().includes("district") && value) {
+          handleDistrictChange(sectionIndex, { ...field, name }, value);
         }
-        if (
-          field.name.toLowerCase().includes("applicantimage") &&
-          initialData[field.name]
-        ) {
-          setApplicantImagePreview(initialData[field.name]);
-          setDefaultFile(initialData[field.name]);
+
+        // ── 2️⃣ ApplicantImage → preview + default file ────────
+        if (name.toLowerCase().includes("applicantimage") && value) {
+          setApplicantImagePreview(value);
+          setDefaultFile(value);
+        }
+
+        // ── 3️⃣ Enclosure → set select + file ──────────────────
+        if (field.type === "enclosure" && value) {
+          setValue(`${name}_select`, value.selected || "", {
+            shouldValidate: true,
+          });
+          setValue(`${name}_file`, value.file || null, {
+            shouldValidate: true,
+          });
+        }
+
+        // ── 4️⃣ Recurse deeper into additionalFields ────────────
+        if (field.additionalFields) {
+          const branches = Array.isArray(field.additionalFields)
+            ? field.additionalFields
+            : Object.values(field.additionalFields).flat();
+
+          recurseAndSet(
+            branches.map((af) => ({
+              ...af,
+              name: af.name || `${name}_${af.id}`,
+            })),
+            sectionIndex
+          );
         }
       });
-    });
+    }
+
+    formSections.forEach((section, idx) => recurseAndSet(section.fields, idx));
   }, [formSections, initialData, setValue]);
 
-  // Copy address from Present to Permanent if checked
   const handleCopyAddress = (checked, sectionIndex) => {
     if (checked) {
       const presentSection = formSections.find(
@@ -201,7 +291,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
       const permanentSection = formSections.find(
         (sec) => sec.section === "Permanent Address Details"
       );
-      const permanentDistrictField = permanentSection.fields.find((field) =>
+      const permanentDistrictField = permanentSection?.fields.find((field) =>
         field.name.includes("District")
       );
       if (presentSection) {
@@ -213,7 +303,10 @@ const DynamicStepForm = ({ mode = "new", data }) => {
           );
           const presentValue = getValues(presentFieldName);
           setValue(permanentFieldName, presentValue);
-          if (permanentFieldName.includes("District")) {
+          if (
+            permanentFieldName.includes("District") &&
+            permanentDistrictField
+          ) {
             handleDistrictChange(
               sectionIndex,
               permanentDistrictField,
@@ -226,24 +319,35 @@ const DynamicStepForm = ({ mode = "new", data }) => {
   };
 
   const handleNext = async () => {
-    // Get all field names including additional fields
-    const currentFieldNames = formSections[currentStep].fields.flatMap(
-      (field) => {
-        const baseFields = [field.name];
-
-        // Handle select fields with additional fields
-        if (field.type === "select" && field.additionalFields) {
-          const selectedValue = getValues(field.name);
-          const additionalFields = field.additionalFields[selectedValue] || [];
-          return [...baseFields, ...additionalFields.map((af) => af.name)];
-        }
-
-        return baseFields;
+    // 1️⃣ Build a flat list of every field key in this step
+    const stepFields = formSections[currentStep].fields.flatMap((field) => {
+      if (field.type === "enclosure") {
+        // enclosure contributes two keys
+        return [`${field.name}_select`, `${field.name}_file`];
       }
-    );
+      if (field.type === "select" && field.additionalFields) {
+        const sel = getValues(field.name);
+        const extra = field.additionalFields[sel] || [];
+        const nested = extra.map((af) => af.name || `${field.name}_${af.id}`);
+        return [field.name, ...nested];
+      }
+      return [field.name];
+    });
 
-    const valid = await trigger(currentFieldNames);
+    // 2️⃣ Filter out disabled fields
+    const enabledFields = stepFields.filter((name) => !isFieldDisabled(name));
 
+    // 3️⃣ In edit mode, require *all* enabled fields to have been changed
+    if (mode === "edit") {
+      const allUpdated = enabledFields.every((name) => dirtyFields[name]);
+      if (!allUpdated) {
+        alert("Please modify all correction fields before proceeding.");
+        return;
+      }
+    }
+
+    // 4️⃣ Run validation on every field (including disabled if you want)
+    const valid = await trigger(stepFields);
     if (valid) {
       setCurrentStep((prev) => prev + 1);
     }
@@ -253,7 +357,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     setCurrentStep((prev) => prev - 1);
   };
 
-  // When a district field changes, fetch tehsils and update the tehsil field options
   const handleDistrictChange = async (sectionIndex, districtField, value) => {
     try {
       const response = await fetch(
@@ -271,7 +374,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
         setFormSections((prevSections) => {
           const newSections = [...prevSections];
           const section = newSections[sectionIndex];
-          // Assume the tehsil field's name is derived by replacing "District" with "Tehsil"
           const tehsilFieldName = districtField.name.replace(
             "District",
             "Tehsil"
@@ -289,19 +391,14 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     }
   };
 
-  // Process the form data and submit
   const onSubmit = async (data, operationType) => {
     const groupedFormData = {};
     setButtonLoading(true);
 
-    // Recursively process each field and any nested additional fields
     const processField = (field, data) => {
-      // If the field is an enclosure and is dependent,
-      // check if the parent's value meets the condition.
       if (field.type === "enclosure" && field.isDependentEnclosure) {
         const parentValue = data[field.dependentField];
         if (!parentValue || !field.dependentValues.includes(parentValue)) {
-          // Skip this enclosure field if dependency is not met.
           return null;
         }
       }
@@ -312,8 +409,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
       sectionFormData["name"] = field.name;
 
       if (field.type === "enclosure") {
-        // Since enclosures now have two controllers,
-        // retrieve values from their respective keys.
         sectionFormData["Enclosure"] = data[`${field.name}_select`] || "";
         sectionFormData["File"] = data[`${field.name}_file`] || "";
       } else if (field.name === "ApplicantImage") {
@@ -322,7 +417,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
         sectionFormData["value"] = fieldValue;
       }
 
-      // Process nested additional fields if present
       if (field.additionalFields) {
         const selectedValue = data[field.name] || "";
         const additionalFields = field.additionalFields[selectedValue];
@@ -336,13 +430,12 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                 data
               );
             })
-            .filter((nestedField) => nestedField !== null); // Filter out any null fields.
+            .filter((nestedField) => nestedField !== null);
         }
       }
       return sectionFormData;
     };
 
-    // Loop through each form section and process its fields.
     formSections.forEach((section) => {
       groupedFormData[section.section] = [];
       section.fields.forEach((field) => {
@@ -353,12 +446,10 @@ const DynamicStepForm = ({ mode = "new", data }) => {
       });
     });
 
-    // Build form data for submission.
     const formdata = new FormData();
     formdata.append("serviceId", selectedServiceId);
     formdata.append("formDetails", JSON.stringify(groupedFormData));
 
-    // Append any file instances from the grouped data.
     for (const section in groupedFormData) {
       groupedFormData[section].forEach((field) => {
         if (field.hasOwnProperty("File") && field.File instanceof File) {
@@ -384,36 +475,37 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     formdata.append("referenceNumber", referenceNumber);
     let url = "/User/InsertFormDetails";
     if (additionalDetails != null) {
-      formdata.append("returnFields", additionalDetails["returnFields"]);
+      formdata.append("returnFields", additionalDetails["returnFields"] || "");
       url = "/User/UpdateApplicationDetails";
     }
 
-    // Uncomment and adjust below lines when integrating with your backend.
-    const response = await axiosInstance.post(url, formdata);
-    const result = response.data;
-    setButtonLoading(false);
-    if (result.status) {
-      if (result.type === "Submit") {
-        navigate("/user/acknowledge", {
-          state: { applicationId: result.referenceNumber },
-        }); //rms portal
+    try {
+      const response = await axiosInstance.post(url, formdata);
+      const result = response.data;
+      setButtonLoading(false);
+      if (result.status) {
+        if (result.type === "Submit") {
+          navigate("/user/acknowledge", {
+            state: { applicationId: result.referenceNumber },
+          });
+        } else {
+          setReferenceNumber(result.referenceNumber);
+          navigate("/user/initiated");
+        }
       } else {
-        setReferenceNumber(result.referenceNumber);
+        console.error("Submission failed:", result);
       }
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      setButtonLoading(false);
     }
   };
 
-  // Note: We pass disabled={isFieldDisabled(field.name)} for every input control.
   const renderField = (field, sectionIndex) => {
-    // Common styles for all fields
     const commonStyles = {
       "& .MuiOutlinedInput-root": {
-        "& fieldset": {
-          borderColor: "divider",
-        },
-        "&:hover fieldset": {
-          borderColor: "primary.main",
-        },
+        "& fieldset": { borderColor: "divider" },
+        "&:hover fieldset": { borderColor: "primary.main" },
         "&.Mui-focused fieldset": {
           borderColor: "primary.main",
           borderWidth: "2px",
@@ -423,21 +515,16 @@ const DynamicStepForm = ({ mode = "new", data }) => {
       },
       "& .MuiInputLabel-root": {
         color: "text.primary",
-        "&.Mui-focused": {
-          color: "primary.main",
-        },
+        "&.Mui-focused": { color: "primary.main" },
       },
       marginBottom: 5,
     };
 
-    // Button styles
     const buttonStyles = {
       backgroundColor: "primary.main",
       color: "background.paper",
       fontWeight: "bold",
-      "&:hover": {
-        backgroundColor: "primary.dark",
-      },
+      "&:hover": { backgroundColor: "primary.dark" },
       marginBottom: 5,
     };
 
@@ -449,10 +536,15 @@ const DynamicStepForm = ({ mode = "new", data }) => {
           <Controller
             name={field.name}
             control={control}
-            defaultValue={""}
+            defaultValue=""
             rules={{
               validate: async (value) =>
-                await runValidations(field, value, getValues()),
+                await runValidations(
+                  field,
+                  value,
+                  getValues(),
+                  referenceNumber
+                ),
             }}
             render={({ field: { onChange, value, ref } }) => (
               <TextField
@@ -469,15 +561,21 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                   }
                   onChange(val);
                 }}
+                onBlur={() => {
+                  if (field.name === "BranchName") {
+                    setBranchNameBlured(true);
+                  }
+                }}
                 inputRef={ref}
                 disabled={isFieldDisabled(field.name)}
                 error={Boolean(errors[field.name])}
                 helperText={errors[field.name]?.message || ""}
                 fullWidth
                 margin="normal"
-                InputLabelProps={{
-                  shrink: true,
+                slotProps={{
+                  input: { readOnly: field.name === "IfscCode" },
                 }}
+                InputLabelProps={{ shrink: true }}
                 inputProps={{
                   maxLength: field.validationFunctions?.includes(
                     "specificLength"
@@ -544,7 +642,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                 await runValidations(field, value, getValues()),
             }}
             render={({ field: { onChange, value, ref } }) => {
-              let options;
+              let options = [];
               if (field.optionsType === "dependent" && field.dependentOn) {
                 const parentValue = watch(field.dependentOn);
                 options =
@@ -552,7 +650,11 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     ? field.dependentOptions[parentValue]
                     : [];
               } else {
-                options = field.options;
+                options = field.options || [];
+              }
+              // Ensure the selected value is in options
+              if (value && !options.some((opt) => opt.value === value)) {
+                options = [...options, { value, label: value }];
               }
 
               return (
@@ -584,13 +686,17 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                         );
                       }
                     }}
+                    onBlur={() => {
+                      if (field.name === "BankName") {
+                        setBankNameBlured(true);
+                      }
+                    }}
                     error={Boolean(errors[field.name])}
                     helperText={errors[field.name]?.message || ""}
-                    InputLabelProps={{
-                      shrink: true,
-                    }}
+                    InputLabelProps={{ shrink: true }}
                     inputRef={ref}
                     sx={commonStyles}
+                    disabled={isFieldDisabled(field.name)}
                   >
                     {options.map((option) => (
                       <MenuItem
@@ -598,9 +704,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                         value={option.value}
                         sx={{
                           color: "text.primary",
-                          "&:hover": {
-                            backgroundColor: "primary.light",
-                          },
+                          "&:hover": { backgroundColor: "primary.light" },
                           "&.Mui-selected": {
                             backgroundColor: "primary.main",
                             color: "background.paper",
@@ -619,7 +723,15 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                         lg={additionalField.span}
                         key={additionalField.id}
                       >
-                        {renderField(additionalField, sectionIndex)}
+                        {renderField(
+                          {
+                            ...additionalField,
+                            name:
+                              additionalField.name ||
+                              `${field.name}_${additionalField.id}`,
+                          },
+                          sectionIndex
+                        )}
                       </Col>
                     ))}
                 </>
@@ -636,142 +748,146 @@ const DynamicStepForm = ({ mode = "new", data }) => {
           (!parentValue || !field.dependentValues.includes(parentValue))
         ) {
           return null;
-        } else
-          return (
-            <>
-              {/* Select Field Controller */}
-              <Controller
-                name={`${field.name}_select`}
-                control={control}
-                defaultValue={field.options[0]?.value || ""}
-                rules={{
-                  validate: async (value) =>
-                    await runValidations(field, value, getValues()),
-                }}
-                render={({ field: { onChange, value, ref } }) => (
-                  <FormControl
-                    fullWidth
-                    margin="normal"
-                    error={Boolean(errors[`${field.name}_select`])}
-                    sx={commonStyles}
+        }
+        const selectValue =
+          getValues(`${field.name}_select`) ||
+          initialData?.[field.name]?.selected ||
+          "";
+        const options = field.options || [];
+        // Ensure the selected value is in options
+        if (selectValue && !options.some((opt) => opt.value === selectValue)) {
+          options.push({ value: selectValue, label: selectValue });
+        }
+
+        return (
+          <>
+            <Controller
+              name={`${field.name}_select`}
+              control={control}
+              defaultValue={selectValue}
+              rules={{
+                validate: async (value) =>
+                  await runValidations(field, value, getValues()),
+              }}
+              render={({ field: { onChange, value, ref } }) => (
+                <FormControl
+                  fullWidth
+                  margin="normal"
+                  error={Boolean(errors[`${field.name}_select`])}
+                  sx={commonStyles}
+                >
+                  <InputLabel id={`${field.id}_select-label`}>
+                    {field.label}
+                  </InputLabel>
+                  <Select
+                    labelId={`${field.id}_select-label`}
+                    id={`${field.id}_select`}
+                    value={value || ""}
+                    label={field.label}
+                    disabled={isFieldDisabled(`${field.name}_select`)}
+                    onChange={(e) => onChange(e.target.value)}
+                    inputRef={ref}
                   >
-                    <InputLabel id={`${field.id}_select-label`}>
-                      {field.label}
-                    </InputLabel>
-                    <Select
-                      labelId={`${field.id}_select-label`}
-                      id={`${field.id}_select`}
-                      value={value || ""}
-                      label={field.label}
-                      disabled={isFieldDisabled(`${field.name}_select`)}
-                      onChange={(e) => onChange(e.target.value)}
-                      inputRef={ref}
-                    >
-                      {field.options.map((option) => (
-                        <MenuItem
-                          key={option.value}
-                          value={option.value}
-                          sx={{
-                            color: "text.primary",
-                            "&:hover": {
-                              backgroundColor: "primary.light",
-                            },
-                            "&.Mui-selected": {
-                              backgroundColor: "primary.main",
-                              color: "background.paper",
-                            },
-                          }}
-                        >
-                          {option.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    <FormHelperText sx={{ color: "error.main" }}>
-                      {errors[`${field.name}_select`]?.message || ""}
-                    </FormHelperText>
-                  </FormControl>
-                )}
-              />
-
-              {/* File Upload Controller */}
-              <Controller
-                name={`${field.name}_file`}
-                control={control}
-                defaultValue={null}
-                rules={{
-                  validate: async (value) =>
-                    await runValidations(field, value, getValues()),
-                }}
-                render={({ field: { onChange, value } }) => (
-                  <>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        width: "100%",
-                      }}
-                    >
-                      <Button
-                        variant="contained"
-                        component="label"
+                    {options.map((option) => (
+                      <MenuItem
+                        key={option.value}
+                        value={option.value}
                         sx={{
-                          ...buttonStyles,
-                          width: "100%",
-                          borderRadius: 15,
+                          color: "text.primary",
+                          "&:hover": { backgroundColor: "primary.light" },
+                          "&.Mui-selected": {
+                            backgroundColor: "primary.main",
+                            color: "background.paper",
+                          },
                         }}
-                        disabled={
-                          isFieldDisabled(`${field.name}_file`) ||
-                          !watch(`${field.name}_select`)
-                        }
                       >
-                        Upload
-                        <input
-                          type="file"
-                          hidden
-                          onChange={(e) => {
-                            const file = e.target.files[0];
-                            onChange(file);
-                          }}
-                          accept={field.accept}
-                        />
-                      </Button>
-
-                      {value && (
-                        <FormHelperText
-                          sx={{
-                            cursor: "pointer",
-                            color: "primary.main",
-                            textDecoration: "underline",
-                            fontSize: 16,
-                            textAlign: "center",
-                            "&:hover": {
-                              color: "primary.dark",
-                            },
-                          }}
-                          onClick={() => {
-                            const fileURL =
-                              typeof value === "string"
-                                ? value
-                                : URL.createObjectURL(value);
-                            window.open(fileURL, "_blank");
-                          }}
-                        >
-                          {typeof value === "string" ? "View file" : value.name}
-                        </FormHelperText>
-                      )}
-                    </div>
-                    <Box>
-                      <FormHelperText sx={{ color: "error.main" }}>
-                        {errors[`${field.name}_file`]?.message || ""}
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText sx={{ color: "error.main" }}>
+                    {errors[`${field.name}_select`]?.message || ""}
+                  </FormHelperText>
+                </FormControl>
+              )}
+            />
+            <Controller
+              name={`${field.name}_file`}
+              control={control}
+              defaultValue={initialData?.[field.name]?.file || null}
+              rules={{
+                validate: async (value) =>
+                  await runValidations(field, value, getValues()),
+              }}
+              render={({ field: { onChange, value } }) => (
+                <>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      width: "100%",
+                    }}
+                  >
+                    <Button
+                      variant="contained"
+                      component="label"
+                      sx={{
+                        ...buttonStyles,
+                        width: "100%",
+                        borderRadius: 15,
+                      }}
+                      disabled={
+                        isFieldDisabled(`${field.name}_file`) ||
+                        !watch(`${field.name}_select`)
+                      }
+                    >
+                      Upload
+                      <input
+                        type="file"
+                        hidden
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          onChange(file);
+                        }}
+                        accept={field.accept}
+                      />
+                    </Button>
+                    {value && (
+                      <FormHelperText
+                        sx={{
+                          cursor: "pointer",
+                          color: "primary.main",
+                          textDecoration: "underline",
+                          fontSize: 16,
+                          textAlign: "center",
+                          "&:hover": { color: "primary.dark" },
+                        }}
+                        onClick={() => {
+                          const fileURL =
+                            typeof value === "string"
+                              ? value
+                              : URL.createObjectURL(value);
+                          window.open(fileURL, "_blank");
+                        }}
+                      >
+                        {typeof value === "string"
+                          ? "View file"
+                          : value?.name || "View file"}
                       </FormHelperText>
-                    </Box>
-                  </>
-                )}
-              />
-            </>
-          );
+                    )}
+                  </div>
+                  <Box>
+                    <FormHelperText sx={{ color: "error.main" }}>
+                      {errors[`${field.name}_file`]?.message || ""}
+                    </FormHelperText>
+                  </Box>
+                </>
+              )}
+            />
+          </>
+        );
 
       default:
         return null;
@@ -787,7 +903,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
         margin: "0 auto",
         backgroundColor: "#FFFFFF",
         borderRadius: 5,
-        color: "priamry.main",
+        color: "primary.main",
         padding: { xs: 3, lg: 10 },
         boxShadow: 20,
       }}
@@ -815,35 +931,27 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     <Box
                       sx={{
                         backgroundColor: "primary.main",
-                        height: 50, // Use numbers for pixels (MUI will convert to 'px')
-                        width: 50, // Same as above
-                        borderRadius: "50%", // Perfect circle (better than "75%")
+                        height: 50,
+                        width: 50,
+                        borderRadius: "50%",
                         display: "flex",
                         justifyContent: "center",
                         alignItems: "center",
-                        color: "#FFFFFF", // Ensures icon is white (adjust if needed)
-                        flexShrink: 0, // Prevents shrinking in flex containers
+                        color: "#FFFFFF",
+                        flexShrink: 0,
                       }}
                     >
                       {sectionIconMap[section.section] || (
-                        <HelpOutlineIcon
-                          sx={{
-                            fontSize: 36, // Better proportion for 50px circle
-                            "& path": {
-                              // Ensures SVG path inherits color
-                              fill: "currentColor",
-                            },
-                          }}
-                        />
+                        <HelpOutlineIcon sx={{ fontSize: 36 }} />
                       )}
                     </Box>
                     <Box
                       sx={{
                         display: "flex",
                         flexDirection: "column",
-                        justifyContent: "flex-start", // More explicit than "start"
-                        alignItems: "flex-start", // Add this to align items to the left
-                        width: "100%", // Ensures full width alignment
+                        justifyContent: "flex-start",
+                        alignItems: "flex-start",
+                        width: "100%",
                       }}
                     >
                       <Typography sx={{ fontSize: 12, fontWeight: "bold" }}>
@@ -887,7 +995,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     style={{
                       display: "flex",
                       flexDirection:
-                        section.section == "Documents" ? "column" : "row",
+                        section.section === "Documents" ? "column" : "row",
                       justifyContent: "center",
                       alignItems: "center",
                     }}
@@ -902,13 +1010,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
               );
             })}
 
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                gap: 3,
-              }}
-            >
+            <Box sx={{ display: "flex", justifyContent: "center", gap: 3 }}>
               {currentStep > 0 && (
                 <Button
                   sx={{

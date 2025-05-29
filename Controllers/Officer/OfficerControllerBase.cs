@@ -473,7 +473,7 @@ namespace ReactMvcApp.Controllers.Officer
                     var parsed = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(lettersJson!);
                     var sanctionSection = parsed!.TryGetValue("Sanction", out dynamic sanction) ? sanction : null;
                     var tableFields = sanctionSection!.tableFields;
-                    var sanctionLetterFor = sanctionSection.sanctionLetterFor;
+                    var sanctionLetterFor = sanctionSection.letterFor;
                     var information = sanctionSection.information;
 
                     var details = dbcontext.CitizenApplications

@@ -17,6 +17,8 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     public virtual DbSet<ActionHistory> ActionHistories { get; set; }
 
+    public virtual DbSet<AllBankDetail> AllBankDetails { get; set; }
+
     public virtual DbSet<ApplicationPerDistrict> ApplicationPerDistricts { get; set; }
 
     public virtual DbSet<Certificate> Certificates { get; set; }
@@ -62,6 +64,48 @@ public partial class SocialWelfareDepartmentContext : DbContext
                 .HasMaxLength(30)
                 .IsUnicode(false)
                 .HasColumnName("referenceNumber");
+        });
+
+        modelBuilder.Entity<AllBankDetail>(entity =>
+        {
+            entity.HasNoKey();
+
+            entity.Property(e => e.Address)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("ADDRESS");
+            entity.Property(e => e.Bank)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("BANK");
+            entity.Property(e => e.Branch)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("BRANCH");
+            entity.Property(e => e.City1)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("CITY1");
+            entity.Property(e => e.City2)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("CITY2");
+            entity.Property(e => e.Ifsc)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("IFSC");
+            entity.Property(e => e.Phone)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("PHONE");
+            entity.Property(e => e.State)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("STATE");
+            entity.Property(e => e.StdCode)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("STD CODE");
         });
 
         modelBuilder.Entity<ApplicationPerDistrict>(entity =>
@@ -127,6 +171,7 @@ public partial class SocialWelfareDepartmentContext : DbContext
         {
             entity.HasKey(e => e.DetailId);
 
+            entity.Property(e => e.DetailId).ValueGeneratedNever();
             entity.Property(e => e.AccessLevel)
                 .HasMaxLength(20)
                 .IsUnicode(false);

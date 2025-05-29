@@ -84,10 +84,11 @@ export function isDateWithinRange(field, value) {
   return true;
 }
 
-export async function duplicateAccountNumber(field, value) {
+export async function duplicateAccountNumber(field, value,{},referenceNumber) {
+  console.log(field,value);
   try {
     const res = await fetch(
-      `/Base/IsDuplicateAccNo?accNo=${value}&applicationId=${field.applicationId}`
+      `/Base/IsDuplicateAccNo?accNo=${value}&applicationId=${referenceNumber}`
     );
     const data = await res.json();
     if (data.status) {
@@ -152,7 +153,7 @@ export async function tehsilForDistrict(field, districtValue) {
   }
 }
 
-export const runValidations = async (field, value, formData) => {
+export const runValidations = async (field, value, formData,referenceNumber) => {
   if (!Array.isArray(field.validationFunctions)) return true;
 
   for (const validationFn of field.validationFunctions) {
@@ -160,7 +161,7 @@ export const runValidations = async (field, value, formData) => {
     if (typeof fun !== "function") continue;
 
     try {
-      let error = await fun(field, value || "", formData);
+      let error = await fun(field, value || "", formData, referenceNumber);
       if (error !== true) return error;
     } catch (err) {
       return "Validation failed due to an unexpected error.";
