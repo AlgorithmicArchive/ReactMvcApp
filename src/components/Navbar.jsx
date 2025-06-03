@@ -353,7 +353,7 @@ const MyNavbar = () => {
                   <NavDropdown
                     title={
                       <span style={getNavItemStyle("designer-create")}>
-                        Create
+                        Create/Update
                       </span>
                     }
                     id="designer-create"

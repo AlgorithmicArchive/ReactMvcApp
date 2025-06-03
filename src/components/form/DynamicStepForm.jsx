@@ -1015,10 +1015,11 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                 <Button
                   sx={{
                     backgroundColor: "primary.main",
-                    borderRadius: 10,
+                    borderRadius: 5,
                     color: "#FFFFFF",
-                    fontSize: { xs: 18, lg: 24 },
-                    width: "40%",
+                    fontSize: { xs: 18, lg: 16 },
+                    width: "20%",
+                    fontWeight: "bold",
                   }}
                   onClick={handlePrev}
                 >
@@ -1029,10 +1030,11 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                 <Button
                   sx={{
                     backgroundColor: "primary.main",
-                    borderRadius: 10,
+                    borderRadius: 5,
                     color: "#FFFFFF",
-                    fontSize: { xs: 18, lg: 24 },
-                    width: "40%",
+                    fontSize: { xs: 18, lg: 16 },
+                    width: "20%",
+                    fontWeight: "bold",
                   }}
                   onClick={handleNext}
                 >
@@ -1043,10 +1045,11 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                 <Button
                   sx={{
                     backgroundColor: "primary.main",
-                    borderRadius: 10,
+                    borderRadius: 5,
                     color: "#FFFFFF",
-                    fontSize: { xs: 18, lg: 24 },
-                    width: "40%",
+                    fontSize: { xs: 18, lg: 16 },
+                    width: "20%",
+                    fontWeight: "bold",
                   }}
                   onClick={handleSubmit((data) => onSubmit(data, "submit"))}
                 >
@@ -1061,10 +1064,11 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                 <Button
                   sx={{
                     backgroundColor: "primary.main",
-                    borderRadius: 10,
+                    borderRadius: 5,
                     color: "#FFFFFF",
-                    fontSize: { xs: 18, lg: 24 },
-                    width: "40%",
+                    fontSize: { xs: 18, lg: 16 },
+                    width: "20%",
+                    fontWeight: "bold",
                   }}
                   onClick={handleSubmit((data) => onSubmit(data, "save"))}
                 >

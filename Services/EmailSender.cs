@@ -1,4 +1,3 @@
-
 using System.Net;
 using System.Net.Mail;
 using Microsoft.Extensions.Options;
@@ -7,33 +6,39 @@ namespace SendEmails
 {
     public class EmailSender(IOptions<EmailSettings> emailSettings, ILogger<EmailSender> logger) : IEmailSender
     {
-        protected readonly EmailSettings _emailSettings = emailSettings.Value;
-        protected readonly ILogger<EmailSender> _logger = logger;
+        private readonly EmailSettings _emailSettings = emailSettings.Value;
+        private readonly ILogger<EmailSender> _logger = logger;
 
-    public async Task SendEmail(string email, string Subject, string message)
+        public async Task SendEmail(string email, string subject, string message)
         {
             try
             {
-                string? mail = _emailSettings.SenderEmail;
-                string? pass = _emailSettings.Password;
+                string? senderEmail = _emailSettings.SenderEmail;
+                string? password = _emailSettings.Password;
 
                 using (var client = new SmtpClient(_emailSettings.SmtpServer, _emailSettings.SmtpPort)
                 {
                     EnableSsl = true,
-                    Credentials = new NetworkCredential(mail, pass),
+                    Credentials = new NetworkCredential(senderEmail, password),
                     Timeout = 30000
                 })
                 {
-                    var mailMessage = new MailMessage(from: mail!, to: email, Subject, message);
-                    await client.SendMailAsync(mailMessage);
+                    var mailMessage = new MailMessage
+                    {
+                        From = new MailAddress(senderEmail!),
+                        Subject = subject,
+                        Body = message,
+                        IsBodyHtml = true
+                    };
+                    mailMessage.To.Add(email);
 
+                    await client.SendMailAsync(mailMessage);
                 }
             }
             catch (Exception ex)
             {
-                // Log the exception details
                 _logger.LogError($"Error sending email: {ex}");
-                throw; // Rethrow the exception to propagate it
+                throw;
             }
         }
     }

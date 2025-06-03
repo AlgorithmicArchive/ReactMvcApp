@@ -42,13 +42,17 @@ namespace ReactMvcApp.Controllers
             ViewData["UserType"] = "";
         }
 
-        public static string GenerateOTP(int length)
+        private static string GenerateOTP(int length)
         {
-            if (length < 4 || length > 10)
-                throw new ArgumentOutOfRangeException(nameof(length), "Length must be between 4 and 10.");
-
             var random = new Random();
-            return new string(Enumerable.Range(0, length).Select(_ => random.Next(0, 10).ToString()[0]).ToArray());
+            string otp = string.Empty;
+
+            for (int i = 0; i < length; i++)
+            {
+                otp += random.Next(0, 10).ToString();
+            }
+
+            return otp;
         }
 
 
@@ -104,25 +108,105 @@ namespace ReactMvcApp.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> SendOtp()
+        public async Task<IActionResult> SendOtp(string userId = null)
         {
-            // Extract claims from the token
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var userTypeClaim = User.FindFirst(ClaimTypes.Role)?.Value;
+            string otpKey;
+            string email;
+            string userName;
 
-            if (userIdClaim != null && userTypeClaim != null)
+            if (!string.IsNullOrEmpty(userId))
             {
-                string email = _dbContext.Users.FirstOrDefault(u => u.UserId.ToString() == userIdClaim)?.Email!;
-
-                if (!string.IsNullOrEmpty(email))
+                // Registration scenario: Use provided UserId
+                var user = _dbContext.Users.FirstOrDefault(u => u.UserId.ToString() == userId);
+                if (user == null || string.IsNullOrEmpty(user.Email))
                 {
-                    string otp = GenerateOTP(6);
-                    _otpStore.StoreOtp("verification", otp);
-                    await _emailSender.SendEmail(email, "OTP For Registration.", otp);
+                    return Json(new { status = false, message = "User not found or invalid email." });
                 }
+                otpKey = $"otp:{userId}";
+                email = user.Email;
+                userName = user.Name;
+            }
+            else
+            {
+                // Authenticated scenario: Use JWT claims
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var userTypeClaim = User.FindFirst(ClaimTypes.Role)?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim) || string.IsNullOrEmpty(userTypeClaim))
+                {
+                    return Json(new { status = false, message = "User not authenticated." });
+                }
+
+                var user = _dbContext.Users.FirstOrDefault(u => u.UserId.ToString() == userIdClaim);
+                if (user == null || string.IsNullOrEmpty(user.Email))
+                {
+                    return Json(new { status = false, message = "User not found or invalid email." });
+                }
+
+                otpKey = $"otp:{userIdClaim}";
+                email = user.Email;
+                userName = user.Name;
             }
 
+            string otp = GenerateOTP(6);
+            _otpStore.StoreOtp(otpKey, otp);
+
+            string htmlMessage = $@"
+            <div style='font-family: Arial, sans-serif;'>
+                <h2 style='color: #2e6c80;'>Your OTP Code</h2>
+                <p>Dear {userName},</p>
+                <p>Use the following One-Time Password (OTP) to complete your verification. It is valid for <strong>5 minutes</strong>.</p>
+                <div style='font-size: 24px; font-weight: bold; color: #333; margin: 20px 0;'>{otp}</div>
+                <p>If you did not request this, please ignore this email.</p>
+                <br />
+                <p style='font-size: 12px; color: #888;'>Thank you,<br />Your Application Team</p>
+            </div>";
+
+            await _emailSender.SendEmail(email, "OTP For Registration", htmlMessage);
             return Json(new { status = true });
+        }
+
+        [HttpPost]
+        public IActionResult OTPValidation([FromForm] IFormCollection form)
+        {
+            var otp = form["otp"].ToString();
+            var userId = form["UserId"].ToString();
+
+            if (string.IsNullOrEmpty(otp) || string.IsNullOrEmpty(userId))
+            {
+                return Json(new { status = false, message = "OTP or UserId is missing." });
+            }
+
+            // Construct the OTP key using the provided UserId
+            string otpKey = $"otp:{userId}";
+            string? storedOtp = _otpStore.RetrieveOtp(otpKey);
+
+            if (storedOtp == null)
+            {
+                return Json(new { status = false, message = "OTP has expired or is invalid." });
+            }
+
+            // Verify the OTP
+            if (storedOtp == otp)
+            {
+                // Find the user by UserId
+                var user = _dbContext.Users.FirstOrDefault(u => u.UserId.ToString() == userId);
+                if (user == null)
+                {
+                    return Json(new { status = false, message = "User not found." });
+                }
+
+                // Mark email as verified
+                user.IsEmailValid = true;
+                _dbContext.SaveChanges();
+
+                // Clear the OTP from the store
+                _otpStore.RetrieveOtp(otpKey);
+
+                return Json(new { status = true, message = "OTP validated successfully." });
+            }
+
+            return Json(new { status = false, message = "Invalid OTP." });
         }
 
         [HttpPost]
@@ -200,11 +284,8 @@ namespace ReactMvcApp.Controllers
             };
 
             var Profile = new SqlParameter("@Profile", "");
-
             var UserType = new SqlParameter("@UserType", "Citizen");
-
             var backupCodesParam = new SqlParameter("@BackupCodes", JsonConvert.SerializeObject(backupCodes));
-
             var registeredDate = new SqlParameter("@RegisteredDate", DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"));
 
             _logger.LogInformation($"------------ Registered Date: {DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")}");
@@ -213,17 +294,23 @@ namespace ReactMvcApp.Controllers
                 fullName, username, password, email, mobileNumber, Profile, UserType, backupCodesParam, registeredDate
             ).ToList();
 
-
             if (result.Count != 0)
             {
-                string otp = GenerateOTP(6);
-                _otpStore.StoreOtp("registration", otp);
-                await _emailSender.SendEmail(form["Email"].ToString(), "OTP For Registration.", otp);
-                return Json(new
+                // Call SendOtp with the new UserId
+                var otpResult = await SendOtp(result[0].UserId.ToString());
+                if (otpResult is JsonResult jsonResult && jsonResult.Value is { } value)
                 {
-                    status = true,
-                    result[0].UserId
-                });
+                    var status = value.GetType().GetProperty("status")?.GetValue(value);
+                    if (status is bool statusBool && statusBool)
+                    {
+                        return Json(new { status = true, userId = result[0].UserId });
+                    }
+                    else
+                    {
+                        return Json(new { status = false, response = "Failed to send OTP." });
+                    }
+                }
+                return Json(new { status = false, response = "Error processing OTP." });
             }
             else
             {
@@ -345,6 +432,14 @@ namespace ReactMvcApp.Controllers
         public IActionResult CheckEmail(string email)
         {
             var exists = _dbContext.Users.FirstOrDefault(u => u.Email == email);
+            bool isUnique = exists == null; // unique if no matching user is found
+            return Json(new { isUnique });
+        }
+
+        [HttpGet]
+        public IActionResult CheckMobileNumber(string number)
+        {
+            var exists = _dbContext.Users.FirstOrDefault(u => u.MobileNumber == number);
             bool isUnique = exists == null; // unique if no matching user is found
             return Json(new { isUnique });
         }

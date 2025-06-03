@@ -1,17 +1,25 @@
 import React, { useState } from "react";
-import { Box, Typography, Container, Button } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Container,
+  Link,
+  CircularProgress,
+} from "@mui/material";
 import { useForm } from "react-hook-form";
 import CustomInputField from "../../components/form/CustomInputField";
 import CustomButton from "../../components/CustomButton";
 import OtpModal from "../../components/OtpModal";
-import ReactLoading from "react-loading";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function RegisterScreen() {
   const {
     handleSubmit,
     control,
+    getValues,
     formState: { errors },
   } = useForm();
 
@@ -20,54 +28,79 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Async validation function for username
+  // ✅ Async username validation
   const validateUsername = async (value) => {
     if (!value) return "Username is required";
     try {
-      const response = await axios.get("/Home/CheckUsername", {
+      const res = await axios.get("/Home/CheckUsername", {
         params: { username: value },
       });
-      if (!response.data.isUnique) {
-        return "Username already exists";
-      }
-      return true;
+      return res.data?.isUnique ? true : "Username already exists";
     } catch (error) {
-      return "Error validating username";
+      console.error("Username validation error:", error);
+      return "Server error while checking username";
     }
   };
 
-  // Async validation function for email
+  // ✅ Async email validation
   const validateEmail = async (value) => {
     if (!value) return "Email is required";
     try {
-      const response = await axios.get("/Home/CheckEmail", {
+      const res = await axios.get("/Home/CheckEmail", {
         params: { email: value },
       });
-      if (!response.data.isUnique) {
-        return "Email already exists";
-      }
-      return true;
+      return res.data?.isUnique ? true : "Email already exists";
     } catch (error) {
-      return "Error validating email";
+      console.error("Email validation error:", error);
+      return "Server error while checking email";
     }
   };
 
-  // Handle form submission
+  const validateMobileNumber = async (value) => {
+    if (!value) return "Mobile Number is required";
+    try {
+      const res = await axios.get("/Home/CheckMobileNumber", {
+        params: { number: value },
+      });
+      return res.data?.isUnique ? true : "Mobile Number already exists";
+    } catch (error) {
+      console.error("Mobile Number validation error:", error);
+      return "Server error while checking email";
+    }
+  };
+
   const onSubmit = async (data) => {
+    if (data.password !== data.confirmPassword) {
+      toast.error("Passwords do not match", {
+        position: "top-center",
+        autoClose: 3000,
+        theme: "colored",
+      });
+      return;
+    }
+
     setLoading(true);
     const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      formData.append(key, value);
-    });
+    Object.entries(data).forEach(([key, value]) => formData.append(key, value));
+
     try {
       const response = await axios.post("/Home/Register", formData);
       const { status, userId } = response.data;
       if (status) {
         setIsOtpModalOpen(true);
         setUserId(userId);
+      } else {
+        toast.error("Registration failed. Please try again.", {
+          position: "top-center",
+          autoClose: 3000,
+        });
       }
     } catch (error) {
       console.error("Registration error", error);
+      toast.error("An error occurred during registration.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
     } finally {
       setLoading(false);
     }
@@ -78,189 +111,177 @@ export default function RegisterScreen() {
     const formData = new FormData();
     formData.append("otp", otp);
     formData.append("UserId", userId);
+
     try {
       const response = await axios.post("/Home/OTPValidation", formData);
       if (response.data.status) {
-        navigate("/login");
+        toast.success("Registration successful! Redirecting to login...", {
+          position: "top-center",
+          autoClose: 2000,
+        });
+        setTimeout(() => navigate("/login"), 2000);
+      } else {
+        toast.error("Invalid OTP. Please try again.", {
+          position: "top-center",
+          autoClose: 3000,
+        });
       }
     } catch (error) {
       console.error("OTP validation error", error);
+      toast.error("Error validating OTP.", {
+        position: "top-center",
+        autoClose: 3000,
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Box>
-      <Box
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        background:
+          "linear-gradient(135deg, rgb(252, 252, 252) 0%, rgb(240, 236, 236) 100%)",
+        p: 2,
+      }}
+    >
+      <Container
+        maxWidth="sm"
         sx={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: 3,
-          height: "100vh",
+          backgroundColor: "#fff",
+          p: { xs: 3, md: 5 },
+          borderRadius: 3,
+          boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
         }}
       >
-        {loading && (
-          <Container
-            maxWidth={false}
-            sx={{
-              position: "absolute",
-              width: "20vw",
-              backgroundColor: "transparent",
-              top: "50%",
-              borderRadius: 10,
-              zIndex: 1100,
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <ReactLoading
-              type="spinningBubbles"
-              color="#48426D"
-              height={200}
-              width={200}
+        <Typography variant="h4" fontWeight={700} textAlign="center" mb={2}>
+          Create an Account
+        </Typography>
+
+        <form onSubmit={handleSubmit(onSubmit)} noValidate autoComplete="off">
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <CustomInputField
+              name="fullName"
+              label="Full Name"
+              control={control}
+              errors={errors}
+              rules={{ required: "Full name is required" }}
+              disabled={loading}
             />
-          </Container>
-        )}
-        <Container
-          maxWidth="sm"
-          sx={{
-            bgcolor: "background.default",
-            p: 4,
-            borderRadius: 5,
-            boxShadow: 5,
-          }}
-        >
-          <Typography
-            variant="h4"
-            component="h1"
-            sx={{
-              mb: 3,
-              textAlign: "center",
-              color: "primary.main",
-              fontWeight: "bold",
-            }}
-          >
-            Registration
-          </Typography>
-
-          <Box
-            component="form"
-            noValidate
-            autoComplete="off"
-            onSubmit={handleSubmit(onSubmit)}
-          >
-            <Box>
-              <CustomInputField
-                rules={{ required: "This Field is required" }}
-                label="Full Name"
-                name="fullName"
-                control={control}
-                placeholder="Full Name"
-                errors={errors}
-              />
-              <CustomInputField
-                rules={{
-                  required: "This Field is required",
-                  validate: validateUsername,
-                }}
-                label="Username"
-                name="username"
-                control={control}
-                placeholder="Username"
-                errors={errors}
-              />
-            </Box>
-
-            <Box>
-              <CustomInputField
-                rules={{
-                  required: "This Field is required",
-                  validate: validateEmail,
-                }}
-                label="Email"
-                name="email"
-                control={control}
-                placeholder="Email"
-                type="email"
-                errors={errors}
-              />
-              <CustomInputField
-                rules={{
-                  required: "This Field is required",
-                  pattern: {
-                    value: /^[0-9]{10}$/,
-                    message: "Mobile number must be exactly 10 digits",
-                  },
-                }}
-                label="Mobile Number"
-                name="mobileNumber"
-                control={control}
-                placeholder="Mobile Number"
-                errors={errors}
-                maxLength={10}
-              />
-            </Box>
-
-            <Box>
-              <CustomInputField
-                rules={{ required: "This Field is required" }}
-                label="Password"
-                name="password"
-                control={control}
-                placeholder="Password"
-                type="password"
-                errors={errors}
-              />
-              <CustomInputField
-                rules={{ required: "This Field is required" }}
-                label="Confirm Password"
-                name="confirmPassword"
-                control={control}
-                placeholder="Confirm Password"
-                type="password"
-                errors={errors}
-              />
-            </Box>
-
-            <Box sx={{ display: "flex", justifyContent: "center" }}>
-              <CustomButton
-                text="Register"
-                bgColor="primary.main"
-                color="background.paper"
-                type="submit"
-                width="100%"
-              />
-            </Box>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                padding: 3,
+            <CustomInputField
+              name="username"
+              label="Username"
+              control={control}
+              errors={errors}
+              rules={{ required: true, validate: validateUsername }}
+              disabled={loading}
+            />
+            <CustomInputField
+              name="email"
+              label="Email"
+              type="email"
+              control={control}
+              errors={errors}
+              rules={{
+                required: true,
+                pattern: {
+                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                  message: "Invalid email format",
+                },
+                validate: validateEmail,
               }}
-            >
-              <Typography sx={{ textAlign: "center", fontSize: 14 }}>
-                Already have an account?
-              </Typography>
-              <Button
-                sx={{ color: "darkblue" }}
-                onClick={() => navigate("/login")}
-              >
-                Sign in now
-              </Button>
-            </Box>
+              disabled={loading}
+            />
+            <CustomInputField
+              name="mobileNumber"
+              label="Mobile Number"
+              type="tel"
+              control={control}
+              errors={errors}
+              rules={{
+                required: true,
+                pattern: {
+                  value: /^[0-9]{10}$/,
+                  message: "Enter 10 digit number",
+                },
+                validate: validateMobileNumber,
+              }}
+              disabled={loading}
+            />
+            <CustomInputField
+              name="password"
+              label="Password"
+              type="password"
+              control={control}
+              errors={errors}
+              rules={{
+                required: true,
+                minLength: {
+                  value: 6,
+                  message: "At least 6 characters",
+                },
+              }}
+              disabled={loading}
+            />
+            <CustomInputField
+              name="confirmPassword"
+              label="Confirm Password"
+              type="password"
+              control={control}
+              errors={errors}
+              rules={{
+                required: "Confirm your password",
+                validate: (value) =>
+                  value === getValues("password") || "Passwords do not match",
+              }}
+              disabled={loading}
+            />
           </Box>
-        </Container>
-        <OtpModal
-          open={isOtpModalOpen}
-          onClose={() => setIsOtpModalOpen(false)}
-          onSubmit={handleOtpSubmit}
-        />
-      </Box>
+
+          <CustomButton
+            type="submit"
+            text={loading ? "Registering..." : "Register"}
+            bgColor="primary.main"
+            color="white"
+            width="100%"
+            disabled={loading}
+            startIcon={
+              loading && <CircularProgress size={20} color="inherit" />
+            }
+            sx={{ mt: 3 }}
+          />
+        </form>
+
+        <Box textAlign="center" mt={2}>
+          <Typography variant="body2">
+            Already have an account?{" "}
+            <Link
+              href="/login"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate("/login");
+              }}
+              sx={{ fontWeight: 600 }}
+            >
+              Sign In
+            </Link>
+          </Typography>
+        </Box>
+      </Container>
+
+      {/* OTP Modal */}
+      <OtpModal
+        open={isOtpModalOpen}
+        onClose={() => setIsOtpModalOpen(false)}
+        onSubmit={handleOtpSubmit}
+      />
+
+      {/* Toast */}
+      <ToastContainer />
     </Box>
   );
 }

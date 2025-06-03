@@ -20,11 +20,11 @@ export default function CustomButton({
       sx={{
         backgroundColor: bgColor,
         color: color,
-        fontWeight: "bold",
+        fontWeight: "normal",
         width: width,
         margin: "0 auto",
         textTransform: "none",
-        fontSize: 24,
+        fontSize: 18,
         borderRadius: 10,
 
         // Use theme-friendly styles for disabled

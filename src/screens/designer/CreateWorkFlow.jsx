@@ -6,8 +6,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Typography,
 } from "@mui/material";
-import { Col, Row, Container } from "react-bootstrap";
+import { Container, Row, Col } from "react-bootstrap";
 import {
   DndContext,
   closestCenter,
@@ -23,10 +24,48 @@ import {
 import { SortableItem } from "../../components/designer/SortableItem";
 import PlayerEditModal from "../../components/designer/PlayerEditModal";
 import axiosInstance from "../../axiosConfig";
-
-// Toastify imports
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import AddIcon from "@mui/icons-material/Add";
+import SaveIcon from "@mui/icons-material/Save";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/DeleteOutline";
+
+// Button styles
+const buttonStyles = {
+  backgroundColor: "primary.main",
+  color: "background.paper",
+  fontWeight: 600,
+  textTransform: "none",
+  py: 1,
+  px: 3,
+  borderRadius: 2,
+  "&:hover": {
+    backgroundColor: "primary.dark",
+    transform: "scale(1.02)",
+    transition: "all 0.2s ease",
+  },
+};
+
+// Form control styles
+const formControlStyles = {
+  "& .MuiOutlinedInput-root": {
+    "& fieldset": { borderColor: "divider" },
+    "&:hover fieldset": { borderColor: "primary.main" },
+    "&.Mui-focused fieldset": {
+      borderColor: "primary.main",
+      borderWidth: "2px",
+    },
+    backgroundColor: "background.paper",
+    color: "text.primary",
+    borderRadius: 1,
+  },
+  "& .MuiInputLabel-root": {
+    color: "text.secondary",
+    "&.Mui-focused": { color: "primary.main" },
+  },
+  marginBottom: 2,
+};
 
 export default function CreateWorkflow() {
   const [players, setPlayers] = useState([]);
@@ -49,13 +88,11 @@ export default function CreateWorkflow() {
 
   const [services, setServices] = useState([]);
   const [selectedServiceId, setSelectedServiceId] = useState("");
-
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
 
   const getDefaultActionFields = (player) => {
     const actionOptions = [];
-
     if (player.canForwardToPlayer) {
       let label = "Forward to Player";
       if (player.nextPlayerId !== null) {
@@ -68,11 +105,9 @@ export default function CreateWorkflow() {
       }
       actionOptions.push({ value: "Forward", label });
     }
-
     if (player.canSanction) {
       actionOptions.push({ value: "Sanction", label: "Sanction" });
     }
-
     if (player.canReturnToPlayer) {
       let label = "Return to Player";
       if (player.prevPlayerId !== null) {
@@ -85,7 +120,6 @@ export default function CreateWorkflow() {
       }
       actionOptions.push({ value: "ReturnToPlayer", label });
     }
-
     if (player.canReturnToCitizen) {
       actionOptions.push({
         value: "ReturnToCitizen",
@@ -95,7 +129,6 @@ export default function CreateWorkflow() {
     if (player.canReject) {
       actionOptions.push({ value: "Reject", label: "Reject" });
     }
-
     const defaultActionField = {
       id: `default-field-${Date.now()}`,
       type: "select",
@@ -110,7 +143,6 @@ export default function CreateWorkflow() {
       additionalFields: {},
       accept: "",
     };
-
     const remarksField = {
       id: `remarks-field-${Date.now()}`,
       type: "text",
@@ -125,7 +157,6 @@ export default function CreateWorkflow() {
       additionalFields: {},
       accept: "",
     };
-
     return [defaultActionField, remarksField];
   };
 
@@ -149,14 +180,12 @@ export default function CreateWorkflow() {
     const filteredPlayers = players.filter(
       (player) => player.playerId !== playerIdToRemove
     );
-
     const updatedPlayers = filteredPlayers.map((player, index) => ({
       ...player,
       playerId: index,
       prevPlayerId: index > 0 ? index - 1 : null,
       nextPlayerId: index < filteredPlayers.length - 1 ? index + 1 : null,
     }));
-
     setPlayers(updatedPlayers);
     updateAllDefaultActionFields();
   };
@@ -190,13 +219,11 @@ export default function CreateWorkflow() {
 
   const addPlayer = () => {
     const newPlayerId = players.length;
-
     const updatedPlayers = players.map((player, index) =>
       index === players.length - 1
         ? { ...player, nextPlayerId: newPlayerId }
         : player
     );
-
     const newPlayerWithDefaultFields = {
       ...newPlayer,
       playerId: newPlayerId,
@@ -204,9 +231,7 @@ export default function CreateWorkflow() {
       nextPlayerId: null,
       actionForm: getDefaultActionFields(newPlayer),
     };
-
     setPlayers([...updatedPlayers, newPlayerWithDefaultFields]);
-
     setNewPlayer({
       designation: "",
       canSanction: false,
@@ -227,18 +252,15 @@ export default function CreateWorkflow() {
       toast.error("Please select a service first.");
       return;
     }
-
     const formdata = new FormData();
     formdata.append("serviceId", selectedServiceId);
     formdata.append("workflowplayers", JSON.stringify(players));
-
     try {
       const response = await fetch("/Base/WorkFlowPlayers", {
         method: "POST",
         body: formdata,
       });
       const result = await response.json();
-
       if (result.status) {
         toast.success("Workflow saved successfully!");
       } else {
@@ -253,19 +275,15 @@ export default function CreateWorkflow() {
   const handleDragEnd = (event) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-
     const oldIndex = active.data.current.sortable.index;
     const newIndex = over.data.current.sortable.index;
-
     const reorderedPlayers = arrayMove(players, oldIndex, newIndex);
-
     const updatedPlayers = reorderedPlayers.map((player, index) => ({
       ...player,
       playerId: index,
       prevPlayerId: index > 0 ? index - 1 : null,
       nextPlayerId: index < reorderedPlayers.length - 1 ? index + 1 : null,
     }));
-
     setPlayers(updatedPlayers);
     updateAllDefaultActionFields();
   };
@@ -285,13 +303,11 @@ export default function CreateWorkflow() {
       return field;
     });
     updatedPlayer.actionForm = updatedActionForm;
-
     setPlayers((prev) =>
       prev.map((p) =>
         p.playerId === updatedPlayer.playerId ? updatedPlayer : p
       )
     );
-
     updateAllDefaultActionFields();
     setIsEditModalOpen(false);
   };
@@ -299,140 +315,187 @@ export default function CreateWorkflow() {
   const sensors = useSensors(useSensor(PointerSensor));
 
   return (
-    <>
-      <Container fluid>
-        <Box
+    <Container
+      fluid
+      style={{
+        minHeight: "100vh",
+        background:
+          "linear-gradient(135deg, rgb(252, 252, 252) 0%, rgb(240, 236, 236) 100%)",
+        py: { xs: 3, md: 5 },
+      }}
+    >
+      <Box
+        sx={{
+          bgcolor: "background.default",
+          borderRadius: 3,
+          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+          p: { xs: 3, md: 5 },
+          maxWidth: 1200,
+          mx: "auto",
+        }}
+      >
+        <Typography
+          variant="h4"
           sx={{
-            width: "100%",
-            height: "100vh",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            padding: 2,
+            fontFamily: "'Playfair Display', serif",
+            color: "primary.main",
+            textAlign: "center",
+            mb: 4,
+            fontWeight: 700,
           }}
         >
-          <Row style={{ width: "100%" }}>
-            <Col lg={2} md={12} xs={12}>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                <FormControl fullWidth>
-                  <InputLabel id="service-select-label">
-                    Select Service
-                  </InputLabel>
-                  <Select
-                    labelId="service-select-label"
-                    value={selectedServiceId}
-                    label="Select Service"
-                    onChange={handleServiceChange}
-                  >
-                    {services.map((service) => (
-                      <MenuItem
-                        key={service.serviceId}
-                        value={service.serviceId}
-                      >
-                        {service.serviceName}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <Button variant="contained" onClick={addPlayer}>
-                  Add Player
-                </Button>
-
-                <Button variant="contained" onClick={saveWorkflow}>
-                  Save Workflow
-                </Button>
-              </Box>
-            </Col>
-
-            <Col lg={10} md={12} xs={12}>
-              <Box
-                sx={{
-                  borderRadius: 5,
-                  backgroundColor: "white",
-                  width: "100%",
-                  height: "80vh",
-                  padding: 5,
-                  color: "black",
-                  overflowY: "auto",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 2,
-                }}
-              >
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
+          Create Workflow
+        </Typography>
+        <Row className="g-4">
+          <Col xs={12} md={3}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <FormControl fullWidth sx={formControlStyles}>
+                <InputLabel id="service-select-label">
+                  Select Service
+                </InputLabel>
+                <Select
+                  labelId="service-select-label"
+                  value={selectedServiceId}
+                  label="Select Service"
+                  onChange={handleServiceChange}
                 >
-                  <SortableContext
-                    items={players.map((p) => p.playerId)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {players.map((player) => (
-                      <SortableItem key={player.playerId} id={player.playerId}>
-                        <Box
-                          sx={{
-                            border: "1px solid #ccc",
-                            p: 2,
-                            borderRadius: 2,
-                            backgroundColor: "#312c51",
-                            color: "#F0C38E",
-                          }}
+                  {services.map((service) => (
+                    <MenuItem key={service.serviceId} value={service.serviceId}>
+                      {service.serviceName}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Button
+                variant="contained"
+                onClick={addPlayer}
+                sx={buttonStyles}
+                startIcon={<AddIcon />}
+              >
+                Add Player
+              </Button>
+              <Button
+                variant="contained"
+                onClick={saveWorkflow}
+                sx={buttonStyles}
+                startIcon={<SaveIcon />}
+              >
+                Save Workflow
+              </Button>
+            </Box>
+          </Col>
+          <Col xs={12} md={9}>
+            <Box
+              sx={{
+                bgcolor: "background.paper",
+                borderRadius: 3,
+                p: 3,
+                minHeight: 400,
+                maxHeight: 600,
+                overflowY: "auto",
+                boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
+              }}
+            >
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={players.map((p) => p.playerId)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {players.map((player) => (
+                    <SortableItem key={player.playerId} id={player.playerId}>
+                      <Box
+                        sx={{
+                          bgcolor: "background.default",
+                          border: "1px solid",
+                          borderColor: "divider",
+                          borderRadius: 2,
+                          p: 2,
+                          mb: 2,
+                          transition: "transform 0.3s ease",
+                          "&:hover": {
+                            transform: "scale(1.02)",
+                            boxShadow: "0 8px 24px rgba(0, 0, 0, 0.1)",
+                          },
+                        }}
+                      >
+                        <Typography
+                          variant="subtitle1"
+                          sx={{ fontWeight: 600, color: "primary.main", mb: 1 }}
                         >
-                          <p>Designation: {player.designation}</p>
-                          <ul>
-                            <li>
-                              Sanction: {player.canSanction ? "Yes" : "No"}
-                            </li>
-                            <li>
-                              Return to Player:{" "}
-                              {player.canReturnToPlayer ? "Yes" : "No"}
-                            </li>
-                            <li>
-                              Return to Citizen:{" "}
-                              {player.canReturnToCitizen ? "Yes" : "No"}
-                            </li>
-                            <li>
-                              Forward to Player:{" "}
-                              {player.canForwardToPlayer ? "Yes" : "No"}
-                            </li>
-                            <li>Reject: {player.canReject ? "Yes" : "No"}</li>
-                          </ul>
+                          {player.designation || "Unnamed Player"}
+                        </Typography>
+                        <Box sx={{ pl: 2 }}>
+                          <Typography variant="body2">
+                            <strong>Sanction:</strong>{" "}
+                            {player.canSanction ? "Yes" : "No"}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>Return to Player:</strong>{" "}
+                            {player.canReturnToPlayer ? "Yes" : "No"}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>Return to Citizen:</strong>{" "}
+                            {player.canReturnToCitizen ? "Yes" : "No"}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>Forward to Player:</strong>{" "}
+                            {player.canForwardToPlayer ? "Yes" : "No"}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>Reject:</strong>{" "}
+                            {player.canReject ? "Yes" : "No"}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ mt: 2, display: "flex", gap: 2 }}>
                           <Button
                             variant="contained"
                             onClick={() => handleEditPlayer(player)}
+                            sx={buttonStyles}
+                            startIcon={<EditIcon />}
                           >
-                            Edit Player
+                            Edit
                           </Button>
                           <Button
                             variant="contained"
                             onClick={() => removePlayer(player.playerId)}
-                            sx={{ ml: 2 }}
+                            sx={{
+                              ...buttonStyles,
+                              bgcolor: "error.main",
+                              "&:hover": { bgcolor: "error.dark" },
+                            }}
+                            startIcon={<DeleteIcon />}
                           >
-                            Remove Player
+                            Remove
                           </Button>
                         </Box>
-                      </SortableItem>
-                    ))}
-                  </SortableContext>
-                </DndContext>
-              </Box>
-            </Col>
-          </Row>
-        </Box>
-
+                      </Box>
+                    </SortableItem>
+                  ))}
+                </SortableContext>
+              </DndContext>
+            </Box>
+          </Col>
+        </Row>
         {isEditModalOpen && selectedPlayer && (
           <PlayerEditModal
             player={selectedPlayer}
             onClose={() => setIsEditModalOpen(false)}
             onSave={updatePlayer}
+            sx={{
+              "& .MuiDialog-paper": {
+                borderRadius: 2,
+                p: 3,
+                width: { xs: "90%", md: 600 },
+              },
+            }}
           />
         )}
-      </Container>
-
-      {/* Toast Container */}
-      <ToastContainer position="top-right" autoClose={3000} />
-    </>
+      </Box>
+      <ToastContainer position="top-center" autoClose={3000} theme="colored" />
+    </Container>
   );
 }

@@ -1,7 +1,20 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { MaterialReactTable } from "material-react-table";
-import { CircularProgress, Box, Button, useTheme } from "@mui/material";
+import {
+  Box,
+  Button,
+  CircularProgress,
+  ToggleButton,
+  ToggleButtonGroup,
+  Tooltip,
+  useTheme,
+  Typography,
+} from "@mui/material";
+import { Container } from "react-bootstrap";
 import axiosInstance from "../axiosConfig";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import RefreshIcon from "@mui/icons-material/Refresh";
 
 const ServerSideTable = ({
   url,
@@ -10,6 +23,7 @@ const ServerSideTable = ({
   canSanction = false,
   pendingApplications = false,
   serviceId,
+  refreshTrigger,
 }) => {
   const theme = useTheme();
 
@@ -26,6 +40,7 @@ const ServerSideTable = ({
   });
   const [viewType, setViewType] = useState("Inbox"); // 'Inbox' or 'Pool'
 
+  // Fetch table data
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -44,9 +59,21 @@ const ServerSideTable = ({
       setPageCount(json.pageCount || 0);
     } catch (error) {
       console.error("Error fetching data:", error);
+      toast.error("Failed to load table data. Please try again.", {
+        position: "top-center",
+        autoClose: 3000,
+        theme: "colored",
+      });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  }, [url, pagination.pageIndex, pagination.pageSize, extraParams]);
+  }, [
+    url,
+    pagination.pageIndex,
+    pagination.pageSize,
+    extraParams,
+    refreshTrigger,
+  ]);
 
   useEffect(() => {
     fetchData();
@@ -56,200 +83,369 @@ const ServerSideTable = ({
   const tableData = isPoolView ? poolData : inboxData;
   const showToggleButtons = poolData && poolData.length > 0;
 
-  return (
-    <>
-      {showToggleButtons && (
-        <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-          <Button
-            variant={viewType === "Inbox" ? "contained" : "outlined"}
-            onClick={() => setViewType("Inbox")}
-          >
-            Inbox
-          </Button>
-          <Button
-            variant={viewType === "Pool" ? "contained" : "outlined"}
-            onClick={() => setViewType("Pool")}
-          >
-            Pool
-          </Button>
-        </Box>
-      )}
+  // Handle view type change
+  const handleViewTypeChange = (event, newViewType) => {
+    if (newViewType !== null) {
+      setViewType(newViewType);
+      setRowSelection({}); // Reset row selection when switching views
+    }
+  };
 
-      <MaterialReactTable
-        columns={columns}
-        data={tableData}
-        state={{
-          isLoading,
-          ...(canSanction && pendingApplications && { rowSelection }),
-          ...(viewType === "Inbox" && { pagination }),
-        }}
-        onPaginationChange={viewType === "Inbox" ? setPagination : undefined}
-        onRowSelectionChange={
-          canSanction && pendingApplications ? setRowSelection : undefined
-        }
-        manualPagination={viewType === "Inbox"}
-        enableRowSelection={canSanction && pendingApplications}
-        pageCount={viewType === "Inbox" ? pageCount : undefined}
-        muiTablePaperProps={{
-          sx: {
-            borderRadius: "20px",
-            backgroundColor: theme.palette.background.paper,
-            color: theme.palette.text.primary,
-            border: `2px solid ${theme.palette.primary.main}`,
-            overflow: "hidden",
-            boxShadow: "none",
+  return (
+    <Container
+      style={{
+        maxWidth: 1200,
+        padding: 0,
+        background:
+          "linear-gradient(135deg, rgb(252, 252, 252) 0%, rgb(240, 236, 236) 100%)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        p: { xs: 2, md: 4 },
+      }}
+    >
+      <Box
+        sx={{
+          width: "100%",
+          maxWidth: 1200,
+          bgcolor: "background.default",
+          borderRadius: 3,
+          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+          p: { xs: 2, md: 3 },
+          transition: "transform 0.3s ease-in-out",
+          "&:hover": {
+            transform: "translateY(-5px)", // Subtle hover animation
           },
         }}
-        muiTableContainerProps={{
-          sx: {
-            backgroundColor: theme.palette.background.default,
-            border: `1px solid ${theme.palette.divider}`,
-          },
-        }}
-        muiTableHeadCellProps={{
-          sx: {
-            backgroundColor: theme.palette.background.default,
-            color: theme.palette.text.primary,
-            fontWeight: "bold",
-            borderBottom: `2px solid ${theme.palette.divider}`,
-            borderRight: `1px solid ${theme.palette.divider}`,
-            "&:last-child": {
-              borderRight: "none",
-            },
-          },
-        }}
-        muiTableBodyCellProps={{
-          sx: {
-            color: theme.palette.text.primary,
-            backgroundColor: theme.palette.background.paper,
-            borderRight: `1px solid ${theme.palette.divider}`,
-            borderBottom: `1px solid ${theme.palette.divider}`,
-            "&:last-child": {
-              borderRight: "none",
-            },
-          },
-        }}
-        muiTableFooterRowProps={{
-          sx: {
-            borderTop: `2px solid ${theme.palette.divider}`,
-          },
-        }}
-        muiTablePaginationProps={{
-          rowsPerPageOptions: [10, 25, 50],
-          sx: {
-            color: theme.palette.text.primary,
-            backgroundColor: theme.palette.background.paper,
-            borderTop: `1px solid ${theme.palette.divider}`,
-          },
-        }}
-        renderBottomToolbarCustomActions={() =>
-          isLoading && <CircularProgress size={24} />
-        }
-        enableRowActions={customActions.length > 0}
-        positionActionsColumn="last"
-        renderRowActions={({ row }) => (
-          <Box sx={{ display: "flex", gap: "8px" }}>
-            {customActions.map((action, index) => {
-              const onClickHandler = actionFunctions[action.actionFunction];
-              return (
-                row.original.sno === action.id && (
-                  <Button
-                    key={index}
-                    variant="contained"
-                    color={action.color || "primary"}
-                    sx={{
-                      backgroundColor: theme.palette.primary.main,
-                      color: theme.palette.background.paper,
-                      textTransform: "none",
-                      fontWeight: "bold",
-                      "&:hover": {
-                        backgroundColor: theme.palette.primary.dark,
-                      },
-                    }}
-                    onClick={() => onClickHandler && onClickHandler(row)}
-                  >
-                    {action.name || action.tooltip}
-                  </Button>
-                )
-              );
-            })}
+        role="region"
+        aria-labelledby="table-title"
+      >
+        {/* Table Header */}
+        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+          {/* <Typography
+            variant="h5"
+            id="table-title"
+            sx={{
+              fontFamily: "'Playfair Display', serif",
+              color: "primary.main",
+              fontWeight: 700,
+            }}
+          >
+            {viewType === "Inbox" ? "Inbox Applications" : "Pool Applications"}
+          </Typography> */}
+          <Tooltip title="Refresh Data" arrow>
+            <Button
+              variant="outlined"
+              color="primary"
+              onClick={fetchData}
+              sx={{ textTransform: "none", fontWeight: 600 }}
+              aria-label="Refresh table data"
+            >
+              <RefreshIcon />
+            </Button>
+          </Tooltip>
+        </Box>
+
+        {/* Toggle Buttons */}
+        {showToggleButtons && (
+          <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
+            <ToggleButtonGroup
+              value={viewType}
+              exclusive
+              onChange={handleViewTypeChange}
+              aria-label="View type selection"
+              sx={{
+                "& .MuiToggleButton-root": {
+                  textTransform: "none",
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1,
+                  borderRadius: 2,
+                  "&.Mui-selected": {
+                    backgroundColor: "primary.main",
+                    color: "background.paper",
+                    "&:hover": {
+                      backgroundColor: "primary.dark",
+                    },
+                  },
+                  "&:hover": {
+                    backgroundColor: "primary.light",
+                    transform: "scale(1.02)",
+                    transition: "all 0.2s ease",
+                  },
+                },
+              }}
+            >
+              <ToggleButton value="Inbox" aria-label="Inbox view">
+                Inbox
+              </ToggleButton>
+              <ToggleButton value="Pool" aria-label="Pool view">
+                Pool
+              </ToggleButton>
+            </ToggleButtonGroup>
           </Box>
         )}
-        renderTopToolbarCustomActions={({ table }) => {
-          const selectedRows = table.getSelectedRowModel().rows;
 
-          if (canSanction && pendingApplications && viewType === "Inbox") {
-            // Show "Push to Pool" button
-            return (
-              <Button
-                variant="contained"
-                color="primary"
-                disabled={selectedRows.length === 0}
-                onClick={async () => {
-                  const selectedData = selectedRows.map(
-                    (row) => row.original.referenceNumber
-                  );
-                  const list = JSON.stringify(selectedData);
-                  const response = await axiosInstance.get(
-                    "/Officer/UpdatePool",
-                    {
-                      params: {
-                        serviceId: serviceId,
-                        list: list,
-                      },
-                    }
-                  );
-                  console.log(response.data);
-                }}
-                sx={{
-                  fontWeight: "bold",
-                  textTransform: "none",
-                  color: theme.palette.background.paper,
-                }}
-              >
-                Push to Pool
-              </Button>
-            );
-          } else if (canSanction && viewType == "Pool") {
-            // Show "Bulk Sanction" button
-            return (
-              <Button
-                variant="contained"
-                color="primary"
-                disabled={selectedRows.length === 0}
-                onClick={async () => {
-                  const selectedData = selectedRows.map(
-                    (row) => row.original.referenceNumber
-                  );
-                  const list = JSON.stringify(selectedData);
-                  console.log(list);
-                  // Uncomment and use API if needed
-                  // const response = await axiosInstance.get(
-                  //   "/Officer/UpdatePool",
-                  //   {
-                  //     params: {
-                  //       serviceId: serviceId,
-                  //       list: list,
-                  //     },
-                  //   }
-                  // );
-                  // console.log(response.data);
-                }}
-                sx={{
-                  fontWeight: "bold",
-                  textTransform: "none",
-                  color: theme.palette.background.paper,
-                }}
-              >
-                Bulk Sanction
-              </Button>
-            );
-          } else {
-            return null; // Nothing to show if canSanction is false
+        {/* Table */}
+        <MaterialReactTable
+          columns={columns}
+          data={tableData}
+          state={{
+            isLoading,
+            ...(canSanction && pendingApplications && { rowSelection }),
+            ...(viewType === "Inbox" && { pagination }),
+          }}
+          onPaginationChange={viewType === "Inbox" ? setPagination : undefined}
+          onRowSelectionChange={
+            canSanction && pendingApplications ? setRowSelection : undefined
           }
-        }}
-      />
-    </>
+          manualPagination={viewType === "Inbox"}
+          enableRowSelection={canSanction && pendingApplications}
+          pageCount={viewType === "Inbox" ? pageCount : undefined}
+          muiTablePaperProps={{
+            sx: {
+              borderRadius: "12px",
+              backgroundColor: "background.paper",
+              color: "text.primary",
+              border: `1px solid ${theme.palette.divider}`,
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.05)",
+            },
+          }}
+          muiTableContainerProps={{
+            sx: {
+              maxHeight: "600px",
+              backgroundColor: "background.default",
+              border: `1px solid ${theme.palette.divider}`,
+            },
+          }}
+          muiTableHeadCellProps={{
+            sx: {
+              backgroundColor: "background.default",
+              color: "text.primary",
+              fontWeight: 600,
+              fontSize: { xs: 12, md: 14 },
+              borderBottom: `2px solid ${theme.palette.divider}`,
+              borderRight: `1px solid ${theme.palette.divider}`,
+              "&:last-child": {
+                borderRight: "none",
+              },
+            },
+          }}
+          muiTableBodyRowProps={{
+            sx: {
+              "&:hover": {
+                backgroundColor: "action.hover",
+                transition: "background-color 0.2s ease",
+              },
+            },
+          }}
+          muiTableBodyCellProps={{
+            sx: {
+              color: "text.primary",
+              backgroundColor: "background.paper",
+              fontSize: { xs: 12, md: 14 },
+              borderRight: `1px solid ${theme.palette.divider}`,
+              borderBottom: `1px solid ${theme.palette.divider}`,
+              "&:last-child": {
+                borderRight: "none",
+              },
+            },
+          }}
+          muiTableFooterRowProps={{
+            sx: {
+              borderTop: `2px solid ${theme.palette.divider}`,
+            },
+          }}
+          muiTablePaginationProps={{
+            rowsPerPageOptions: [10, 25, 50],
+            sx: {
+              color: "text.primary",
+              backgroundColor: "background.paper",
+              borderTop: `1px solid ${theme.palette.divider}`,
+              fontSize: { xs: 12, md: 14 },
+            },
+          }}
+          renderEmptyRowsFallback={() => (
+            <Box
+              sx={{
+                textAlign: "center",
+                py: 4,
+                color: "text.secondary",
+                fontSize: { xs: 14, md: 16 },
+              }}
+            >
+              No {viewType.toLowerCase()} applications available.
+            </Box>
+          )}
+          renderBottomToolbarCustomActions={() =>
+            isLoading && (
+              <CircularProgress
+                size={24}
+                color="primary"
+                aria-label="Loading table data"
+              />
+            )
+          }
+          enableRowActions={customActions.length > 0}
+          positionActionsColumn="last"
+          renderRowActions={({ row }) => (
+            <Box sx={{ display: "flex", gap: 1 }}>
+              {customActions.map((action, index) => {
+                const onClickHandler = actionFunctions[action.actionFunction];
+                return (
+                  row.original.sno === action.id && (
+                    <Tooltip
+                      key={index}
+                      title={action.tooltip || action.name}
+                      arrow
+                    >
+                      <Button
+                        variant="contained"
+                        color={action.color || "primary"}
+                        size="small"
+                        sx={{
+                          textTransform: "none",
+                          fontWeight: 600,
+                          fontSize: { xs: 12, md: 13 },
+                          py: 0.5,
+                          "&:hover": {
+                            backgroundColor: `${
+                              action.color || "primary"
+                            }.dark`,
+                            transform: "scale(1.02)",
+                            transition: "all 0.2s ease",
+                          },
+                        }}
+                        onClick={() => onClickHandler && onClickHandler(row)}
+                        aria-label={`${action.name || action.tooltip} for row ${
+                          row.original.sno
+                        }`}
+                      >
+                        {action.name || action.tooltip}
+                      </Button>
+                    </Tooltip>
+                  )
+                );
+              })}
+            </Box>
+          )}
+          renderTopToolbarCustomActions={({ table }) => {
+            const selectedRows = table.getSelectedRowModel().rows;
+            if (canSanction && pendingApplications && viewType === "Inbox") {
+              return (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  disabled={selectedRows.length === 0}
+                  onClick={async () => {
+                    const selectedData = selectedRows.map(
+                      (row) => row.original.referenceNumber
+                    );
+                    const list = JSON.stringify(selectedData);
+                    try {
+                      const response = await axiosInstance.get(
+                        "/Officer/UpdatePool",
+                        {
+                          params: {
+                            serviceId: serviceId,
+                            list: list,
+                          },
+                        }
+                      );
+                      toast.success("Successfully pushed to pool!", {
+                        position: "top-center",
+                        autoClose: 2000,
+                        theme: "colored",
+                      });
+                      fetchData(); // Refresh data after action
+                    } catch (error) {
+                      console.error("Error pushing to pool:", error);
+                      toast.error("Failed to push to pool. Please try again.", {
+                        position: "top-center",
+                        autoClose: 3000,
+                        theme: "colored",
+                      });
+                    }
+                  }}
+                  sx={{
+                    textTransform: "none",
+                    fontWeight: 600,
+                    fontSize: { xs: 12, md: 14 },
+                    py: 1,
+                    "&:hover": {
+                      backgroundColor: "primary.dark",
+                      transform: "scale(1.02)",
+                      transition: "all 0.2s ease",
+                    },
+                  }}
+                  aria-label="Push selected applications to pool"
+                >
+                  Push to Pool
+                </Button>
+              );
+            } else if (canSanction && viewType === "Pool") {
+              return (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  disabled={selectedRows.length === 0}
+                  onClick={async () => {
+                    const selectedData = selectedRows.map(
+                      (row) => row.original.referenceNumber
+                    );
+                    const list = JSON.stringify(selectedData);
+                    try {
+                      // Uncomment and use API if needed
+                      // const response = await axiosInstance.get("/Officer/UpdatePool", {
+                      //   params: {
+                      //     serviceId: serviceId,
+                      //     list: list,
+                      //   },
+                      // });
+                      toast.success("Successfully sanctioned applications!", {
+                        position: "top-center",
+                        autoClose: 2000,
+                        theme: "colored",
+                      });
+                      fetchData(); // Refresh data after action
+                    } catch (error) {
+                      console.error("Error sanctioning applications:", error);
+                      toast.error(
+                        "Failed to sanction applications. Please try again.",
+                        {
+                          position: "top-center",
+                          autoClose: 3000,
+                          theme: "colored",
+                        }
+                      );
+                    }
+                  }}
+                  sx={{
+                    textTransform: "none",
+                    fontWeight: 600,
+                    fontSize: { xs: 12, md: 14 },
+                    py: 1,
+                    "&:hover": {
+                      backgroundColor: "primary.dark",
+                      transform: "scale(1.02)",
+                      transition: "all 0.2s ease",
+                    },
+                  }}
+                  aria-label="Sanction selected applications"
+                >
+                  Bulk Sanction
+                </Button>
+              );
+            }
+            return null;
+          }}
+        />
+      </Box>
+
+      {/* Toast Container */}
+      <ToastContainer />
+    </Container>
   );
 };
 

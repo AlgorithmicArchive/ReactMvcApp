@@ -6,6 +6,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  TextField,
 } from "@mui/material";
 import { Col, Row, Container } from "react-bootstrap";
 import {
@@ -33,6 +34,9 @@ export default function CreateService() {
   const [sections, setSections] = useState(defaultFormConfig);
   const [services, setServices] = useState([]);
   const [selectedServiceId, setSelectedServiceId] = useState("");
+  const [serviceName, setServiceName] = useState("");
+  const [serviceNameShort, setServiceNameShort] = useState("");
+  const [departmentName, setDepartmentName] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedField, setSelectedField] = useState(null);
   const [isAdditionalModalOpen, setIsAdditionalModalOpen] = useState(false);
@@ -53,7 +57,14 @@ export default function CreateService() {
 
   const handleServiceChange = (e) => {
     const serviceId = e.target.value;
+    if (serviceId == "") {
+      setSections(defaultFormConfig);
+      setSelectedServiceId("");
+      return;
+    }
     setSelectedServiceId(serviceId);
+    setServiceName(""); // Clear inputs when selecting an existing service
+    setServiceNameShort("");
     const service = services.find((s) => s.serviceId === serviceId);
     if (service && service.formElement) {
       try {
@@ -166,6 +177,18 @@ export default function CreateService() {
 
   const handleLogForm = async () => {
     const formdata = new FormData();
+    if (!selectedServiceId) {
+      // For new service, ensure serviceName and serviceNameShort are provided
+      if (!serviceName || !serviceNameShort || !departmentName) {
+        toast.error(
+          "Please provide both Service Name and Service Name Short and Department Name."
+        );
+        return;
+      }
+      formdata.append("serviceName", serviceName);
+      formdata.append("serviceNameShort", serviceNameShort);
+      formdata.append("departmentName", departmentName);
+    }
     formdata.append("serviceId", selectedServiceId);
     formdata.append("formElement", JSON.stringify(sections));
 
@@ -178,6 +201,12 @@ export default function CreateService() {
             ? "Service updated successfully!"
             : "New service created successfully!"
         );
+        // Clear inputs after successful save
+        if (!selectedServiceId) {
+          setServiceName("");
+          setServiceNameShort("");
+          setSections(defaultFormConfig);
+        }
       } else {
         toast.error(result.response || "Failed to save service.");
       }
@@ -277,6 +306,9 @@ export default function CreateService() {
                   label="Select Service"
                   onChange={handleServiceChange}
                 >
+                  <MenuItem value="">
+                    <em>Create New Service</em>
+                  </MenuItem>
                   {services.map((service) => (
                     <MenuItem key={service.serviceId} value={service.serviceId}>
                       {service.serviceName}
@@ -284,6 +316,31 @@ export default function CreateService() {
                   ))}
                 </Select>
               </FormControl>
+              {!selectedServiceId && (
+                <>
+                  <TextField
+                    fullWidth
+                    label="Service Name"
+                    value={serviceName}
+                    onChange={(e) => setServiceName(e.target.value)}
+                    variant="outlined"
+                  />
+                  <TextField
+                    fullWidth
+                    label="Service Name Short"
+                    value={serviceNameShort}
+                    onChange={(e) => setServiceNameShort(e.target.value)}
+                    variant="outlined"
+                  />
+                  <TextField
+                    fullWidth
+                    label="Department Name"
+                    value={departmentName}
+                    onChange={(e) => setDepartmentName(e.target.value)}
+                    variant="outlined"
+                  />
+                </>
+              )}
               <Button variant="contained" onClick={handleAddSection}>
                 Add Section
               </Button>
@@ -361,7 +418,6 @@ export default function CreateService() {
         />
       )}
 
-      {/* Toasts for feedback */}
       <ToastContainer
         position="top-right"
         autoClose={3000}

@@ -434,9 +434,12 @@ namespace ReactMvcApp.Controllers
         public IActionResult FormElement([FromForm] IFormCollection form)
         {
             string serviceIdString = form["serviceId"].ToString();
+            string serviceName = form["serviceName"].ToString();
+            string serviceNameShort = form["serviceNameShort"].ToString();
+            string departmentName = form["departmentName"].ToString();
+
             var formElement = form["formElement"].ToString();
 
-            _logger.LogInformation($"--------------SERVICE ID: {serviceIdString}---------------------");
             if (!string.IsNullOrEmpty(serviceIdString))
             {
                 int serviceId = Convert.ToInt32(serviceIdString);
@@ -444,17 +447,32 @@ namespace ReactMvcApp.Controllers
 
                 if (service != null)
                 {
-                    service.FormElement = formElement;
+                    if (service.FormElement != formElement)
+                        service.FormElement = formElement;
+
+                    if (service.ServiceName != serviceName)
+                        service.ServiceName = serviceName;
+
+                    if (service.NameShort != serviceNameShort)
+                        service.NameShort = serviceNameShort;
+
+                    if (service.Department != departmentName)
+                        service.Department = departmentName;
                 }
             }
             else
             {
                 var newService = new Service
                 {
-                    FormElement = formElement
+                    FormElement = formElement,
+                    ServiceName = serviceName,
+                    NameShort = serviceNameShort,
+                    Department = departmentName
                 };
+
                 dbcontext.Services.Add(newService);
             }
+
 
             dbcontext.SaveChanges();
 
@@ -782,6 +800,83 @@ namespace ReactMvcApp.Controllers
                 // Log the exception (use a logging framework like Serilog in production)
                 return StatusCode(500, new { status = false, message = "An error occurred while fetching the IFSC code.", error = ex.Message });
             }
+        }
+
+        [HttpGet]
+        public IActionResult GetServicesDashboard(int pageIndex, int pageSize)
+        {
+            // Fetch services from the database
+            var services = dbcontext.Services.FromSqlRaw("SELECT * FROM Services");
+
+            // Initialize columns
+            var columns = new List<dynamic>
+            {
+                new { header = "S.No", accessorKey = "sno" },
+                new { header = "Service Name", accessorKey = "servicename" },
+                new { header = "Department", accessorKey = "department" },
+            };
+
+            // Initialize data list
+            List<dynamic> data = [];
+            List<dynamic> customActions = [];
+            int index = 1;
+
+            foreach (var item in services)
+            {
+                var button = new
+                {
+                    function = "OpenForm",
+                    parameters = new[] { item.ServiceId },
+                    buttonText = "Apply"
+                };
+
+                data.Add(new
+                {
+                    sno = index,
+                    servicename = item.ServiceName,
+                    department = item.Department,
+                    serviceId = item.ServiceId,
+                    isActive = item.Active,
+                });
+
+                customActions.Add(new
+                {
+                    id = index,
+                    tooltip = item.Active ? "Deactivate" : "Activate",
+                    color = "#F0C38E",
+                    actionFunction = "ToggleServiceActivation"
+                });
+                index++;
+            }
+
+            // Pagination logic
+            var pagedData = data.Skip(pageIndex * pageSize).Take(pageSize).ToList();
+
+            return Json(new
+            {
+                status = true,
+                data = pagedData,
+                columns,
+                customActions,
+                totalCount = data.Count
+            });
+        }
+
+
+        [HttpPost]
+        public IActionResult ToggleServiceActive([FromForm] IFormCollection form)
+        {
+            int serviceId = Convert.ToInt32(form["serviceId"].ToString());
+            bool active = Convert.ToBoolean(form["active"]);
+
+            _logger.LogInformation($"---------- Service ID: {serviceId}   IS Active: {active}-----------------------");
+            var svc = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
+            if (svc == null)
+                return Json(new { status = false, message = "Not found" });
+
+            svc.Active = active;
+            dbcontext.SaveChanges();
+            return Json(new { status = true, active = svc.Active });
         }
     }
 }

@@ -17,12 +17,6 @@ export default function Services() {
     },
   };
 
-  const handleButtonAction = async (functionName, parameters) => {
-    if (functionName === "OpenForm") {
-      navigate("/user/form", { state: { ServiceId: parameters[0] } });
-    }
-  };
-
   if (loading) {
     return <LoadingSpinner />;
   }
