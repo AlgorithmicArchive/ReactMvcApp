@@ -239,19 +239,37 @@ namespace ReactMvcApp.Controllers
                 return Json(new { countList = new List<dynamic>(), canSanction = false });
             }
 
-            // Create SQL parameters for a parameterized stored procedure call.
-            var paramTakenBy = new SqlParameter("@TakenBy", officer.Role);
-            var paramAccessLevel = new SqlParameter("@AccessLevel", officer.AccessLevel);
-            var paramAccessCode = new SqlParameter("@AccessCode", DistrictId);
-            var paramServiceId = new SqlParameter("@ServiceId", ServiceId);
 
-            // Execute the stored procedure and retrieve counts.
+            var sqlParams = new List<SqlParameter>
+            {
+                new SqlParameter("@AccessLevel", officer.AccessLevel),
+                new SqlParameter("@AccessCode", DistrictId ?? 0),  // or TehsilId
+                new SqlParameter("@ServiceId", ServiceId ?? 0),
+                new SqlParameter("@TakenBy", officer.Role)
+            };
+
+            // Add DivisionCode only when required
+            if (officer.AccessLevel == "Division")
+            {
+                sqlParams.Add(new SqlParameter("@DivisionCode", officer.AccessCode));
+            }
+            else
+            {
+                sqlParams.Add(new SqlParameter("@DivisionCode", DBNull.Value));
+            }
+
             var counts = dbcontext.Database
                 .SqlQueryRaw<StatusCounts>(
-                    "EXEC GetStatusCount @AccessLevel, @AccessCode, @ServiceId, @TakenBy",
-                     paramAccessLevel, paramAccessCode, paramServiceId, paramTakenBy)
+                    "EXEC GetStatusCount @AccessLevel, @AccessCode, @ServiceId, @TakenBy, @DivisionCode",
+                    sqlParams.ToArray()
+                )
                 .AsEnumerable()
                 .FirstOrDefault() ?? new StatusCounts();
+
+
+
+            _logger.LogInformation($"-------------COUNTS: {JsonConvert.SerializeObject(counts)}-----------------------");
+
 
             // Build the count list based on the available authority permissions.
             var countList = new List<dynamic>

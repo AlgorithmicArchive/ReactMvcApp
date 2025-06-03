@@ -1,4 +1,3 @@
-// PlayerEditModal.js
 import React, { useEffect, useState } from "react";
 import {
   Box,
@@ -29,7 +28,10 @@ import {
 } from "@dnd-kit/sortable";
 
 const PlayerEditModal = ({ player, onClose, onSave }) => {
-  const [editedPlayer, setEditedPlayer] = useState(player);
+  const [editedPlayer, setEditedPlayer] = useState({
+    ...player,
+    canHavePool: player.canHavePool || false, // Ensure canHavePool is initialized
+  });
   const [isFieldModalOpen, setIsFieldModalOpen] = useState(false);
   const [selectedField, setSelectedField] = useState(null);
   const [designations, setDesignations] = useState(null);
@@ -104,7 +106,6 @@ const PlayerEditModal = ({ player, onClose, onSave }) => {
     setIsFieldModalOpen(true);
   };
 
-  // Remove handler: receives sectionId and fieldId (sectionId is fixed as "actionForm")
   const handleRemoveField = (sectionId, fieldId) => {
     setEditedPlayer((prev) => ({
       ...prev,
@@ -112,7 +113,6 @@ const PlayerEditModal = ({ player, onClose, onSave }) => {
     }));
   };
 
-  // Update the edited player's actionForm with the updated field
   const updateField = (updatedField) => {
     setEditedPlayer((prev) => ({
       ...prev,
@@ -212,6 +212,24 @@ const PlayerEditModal = ({ player, onClose, onSave }) => {
             />
           }
           label="Can Reject"
+        />
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={editedPlayer.canPull}
+              onChange={(e) => handleChange("canPull", e.target.checked)}
+            />
+          }
+          label="Can Pull"
+        />
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={editedPlayer.canHavePool}
+              onChange={(e) => handleChange("canHavePool", e.target.checked)}
+            />
+          }
+          label="Can Bulk Applications"
         />
 
         {/* Action Form */}

@@ -102,7 +102,6 @@ namespace ReactMvcApp.Controllers.Officer
                 return Json(new { countList = new List<dynamic>(), canSanction = false });
             }
 
-            // Find the authority record for the officer's role.
             // The JSON field names must match those in your stored JSON.
             dynamic authorities = workflow.FirstOrDefault(p => p.designation == officer.Role)!;
             if (authorities == null)
@@ -110,39 +109,52 @@ namespace ReactMvcApp.Controllers.Officer
                 return Json(new { countList = new List<dynamic>(), canSanction = false });
             }
 
-            // Create SQL parameters for a parameterized stored procedure call.
-            var paramTakenBy = new SqlParameter("@TakenBy", officer.Role);
-            var paramAccessLevel = new SqlParameter("@AccessLevel", officer.AccessLevel);
-            var paramAccessCode = new SqlParameter("@AccessCode", officer.AccessCode);
-            var paramServiceId = new SqlParameter("@ServiceId", ServiceId);
+            var sqlParams = new List<SqlParameter>
+            {
+                new SqlParameter("@AccessLevel", officer.AccessLevel),
+                new SqlParameter("@AccessCode", officer.AccessCode ?? 0),  // or TehsilId
+                new SqlParameter("@ServiceId", ServiceId),
+                new SqlParameter("@TakenBy", officer.Role)
+            };
 
-            // Execute the stored procedure and retrieve counts.
+            // Add DivisionCode only when required
+            if (officer.AccessLevel == "Division")
+            {
+                sqlParams.Add(new SqlParameter("@DivisionCode", officer.AccessCode));
+            }
+            else
+            {
+                sqlParams.Add(new SqlParameter("@DivisionCode", DBNull.Value));
+            }
+
             var counts = dbcontext.Database
                 .SqlQueryRaw<StatusCounts>(
-                    "EXEC GetStatusCount  @AccessLevel, @AccessCode, @ServiceId, @TakenBy",
-                    paramAccessLevel, paramAccessCode, paramServiceId, paramTakenBy)
+                    "EXEC GetStatusCount @AccessLevel, @AccessCode, @ServiceId, @TakenBy, @DivisionCode",
+                    sqlParams.ToArray()
+                )
                 .AsEnumerable()
                 .FirstOrDefault() ?? new StatusCounts();
 
             // Build the count list based on the available authority permissions.
-            var countList = new List<dynamic>();
-
-            countList.Add(new
+            var countList = new List<dynamic>
             {
-                label = "Total Applications",
-                count = counts.TotalApplications,
-                bgColor = "#000000",
-                textColor = "#FFFFFF"
-            });
+                new
+                {
+                    label = "Total Applications",
+                    count = counts.TotalApplications,
+                    bgColor = "#000000",
+                    textColor = "#FFFFFF"
+                },
 
-            // Pending is always included.
-            countList.Add(new
-            {
-                label = "Pending",
-                count = counts.PendingCount,
-                bgColor = "#FFC107",
-                textColor = "#212121"
-            });
+                // Pending is always included.
+                new
+                {
+                    label = "Pending",
+                    count = counts.PendingCount,
+                    bgColor = "#FFC107",
+                    textColor = "#212121"
+                }
+            };
 
             // Forwarded (if allowed)
             if ((bool)authorities.canForwardToPlayer)
@@ -213,7 +225,7 @@ namespace ReactMvcApp.Controllers.Officer
             });
 
             // Return the count list and whether the officer can sanction.
-            return Json(new { countList, canSanction = (bool)authorities.canSanction });
+            return Json(new { countList, canSanction = (bool)authorities.canSanction, canHavePool = (bool)authorities.canHavePool });
         }
 
         [HttpGet]

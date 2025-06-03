@@ -14,6 +14,7 @@ export default function OfficerHome() {
   const [serviceId, setServiceId] = useState();
   const [countList, setCountList] = useState([]);
   const [canSanction, setCanSanction] = useState(false);
+  const [canHavePool, setCanHavePool] = useState(false);
   const [type, setType] = useState("");
   const [showTable, setShowTable] = useState(false);
 
@@ -37,6 +38,7 @@ export default function OfficerHome() {
       );
       setCountList(response.data.countList);
       setCanSanction(response.data.canSanction);
+      setCanHavePool(response.data.canHavePool);
     } catch (error) {
       console.error("Failed to fetch application counts:", error);
     }
@@ -138,6 +140,7 @@ export default function OfficerHome() {
             extraParams={extraParams}
             actionFunctions={actionFunctions}
             canSanction={canSanction}
+            canHavePool={canHavePool}
             pendingApplications={type == "Pending"}
             serviceId={serviceId}
           />

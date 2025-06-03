@@ -77,13 +77,14 @@ export default function CreateWorkflow() {
     canReturnToCitizen: false,
     canForwardToPlayer: false,
     canReject: false,
+    canPull: false,
+    canHavePool: false, // Added canHavePool
     actionForm: [],
     prevPlayerId: null,
     nextPlayerId: null,
     status: "",
     completedAt: null,
     remarks: "",
-    canPull: false,
   });
 
   const [services, setServices] = useState([]);
@@ -239,11 +240,12 @@ export default function CreateWorkflow() {
       canReturnToCitizen: false,
       canForwardToPlayer: false,
       canReject: false,
+      canPull: false,
+      canHavePool: false, // Added canHavePool
       actionForm: [],
       status: "",
       completedAt: null,
       remarks: "",
-      canPull: false,
     });
   };
 
@@ -448,6 +450,14 @@ export default function CreateWorkflow() {
                           <Typography variant="body2">
                             <strong>Reject:</strong>{" "}
                             {player.canReject ? "Yes" : "No"}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>Pull:</strong>{" "}
+                            {player.canPull ? "Yes" : "No"}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>Bulk Applications:</strong>{" "}
+                            {player.canHavePool ? "Yes" : "No"}
                           </Typography>
                         </Box>
                         <Box sx={{ mt: 2, display: "flex", gap: 2 }}>

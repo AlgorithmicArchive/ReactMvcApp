@@ -1,3 +1,4 @@
+// UserDetails.jsx
 import React, { useEffect, useState, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { fetchUserDetail } from "../../assets/fetch";
@@ -35,7 +36,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 
-// Updated CollapsibleFormDetails
+// CollapsibleFormDetails (unchanged, included for completeness)
 const CollapsibleFormDetails = ({
   formDetails,
   formatKey,
@@ -278,6 +279,7 @@ export default function UserDetails() {
   const [loading, setLoading] = useState(true);
   const [buttonLoading, setButtonLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pin, setPin] = useState("");
   const navigate = useNavigate();
   const {
     control,
@@ -562,9 +564,14 @@ export default function UserDetails() {
   };
 
   // Sign PDF
-  async function signPdf(pdfBlob) {
+  async function signPdf(pdfBlob, pin) {
     const formData = new FormData();
     formData.append("pdf", pdfBlob, "document.pdf");
+    formData.append("pin", pin);
+    formData.append(
+      "original_path",
+      applicationId.replace(/\//g, "_") + "SanctionLetter.pdf"
+    ); // Adjust as needed
     try {
       const response = await fetch("http://localhost:8000/sign", {
         method: "POST",
@@ -582,6 +589,14 @@ export default function UserDetails() {
 
   // Handle form submission
   const onSubmit = async (data) => {
+    if (!pin) {
+      toast.error("Please enter the USB token PIN.", {
+        position: "top-center",
+        autoClose: 3000,
+        theme: "colored",
+      });
+      return;
+    }
     setButtonLoading(true);
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
@@ -608,7 +623,7 @@ export default function UserDetails() {
           throw new Error("Failed to fetch PDF from server");
         }
         const pdfBlob = await pdfResponse.blob();
-        const signedBlob = await signPdf(pdfBlob);
+        const signedBlob = await signPdf(pdfBlob, pin);
         const updateFormData = new FormData();
         updateFormData.append("signedPdf", signedBlob, "signed.pdf");
         updateFormData.append("applicationId", applicationId);
@@ -648,6 +663,7 @@ export default function UserDetails() {
     } finally {
       setButtonLoading(false);
       setConfirmOpen(false);
+      setPin(""); // Clear PIN after submission
     }
   };
 
@@ -829,8 +845,24 @@ export default function UserDetails() {
         <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
           <DialogTitle>Confirm Action</DialogTitle>
           <DialogContent>
-            Are you sure you want to submit the action form? This may involve
-            signing and updating documents.
+            <Typography>
+              Are you sure you want to submit the action form? This may involve
+              signing and updating documents.
+            </Typography>
+            <TextField
+              type="password"
+              label="USB Token PIN"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              fullWidth
+              margin="normal"
+              sx={commonStyles}
+              aria-label="USB Token PIN"
+              inputProps={{ "aria-describedby": "pin-helper-text" }}
+            />
+            <FormHelperText id="pin-helper-text">
+              Enter the PIN for your USB token to sign the document.
+            </FormHelperText>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setConfirmOpen(false)} aria-label="Cancel">
@@ -839,7 +871,7 @@ export default function UserDetails() {
             <Button
               onClick={handleSubmit(onSubmit)}
               color="primary"
-              disabled={buttonLoading}
+              disabled={buttonLoading || !pin}
               aria-label="Confirm action"
             >
               Confirm

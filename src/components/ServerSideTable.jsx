@@ -9,6 +9,10 @@ import {
   Tooltip,
   useTheme,
   Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import { Container } from "react-bootstrap";
 import axiosInstance from "../axiosConfig";
@@ -21,6 +25,7 @@ const ServerSideTable = ({
   actionFunctions,
   extraParams = {},
   canSanction = false,
+  canHavePool = false,
   pendingApplications = false,
   serviceId,
   refreshTrigger,
@@ -39,6 +44,41 @@ const ServerSideTable = ({
     pageSize: 10,
   });
   const [viewType, setViewType] = useState("Inbox"); // 'Inbox' or 'Pool'
+  const [selectedAction, setSelectedAction] = useState("Reject"); // Default action for bulk operations
+
+  // Form control styles
+  const formControlStyles = {
+    "& .MuiOutlinedInput-root": {
+      "& fieldset": { borderColor: "divider" },
+      "&:hover fieldset": { borderColor: "primary.main" },
+      "&.Mui-focused fieldset": {
+        borderColor: "primary.main",
+        borderWidth: "2px",
+      },
+      backgroundColor: "background.paper",
+      color: "text.primary",
+      borderRadius: 1,
+    },
+    "& .MuiInputLabel-root": {
+      color: "text.secondary",
+      "&.Mui-focused": { color: "primary.main" },
+    },
+    minWidth: 150,
+    mr: 2,
+  };
+
+  // Button styles
+  const buttonStyles = {
+    textTransform: "none",
+    fontWeight: 600,
+    fontSize: { xs: 12, md: 14 },
+    py: 1,
+    "&:hover": {
+      backgroundColor: "primary.dark",
+      transform: "scale(1.02)",
+      transition: "all 0.2s ease",
+    },
+  };
 
   // Fetch table data
   const fetchData = useCallback(async () => {
@@ -91,6 +131,69 @@ const ServerSideTable = ({
     }
   };
 
+  // Get action options for the bulk action dropdown
+  const getActionOptions = () => {
+    const options = [{ value: "Reject", label: "Reject" }];
+    if (canSanction) {
+      options.push({ value: "Sanction", label: "Sanction" });
+    }
+    return options;
+  };
+
+  // Handle bulk action execution
+  const handleExecuteAction = async (selectedRows) => {
+    if (selectedRows.length === 0) {
+      toast.error("No applications selected.", {
+        position: "top-center",
+        autoClose: 3000,
+        theme: "colored",
+      });
+      return;
+    }
+
+    const selectedData = selectedRows.map(
+      (row) => row.original.referenceNumber
+    );
+    const list = JSON.stringify(selectedData);
+
+    try {
+      console.log("LIST", list);
+      console.log("Selected Action", selectedAction);
+      // const response = await axiosInstance.post("/Officer/UpdatePool", {
+      //   serviceId,
+      //   list,
+      //   action: selectedAction,
+      // });
+
+      // if (response.data.status) {
+      //   toast.success(
+      //     `Successfully ${selectedAction.toLowerCase()}ed applications!`,
+      //     {
+      //       position: "top-center",
+      //       autoClose: 2000,
+      //       theme: "colored",
+      //     }
+      //   );
+      //   fetchData(); // Refresh data after action
+      // } else {
+      //   throw new Error(response.data.message || "Action failed.");
+      // }
+    } catch (error) {
+      console.error(
+        `Error ${selectedAction.toLowerCase()}ing applications:`,
+        error
+      );
+      toast.error(
+        `Failed to ${selectedAction.toLowerCase()} applications. Please try again.`,
+        {
+          position: "top-center",
+          autoClose: 3000,
+          theme: "colored",
+        }
+      );
+    }
+  };
+
   return (
     <Container
       style={{
@@ -123,17 +226,6 @@ const ServerSideTable = ({
       >
         {/* Table Header */}
         <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
-          {/* <Typography
-            variant="h5"
-            id="table-title"
-            sx={{
-              fontFamily: "'Playfair Display', serif",
-              color: "primary.main",
-              fontWeight: 700,
-            }}
-          >
-            {viewType === "Inbox" ? "Inbox Applications" : "Pool Applications"}
-          </Typography> */}
           <Tooltip title="Refresh Data" arrow>
             <Button
               variant="outlined"
@@ -201,7 +293,7 @@ const ServerSideTable = ({
             canSanction && pendingApplications ? setRowSelection : undefined
           }
           manualPagination={viewType === "Inbox"}
-          enableRowSelection={canSanction && pendingApplications}
+          enableRowSelection={canHavePool && pendingApplications}
           pageCount={viewType === "Inbox" ? pageCount : undefined}
           muiTablePaperProps={{
             sx: {
@@ -368,74 +460,44 @@ const ServerSideTable = ({
                       });
                     }
                   }}
-                  sx={{
-                    textTransform: "none",
-                    fontWeight: 600,
-                    fontSize: { xs: 12, md: 14 },
-                    py: 1,
-                    "&:hover": {
-                      backgroundColor: "primary.dark",
-                      transform: "scale(1.02)",
-                      transition: "all 0.2s ease",
-                    },
-                  }}
+                  sx={buttonStyles}
                   aria-label="Push selected applications to pool"
                 >
                   Push to Pool
                 </Button>
               );
-            } else if (canSanction && viewType === "Pool") {
+            } else if (canHavePool && viewType === "Pool") {
               return (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  disabled={selectedRows.length === 0}
-                  onClick={async () => {
-                    const selectedData = selectedRows.map(
-                      (row) => row.original.referenceNumber
-                    );
-                    const list = JSON.stringify(selectedData);
-                    try {
-                      // Uncomment and use API if needed
-                      // const response = await axiosInstance.get("/Officer/UpdatePool", {
-                      //   params: {
-                      //     serviceId: serviceId,
-                      //     list: list,
-                      //   },
-                      // });
-                      toast.success("Successfully sanctioned applications!", {
-                        position: "top-center",
-                        autoClose: 2000,
-                        theme: "colored",
-                      });
-                      fetchData(); // Refresh data after action
-                    } catch (error) {
-                      console.error("Error sanctioning applications:", error);
-                      toast.error(
-                        "Failed to sanction applications. Please try again.",
-                        {
-                          position: "top-center",
-                          autoClose: 3000,
-                          theme: "colored",
-                        }
-                      );
-                    }
-                  }}
-                  sx={{
-                    textTransform: "none",
-                    fontWeight: 600,
-                    fontSize: { xs: 12, md: 14 },
-                    py: 1,
-                    "&:hover": {
-                      backgroundColor: "primary.dark",
-                      transform: "scale(1.02)",
-                      transition: "all 0.2s ease",
-                    },
-                  }}
-                  aria-label="Sanction selected applications"
-                >
-                  Bulk Sanction
-                </Button>
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <FormControl sx={formControlStyles}>
+                    <InputLabel id="bulk-action-select-label">
+                      Bulk Action
+                    </InputLabel>
+                    <Select
+                      labelId="bulk-action-select-label"
+                      value={selectedAction}
+                      label="Bulk Action"
+                      onChange={(e) => setSelectedAction(e.target.value)}
+                      size="small"
+                    >
+                      {getActionOptions().map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    disabled={selectedRows.length === 0}
+                    onClick={() => handleExecuteAction(selectedRows)}
+                    sx={buttonStyles}
+                    aria-label={`Execute ${selectedAction.toLowerCase()} action`}
+                  >
+                    Execute
+                  </Button>
+                </Box>
               );
             }
             return null;
