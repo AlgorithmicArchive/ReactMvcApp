@@ -9,15 +9,15 @@ BEGIN
     SET NOCOUNT ON;
 
     SELECT
-        ca.ReferenceNumber, -- Group by this column
-        MAX(ca.Citizen_id) AS Citizen_id, -- Aggregated to ensure only one value per ReferenceNumber
-        MAX(ca.ServiceId) AS ServiceId,   -- Aggregated to ensure only one value per ReferenceNumber
-        MAX(ca.FormDetails) AS FormDetails, -- Aggregated to ensure only one value per ReferenceNumber
-        MAX(ca.WorkFlow) AS WorkFlow,     -- Aggregated to ensure only one value per ReferenceNumber
-        MAX(ca.AdditionalDetails) AS AdditionalDetails, -- Aggregated to ensure only one value per ReferenceNumber
-        MAX(ca.CurrentPlayer) AS CurrentPlayer, -- Aggregated to ensure only one value per ReferenceNumber
-        MAX(ca.[Status]) AS [Status],    -- Aggregated to ensure only one value per ReferenceNumber
-        MAX(ca.Created_at) AS Created_at  -- Aggregated to ensure only one value per ReferenceNumber
+        ca.ReferenceNumber,
+        MAX(ca.Citizen_id) AS Citizen_id,
+        MAX(ca.ServiceId) AS ServiceId,
+        MAX(ca.FormDetails) AS FormDetails,
+        MAX(ca.WorkFlow) AS WorkFlow,
+        MAX(ca.AdditionalDetails) AS AdditionalDetails,
+        MAX(ca.CurrentPlayer) AS CurrentPlayer,
+        MAX(ca.[Status]) AS [Status],
+        MAX(ca.Created_at) AS Created_at
     FROM
         [dbo].[Citizen_Applications] ca
     CROSS APPLY
@@ -27,15 +27,16 @@ BEGIN
             name NVARCHAR(50) '$.name',
             value INT '$.value'
         ) AS jsonLocation
+    LEFT JOIN
+        [dbo].[District] d ON jsonLocation.name = 'District' AND jsonLocation.value = d.DistrictID
     WHERE
         ca.ServiceId = @ServiceId
         AND JSON_VALUE(wf.value, '$.designation') = @Role
         AND (
-            (@AccessLevel = 'State')
-            OR
-            (@AccessLevel = 'District' AND jsonLocation.name = 'District' AND jsonLocation.value = @AccessCode)
-            OR
-            (@AccessLevel = 'Tehsil' AND jsonLocation.name = 'Tehsil' AND jsonLocation.value = @AccessCode)
+            @AccessLevel = 'State'
+            OR (@AccessLevel = 'District' AND jsonLocation.name = 'District' AND jsonLocation.value = @AccessCode)
+            OR (@AccessLevel = 'Tehsil' AND jsonLocation.name = 'Tehsil' AND jsonLocation.value = @AccessCode)
+            OR (@AccessLevel = 'Division' AND jsonLocation.name = 'District' AND d.Division = @AccessCode)
         )
         AND (
             @ApplicationStatus = 'Total Applications' 
@@ -43,10 +44,8 @@ BEGIN
         )
         AND JSON_VALUE(wf.value, '$.status') <> ''
     GROUP BY
-        ca.ReferenceNumber -- Group by the unique column (ReferenceNumber)
-
+        ca.ReferenceNumber
 END;
-GO
 
 CREATE PROCEDURE [dbo].[GetDuplicateAccNo]
     @AccountNumber VARCHAR(50)
@@ -68,7 +67,14 @@ BEGIN
         AND bankDetails.value = @AccountNumber;
 
 END;
-GO
+
+CREATE PROCEDURE GetIfscCode
+    @BankName VARCHAR(255),
+    @BranchName VARCHAR(255)
+AS
+BEGIN
+    SELECT IFSC FROM AllBankDetails WHERE BANK LIKE @BankName+'%' AND BRANCH LIKE @BranchName+'%';
+END;
 
 CREATE PROCEDURE [dbo].[GetOfficerDetails]
     @UserId INT = NULL
@@ -97,7 +103,6 @@ BEGIN
     WHERE 
         (@UserId IS NULL OR u.UserId = @UserId);
 END;
-GO
 
 CREATE PROCEDURE [dbo].[GetServicesByRole]
     @Role VARCHAR(255)
@@ -118,19 +123,18 @@ BEGIN
         jsonValues.designation = @Role
         AND s.Active = 1;
 END;
-GO
 
 CREATE PROCEDURE [dbo].[GetStatusCount]
     @AccessLevel VARCHAR(20),
     @AccessCode INT,
     @ServiceId INT,
-    @TakenBy VARCHAR(50) -- Parameter for designation
+    @TakenBy VARCHAR(50),
+    @DivisionCode INT = NULL  -- <- optional parameter
 AS
 BEGIN
     SET NOCOUNT ON;
 
     WITH RankedStatus AS (
-        -- Assign row numbers to select the latest status per application
         SELECT 
             ca.ReferenceNumber,
             ca.ServiceId,
@@ -146,19 +150,18 @@ BEGIN
         CROSS APPLY
             OPENJSON(ca.WorkFlow) WITH (
                 status NVARCHAR(50) '$.status',
-                timestamp DATETIME '$.timestamp', -- Adjust based on actual field name
-                seq INT '$.seq', -- Optional: if sequence number is used
-                designation NVARCHAR(50) '$.designation' -- Extract designation
+                timestamp DATETIME '$.timestamp',
+                seq INT '$.seq',
+                designation NVARCHAR(50) '$.designation'
             ) AS jsonWorkFlow
         WHERE
             jsonWorkFlow.status IS NOT NULL
-            AND jsonWorkFlow.status <> '' -- Exclude empty status
-            AND jsonWorkFlow.designation = @TakenBy -- Filter by TakenBy designation
+            AND jsonWorkFlow.status <> ''
+            AND jsonWorkFlow.designation = @TakenBy
             AND ca.ServiceId = @ServiceId
             AND ISJSON(ca.WorkFlow) = 1
     ),
     LatestStatus AS (
-        -- Select only the latest status
         SELECT 
             ReferenceNumber,
             ServiceId,
@@ -170,7 +173,6 @@ BEGIN
             rn = 1
     ),
     FilteredApplications AS (
-        -- Filter applications by AccessLevel and AccessCode
         SELECT 
             ls.ReferenceNumber,
             ls.ServiceId,
@@ -182,16 +184,29 @@ BEGIN
                 name NVARCHAR(50) '$.name',
                 value INT '$.value'
             ) AS jsonLocation
+        LEFT JOIN
+            [dbo].[District] d ON jsonLocation.name = 'District' AND jsonLocation.value = d.DistrictID
         WHERE
             ls.ServiceId = @ServiceId
             AND (
-                (@AccessLevel = 'State')
-                OR
-                (@AccessLevel = 'District' AND jsonLocation.name = 'District' AND jsonLocation.value = @AccessCode)
-                OR
-                (@AccessLevel = 'Tehsil' AND jsonLocation.name = 'Tehsil' AND jsonLocation.value = @AccessCode)
+            @AccessLevel = 'State'
+            OR (@AccessLevel = 'District' AND jsonLocation.name = 'District' AND jsonLocation.value = @AccessCode)
+            OR (@AccessLevel = 'Tehsil' AND jsonLocation.name = 'Tehsil' AND jsonLocation.value = @AccessCode)
+            OR (
+                @AccessLevel = 'Division' AND (
+                    -- For District filter
+                    (jsonLocation.name = 'District' AND jsonLocation.value = @AccessCode AND d.Division = @DivisionCode)
+                    -- For Tehsil filter
+                    OR
+                    (jsonLocation.name = 'Tehsil' AND EXISTS (
+                        SELECT 1 FROM Tehsil t
+                        INNER JOIN District d2 ON t.DistrictID = d2.DistrictID
+                        WHERE t.TehsilID = jsonLocation.value AND d2.Division = @DivisionCode
+                    ))
+                )
             )
-        GROUP BY ls.ReferenceNumber, ls.ServiceId, ls.status -- Ensure unique applications
+        )
+        GROUP BY ls.ReferenceNumber, ls.ServiceId, ls.status
     )
     SELECT
         ISNULL(SUM(CASE WHEN fa.status = 'pending' THEN 1 ELSE 0 END), 0) AS PendingCount,
@@ -205,7 +220,6 @@ BEGIN
     FROM
         FilteredApplications fa;
 END;
-GO
 
 CREATE PROCEDURE [dbo].[InsertOfficerDetail]
     @OfficerId INT,
@@ -222,7 +236,6 @@ BEGIN
     -- Return the ID of the newly inserted record
     SELECT SCOPE_IDENTITY() AS NewDetailId;
 END;
-GO
 
 CREATE PROCEDURE [dbo].[RegisterUser]
     @Name VARCHAR(100),
@@ -250,7 +263,6 @@ BEGIN
     SELECT * FROM Users WHERE UserId = SCOPE_IDENTITY();
    
 END;
-GO
 
 CREATE PROCEDURE UpdateNullOfficer
     @NewOfficerId INT,
@@ -284,7 +296,6 @@ WHERE OfficerId IS NULL
   AND Role = @Role;
 
 END;
-GO
 
 CREATE PROCEDURE [dbo].[UserLogin]
     @Username NVARCHAR(50),
@@ -302,4 +313,3 @@ BEGIN
     FROM Users
     WHERE Username = @Username AND [Password] = @PasswordHash;
 END;
-GO

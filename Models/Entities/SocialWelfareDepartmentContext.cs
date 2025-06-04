@@ -122,12 +122,26 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
         modelBuilder.Entity<Certificate>(entity =>
         {
-            entity.HasNoKey();
+            entity.HasKey(e => e.Uuid);
 
-            entity.Property(e => e.EncryptionIv).HasColumnName("encryptionIV");
-            entity.Property(e => e.EncryptionKey).HasColumnName("encryptionKey");
-            entity.Property(e => e.RegisteredDate).HasMaxLength(50);
-            entity.Property(e => e.Uuid).HasColumnName("UUID");
+            entity.Property(e => e.Uuid)
+                .ValueGeneratedOnAdd()
+                .HasColumnName("UUID");
+            entity.Property(e => e.CertifiyingAuthority)
+                .IsUnicode(false)
+                .HasColumnName("certifiyingAuthority");
+            entity.Property(e => e.ExpirationDate)
+                .HasColumnType("datetime")
+                .HasColumnName("expirationDate");
+            entity.Property(e => e.RegisteredDate)
+                .HasMaxLength(50)
+                .HasColumnName("registeredDate");
+            entity.Property(e => e.SerialNumber).HasColumnName("serialNumber");
+
+            entity.HasOne(d => d.Uu).WithOne(p => p.Certificate)
+                .HasForeignKey<Certificate>(d => d.Uuid)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Certificates_Users");
         });
 
         modelBuilder.Entity<CitizenApplication>(entity =>

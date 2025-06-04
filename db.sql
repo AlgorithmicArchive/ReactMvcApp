@@ -37,13 +37,13 @@ CREATE TABLE ApplicationPerDistrict (
 -- DROP TABLE SocialWelfareDepartment.dbo.Certificates;
 
 CREATE TABLE Certificates (
-	UUID int NOT NULL,
+	UUID int IDENTITY(1,1) NOT NULL,
 	OfficerId int NOT NULL,
-	EncryptedCertificateData varbinary(MAX) NULL,
-	EncryptedPassword varbinary(MAX) NULL,
-	encryptionKey varbinary(MAX) NULL,
-	encryptionIV varbinary(MAX) NULL,
-	RegisteredDate nvarchar(50) COLLATE SQL_Latin1_General_CP1_CI_AS NULL
+	serialNumber varbinary(MAX) NULL,
+	certifiyingAuthority varchar(MAX) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+	expirationDate datetime NULL,
+	registeredDate nvarchar(50) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+	CONSTRAINT PK_Certificates PRIMARY KEY (UUID)
 );
 
 
@@ -90,7 +90,7 @@ CREATE TABLE District (
 -- DROP TABLE SocialWelfareDepartment.dbo.OfficerDetails;
 
 CREATE TABLE OfficerDetails (
-	DetailId int IDENTITY(1,1) NOT NULL,
+	DetailId int NOT NULL,
 	OfficerId int NOT NULL,
 	[Role] varchar(50) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
 	AccessLevel varchar(20) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
@@ -129,6 +129,7 @@ CREATE TABLE Services (
 	BankDetails varchar(MAX) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
 	OfficerEditableField nvarchar(MAX) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
 	DocumentFields nvarchar(MAX) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+	Letters nvarchar(MAX) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
 	Pool nvarchar(MAX) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
 	Approve nvarchar(MAX) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
 	ApprovalListEnabled bit NULL,
@@ -165,7 +166,7 @@ CREATE TABLE Users (
 	Name varchar(255) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
 	Username varchar(100) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
 	Email varchar(100) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
-	Password varbinary(MAX) NULL,
+	Password varbinary(64) NULL,
 	MobileNumber varchar(20) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
 	Profile varchar(100) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
 	UserType varchar(30) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,

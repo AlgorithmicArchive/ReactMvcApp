@@ -9,13 +9,13 @@ public partial class Certificate
 
     public int OfficerId { get; set; }
 
-    public byte[]? EncryptedCertificateData { get; set; }
+    public byte[]? SerialNumber { get; set; }
 
-    public byte[]? EncryptedPassword { get; set; }
+    public string? CertifiyingAuthority { get; set; }
 
-    public byte[]? EncryptionKey { get; set; }
-
-    public byte[]? EncryptionIv { get; set; }
+    public DateTime? ExpirationDate { get; set; }
 
     public string? RegisteredDate { get; set; }
+
+    public virtual User Uu { get; set; } = null!;
 }

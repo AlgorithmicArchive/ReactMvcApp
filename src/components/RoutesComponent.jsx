@@ -33,6 +33,7 @@ import CreateWorkflow from "../screens/designer/CreateWorkFlow";
 import ViewUserDetails from "../screens/officer/ViewUserDetails";
 import IncompleteForm from "../screens/user/IncompleteForm";
 import CreateLetterPdf from "../screens/designer/CreateLetterPdf";
+import RegisterDSC from "../screens/officer/RegisterDSC";
 
 const RoutesComponent = () => {
   return (
@@ -68,6 +69,7 @@ const RoutesComponent = () => {
           <Route path="viewUserDetails" element={<ViewUserDetails />} />
           <Route path="bankFile" element={<BankFile />} />
           <Route path="responseFile" element={<ResponseFile />} />
+          <Route path="registerdsc" element={<RegisterDSC />} />
         </Route>
       </Route>
       <Route element={<ProtectedRoute requiredRoles={["Admin"]} />}>

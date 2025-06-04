@@ -258,7 +258,7 @@ const MyNavbar = () => {
                     }
                   >
                     <NavDropdown.Item
-                      onClick={() => handleNavigate("/officer/registerDSC")}
+                      onClick={() => handleNavigate("/officer/registerdsc")}
                     >
                       Register DSC
                     </NavDropdown.Item>
