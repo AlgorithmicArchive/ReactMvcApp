@@ -572,9 +572,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                 helperText={errors[field.name]?.message || ""}
                 fullWidth
                 margin="normal"
-                slotProps={{
-                  input: { readOnly: field.name === "IfscCode" },
-                }}
                 InputLabelProps={{ shrink: true }}
                 inputProps={{
                   maxLength: field.validationFunctions?.includes(

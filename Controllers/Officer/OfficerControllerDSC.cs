@@ -71,6 +71,53 @@ namespace ReactMvcApp.Controllers.Officer
 
 
 
+        public IActionResult GetRegisteredDSC()
+        {
+            var officer = GetOfficerDetails();
+            try
+            {
 
+                // Validate user exists
+                bool officerExists = dbcontext.Users.Any(u => u.UserId == officer.UserId);
+                if (!officerExists)
+                {
+                    return BadRequest(new { success = false, message = "The officer/user ID does not exist." });
+                }
+
+                _logger.LogInformation($"Fetching registered DSC for User ID: {officer.UserId}");
+
+                // Retrieve the certificate for the officer
+                var certificate = dbcontext.Certificates
+                    .Where(c => c.OfficerId == Convert.ToInt32(officer.UserId))
+                    .Select(c => new
+                    {
+                        serial_number = Convert.ToHexString(c.SerialNumber!),
+                        certifying_authority = c.CertifiyingAuthority,
+                        expiration_date = c.ExpirationDate
+                    })
+                    .FirstOrDefault();
+
+                if (certificate == null)
+                {
+                    return NotFound(new { success = false, message = "No registered certificate found for this officer." });
+                }
+
+                return Json(new
+                {
+                    success = true,
+                    certificate = new
+                    {
+                        certificate.serial_number,
+                        certificate.certifying_authority,
+                        certificate.expiration_date
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching registered DSC for User ID: {UserId}", officer?.UserId);
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
     }
 }

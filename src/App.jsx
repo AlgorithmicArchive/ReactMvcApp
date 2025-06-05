@@ -43,6 +43,8 @@ const MainContent = () => {
           navigate("/officer/home");
         } else if (userType === "Admin") {
           navigate("/admin/home");
+        } else if (userType === "Designer") {
+          navigate("/designer/dashboard");
         }
       }
       sessionStorage.setItem("initialLoad", false);
