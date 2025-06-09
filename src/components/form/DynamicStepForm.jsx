@@ -13,6 +13,10 @@ import {
   FormHelperText,
   Button,
   Typography,
+  Stepper,
+  Step,
+  StepLabel,
+  StepIcon,
 } from "@mui/material";
 import { Col, Row } from "react-bootstrap";
 import { fetchFormDetails, GetServiceContent } from "../../assets/fetch";
@@ -504,28 +508,64 @@ const DynamicStepForm = ({ mode = "new", data }) => {
   const renderField = (field, sectionIndex) => {
     const commonStyles = {
       "& .MuiOutlinedInput-root": {
-        "& fieldset": { borderColor: "divider" },
-        "&:hover fieldset": { borderColor: "primary.main" },
-        "&.Mui-focused fieldset": {
-          borderColor: "primary.main",
-          borderWidth: "2px",
+        backgroundColor: "#ffffff", // Tailwind white
+        borderRadius: "8px",
+        transition: "all 0.3s ease-in-out",
+        "& fieldset": {
+          borderColor: "#d1d5db", // Tailwind gray-300
         },
-        backgroundColor: "background.paper",
-        color: "text.primary",
+        "&:hover fieldset": {
+          borderColor: "#D2946A", // Tailwind blue-600
+        },
+        "&.Mui-focused fieldset": {
+          borderColor: "#D2946A",
+          boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.1)", // Blue glow
+        },
+        "&.Mui-error fieldset": {
+          borderColor: "#ef4444", // Tailwind red-500
+        },
+        "&.Mui-disabled": {
+          backgroundColor: "#f3f4f6", // Tailwind gray-100
+        },
       },
       "& .MuiInputLabel-root": {
-        color: "text.primary",
-        "&.Mui-focused": { color: "primary.main" },
+        color: "#6b7280", // Tailwind gray-500
+        fontWeight: "500",
+        fontSize: "0.875rem", // Tailwind text-sm
+        "&.Mui-focused": {
+          color: "#D2946A", // Tailwind blue-600
+        },
+        "&.Mui-error": {
+          color: "#ef4444", // Tailwind red-500
+        },
       },
-      marginBottom: 5,
+      "& .MuiInputBase-input": {
+        fontSize: "1rem", // Tailwind text-base
+        color: "#1f2937", // Tailwind gray-800
+        padding: "12px 14px",
+      },
+      "& .MuiFormHelperText-root": {
+        color: "#ef4444", // Tailwind red-500
+        fontSize: "0.75rem", // Tailwind text-xs
+      },
+      marginBottom: 3,
     };
 
     const buttonStyles = {
-      backgroundColor: "primary.main",
+      backgroundColor: "primary.main", // Tailwind blue-600
       color: "background.paper",
       fontWeight: "bold",
-      "&:hover": { backgroundColor: "primary.dark" },
-      marginBottom: 5,
+      textTransform: "none",
+      borderRadius: "8px",
+      padding: "8px 16px",
+      "&:hover": {
+        backgroundColor: "#1d4ed8", // Tailwind blue-700
+      },
+      "&.Mui-disabled": {
+        backgroundColor: "#9ca3af", // Tailwind gray-400
+        color: "#d1d5db", // Tailwind gray-300
+      },
+      marginBottom: 3,
     };
 
     switch (field.type) {
@@ -891,6 +931,32 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     }
   };
 
+  const CustomStepIcon = (props) => {
+    const { active, completed, icon } = props;
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "36px",
+          height: "36px",
+          borderRadius: "50%",
+          backgroundColor: active || completed ? "#dbeafe" : "#f3f4f6", // Tailwind blue-100 or gray-100
+          boxShadow: active ? "0 0 0 3px rgba(59, 130, 246, 0.1)" : "none", // Blue glow
+          transition: "all 0.3s ease-in-out",
+        }}
+      >
+        {React.cloneElement(icon, {
+          sx: {
+            fontSize: "24px", // Consistent size for all icons
+            color: active || completed ? "#D2946A" : "#6b7280", // Tailwind blue-600 or gray-500
+          },
+        })}
+      </div>
+    );
+  };
+
   if (loading) return <div>Loading form...</div>;
 
   return (
@@ -906,6 +972,26 @@ const DynamicStepForm = ({ mode = "new", data }) => {
       }}
     >
       <form onSubmit={handleSubmit((data) => onSubmit(data, "submit"))}>
+        {formSections.length > 0 && (
+          <Stepper activeStep={currentStep} alternativeLabel sx={{ mb: 4 }}>
+            {formSections.map((section) => (
+              <Step key={section.id}>
+                <StepLabel
+                  slots={{ stepIcon: CustomStepIcon }}
+                  slotProps={{
+                    stepIcon: {
+                      icon: sectionIconMap[section.section] || (
+                        <HelpOutlineIcon />
+                      ),
+                    },
+                  }}
+                >
+                  {section.section}
+                </StepLabel>
+              </Step>
+            ))}
+          </Stepper>
+        )}
         {formSections.length > 0 ? (
           <>
             {formSections.map((section, index) => {
@@ -915,50 +1001,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                   key={section.id}
                   style={{ display: "flex", flexDirection: "column" }}
                 >
-                  <Box
-                    style={{
-                      textAlign: "center",
-                      marginBottom: 50,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 5,
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        backgroundColor: "primary.main",
-                        height: 50,
-                        width: 50,
-                        borderRadius: "50%",
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        color: "#FFFFFF",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {sectionIconMap[section.section] || (
-                        <HelpOutlineIcon sx={{ fontSize: 36 }} />
-                      )}
-                    </Box>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        justifyContent: "flex-start",
-                        alignItems: "flex-start",
-                        width: "100%",
-                      }}
-                    >
-                      <Typography sx={{ fontSize: 12, fontWeight: "bold" }}>
-                        Step {currentStep + 1}/{formSections.length}
-                      </Typography>
-                      <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                        {section.section}
-                      </Typography>
-                    </Box>
-                  </Box>
                   {section.section === "Permanent Address Details" && (
                     <FormControlLabel
                       control={
