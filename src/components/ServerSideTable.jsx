@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 import { Container } from "react-bootstrap";
 import axiosInstance from "../axiosConfig";
-import { ToastContainer, toast } from "react-toastify";
+import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import RefreshIcon from "@mui/icons-material/Refresh";
 
@@ -29,6 +29,11 @@ const ServerSideTable = ({
   pendingApplications = false,
   serviceId,
   refreshTrigger,
+  onPushToPool, // New prop for push to pool
+  onExecuteAction, // New prop for bulk action execution
+  actionOptions, // New prop for action options
+  selectedAction, // New prop for selected action
+  setSelectedAction, // New prop to update selected action
 }) => {
   const theme = useTheme();
 
@@ -44,7 +49,6 @@ const ServerSideTable = ({
     pageSize: 10,
   });
   const [viewType, setViewType] = useState("Inbox"); // 'Inbox' or 'Pool'
-  const [selectedAction, setSelectedAction] = useState("Reject"); // Default action for bulk operations
 
   // Form control styles
   const formControlStyles = {
@@ -128,69 +132,6 @@ const ServerSideTable = ({
     if (newViewType !== null) {
       setViewType(newViewType);
       setRowSelection({}); // Reset row selection when switching views
-    }
-  };
-
-  // Get action options for the bulk action dropdown
-  const getActionOptions = () => {
-    const options = [{ value: "Reject", label: "Reject" }];
-    if (canSanction) {
-      options.push({ value: "Sanction", label: "Sanction" });
-    }
-    return options;
-  };
-
-  // Handle bulk action execution
-  const handleExecuteAction = async (selectedRows) => {
-    if (selectedRows.length === 0) {
-      toast.error("No applications selected.", {
-        position: "top-center",
-        autoClose: 3000,
-        theme: "colored",
-      });
-      return;
-    }
-
-    const selectedData = selectedRows.map(
-      (row) => row.original.referenceNumber
-    );
-    const list = JSON.stringify(selectedData);
-
-    try {
-      console.log("LIST", list);
-      console.log("Selected Action", selectedAction);
-      // const response = await axiosInstance.post("/Officer/UpdatePool", {
-      //   serviceId,
-      //   list,
-      //   action: selectedAction,
-      // });
-
-      // if (response.data.status) {
-      //   toast.success(
-      //     `Successfully ${selectedAction.toLowerCase()}ed applications!`,
-      //     {
-      //       position: "top-center",
-      //       autoClose: 2000,
-      //       theme: "colored",
-      //     }
-      //   );
-      //   fetchData(); // Refresh data after action
-      // } else {
-      //   throw new Error(response.data.message || "Action failed.");
-      // }
-    } catch (error) {
-      console.error(
-        `Error ${selectedAction.toLowerCase()}ing applications:`,
-        error
-      );
-      toast.error(
-        `Failed to ${selectedAction.toLowerCase()} applications. Please try again.`,
-        {
-          position: "top-center",
-          autoClose: 3000,
-          theme: "colored",
-        }
-      );
     }
   };
 
@@ -430,36 +371,7 @@ const ServerSideTable = ({
                   variant="contained"
                   color="primary"
                   disabled={selectedRows.length === 0}
-                  onClick={async () => {
-                    const selectedData = selectedRows.map(
-                      (row) => row.original.referenceNumber
-                    );
-                    const list = JSON.stringify(selectedData);
-                    try {
-                      const response = await axiosInstance.get(
-                        "/Officer/UpdatePool",
-                        {
-                          params: {
-                            serviceId: serviceId,
-                            list: list,
-                          },
-                        }
-                      );
-                      toast.success("Successfully pushed to pool!", {
-                        position: "top-center",
-                        autoClose: 2000,
-                        theme: "colored",
-                      });
-                      fetchData(); // Refresh data after action
-                    } catch (error) {
-                      console.error("Error pushing to pool:", error);
-                      toast.error("Failed to push to pool. Please try again.", {
-                        position: "top-center",
-                        autoClose: 3000,
-                        theme: "colored",
-                      });
-                    }
-                  }}
+                  onClick={() => onPushToPool(selectedRows)}
                   sx={buttonStyles}
                   aria-label="Push selected applications to pool"
                 >
@@ -480,7 +392,7 @@ const ServerSideTable = ({
                       onChange={(e) => setSelectedAction(e.target.value)}
                       size="small"
                     >
-                      {getActionOptions().map((option) => (
+                      {actionOptions.map((option) => (
                         <MenuItem key={option.value} value={option.value}>
                           {option.label}
                         </MenuItem>
@@ -491,7 +403,7 @@ const ServerSideTable = ({
                     variant="contained"
                     color="primary"
                     disabled={selectedRows.length === 0}
-                    onClick={() => handleExecuteAction(selectedRows)}
+                    onClick={() => onExecuteAction(selectedRows)}
                     sx={buttonStyles}
                     aria-label={`Execute ${selectedAction.toLowerCase()} action`}
                   >

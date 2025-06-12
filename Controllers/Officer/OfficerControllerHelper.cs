@@ -84,6 +84,42 @@ namespace ReactMvcApp.Controllers.Officer
             return Json(new { status = true, ServiceId, list });
         }
 
+        public IActionResult RemoveFromPool(int ServiceId, string itemToRemove)
+        {
+            var officer = GetOfficerDetails();
+
+            // Find the existing pool for this officer and service
+            var poolRecord = dbcontext.Pools.FirstOrDefault(p =>
+                p.ServiceId == ServiceId &&
+                p.AccessLevel == officer.AccessLevel &&
+                p.AccessCode == officer.AccessCode);
+
+            if (poolRecord == null || string.IsNullOrWhiteSpace(poolRecord.List))
+            {
+                return Json(new { status = false, message = "No existing pool found." });
+            }
+
+            // Deserialize the current pool list
+            var poolList = JsonConvert.DeserializeObject<List<string>>(poolRecord.List) ?? new List<string>();
+
+            // Remove the specified item (case-sensitive match)
+            bool removed = poolList.Remove(itemToRemove);
+
+            if (!removed)
+            {
+                return Json(new { status = false, message = "Item not found in the pool." });
+            }
+
+            // Serialize and update the pool list
+            poolRecord.List = JsonConvert.SerializeObject(poolList);
+            dbcontext.SaveChanges();
+
+            _logger.LogInformation($"----------------POOL After REMOVE: {JsonConvert.SerializeObject(poolList)}---------------------------");
+
+            return Json(new { status = true, ServiceId, removedItem = itemToRemove });
+        }
+
+
 
         [HttpPost]
         public async Task<IActionResult> UpdatePdf([FromForm] IFormCollection form)

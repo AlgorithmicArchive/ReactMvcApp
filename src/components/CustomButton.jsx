@@ -24,8 +24,8 @@ export default function CustomButton({
         width: width,
         margin: "0 auto",
         textTransform: "none",
-        fontSize: 18,
-        borderRadius: 10,
+        fontSize: 14,
+        borderRadius: 5,
 
         // Use theme-friendly styles for disabled
         "&:disabled": {

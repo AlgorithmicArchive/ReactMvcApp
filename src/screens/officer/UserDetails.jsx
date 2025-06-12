@@ -1,4 +1,3 @@
-// UserDetails.jsx
 import React, { useEffect, useState, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { fetchUserDetail } from "../../assets/fetch";
@@ -32,203 +31,8 @@ import BasicModal from "../../components/BasicModal";
 import SectionSelectCheckboxes from "../../components/SectionSelectCheckboxes";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 
-// CollapsibleFormDetails (unchanged, included for completeness)
-const CollapsibleFormDetails = ({
-  formDetails,
-  formatKey,
-  detailsOpen,
-  setDetailsOpen,
-  onViewPdf,
-}) => {
-  const sections = useMemo(() => {
-    return Array.isArray(formDetails)
-      ? formDetails
-      : Object.entries(formDetails).map(([key, value]) => ({ [key]: value }));
-  }, [formDetails]);
-
-  return (
-    <Box sx={{ width: "100%", maxWidth: 800, mx: "auto", mb: 4 }}>
-      <Box sx={{ display: "flex", justifyContent: "center" }}>
-        <Tooltip
-          title={detailsOpen ? "Collapse details" : "Expand details"}
-          arrow
-        >
-          <Button
-            onClick={() => setDetailsOpen((prev) => !prev)}
-            sx={{
-              backgroundColor: "primary.main",
-              color: "background.paper",
-              fontWeight: 600,
-              textTransform: "none",
-              py: 1,
-              px: 3,
-              borderRadius: 2,
-              mb: 2,
-              "&:hover": {
-                backgroundColor: "primary.dark",
-                transform: "scale(1.02)",
-                transition: "all 0.2s ease",
-              },
-            }}
-            startIcon={detailsOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-            aria-expanded={detailsOpen}
-            aria-label={detailsOpen ? "Collapse details" : "Expand details"}
-          >
-            {detailsOpen ? "Collapse" : "Expand"} Details
-          </Button>
-        </Tooltip>
-      </Box>
-      <Collapse in={detailsOpen} timeout={500}>
-        <Box
-          sx={{
-            bgcolor: "#FFFFFF",
-            borderRadius: 3,
-            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
-            p: { xs: 3, md: 5 },
-            border: "1px solid",
-            borderColor: "divider",
-            maxHeight: 400,
-            overflowY: "auto",
-          }}
-        >
-          {sections.length > 0 ? (
-            sections.map((section, index) => (
-              <Box key={index} sx={{ mb: 4 }}>
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontFamily: "'Playfair Display', serif",
-                    color: "primary.main",
-                    fontWeight: 700,
-                    mb: 2,
-                    borderBottom: "2px solid",
-                    borderColor: "primary.main",
-                    pb: 1,
-                  }}
-                >
-                  {Object.keys(section)[0]}
-                </Typography>
-                <Row className="g-3">
-                  {Object.entries(section).map(([sectionName, fields]) =>
-                    fields.map((field, fieldIndex) => (
-                      <Col xs={12} md={6} key={fieldIndex}>
-                        <Box sx={{ display: "flex", flexDirection: "column" }}>
-                          <Tooltip title={field.label || field.name} arrow>
-                            <Typography
-                              variant="subtitle2"
-                              sx={{
-                                fontWeight: 600,
-                                color: "text.secondary",
-                                mb: 1,
-                                maxWidth: "100%",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                              }}
-                            >
-                              {field.label || field.name}
-                            </Typography>
-                          </Tooltip>
-                          {field.File && field.File !== "" ? (
-                            /\.(jpg|jpeg|png|gif)$/i.test(field.File) ? (
-                              <Box
-                                component="img"
-                                src={field.File}
-                                alt={field.label}
-                                sx={{
-                                  width: "100%",
-                                  height: 150,
-                                  objectFit: "cover",
-                                  borderRadius: 2,
-                                  border: "1px solid",
-                                  borderColor: "divider",
-                                  p: 1,
-                                  transition: "transform 0.3s ease",
-                                  "&:hover": {
-                                    transform: "scale(1.02)",
-                                  },
-                                }}
-                              />
-                            ) : (
-                              <Box sx={{ mt: 1 }}>
-                                <Tooltip title="View document" arrow>
-                                  <Button
-                                    variant="outlined"
-                                    onClick={() => onViewPdf(field.File)}
-                                    startIcon={<PictureAsPdfIcon />}
-                                    sx={{
-                                      textTransform: "none",
-                                      borderColor: "primary.main",
-                                      color: "primary.main",
-                                      "&:hover": {
-                                        backgroundColor: "primary.light",
-                                        borderColor: "primary.dark",
-                                      },
-                                    }}
-                                    aria-label={`View ${field.label} document`}
-                                  >
-                                    View Document
-                                  </Button>
-                                </Tooltip>
-                                {field.Enclosure && (
-                                  <Typography
-                                    variant="caption"
-                                    display="block"
-                                    sx={{ mt: 1, color: "text.secondary" }}
-                                  >
-                                    Enclosure: {field.Enclosure}
-                                  </Typography>
-                                )}
-                              </Box>
-                            )
-                          ) : (
-                            <Typography
-                              variant="body1"
-                              sx={{
-                                border: "1px solid",
-                                borderColor: "divider",
-                                borderRadius: 2,
-                                p: 2,
-                                mt: 1,
-                                color: field.value
-                                  ? "text.primary"
-                                  : "text.secondary",
-                              }}
-                            >
-                              {field.value ?? "--"}
-                            </Typography>
-                          )}
-                        </Box>
-                      </Col>
-                    ))
-                  )}
-                </Row>
-                {index < sections.length - 1 && (
-                  <Divider
-                    sx={{
-                      my: 3,
-                      borderColor: "primary.main",
-                      borderWidth: "1px",
-                    }}
-                  />
-                )}
-              </Box>
-            ))
-          ) : (
-            <Typography
-              sx={{ textAlign: "center", color: "text.secondary", py: 4 }}
-            >
-              No form details available.
-            </Typography>
-          )}
-        </Box>
-      </Collapse>
-    </Box>
-  );
-};
+import { CollapsibleFormDetails } from "../../components/officer/CollapsibleFormDetails";
 
 // Common styles for form fields
 const commonStyles = {
@@ -273,9 +77,11 @@ export default function UserDetails() {
   const { applicationId } = location.state || {};
   const [formDetails, setFormDetails] = useState({});
   const [actionForm, setActionForm] = useState([]);
-  const [detailsOpen, setDetailsOpen] = useState(true);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState("");
+  const [pdfBlob, setPdfBlob] = useState(null);
+  const [isSignedPdf, setIsSignedPdf] = useState(false);
   const [loading, setLoading] = useState(true);
   const [buttonLoading, setButtonLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -288,6 +94,13 @@ export default function UserDetails() {
     getValues,
     formState: { errors },
   } = useForm({ mode: "onChange" });
+
+  // Cleanup blob URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    };
+  }, [pdfUrl]);
 
   // Fetch user details
   useEffect(() => {
@@ -312,7 +125,151 @@ export default function UserDetails() {
   // Handle PDF view
   const handleViewPdf = (url) => {
     setPdfUrl(url);
+    setIsSignedPdf(false);
     setPdfModalOpen(true);
+  };
+
+  // Sign PDF
+  async function signPdf(pdfBlob, pin) {
+    const formData = new FormData();
+    formData.append("pdf", pdfBlob, "document.pdf");
+    formData.append("pin", pin);
+    formData.append(
+      "original_path",
+      applicationId.replace(/\//g, "_") + "SanctionLetter.pdf"
+    );
+    try {
+      const response = await fetch("http://localhost:8000/sign", {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Signing failed: ${errorText}`);
+      }
+      return await response.blob();
+    } catch (error) {
+      throw new Error(
+        "Error signing PDF: " +
+          error.message +
+          "Check If Desktop App is started."
+      );
+    }
+  }
+
+  // Handle PIN submission and sign PDF
+  const handlePinSubmit = async () => {
+    if (!pin) {
+      toast.error("Please enter the USB token PIN.", {
+        position: "top-center",
+        autoClose: 3000,
+        theme: "colored",
+      });
+      return;
+    }
+    setButtonLoading(true);
+    try {
+      const signedBlob = await signPdf(pdfBlob, pin);
+      const updateFormData = new FormData();
+      updateFormData.append("signedPdf", signedBlob, "signed.pdf");
+      updateFormData.append("applicationId", applicationId);
+      const updateResponse = await axiosInstance.post(
+        "/Officer/UpdatePdf",
+        updateFormData
+      );
+      if (!updateResponse.data.status) {
+        throw new Error(
+          "Failed to update PDF on server: " +
+            (updateResponse.data.response || "Unknown error")
+        );
+      }
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      const blobUrl = URL.createObjectURL(signedBlob);
+      setPdfUrl(blobUrl);
+      setPdfBlob(null);
+      setIsSignedPdf(true);
+      setPdfModalOpen(true);
+      toast.success("PDF signed successfully!", {
+        position: "top-center",
+        autoClose: 2000,
+        theme: "colored",
+      });
+    } catch (error) {
+      console.error("Signing error:", error);
+      toast.error("Error signing PDF: " + error.message, {
+        position: "top-center",
+        autoClose: 3000,
+        theme: "colored",
+      });
+    } finally {
+      setButtonLoading(false);
+      setConfirmOpen(false);
+      setPin("");
+    }
+  };
+
+  // Handle form submission
+  const onSubmit = async (data) => {
+    const defaultAction = data.defaultAction;
+    setButtonLoading(true);
+    const formData = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      if (value instanceof File) {
+        formData.append(key, value);
+      } else if (value && typeof value === "object") {
+        formData.append(key, JSON.stringify(value));
+      } else {
+        formData.append(key, value ?? "");
+      }
+    });
+    formData.append("applicationId", applicationId);
+    try {
+      const { data: result } = await axiosInstance.post(
+        "/Officer/HandleAction",
+        formData
+      );
+      if (!result.status) {
+        throw new Error(result.response || "Something went wrong");
+      }
+      if (result.path && defaultAction.toLowerCase() === "sanction") {
+        const pdfResponse = await fetch(result.path);
+        if (!pdfResponse.ok) {
+          throw new Error("Failed to fetch PDF from server");
+        }
+        const newPdfBlob = await pdfResponse.blob();
+        if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+        const blobUrl = URL.createObjectURL(newPdfBlob);
+        setPdfBlob(newPdfBlob);
+        setPdfUrl(blobUrl);
+        setIsSignedPdf(false);
+        setPdfModalOpen(true);
+      } else {
+        toast.success("Action completed successfully!", {
+          position: "top-center",
+          autoClose: 2000,
+          theme: "colored",
+        });
+        navigate("/officer/home");
+      }
+    } catch (error) {
+      console.error("Submission error:", error);
+      toast.error("Error processing request: " + error.message, {
+        position: "top-center",
+        autoClose: 3000,
+        theme: "colored",
+      });
+    } finally {
+      setButtonLoading(false);
+    }
+  };
+
+  // Handle modal close
+  const handleModalClose = () => {
+    setPdfModalOpen(false);
+    if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    setPdfUrl("");
+    setPdfBlob(null);
+    setIsSignedPdf(false);
   };
 
   // Render form fields
@@ -563,110 +520,6 @@ export default function UserDetails() {
     }
   };
 
-  // Sign PDF
-  async function signPdf(pdfBlob, pin) {
-    const formData = new FormData();
-    formData.append("pdf", pdfBlob, "document.pdf");
-    formData.append("pin", pin);
-    formData.append(
-      "original_path",
-      applicationId.replace(/\//g, "_") + "SanctionLetter.pdf"
-    ); // Adjust as needed
-    try {
-      const response = await fetch("http://localhost:8000/sign", {
-        method: "POST",
-        body: formData,
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Signing failed: ${errorText}`);
-      }
-      return await response.blob();
-    } catch (error) {
-      throw new Error("Error signing PDF: " + error.message);
-    }
-  }
-
-  // Handle form submission
-  const onSubmit = async (data) => {
-    if (!pin) {
-      toast.error("Please enter the USB token PIN.", {
-        position: "top-center",
-        autoClose: 3000,
-        theme: "colored",
-      });
-      return;
-    }
-    setButtonLoading(true);
-    const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      if (value instanceof File) {
-        formData.append(key, value);
-      } else if (value && typeof value === "object") {
-        formData.append(key, JSON.stringify(value));
-      } else {
-        formData.append(key, value ?? "");
-      }
-    });
-    formData.append("applicationId", applicationId);
-    try {
-      const { data: result } = await axiosInstance.post(
-        "/Officer/HandleAction",
-        formData
-      );
-      if (!result.status) {
-        throw new Error(result.response || "Something went wrong");
-      }
-      if (result.path) {
-        const pdfResponse = await fetch(result.path);
-        if (!pdfResponse.ok) {
-          throw new Error("Failed to fetch PDF from server");
-        }
-        const pdfBlob = await pdfResponse.blob();
-        const signedBlob = await signPdf(pdfBlob, pin);
-        const updateFormData = new FormData();
-        updateFormData.append("signedPdf", signedBlob, "signed.pdf");
-        updateFormData.append("applicationId", applicationId);
-        const updateResponse = await axiosInstance.post(
-          "/Officer/UpdatePdf",
-          updateFormData
-        );
-        if (!updateResponse.data.status) {
-          throw new Error(
-            "Failed to update PDF on server: " +
-              (updateResponse.data.response || "Unknown error")
-          );
-        }
-        const blobUrl = URL.createObjectURL(signedBlob);
-        setPdfUrl(blobUrl);
-        setPdfModalOpen(true);
-        toast.success("Action completed and PDF signed successfully!", {
-          position: "top-center",
-          autoClose: 2000,
-          theme: "colored",
-        });
-      } else {
-        toast.success("Action completed successfully!", {
-          position: "top-center",
-          autoClose: 2000,
-          theme: "colored",
-        });
-        navigate("/officer/home");
-      }
-    } catch (error) {
-      console.error("Submission or signing error:", error);
-      toast.error("Error processing request: " + error.message, {
-        position: "top-center",
-        autoClose: 3000,
-        theme: "colored",
-      });
-    } finally {
-      setButtonLoading(false);
-      setConfirmOpen(false);
-      setPin(""); // Clear PIN after submission
-    }
-  };
-
   if (loading) {
     return (
       <Box
@@ -690,8 +543,6 @@ export default function UserDetails() {
         maxWidth: 1200,
         padding: 0,
         minHeight: "100vh",
-        background:
-          "linear-gradient(135deg, rgb(252, 252, 252) 0%, rgb(240, 236, 236) 100%)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -703,7 +554,7 @@ export default function UserDetails() {
           width: "100%",
           bgcolor: "background.default",
           borderRadius: 3,
-          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+          boxShadow: "0 8px 3px rgba(0, 0, 0, 0.1)",
           p: { xs: 3, md: 5 },
           transition: "transform 0.3s ease-in-out",
           "&:hover": {
@@ -760,7 +611,7 @@ export default function UserDetails() {
             mx: "auto",
           }}
         >
-          <form onSubmit={handleSubmit(() => setConfirmOpen(true))}>
+          <form onSubmit={handleSubmit(onSubmit)}>
             {actionForm.length > 0 ? (
               actionForm.map((field, index) => {
                 const selectedValue =
@@ -843,11 +694,10 @@ export default function UserDetails() {
 
         {/* Confirmation Dialog */}
         <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
-          <DialogTitle>Confirm Action</DialogTitle>
+          <DialogTitle>Enter USB Token PIN</DialogTitle>
           <DialogContent>
             <Typography>
-              Are you sure you want to submit the action form? This may involve
-              signing and updating documents.
+              Please enter the PIN for your USB token to sign the document.
             </Typography>
             <TextField
               type="password"
@@ -861,7 +711,7 @@ export default function UserDetails() {
               inputProps={{ "aria-describedby": "pin-helper-text" }}
             />
             <FormHelperText id="pin-helper-text">
-              Enter the PIN for your USB token to sign the document.
+              Required to sign the document.
             </FormHelperText>
           </DialogContent>
           <DialogActions>
@@ -869,12 +719,12 @@ export default function UserDetails() {
               Cancel
             </Button>
             <Button
-              onClick={handleSubmit(onSubmit)}
+              onClick={handlePinSubmit}
               color="primary"
               disabled={buttonLoading || !pin}
-              aria-label="Confirm action"
+              aria-label="Submit PIN"
             >
-              Confirm
+              Submit
             </Button>
           </DialogActions>
         </Dialog>
@@ -882,8 +732,10 @@ export default function UserDetails() {
         {/* PDF Modal */}
         <BasicModal
           open={pdfModalOpen}
-          handleClose={() => setPdfModalOpen(false)}
-          Title="Document Viewer"
+          handleClose={handleModalClose}
+          handleActionButton={!isSignedPdf ? () => setConfirmOpen(true) : null}
+          buttonText={!isSignedPdf ? "Sign PDF" : null}
+          Title={isSignedPdf ? "Signed Document" : "Document Preview"}
           pdf={pdfUrl}
           sx={{
             "& .MuiDialog-paper": {
