@@ -478,7 +478,8 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     );
     formdata.append("referenceNumber", referenceNumber);
     let url = "/User/InsertFormDetails";
-    if (additionalDetails != null) {
+    console.log(additionalDetails);
+    if (additionalDetails != null && additionalDetails != "") {
       formdata.append("returnFields", additionalDetails["returnFields"] || "");
       url = "/User/UpdateApplicationDetails";
     }
@@ -492,7 +493,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
           navigate("/user/acknowledge", {
             state: { applicationId: result.referenceNumber },
           });
-        } else {
+        } else if (result.type !== "Save") {
           setReferenceNumber(result.referenceNumber);
           navigate("/user/initiated");
         }
@@ -965,7 +966,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
         width: { xs: "80vw", lg: "50vw" },
         margin: "0 auto",
         backgroundColor: "#FFFFFF",
-        borderRadius: 5,
+        borderRadius: 2,
         color: "primary.main",
         padding: { xs: 3, lg: 10 },
         boxShadow: 20,

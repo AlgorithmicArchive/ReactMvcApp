@@ -15,11 +15,40 @@ namespace ReactMvcApp.Controllers.User
             var details = dbcontext.CitizenApplications
                           .FirstOrDefault(ca => ca.ReferenceNumber == applicationId);
 
-            var formDetails = JsonConvert.DeserializeObject<dynamic>(details!.FormDetails!);
-            var additionalDetails = JsonConvert.DeserializeObject<dynamic>(details.AdditionalDetails!);
+            if (details == null)
+                return NotFound($"Application ID {applicationId} not found.");
 
-            return Json(new { formDetails, additionalDetails });
+            if (string.IsNullOrWhiteSpace(details.FormDetails))
+                return BadRequest("FormDetails is empty.");
+
+            dynamic formDetails;
+            try
+            {
+                formDetails = JsonConvert.DeserializeObject<dynamic>(details.FormDetails)!;
+            }
+            catch (JsonException)
+            {
+                return BadRequest("Malformed JSON in FormDetails.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(details.AdditionalDetails))
+            {
+                dynamic additionalDetails;
+                try
+                {
+                    additionalDetails = JsonConvert.DeserializeObject<dynamic>(details.AdditionalDetails)!;
+                }
+                catch (JsonException)
+                {
+                    return BadRequest("Malformed JSON in AdditionalDetails.");
+                }
+
+                return Json(new { formDetails, additionalDetails });
+            }
+
+            return Json(new { formDetails, AdditionalDetails = "" });
         }
+
 
         public IActionResult GetInitiatedApplications()
         {
