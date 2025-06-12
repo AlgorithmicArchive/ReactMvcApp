@@ -14,6 +14,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { Col, Row } from "react-bootstrap";
 
 export default function RegisterScreen() {
   const {
@@ -140,7 +141,7 @@ export default function RegisterScreen() {
   return (
     <Box
       sx={{
-        minHeight: "100vh",
+        minHeight: "80vh",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
@@ -150,7 +151,7 @@ export default function RegisterScreen() {
       }}
     >
       <Container
-        maxWidth="sm"
+        maxWidth="md"
         sx={{
           backgroundColor: "#fff",
           p: { xs: 3, md: 5 },
@@ -158,102 +159,134 @@ export default function RegisterScreen() {
           boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
         }}
       >
-        <Typography variant="h4" fontWeight={700} textAlign="center" mb={2}>
+        <Typography
+          sx={{
+            fontWeight: 700,
+            color: "primary.main",
+            mb: 1,
+          }}
+          variant="h4"
+          fontWeight={700}
+          textAlign="center"
+          mb={2}
+        >
           Create an Account
         </Typography>
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate autoComplete="off">
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <CustomInputField
-              name="fullName"
-              label="Full Name"
-              control={control}
-              errors={errors}
-              rules={{ required: "Full name is required" }}
-              disabled={loading}
-            />
-            <CustomInputField
-              name="username"
-              label="Username"
-              control={control}
-              errors={errors}
-              rules={{ required: true, validate: validateUsername }}
-              disabled={loading}
-            />
-            <CustomInputField
-              name="email"
-              label="Email"
-              type="email"
-              control={control}
-              errors={errors}
-              rules={{
-                required: true,
-                pattern: {
-                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                  message: "Invalid email format",
-                },
-                validate: validateEmail,
-              }}
-              disabled={loading}
-            />
-            <CustomInputField
-              name="mobileNumber"
-              label="Mobile Number"
-              type="tel"
-              control={control}
-              errors={errors}
-              rules={{
-                required: true,
-                pattern: {
-                  value: /^[0-9]{10}$/,
-                  message: "Enter 10 digit number",
-                },
-                validate: validateMobileNumber,
-              }}
-              disabled={loading}
-            />
-            <CustomInputField
-              name="password"
-              label="Password"
-              type="password"
-              control={control}
-              errors={errors}
-              rules={{
-                required: true,
-                minLength: {
-                  value: 6,
-                  message: "At least 6 characters",
-                },
-              }}
-              disabled={loading}
-            />
-            <CustomInputField
-              name="confirmPassword"
-              label="Confirm Password"
-              type="password"
-              control={control}
-              errors={errors}
-              rules={{
-                required: "Confirm your password",
-                validate: (value) =>
-                  value === getValues("password") || "Passwords do not match",
-              }}
-              disabled={loading}
-            />
+            <Row>
+              <Col xs={6}>
+                <CustomInputField
+                  name="fullName"
+                  label="Full Name"
+                  control={control}
+                  errors={errors}
+                  rules={{ required: "Full name is required" }}
+                  disabled={loading}
+                />
+              </Col>
+              <Col xs={6}>
+                <CustomInputField
+                  name="username"
+                  label="Username"
+                  control={control}
+                  errors={errors}
+                  rules={{ required: true, validate: validateUsername }}
+                  disabled={loading}
+                />
+              </Col>
+            </Row>
+            <Row>
+              <Col xs={6}>
+                <CustomInputField
+                  name="email"
+                  label="Email"
+                  type="email"
+                  control={control}
+                  errors={errors}
+                  rules={{
+                    required: true,
+                    pattern: {
+                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                      message: "Invalid email format",
+                    },
+                    validate: validateEmail,
+                  }}
+                  disabled={loading}
+                />
+              </Col>
+              <Col xs={6}>
+                <CustomInputField
+                  name="mobileNumber"
+                  label="Mobile Number"
+                  type="tel"
+                  control={control}
+                  errors={errors}
+                  rules={{
+                    required: true,
+                    pattern: {
+                      value: /^[0-9]{10}$/,
+                      message: "Enter 10 digit number",
+                    },
+                    validate: validateMobileNumber,
+                  }}
+                  disabled={loading}
+                />
+              </Col>
+            </Row>
+
+            <Row>
+              <Col xs={6}>
+                <CustomInputField
+                  name="password"
+                  label="Password"
+                  type="password"
+                  control={control}
+                  errors={errors}
+                  rules={{
+                    required: true,
+                    minLength: {
+                      value: 6,
+                      message: "At least 6 characters",
+                    },
+                  }}
+                  disabled={loading}
+                />
+              </Col>
+              <Col xs={6}>
+                <CustomInputField
+                  name="confirmPassword"
+                  label="Confirm Password"
+                  type="password"
+                  control={control}
+                  errors={errors}
+                  rules={{
+                    required: "Confirm your password",
+                    validate: (value) =>
+                      value === getValues("password") ||
+                      "Passwords do not match",
+                  }}
+                  disabled={loading}
+                />
+              </Col>
+            </Row>
           </Box>
 
-          <CustomButton
-            type="submit"
-            text={loading ? "Registering..." : "Register"}
-            bgColor="primary.main"
-            color="white"
-            width="100%"
-            disabled={loading}
-            startIcon={
-              loading && <CircularProgress size={20} color="inherit" />
-            }
-            sx={{ mt: 3 }}
-          />
+          <Box sx={{ display: "flex", justifyContent: "center" }}>
+            <CustomButton
+              type="submit"
+              text={loading ? "Registering..." : "Register"}
+              bgColor="primary.main"
+              color="white"
+              width="50%"
+              disabled={loading}
+              startIcon={
+                loading && <CircularProgress size={20} color="inherit" />
+              }
+              sx={{ mt: 3 }}
+            />
+          </Box>
         </form>
 
         <Box textAlign="center" mt={2}>

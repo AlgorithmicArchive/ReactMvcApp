@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import CircularProgress from "@mui/material/CircularProgress";
+import { Col, Row } from "react-bootstrap";
 
 // Validation schema (using inline rules as in original code)
 export default function OfficerRegisterScreen() {
@@ -189,14 +190,14 @@ export default function OfficerRegisterScreen() {
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
-        minHeight: "100vh",
+        minHeight: "80vh",
         background:
           "linear-gradient(135deg, rgb(252, 252, 252) 0%, rgb(240, 236, 236) 100%)", // Specified gradient
         padding: { xs: 2, md: 4 },
       }}
     >
       <Container
-        maxWidth="sm"
+        maxWidth="md"
         sx={{
           bgcolor: "#FFFFFF",
           p: { xs: 3, md: 5 },
@@ -239,165 +240,179 @@ export default function OfficerRegisterScreen() {
           sx={{ display: "flex", flexDirection: "column", gap: 3 }}
         >
           {/* Personal Info */}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <CustomInputField
-              rules={{ required: "Full Name is required" }}
-              label="Full Name"
-              name="fullName"
-              control={control}
-              placeholder="Enter your full name"
-              errors={errors}
-              aria-describedby="fullName-error"
-              disabled={loading}
-            />
-            <CustomInputField
-              rules={{
-                required: "Username is required",
-                validate: validateUsername,
-              }}
-              label="Username"
-              name="username"
-              control={control}
-              placeholder="Choose a username"
-              errors={errors}
-              aria-describedby="username-error"
-              disabled={loading}
-            />
-          </Box>
 
-          {/* Contact Info */}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <CustomInputField
-              rules={{
-                required: "Email is required",
-                pattern: {
-                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                  message: "Invalid email address",
-                },
-                validate: validateEmail,
-              }}
-              label="Email"
-              name="email"
-              control={control}
-              placeholder="Enter your email"
-              type="email"
-              errors={errors}
-              aria-describedby="email-error"
-              disabled={loading}
-            />
-            <CustomInputField
-              rules={{
-                required: "Mobile number is required",
-                pattern: {
-                  value: /^[0-9]{10}$/,
-                  message: "Mobile number must be exactly 10 digits",
-                },
-              }}
-              label="Mobile Number"
-              name="mobileNumber"
-              control={control}
-              placeholder="Enter your mobile number"
-              errors={errors}
-              maxLength={10}
-              type="tel"
-              aria-describedby="mobileNumber-error"
-              disabled={loading}
-            />
-          </Box>
-
-          {/* Password Info */}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <CustomInputField
-              rules={{
-                required: "Password is required",
-                minLength: {
-                  value: 6,
-                  message: "Password must be at least 6 characters",
-                },
-              }}
-              label="Password"
-              name="password"
-              control={control}
-              placeholder="Create a password"
-              type="password"
-              errors={errors}
-              aria-describedby="password-error"
-              disabled={loading}
-            />
-            <CustomInputField
-              rules={{
-                required: "Please confirm your password",
-                validate: (value, formValues) =>
-                  value === formValues.password || "Passwords do not match",
-              }}
-              label="Confirm Password"
-              name="confirmPassword"
-              control={control}
-              placeholder="Confirm your password"
-              type="password"
-              errors={errors}
-              aria-describedby="confirmPassword-error"
-              disabled={loading}
-            />
-          </Box>
-
-          {/* Designation Info */}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <CustomSelectField
-              label="Designation"
-              name="designation"
-              control={control}
-              placeholder="Select Designation"
-              options={designations}
-              rules={{ required: "Designation is required" }}
-              errors={errors}
-              aria-describedby="designation-error"
-              disabled={loading}
-            />
-            {(accessLevelMap[selectedDesignation] === "District" ||
-              accessLevelMap[selectedDesignation] === "Tehsil") && (
-              <CustomSelectField
-                label="District"
-                name="District"
+          <Row>
+            <Col xs={6}>
+              <CustomInputField
+                rules={{ required: "Full Name is required" }}
+                label="Full Name"
+                name="fullName"
                 control={control}
-                placeholder="Select District"
-                options={districtOptions}
-                rules={{ required: "District is required" }}
+                placeholder="Enter your full name"
                 errors={errors}
-                aria-describedby="district-error"
+                aria-describedby="fullName-error"
                 disabled={loading}
               />
-            )}
-            {accessLevelMap[selectedDesignation] === "Tehsil" && (
-              <CustomSelectField
-                label="Tehsil"
-                name="Tehsil"
+            </Col>
+            <Col xs={6}>
+              <CustomInputField
+                rules={{
+                  required: "Username is required",
+                  validate: validateUsername,
+                }}
+                label="Username"
+                name="username"
                 control={control}
-                placeholder="Select Tehsil"
-                options={tehsilOptions}
-                rules={{ required: "Tehsil is required" }}
+                placeholder="Choose a username"
                 errors={errors}
-                aria-describedby="tehsil-error"
+                aria-describedby="username-error"
                 disabled={loading}
               />
-            )}
-            {accessLevelMap[selectedDesignation] === "Division" && (
-              <CustomSelectField
-                label="Division"
-                name="Division"
+            </Col>
+          </Row>
+          <Row>
+            <Col xs={6}>
+              <CustomInputField
+                rules={{
+                  required: "Email is required",
+                  pattern: {
+                    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                    message: "Invalid email address",
+                  },
+                  validate: validateEmail,
+                }}
+                label="Email"
+                name="email"
                 control={control}
-                placeholder="Select Division"
-                options={[
-                  { label: "Jammu", value: 1 },
-                  { label: "Kashmir", value: 2 },
-                ]}
-                rules={{ required: "Division is required" }}
+                placeholder="Enter your email"
+                type="email"
                 errors={errors}
-                aria-describedby="division-error"
+                aria-describedby="email-error"
                 disabled={loading}
               />
-            )}
-          </Box>
+            </Col>
+            <Col xs={6}>
+              <CustomInputField
+                rules={{
+                  required: "Mobile number is required",
+                  pattern: {
+                    value: /^[0-9]{10}$/,
+                    message: "Mobile number must be exactly 10 digits",
+                  },
+                }}
+                label="Mobile Number"
+                name="mobileNumber"
+                control={control}
+                placeholder="Enter your mobile number"
+                errors={errors}
+                maxLength={10}
+                type="tel"
+                aria-describedby="mobileNumber-error"
+                disabled={loading}
+              />
+            </Col>
+          </Row>
+          <Row>
+            <Col xs={6}>
+              <CustomInputField
+                rules={{
+                  required: "Password is required",
+                  minLength: {
+                    value: 6,
+                    message: "Password must be at least 6 characters",
+                  },
+                }}
+                label="Password"
+                name="password"
+                control={control}
+                placeholder="Create a password"
+                type="password"
+                errors={errors}
+                aria-describedby="password-error"
+                disabled={loading}
+              />
+            </Col>
+            <Col xs={6}>
+              <CustomInputField
+                rules={{
+                  required: "Please confirm your password",
+                  validate: (value, formValues) =>
+                    value === formValues.password || "Passwords do not match",
+                }}
+                label="Confirm Password"
+                name="confirmPassword"
+                control={control}
+                placeholder="Confirm your password"
+                type="password"
+                errors={errors}
+                aria-describedby="confirmPassword-error"
+                disabled={loading}
+              />
+            </Col>
+          </Row>
+
+          <Row>
+            <Col xs={6}>
+              <CustomSelectField
+                label="Designation"
+                name="designation"
+                control={control}
+                placeholder="Select Designation"
+                options={designations}
+                rules={{ required: "Designation is required" }}
+                errors={errors}
+                aria-describedby="designation-error"
+                disabled={loading}
+              />
+            </Col>
+            <Col xs={6}>
+              {(accessLevelMap[selectedDesignation] === "District" ||
+                accessLevelMap[selectedDesignation] === "Tehsil") && (
+                <CustomSelectField
+                  label="District"
+                  name="District"
+                  control={control}
+                  placeholder="Select District"
+                  options={districtOptions}
+                  rules={{ required: "District is required" }}
+                  errors={errors}
+                  aria-describedby="district-error"
+                  disabled={loading}
+                />
+              )}
+              {accessLevelMap[selectedDesignation] === "Division" && (
+                <CustomSelectField
+                  label="Division"
+                  name="Division"
+                  control={control}
+                  placeholder="Select Division"
+                  options={[
+                    { label: "Jammu", value: 1 },
+                    { label: "Kashmir", value: 2 },
+                  ]}
+                  rules={{ required: "Division is required" }}
+                  errors={errors}
+                  aria-describedby="division-error"
+                  disabled={loading}
+                />
+              )}
+            </Col>
+            <Col xs={6}>
+              {accessLevelMap[selectedDesignation] === "Tehsil" && (
+                <CustomSelectField
+                  label="Tehsil"
+                  name="Tehsil"
+                  control={control}
+                  placeholder="Select Tehsil"
+                  options={tehsilOptions}
+                  rules={{ required: "Tehsil is required" }}
+                  errors={errors}
+                  aria-describedby="tehsil-error"
+                  disabled={loading}
+                />
+              )}
+            </Col>
+          </Row>
 
           {/* Submit Button */}
           <CustomButton
@@ -405,7 +420,7 @@ export default function OfficerRegisterScreen() {
             bgColor="primary.main"
             color="background.default"
             type="submit"
-            width="100%"
+            width="50%"
             disabled={loading}
             startIcon={
               loading && <CircularProgress size={20} color="inherit" />
