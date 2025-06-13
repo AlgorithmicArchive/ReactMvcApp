@@ -260,3 +260,17 @@ export async function fetchFormDetails(applicationId) {
     additionalDetails: response.data.additionalDetails,
   };
 }
+
+export async function fetchCertificateDetails() {
+  try {
+    const response = await axiosInstance.get('/Officer/GetCertificateDetails');
+    console.log("fetchCertificateDetails response:", response.data); // Debug
+    if (!response.data.success || !response.data.certificateDetails) {
+      throw new Error("Failed to fetch certificate details.");
+    }
+    return response.data.certificateDetails;
+  } catch (error) {
+    console.error("Error fetching certificate details:", error);
+    return null;
+  }
+}

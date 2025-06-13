@@ -1,15 +1,11 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { fetchUserDetail } from "../../assets/fetch";
+import { fetchCertificateDetails, fetchUserDetail } from "../../assets/fetch";
 import { Container, Row, Col } from "react-bootstrap";
 import {
   Box,
   Button,
-  Checkbox,
-  Collapse,
-  Divider,
   FormControl,
-  FormControlLabel,
   FormHelperText,
   InputLabel,
   MenuItem,
@@ -86,6 +82,8 @@ export default function UserDetails() {
   const [buttonLoading, setButtonLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pin, setPin] = useState("");
+  const [certificateDetails, setCertificateDetails] = useState(null);
+
   const navigate = useNavigate();
   const {
     control,
@@ -157,6 +155,42 @@ export default function UserDetails() {
     }
   }
 
+  const checkDesktopApp = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/");
+      if (!response.ok) {
+        toast.error("Desktop application is not running.", {
+          position: "top-center",
+          autoClose: 3000,
+          theme: "colored",
+        });
+        return false;
+      }
+      return true;
+    } catch (error) {
+      toast.error(
+        "Please start the USB Token PDF Signer desktop application.",
+        {
+          position: "top-center",
+          autoClose: 3000,
+          theme: "colored",
+        }
+      );
+      return false;
+    }
+  };
+
+  const fetchCertificates = async (pin) => {
+    const formData = new FormData();
+    formData.append("pin", pin);
+    const response = await fetch("http://localhost:8000/certificates", {
+      method: "POST",
+      body: formData,
+    });
+    if (!response.ok) throw new Error(await response.text());
+    return response.json();
+  };
+
   // Handle PIN submission and sign PDF
   const handlePinSubmit = async () => {
     if (!pin) {
@@ -167,7 +201,41 @@ export default function UserDetails() {
       });
       return;
     }
+
+    const normalizeSerial = (value) =>
+      value?.toString().replace(/\s+/g, "").toUpperCase();
+
     setButtonLoading(true);
+    const certificates = await fetchCertificates(pin);
+    if (!certificates || certificates.length === 0) {
+      throw new Error("No certificates found on the USB token.");
+    }
+
+    const selectedCertificate = certificates[0];
+    const expiration = new Date(certificateDetails.expirationDate);
+    const now = new Date();
+    const tokenSerial = normalizeSerial(selectedCertificate.serial_number);
+    const registeredSerial = normalizeSerial(certificateDetails.serial_number);
+    console.log("certificateDetails:", certificateDetails);
+    console.log("tokenSerial:", tokenSerial);
+    console.log("registeredSerial:", registeredSerial);
+
+    if (tokenSerial !== registeredSerial) {
+      toast.error("Not the registered certificate.", {
+        position: "top-center",
+        autoClose: 3000,
+        theme: "colored",
+      });
+      return;
+    } else if (expiration < now) {
+      toast.error("The registered certificate has expired.", {
+        position: "top-center",
+        autoClose: 3000,
+        theme: "colored",
+      });
+      return;
+    }
+
     try {
       const signedBlob = await signPdf(pdfBlob, pin);
       const updateFormData = new FormData();
@@ -211,6 +279,26 @@ export default function UserDetails() {
   // Handle form submission
   const onSubmit = async (data) => {
     const defaultAction = data.defaultAction;
+
+    if (defaultAction.toLowerCase() == "sanction") {
+      const certificateDetails = await fetchCertificateDetails();
+      if (certificateDetails == null) {
+        toast.error(
+          "You have not registered DSC you can't sanction this application.",
+          {
+            position: "top-center",
+            autoClose: 3000,
+            theme: "colored",
+          }
+        );
+        return;
+      } else {
+        const isAppRunning = await checkDesktopApp();
+        if (!isAppRunning) return;
+        setCertificateDetails(certificateDetails);
+      }
+    }
+
     setButtonLoading(true);
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {

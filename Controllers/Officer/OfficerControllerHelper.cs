@@ -238,5 +238,41 @@ namespace ReactMvcApp.Controllers.Officer
         }
 
 
+        [HttpGet]
+        public IActionResult GetCertificateDetails()
+        {
+            var officer = GetOfficerDetails();
+            try
+            {
+                var certificateDetails = dbcontext.Certificates
+                    .Where(ce => ce.OfficerId == officer.UserId)
+                    .Select(c => new
+                    {
+                        serial_number = Convert.ToHexString(c.SerialNumber!), // Convert to hex string
+                        certifying_authority = c.CertifiyingAuthority,
+                        expiration_date = c.ExpirationDate
+                    })
+                    .FirstOrDefault();
+
+                _logger.LogInformation($"-------Certificate Details: {JsonConvert.SerializeObject(certificateDetails)}-------------------------------");
+
+                if (certificateDetails == null)
+                {
+                    return NotFound(new { success = false, message = "No certificate found for this officer." });
+                }
+
+                return Json(new
+                {
+                    success = true,
+                    certificateDetails
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching certificate details for User ID: {UserId}", officer?.UserId);
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
     }
 }
