@@ -7,6 +7,8 @@ import {
   Select,
   MenuItem,
   TextField,
+  Typography,
+  Paper,
 } from "@mui/material";
 import { Col, Row, Container } from "react-bootstrap";
 import {
@@ -26,7 +28,6 @@ import FieldEditModal from "../../components/designer/FieldEditModal";
 import AdditionalFieldsModal from "../../components/designer/AdditionalFieldsModal";
 import { defaultFormConfig } from "../../assets/dummyData";
 import axiosInstance from "../../axiosConfig";
-
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -70,7 +71,6 @@ export default function CreateService() {
     const service = services.find((s) => s.serviceId === serviceId);
     console.log(service);
     if (service) {
-      // Populate input fields with selected service data
       setServiceName(service.serviceName || "");
       setServiceNameShort(service.nameShort || "");
       setDepartmentName(service.department || "");
@@ -186,14 +186,12 @@ export default function CreateService() {
 
   const handleLogForm = async () => {
     const formdata = new FormData();
-    // Validate input fields
     if (!serviceName || !serviceNameShort || !departmentName) {
       toast.error(
         "Please provide Service Name, Service Name Short, and Department Name."
       );
       return;
     }
-    // Append fields for both new and existing services
     formdata.append("serviceName", serviceName);
     formdata.append("serviceNameShort", serviceNameShort);
     formdata.append("departmentName", departmentName);
@@ -209,7 +207,6 @@ export default function CreateService() {
             ? "Service updated successfully!"
             : "New service created successfully!"
         );
-        // Clear inputs only for new service creation
         if (!selectedServiceId) {
           setServiceName("");
           setServiceNameShort("");
@@ -217,7 +214,6 @@ export default function CreateService() {
           setSections(defaultFormConfig);
           setSelectedServiceId("");
         }
-        // Refresh services list to reflect updated data
         const servicesResponse = await axiosInstance.get("/Base/GetServices");
         if (servicesResponse.data.status && servicesResponse.data.services) {
           setServices(servicesResponse.data.services);
@@ -297,115 +293,211 @@ export default function CreateService() {
   };
 
   return (
-    <Container fluid>
-      <Box
+    <Container fluid sx={{ bgcolor: "grey.100", minHeight: "100vh", py: 4 }}>
+      <Paper
+        elevation={3}
         sx={{
-          width: "100%",
-          height: "100vh",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          padding: 2,
+          maxWidth: 1400,
+          mx: "auto",
+          borderRadius: 3,
+          overflow: "hidden",
+          bgcolor: "white",
         }}
       >
-        <Row style={{ width: "100%" }}>
-          <Col lg={2} md={12} xs={12}>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <FormControl fullWidth>
-                <InputLabel id="service-select-label">
-                  Select Service
-                </InputLabel>
-                <Select
-                  labelId="service-select-label"
-                  value={selectedServiceId}
-                  label="Select Service"
-                  onChange={handleServiceChange}
-                >
-                  <MenuItem value="">
-                    <em>Create New Service</em>
-                  </MenuItem>
-                  {services.map((service) => (
-                    <MenuItem key={service.serviceId} value={service.serviceId}>
-                      {service.serviceName}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <TextField
-                fullWidth
-                label="Service Name"
-                value={serviceName}
-                onChange={(e) => setServiceName(e.target.value)}
-                variant="outlined"
-              />
-              <TextField
-                fullWidth
-                label="Service Name Short"
-                value={serviceNameShort}
-                onChange={(e) => setServiceNameShort(e.target.value)}
-                variant="outlined"
-              />
-              <TextField
-                fullWidth
-                label="Department Name"
-                value={departmentName}
-                onChange={(e) => setDepartmentName(e.target.value)}
-                variant="outlined"
-              />
-              <Button variant="contained" onClick={handleAddSection}>
-                Add Section
-              </Button>
-              <Button variant="contained" onClick={handleLogForm}>
-                Save Form
-              </Button>
-            </Box>
-          </Col>
-          <Col lg={10} md={12} xs={12}>
-            <Box
-              sx={{
-                borderRadius: 5,
-                backgroundColor: "white",
-                width: "100%",
-                height: "80vh",
-                padding: 5,
-                color: "black",
-                overflowY: "auto",
-                display: "flex",
-                flexDirection: "column",
-                gap: 2,
-              }}
-            >
-              <DndContext
-                sensors={sectionSensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleSectionDragEnd}
+        <Box sx={{ p: 4, bgcolor: "primary.main", color: "white" }}>
+          <Typography variant="h4" sx={{ fontWeight: "bold" }}>
+            Service Configuration
+          </Typography>
+          <Typography variant="subtitle1" sx={{ mt: 1, opacity: 0.8 }}>
+            Create or edit services with customizable form sections
+          </Typography>
+        </Box>
+        <Box sx={{ p: 4 }}>
+          <Row>
+            <Col lg={3} md={12} xs={12}>
+              <Paper
+                elevation={2}
+                sx={{
+                  p: 3,
+                  borderRadius: 2,
+                  bgcolor: "grey.50",
+                  height: "100%",
+                }}
               >
-                <SortableContext
-                  items={sections.map((section) => section.id)}
-                  strategy={verticalListSortingStrategy}
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  <FormControl fullWidth variant="outlined">
+                    <InputLabel id="service-select-label">
+                      Select Service
+                    </InputLabel>
+                    <Select
+                      labelId="service-select-label"
+                      value={selectedServiceId}
+                      label="Select Service"
+                      onChange={handleServiceChange}
+                      sx={{
+                        bgcolor: "white",
+                        borderRadius: 1,
+                        "& .MuiOutlinedInput-notchedOutline": {
+                          borderColor: "grey.300",
+                        },
+                      }}
+                    >
+                      <MenuItem value="">
+                        <em>Create New Service</em>
+                      </MenuItem>
+                      {services.map((service) => (
+                        <MenuItem
+                          key={service.serviceId}
+                          value={service.serviceId}
+                        >
+                          {service.serviceName}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <TextField
+                    fullWidth
+                    label="Service Name"
+                    value={serviceName}
+                    onChange={(e) => setServiceName(e.target.value)}
+                    variant="outlined"
+                    sx={{
+                      bgcolor: "white",
+                      borderRadius: 1,
+                      "& .MuiOutlinedInput-root": {
+                        "& fieldset": { borderColor: "grey.300" },
+                        "&:hover fieldset": { borderColor: "primary.main" },
+                      },
+                    }}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Service Name Short"
+                    value={serviceNameShort}
+                    onChange={(e) => setServiceNameShort(e.target.value)}
+                    variant="outlined"
+                    sx={{
+                      bgcolor: "white",
+                      borderRadius: 1,
+                      "& .MuiOutlinedInput-root": {
+                        "& fieldset": { borderColor: "grey.300" },
+                        "&:hover fieldset": { borderColor: "primary.main" },
+                      },
+                    }}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Department Name"
+                    value={departmentName}
+                    onChange={(e) => setDepartmentName(e.target.value)}
+                    variant="outlined"
+                    sx={{
+                      bgcolor: "white",
+                      borderRadius: 1,
+                      "& .MuiOutlinedInput-root": {
+                        "& fieldset": { borderColor: "grey.300" },
+                        "&:hover fieldset": { borderColor: "primary.main" },
+                      },
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={handleAddSection}
+                    sx={{
+                      py: 1.5,
+                      borderRadius: 1,
+                      textTransform: "none",
+                      fontWeight: "bold",
+                      bgcolor: "primary.dark",
+                      "&:hover": {
+                        bgcolor: "primary.main",
+                        transform: "translateY(-2px)",
+                        boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
+                      },
+                      transition: "all 0.2s ease-in-out",
+                    }}
+                  >
+                    Add Section
+                  </Button>
+                  <Button
+                    variant="contained"
+                    onClick={handleLogForm}
+                    sx={{
+                      py: 1.5,
+                      borderRadius: 1,
+                      textTransform: "none",
+                      fontWeight: "bold",
+                      bgcolor: "success.main",
+                      "&:hover": {
+                        bgcolor: "success.dark",
+                        transform: "translateY(-2px)",
+                        boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
+                      },
+                      transition: "all 0.2s ease-in-out",
+                    }}
+                  >
+                    Save Form
+                  </Button>
+                </Box>
+              </Paper>
+            </Col>
+            <Col lg={9} md={12} xs={12}>
+              <Paper
+                elevation={2}
+                sx={{
+                  p: 4,
+                  borderRadius: 2,
+                  bgcolor: "white",
+                  maxHeight: "60vh",
+                  overflowY: "auto",
+                }}
+              >
+                <Typography
+                  variant="h5"
+                  sx={{ mb: 3, fontWeight: "bold", color: "grey.800" }}
                 >
-                  {sections.map((section) => (
-                    <SortableSection
-                      key={section.id}
-                      section={section}
-                      onAddField={handleAddField}
-                      onEditSectionName={handleSectionNameChange}
-                      onEditField={handleEditField}
-                      onAdditonalModal={handleAdditionalModal}
-                      onUpdateSectionFields={handleUpdateSectionFields}
-                      onFieldChange={updateFieldValue}
-                      onRemoveField={handleRemoveField}
-                      onDuplicateSection={handleDuplicateSection}
-                      onRemoveSection={handleRemoveSection}
-                      onAddSectionAfter={handleAddSectionAfter}
-                    />
-                  ))}
-                </SortableContext>
-              </DndContext>
-            </Box>
-          </Col>
-        </Row>
-      </Box>
+                  Form Sections
+                </Typography>
+                {sections.length === 0 ? (
+                  <Typography
+                    sx={{ color: "grey.600", textAlign: "center", py: 4 }}
+                  >
+                    No sections added yet. Click "Add Section" to start.
+                  </Typography>
+                ) : (
+                  <DndContext
+                    sensors={sectionSensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleSectionDragEnd}
+                  >
+                    <SortableContext
+                      items={sections.map((section) => section.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {sections.map((section) => (
+                        <SortableSection
+                          key={section.id}
+                          section={section}
+                          onAddField={handleAddField}
+                          onEditSectionName={handleSectionNameChange}
+                          onEditField={handleEditField}
+                          onAdditonalModal={handleAdditionalModal}
+                          onUpdateSectionFields={handleUpdateSectionFields}
+                          onFieldChange={updateFieldValue}
+                          onRemoveField={handleRemoveField}
+                          onDuplicateSection={handleDuplicateSection}
+                          onRemoveSection={handleRemoveSection}
+                          onAddSectionAfter={handleAddSectionAfter}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                )}
+              </Paper>
+            </Col>
+          </Row>
+        </Box>
+      </Paper>
 
       {isModalOpen && selectedField && (
         <FieldEditModal
@@ -416,6 +508,20 @@ export default function CreateService() {
             setSelectedField(null);
           }}
           updateField={updateField}
+          sx={{
+            bgcolor: "white",
+            borderRadius: 2,
+            boxShadow: 24,
+            p: 4,
+            maxWidth: 600,
+            mx: "auto",
+            mt: "10%",
+            "& .MuiButton-root": {
+              borderRadius: 1,
+              textTransform: "none",
+              fontWeight: "bold",
+            },
+          }}
         />
       )}
       {isAdditionalModalOpen && selectedField && (
@@ -426,6 +532,20 @@ export default function CreateService() {
             setSelectedField(null);
           }}
           updateField={updateField}
+          sx={{
+            bgcolor: "white",
+            borderRadius: 2,
+            boxShadow: 24,
+            p: 4,
+            maxWidth: 600,
+            mx: "auto",
+            mt: "10%",
+            "& .MuiButton-root": {
+              borderRadius: 1,
+              textTransform: "none",
+              fontWeight: "bold",
+            },
+          }}
         />
       )}
 
@@ -436,6 +556,7 @@ export default function CreateService() {
         newestOnTop
         closeOnClick
         pauseOnHover
+        theme="colored"
       />
     </Container>
   );

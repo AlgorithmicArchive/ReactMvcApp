@@ -1,14 +1,21 @@
-// src/components/SortableField.js
 import React from "react";
-import { Box, TextField, Typography, Select, MenuItem } from "@mui/material";
+import {
+  Box,
+  TextField,
+  Typography,
+  Select,
+  MenuItem,
+  IconButton,
+  Paper,
+  Tooltip,
+} from "@mui/material";
 import { Col } from "react-bootstrap";
 import { useSortable } from "@dnd-kit/sortable";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faPen,
-  faPlusCircle,
-  faTrash,
-} from "@fortawesome/free-solid-svg-icons";
+import { CSS } from "@dnd-kit/utilities";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 
 const SortableField = ({
   field,
@@ -35,16 +42,23 @@ const SortableField = ({
             placeholder={field.label}
             value={field.value || ""}
             onChange={(e) => onFieldChange(sectionId, field.id, e.target.value)}
-            slotProps={{
-              htmlInput:
-                field.type === "file" && field.accept !== ""
-                  ? { accept: field.accept }
-                  : {},
-            }}
+            inputProps={
+              field.type === "file" && field.accept !== ""
+                ? { accept: field.accept }
+                : {}
+            }
             sx={{
-              border: "2px solid #312C51",
-              ".MuiOutlinedInput-input": { color: "#312C51" },
-              "&::placeholder": { color: "#312C51" },
+              bgcolor: "white",
+              borderRadius: 1,
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": { borderColor: "grey.300" },
+                "&:hover fieldset": { borderColor: "primary.main" },
+                "& .MuiInputBase-input": { color: "grey.800" },
+              },
+              "& .MuiInputBase-input::placeholder": {
+                color: "grey.500",
+                opacity: 1,
+              },
             }}
           />
         );
@@ -59,7 +73,13 @@ const SortableField = ({
             }
             onChange={(e) => onFieldChange(sectionId, field.id, e.target.value)}
             sx={{
-              ".MuiSelect-select": { color: "#312C51" },
+              bgcolor: "white",
+              borderRadius: 1,
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": { borderColor: "grey.300" },
+                "&:hover fieldset": { borderColor: "primary.main" },
+                "& .MuiSelect-select": { color: "grey.800" },
+              },
             }}
           >
             {field.options.map((option, index) => (
@@ -83,8 +103,13 @@ const SortableField = ({
                 onFieldChange(sectionId, field.id, e.target.value)
               }
               sx={{
-                border: "2px solid #312C51",
-                ".MuiSelect-select": { color: "#312C51" },
+                bgcolor: "white",
+                borderRadius: 1,
+                "& .MuiOutlinedInput-root": {
+                  "& fieldset": { borderColor: "grey.300" },
+                  "&:hover fieldset": { borderColor: "primary.main" },
+                  "& .MuiSelect-select": { color: "grey.800" },
+                },
               }}
             >
               {field.options.map((option, index) => (
@@ -95,7 +120,7 @@ const SortableField = ({
             </Select>
             <TextField
               fullWidth
-              type={"file"}
+              type="file"
               size="small"
               placeholder={field.label}
               value={field.value || ""}
@@ -103,10 +128,18 @@ const SortableField = ({
                 onFieldChange(sectionId, field.id, e.target.value)
               }
               sx={{
-                marginTop: 2,
-                border: "2px solid #312C51",
-                ".MuiOutlinedInput-input": { color: "#312C51" },
-                "&::placeholder": { color: "#312C51" },
+                mt: 2,
+                bgcolor: "white",
+                borderRadius: 1,
+                "& .MuiOutlinedInput-root": {
+                  "& fieldset": { borderColor: "grey.300" },
+                  "&:hover fieldset": { borderColor: "primary.main" },
+                  "& .MuiInputBase-input": { color: "grey.800" },
+                },
+                "& .MuiInputBase-input::placeholder": {
+                  color: "grey.500",
+                  opacity: 1,
+                },
               }}
             />
           </>
@@ -120,8 +153,17 @@ const SortableField = ({
             value={field.value || ""}
             onChange={(e) => onFieldChange(sectionId, field.id, e.target.value)}
             sx={{
-              ".MuiOutlinedInput-input": { color: "#312C51" },
-              "&::placeholder": { color: "#312C51" },
+              bgcolor: "white",
+              borderRadius: 1,
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": { borderColor: "grey.300" },
+                "&:hover fieldset": { borderColor: "primary.main" },
+                "& .MuiInputBase-input": { color: "grey.800" },
+              },
+              "& .MuiInputBase-input::placeholder": {
+                color: "grey.500",
+                opacity: 1,
+              },
             }}
           />
         );
@@ -130,61 +172,91 @@ const SortableField = ({
 
   return (
     <Col ref={setNodeRef} xs={12} lg={field.span}>
-      <Box
-        {...attributes}
-        {...listeners}
+      <Paper
+        elevation={1}
         sx={{
-          border: "1px solid #321C51",
+          p: 2,
+          mb: 2,
           borderRadius: 1,
-          padding: 1,
-          marginBottom: 1,
-          backgroundColor: "#fff",
-          transform: transform
-            ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
-            : undefined,
+          bgcolor: "white",
+          border: "1px solid",
+          borderColor: "grey.200",
+          "&:hover": {
+            borderColor: "primary.main",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+          },
+          transition: "all 0.2s ease-in-out",
+          transform: CSS.Transform.toString(transform),
           transition,
         }}
       >
-        <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+        <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+          <Tooltip title="Drag to reorder">
+            <IconButton
+              {...attributes}
+              {...listeners}
+              sx={{ mr: 1, cursor: "grab" }}
+            >
+              <DragIndicatorIcon sx={{ color: "grey.600" }} />
+            </IconButton>
+          </Tooltip>
           <Typography
             variant="body2"
-            sx={{ color: "#312C51", fontSize: 12, fontWeight: "bold" }}
+            sx={{ flexGrow: 1, fontWeight: "bold", color: "grey.800" }}
           >
-            {field.label}
+            {field.label} ({field.type})
           </Typography>
           {(field.editable ?? true) && (
-            <Box>
-              <FontAwesomeIcon
-                icon={faPen}
-                style={{ cursor: "pointer", marginRight: 8 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEditField({ ...field, sectionId });
-                }}
-              />
-              <FontAwesomeIcon
-                icon={faTrash}
-                style={{ cursor: "pointer" }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRemoveField(sectionId, field.id); // Call the handler
-                }}
-              />
-              {field.type === "select" && (
-                <FontAwesomeIcon
-                  icon={faPlusCircle}
-                  style={{ cursor: "pointer" }}
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <Tooltip title="Edit Field">
+                <IconButton
                   onClick={(e) => {
                     e.stopPropagation();
-                    onAdditonalModal({ ...field, sectionId });
+                    onEditField({ ...field, sectionId });
                   }}
-                />
+                  sx={{
+                    color: "primary.main",
+                    "&:hover": { bgcolor: "primary.light" },
+                  }}
+                >
+                  <EditIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Remove Field">
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemoveField(sectionId, field.id);
+                  }}
+                  sx={{
+                    color: "error.main",
+                    "&:hover": { bgcolor: "error.light" },
+                  }}
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </Tooltip>
+              {field.type === "select" && (
+                <Tooltip title="Additional Settings">
+                  <IconButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAdditonalModal({ ...field, sectionId });
+                    }}
+                    sx={{
+                      color: "secondary.main",
+                      "&:hover": { bgcolor: "secondary.light" },
+                    }}
+                  >
+                    <AddCircleOutlineIcon />
+                  </IconButton>
+                </Tooltip>
               )}
             </Box>
           )}
         </Box>
         {renderFieldInput()}
-      </Box>
+      </Paper>
     </Col>
   );
 };
