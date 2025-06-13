@@ -11,6 +11,12 @@ import {
   IconButton,
   Box,
   Modal,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableRow,
+  Paper,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -34,6 +40,16 @@ const CreateLetterPdf = () => {
   const [services, setServices] = useState([]);
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [selectedLetterType, setSelectedLetterType] = useState("");
+
+  // Dummy data for preview (mimicking backend data)
+  const dummyOfficer = {
+    AccessLevel: "District",
+    Role: "District Officer",
+    AccessCode: "JMU",
+  };
+  const dummyApplicationId = "APP/2025/123";
+  const dummyAreaName = "Jammu District";
+  const dummyBranchOffice = "Jammu Main Branch";
 
   // Fetch services and form fields
   useEffect(() => {
@@ -238,174 +254,358 @@ const CreateLetterPdf = () => {
     }
   };
 
+  // PDF Preview Component
+  const PDFPreview = () => {
+    if (!selectedServiceId || !selectedLetterType) {
+      return (
+        <Typography variant="body1" sx={{ color: "grey.600", mt: 2 }}>
+          Select a service and letter type to preview the PDF.
+        </Typography>
+      );
+    }
+
+    const sanctionedFromWhere =
+      dummyOfficer.AccessLevel !== "State"
+        ? `Office of The ${dummyOfficer.Role}, ${dummyAreaName}`
+        : "SOCIAL WELFARE DEPARTMENT\nCIVIL SECRETARIAT, JAMMU / SRINAGAR";
+
+    return (
+      <Box
+        sx={{
+          bgcolor: "white",
+          border: "1px solid #ccc",
+          borderRadius: 2,
+          p: 3,
+          minHeight: "80vh",
+          overflowY: "auto",
+        }}
+      >
+        <Box sx={{ textAlign: "center", mb: 2 }}>
+          <Box
+            component="img"
+            src="/assets/images/emblem.png"
+            alt="Emblem"
+            sx={{ width: 50, height: 50, mb: 2 }}
+          />
+          <Typography variant="h6" sx={{ fontWeight: "bold", fontSize: 16 }}>
+            Union Territory of Jammu and Kashmir
+          </Typography>
+          {selectedLetterType === "Sanction" && (
+            <Typography
+              variant="body1"
+              sx={{ fontSize: 16, whiteSpace: "pre-line" }}
+            >
+              {sanctionedFromWhere}
+            </Typography>
+          )}
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: "bold", fontSize: 16, mt: 1 }}
+          >
+            {selectedLetterType === "Sanction"
+              ? `Sanction Letter for ${letterFor || "Beneficiary"}`
+              : "Acknowledgement"}
+          </Typography>
+        </Box>
+
+        {selectedLetterType === "Sanction" && (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body1" sx={{ fontSize: 14, mb: 2 }}>
+              To
+              <br />
+              THE MANAGER
+              <br />
+              THE JAMMU AND KASHMIR BANK LIMITED
+              <br />
+              B/O {dummyBranchOffice}
+            </Typography>
+            <Typography variant="body2" sx={{ fontSize: 12, mb: 2 }}>
+              Please Find the Particulars of Beneficiary given below:
+            </Typography>
+          </Box>
+        )}
+
+        <TableContainer component={Paper} sx={{ mb: 2 }}>
+          <Table>
+            <TableBody>
+              {rows.map((row, index) => (
+                <TableRow key={index}>
+                  <TableCell sx={{ border: "1px solid #ccc", fontSize: 12 }}>
+                    {row.label}
+                  </TableCell>
+                  <TableCell sx={{ border: "1px solid #ccc", fontSize: 12 }}>
+                    {getPreview(row)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        {selectedLetterType === "Sanction" && (
+          <>
+            <Typography variant="body2" sx={{ fontSize: 10, mb: 2 }}>
+              {information}
+            </Typography>
+            <TableContainer component={Paper} sx={{ mb: 2 }}>
+              <Table>
+                <TableBody>
+                  <TableRow>
+                    <TableCell
+                      sx={{
+                        border: "none",
+                        fontSize: 8,
+                        color: "blue",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      NO: {dummyApplicationId}
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        border: "none",
+                        fontSize: 10,
+                        fontWeight: "bold",
+                        textAlign: "right",
+                      }}
+                    >
+                      ISSUING AUTHORITY
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TableContainer component={Paper}>
+              <Table>
+                <TableBody>
+                  <TableRow>
+                    <TableCell
+                      sx={{
+                        border: "none",
+                        fontSize: 8,
+                        color: "blue",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      Date: {new Date().toLocaleDateString("en-GB")}
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        border: "none",
+                        fontSize: 10,
+                        fontWeight: "bold",
+                        textAlign: "right",
+                      }}
+                    >
+                      {dummyOfficer.Role}, {dummyAreaName}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </>
+        )}
+      </Box>
+    );
+  };
+
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "grey.100", p: 3 }}>
-      <Container sx={{ bgcolor: "white", borderRadius: 2, boxShadow: 3, p: 4 }}>
-        <Typography
-          variant="h4"
-          sx={{ color: "grey.800", mb: 4, fontWeight: "bold" }}
-        >
-          Configure Letter
-        </Typography>
-
-        <Box sx={{ mb: 4 }}>
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel id="service-select-label">Select Service</InputLabel>
-            <Select
-              labelId="service-select-label"
-              value={selectedServiceId}
-              label="Select Service"
-              onChange={(e) => setSelectedServiceId(e.target.value)}
+      <Container
+        maxWidth
+        sx={{
+          bgcolor: "white",
+          borderRadius: 2,
+          boxShadow: 3,
+          p: 4,
+        }}
+      >
+        <Row>
+          <Col md={6}>
+            <Typography
+              variant="h4"
+              sx={{ color: "grey.800", mb: 4, fontWeight: "bold" }}
             >
-              <MenuItem value="" disabled>
-                Select a Service
-              </MenuItem>
-              {services.map((service) => (
-                <MenuItem key={service.serviceId} value={service.serviceId}>
-                  {service.serviceName}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+              Configure Letter
+            </Typography>
 
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel id="letter-type-select-label">
-              Select Letter Type
-            </InputLabel>
-            <Select
-              labelId="letter-type-select-label"
-              value={selectedLetterType}
-              label="Select Letter Type"
-              onChange={(e) => setSelectedLetterType(e.target.value)}
-              disabled={!selectedServiceId}
-            >
-              <MenuItem value="" disabled>
-                Select a Letter Type
-              </MenuItem>
-              <MenuItem value="Sanction">Sanction</MenuItem>
-              <MenuItem value="Acknowledgement">Acknowledgement</MenuItem>
-            </Select>
-          </FormControl>
-
-          <TextField
-            label="Letter For"
-            value={letterFor}
-            onChange={(e) => setLetterFor(e.target.value)}
-            fullWidth
-            variant="outlined"
-            sx={{ mb: 2, bgcolor: "grey.50" }}
-            disabled={!selectedServiceId || !selectedLetterType}
-          />
-          <TextField
-            label="Letter Information"
-            value={information}
-            onChange={(e) => setInformation(e.target.value)}
-            fullWidth
-            variant="outlined"
-            sx={{ bgcolor: "grey.50" }}
-            disabled={!selectedServiceId || !selectedLetterType}
-          />
-        </Box>
-
-        <Box sx={{ mb: 4 }}>
-          {rows.map((row, index) => (
-            <Box
-              key={index}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                p: 2,
-                bgcolor: "grey.50",
-                borderRadius: 1,
-                mb: 2,
-              }}
-            >
-              <Row className="w-100 align-items-center" style={{ margin: 0 }}>
-                <Col md={5} style={{ padding: 0 }}>
-                  <Box
-                    sx={{
-                      border: "1px solid #ccc",
-                      padding: "8px 12px",
-                      height: "100%",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    <Typography variant="body1">
-                      {row.label || `Row ${index + 1}`}
-                    </Typography>
-                  </Box>
-                </Col>
-                <Col md={5} style={{ padding: 0 }}>
-                  <Box
-                    sx={{
-                      border: "1px solid #ccc",
-                      padding: "8px 12px",
-                      height: "100%",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    <Typography variant="body1">{getPreview(row)}</Typography>
-                  </Box>
-                </Col>
-                <Col
-                  md={2}
-                  className="d-flex justify-content-end"
-                  style={{ padding: 0 }}
+            <Box sx={{ mb: 4 }}>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel id="service-select-label">
+                  Select Service
+                </InputLabel>
+                <Select
+                  labelId="service-select-label"
+                  value={selectedServiceId}
+                  label="Select Service"
+                  onChange={(e) => setSelectedServiceId(e.target.value)}
                 >
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => openModalForEdit(index)}
-                    sx={{ minWidth: "80px", mr: 1 }}
-                    disabled={!selectedServiceId || !selectedLetterType}
-                  >
-                    Edit
-                  </Button>
-                  <IconButton
-                    onClick={() => handleRemoveRow(index)}
-                    color="error"
-                    size="small"
-                    disabled={!selectedServiceId || !selectedLetterType}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Col>
-              </Row>
-            </Box>
-          ))}
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={openModalForAdd}
-            sx={{ bgcolor: "blue.500" }}
-            disabled={!selectedServiceId || !selectedLetterType}
-          >
-            Add Row
-          </Button>
-        </Box>
+                  <MenuItem value="" disabled>
+                    Select a Service
+                  </MenuItem>
+                  {services.map((service) => (
+                    <MenuItem key={service.serviceId} value={service.serviceId}>
+                      {service.serviceName}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
-        <Box sx={{ display: "flex", gap: 2 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleGenerateJson}
-            disabled={!selectedServiceId || !selectedLetterType}
-          >
-            Generate JSON
-          </Button>
-          <Button
-            variant="contained"
-            color="success"
-            onClick={saveLetter}
-            disabled={!selectedServiceId || !selectedLetterType}
-          >
-            Save Letter
-          </Button>
-        </Box>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel id="letter-type-select-label">
+                  Select Letter Type
+                </InputLabel>
+                <Select
+                  labelId="letter-type-select-label"
+                  value={selectedLetterType}
+                  label="Select Letter Type"
+                  onChange={(e) => setSelectedLetterType(e.target.value)}
+                  disabled={!selectedServiceId}
+                >
+                  <MenuItem value="" disabled>
+                    Select a Letter Type
+                  </MenuItem>
+                  <MenuItem value="Sanction">Sanction</MenuItem>
+                  <MenuItem value="Acknowledgement">Acknowledgement</MenuItem>
+                </Select>
+              </FormControl>
+
+              <TextField
+                label="Letter For"
+                value={letterFor}
+                onChange={(e) => setLetterFor(e.target.value)}
+                fullWidth
+                variant="outlined"
+                sx={{ mb: 2, bgcolor: "grey.50" }}
+                disabled={!selectedServiceId || !selectedLetterType}
+              />
+              <TextField
+                label="Letter Information"
+                value={information}
+                onChange={(e) => setInformation(e.target.value)}
+                fullWidth
+                variant="outlined"
+                sx={{ bgcolor: "grey.50" }}
+                disabled={!selectedServiceId || !selectedLetterType}
+              />
+            </Box>
+
+            <Box sx={{ mb: 4 }}>
+              {rows.map((row, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    p: 2,
+                    bgcolor: "grey.50",
+                    borderRadius: 1,
+                    mb: 2,
+                  }}
+                >
+                  <Row
+                    className="w-100 align-items-center"
+                    style={{ margin: 0 }}
+                  >
+                    <Col md={5} style={{ padding: 0 }}>
+                      <Box
+                        sx={{
+                          border: "1px solid #ccc",
+                          padding: "8px 12px",
+                          height: "100%",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        <Typography variant="body1">
+                          {row.label || `Row ${index + 1}`}
+                        </Typography>
+                      </Box>
+                    </Col>
+                    <Col md={5} style={{ padding: 0 }}>
+                      <Box
+                        sx={{
+                          border: "1px solid #ccc",
+                          padding: "8px 12px",
+                          height: "100%",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        <Typography variant="body1">
+                          {getPreview(row)}
+                        </Typography>
+                      </Box>
+                    </Col>
+                    <Col
+                      md={2}
+                      className="d-flex justify-content-end"
+                      style={{ padding: 0 }}
+                    >
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => openModalForEdit(index)}
+                        sx={{ minWidth: "80px", mr: 1 }}
+                        disabled={!selectedServiceId || !selectedLetterType}
+                      >
+                        Edit
+                      </Button>
+                      <IconButton
+                        onClick={() => handleRemoveRow(index)}
+                        color="error"
+                        size="small"
+                        disabled={!selectedServiceId || !selectedLetterType}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Col>
+                  </Row>
+                </Box>
+              ))}
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={openModalForAdd}
+                sx={{ bgcolor: "blue.500" }}
+                disabled={!selectedServiceId || !selectedLetterType}
+              >
+                Add Row
+              </Button>
+            </Box>
+
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleGenerateJson}
+                disabled={!selectedServiceId || !selectedLetterType}
+              >
+                Generate JSON
+              </Button>
+              <Button
+                variant="contained"
+                color="success"
+                onClick={saveLetter}
+                disabled={!selectedServiceId || !selectedLetterType}
+              >
+                Save Letter
+              </Button>
+            </Box>
+          </Col>
+
+          <Col md={6}>
+            <Typography
+              variant="h5"
+              sx={{ color: "grey.800", mb: 2, fontWeight: "bold" }}
+            >
+              PDF Preview
+            </Typography>
+            <PDFPreview />
+          </Col>
+        </Row>
 
         <Modal open={modalOpen} onClose={closeModal}>
           <Box

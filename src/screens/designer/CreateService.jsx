@@ -57,26 +57,35 @@ export default function CreateService() {
 
   const handleServiceChange = (e) => {
     const serviceId = e.target.value;
-    if (serviceId == "") {
+    setSelectedServiceId(serviceId);
+
+    if (serviceId === "") {
       setSections(defaultFormConfig);
-      setSelectedServiceId("");
+      setServiceName("");
+      setServiceNameShort("");
+      setDepartmentName("");
       return;
     }
-    setSelectedServiceId(serviceId);
-    setServiceName(""); // Clear inputs when selecting an existing service
-    setServiceNameShort("");
+
     const service = services.find((s) => s.serviceId === serviceId);
-    if (service && service.formElement) {
-      try {
-        const config = JSON.parse(service.formElement);
-        setSections(config);
-      } catch (err) {
-        console.error("Error parsing formElements:", err);
-        toast.error("Invalid form data format.");
+    console.log(service);
+    if (service) {
+      // Populate input fields with selected service data
+      setServiceName(service.serviceName || "");
+      setServiceNameShort(service.nameShort || "");
+      setDepartmentName(service.department || "");
+      if (service.formElement) {
+        try {
+          const config = JSON.parse(service.formElement);
+          setSections(config);
+        } catch (err) {
+          console.error("Error parsing formElements:", err);
+          toast.error("Invalid form data format.");
+          setSections([]);
+        }
+      } else {
         setSections([]);
       }
-    } else {
-      setSections([]);
     }
   };
 
@@ -177,18 +186,17 @@ export default function CreateService() {
 
   const handleLogForm = async () => {
     const formdata = new FormData();
-    if (!selectedServiceId) {
-      // For new service, ensure serviceName and serviceNameShort are provided
-      if (!serviceName || !serviceNameShort || !departmentName) {
-        toast.error(
-          "Please provide both Service Name and Service Name Short and Department Name."
-        );
-        return;
-      }
-      formdata.append("serviceName", serviceName);
-      formdata.append("serviceNameShort", serviceNameShort);
-      formdata.append("departmentName", departmentName);
+    // Validate input fields
+    if (!serviceName || !serviceNameShort || !departmentName) {
+      toast.error(
+        "Please provide Service Name, Service Name Short, and Department Name."
+      );
+      return;
     }
+    // Append fields for both new and existing services
+    formdata.append("serviceName", serviceName);
+    formdata.append("serviceNameShort", serviceNameShort);
+    formdata.append("departmentName", departmentName);
     formdata.append("serviceId", selectedServiceId);
     formdata.append("formElement", JSON.stringify(sections));
 
@@ -201,11 +209,18 @@ export default function CreateService() {
             ? "Service updated successfully!"
             : "New service created successfully!"
         );
-        // Clear inputs after successful save
+        // Clear inputs only for new service creation
         if (!selectedServiceId) {
           setServiceName("");
           setServiceNameShort("");
+          setDepartmentName("");
           setSections(defaultFormConfig);
+          setSelectedServiceId("");
+        }
+        // Refresh services list to reflect updated data
+        const servicesResponse = await axiosInstance.get("/Base/GetServices");
+        if (servicesResponse.data.status && servicesResponse.data.services) {
+          setServices(servicesResponse.data.services);
         }
       } else {
         toast.error(result.response || "Failed to save service.");
@@ -316,31 +331,27 @@ export default function CreateService() {
                   ))}
                 </Select>
               </FormControl>
-              {!selectedServiceId && (
-                <>
-                  <TextField
-                    fullWidth
-                    label="Service Name"
-                    value={serviceName}
-                    onChange={(e) => setServiceName(e.target.value)}
-                    variant="outlined"
-                  />
-                  <TextField
-                    fullWidth
-                    label="Service Name Short"
-                    value={serviceNameShort}
-                    onChange={(e) => setServiceNameShort(e.target.value)}
-                    variant="outlined"
-                  />
-                  <TextField
-                    fullWidth
-                    label="Department Name"
-                    value={departmentName}
-                    onChange={(e) => setDepartmentName(e.target.value)}
-                    variant="outlined"
-                  />
-                </>
-              )}
+              <TextField
+                fullWidth
+                label="Service Name"
+                value={serviceName}
+                onChange={(e) => setServiceName(e.target.value)}
+                variant="outlined"
+              />
+              <TextField
+                fullWidth
+                label="Service Name Short"
+                value={serviceNameShort}
+                onChange={(e) => setServiceNameShort(e.target.value)}
+                variant="outlined"
+              />
+              <TextField
+                fullWidth
+                label="Department Name"
+                value={departmentName}
+                onChange={(e) => setDepartmentName(e.target.value)}
+                variant="outlined"
+              />
               <Button variant="contained" onClick={handleAddSection}>
                 Add Section
               </Button>
