@@ -881,6 +881,67 @@ namespace ReactMvcApp.Controllers
         }
 
 
+        [HttpGet]
+        public IActionResult GetWebServicesDashboard(int pageIndex, int pageSize)
+        {
+            // Fetch services from the database
+            var webServices = dbcontext.WebServices.FromSqlRaw("SELECT * FROM WebService");
+
+            // Initialize columns
+            var columns = new List<dynamic>
+            {
+                new { header = "S.No", accessorKey = "sno" },
+                new { header = "Service Name", accessorKey = "servicename" },
+            };
+
+            // Initialize data list
+            List<dynamic> data = [];
+            List<dynamic> customActions = [];
+            int index = 1;
+
+            foreach (var item in webServices)
+            {
+                var button = new
+                {
+                    function = "OpenForm",
+                    parameters = new[] { item.ServiceId },
+                    buttonText = "Apply"
+                };
+
+                string serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == item.ServiceId)!.ServiceName!;
+
+                data.Add(new
+                {
+                    sno = index,
+                    servicename = serviceName,
+                    webserviceId = item.Id,
+                    isActive = item.IsActive,
+                });
+
+                customActions.Add(new
+                {
+                    id = index,
+                    tooltip = item.IsActive ? "Deactivate" : "Activate",
+                    color = "#F0C38E",
+                    actionFunction = "ToggleWebServiceActivation"
+                });
+                index++;
+            }
+
+            // Pagination logic
+            var pagedData = data.Skip(pageIndex * pageSize).Take(pageSize).ToList();
+
+            return Json(new
+            {
+                status = true,
+                data = pagedData,
+                columns,
+                customActions,
+                totalCount = data.Count
+            });
+        }
+
+
         [HttpPost]
         public IActionResult ToggleServiceActive([FromForm] IFormCollection form)
         {
@@ -895,6 +956,127 @@ namespace ReactMvcApp.Controllers
             svc.Active = active;
             dbcontext.SaveChanges();
             return Json(new { status = true, active = svc.Active });
+        }
+
+        [HttpPost]
+        [Route("Base/ToggleWebServiceActive")]
+        public IActionResult ToggleWebServiceActive([FromForm] IFormCollection form)
+        {
+            try
+            {
+                int webserviceId = Convert.ToInt32(form["webserviceId"].ToString());
+                bool active = Convert.ToBoolean(form["active"]);
+
+                _logger.LogInformation($"---------- WebService ID: {webserviceId}   Is Active: {active}-----------------------");
+
+                var svc = dbcontext.WebServices.FirstOrDefault(s => s.Id == webserviceId);
+                if (svc == null)
+                {
+                    return Json(new { status = false, message = "Web service not found" });
+                }
+
+                if (active)
+                {
+                    // Check for other active web services for the same ServiceId
+                    var otherActiveWebService = dbcontext.WebServices
+                        .FirstOrDefault(ws => ws.ServiceId == svc.ServiceId && ws.Id != webserviceId && ws.IsActive);
+
+                    if (otherActiveWebService != null)
+                    {
+                        var serviceName = dbcontext.Services
+                            .FirstOrDefault(s => s.ServiceId == svc.ServiceId)?.ServiceName ?? "Unknown";
+                        return Json(new
+                        {
+                            status = false,
+                            message = $"Another web service (ID: {otherActiveWebService.Id}) is already active for service '{serviceName}'. Please deactivate it first."
+                        });
+                    }
+                }
+
+                // Update the requested web service
+                svc.IsActive = active;
+                svc.UpdatedAt = DateTime.UtcNow.ToString("o");
+                dbcontext.SaveChanges();
+
+                return Json(new
+                {
+                    status = true,
+                    active = svc.IsActive,
+                    message = $"Web service {(active ? "activated" : "deactivated")} successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error toggling web service activation");
+                return Json(new { status = false, message = $"Error toggling web service: {ex.Message}" });
+            }
+        }
+
+        [HttpGet]
+        [Route("Base/GetWebService/{serviceId}")]
+        public IActionResult GetWebService(int serviceId)
+        {
+            try
+            {
+                var webService = dbcontext.WebServices
+                    .FirstOrDefault(ws => ws.ServiceId == serviceId && ws.IsActive);
+
+                if (webService == null)
+                {
+                    return Json(new { status = false, message = "No configuration found for the specified service" });
+                }
+
+                return Json(new
+                {
+                    status = true,
+                    config = new
+                    {
+                        webService.ServiceId,
+                        webService.ApiEndPoint,
+                        webService.OnAction,
+                        webService.FieldMappings,
+                        webService.CreatedAt,
+                        webService.UpdatedAt
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = $"Error fetching configuration: {ex.Message}" });
+            }
+        }
+
+        [HttpPost]
+        public IActionResult SaveWebService([FromForm] IFormCollection form)
+        {
+            try
+            {
+                var serviceId = form["serviceId"];
+                var apiEndPoint = form["apiEndPoint"].ToString();
+                var onAction = form["onAction"].ToString(); // JSON string
+                var fieldMappings = form["fieldMappings"].ToString(); // JSON string
+                var createdAt = form["createdAt"].ToString();
+                var updatedAt = form["updatedAt"].ToString();
+
+                var webservice = new WebService
+                {
+                    ServiceId = Convert.ToInt32(serviceId),
+                    ApiEndPoint = apiEndPoint,
+                    OnAction = onAction,
+                    FieldMappings = fieldMappings,
+                    CreatedAt = createdAt,
+                    UpdatedAt = updatedAt
+                };
+
+                dbcontext.WebServices.Add(webservice);
+                dbcontext.SaveChanges();
+
+                return Json(new { status = true, message = "Web service configuration saved successfully", serviceId, apiEndPoint });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = "Failed to save configuration", error = ex.Message });
+            }
         }
     }
 }

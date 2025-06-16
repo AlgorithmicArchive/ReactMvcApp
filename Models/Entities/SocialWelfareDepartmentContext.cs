@@ -17,8 +17,6 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     public virtual DbSet<ActionHistory> ActionHistories { get; set; }
 
-    public virtual DbSet<AllBankDetail> AllBankDetails { get; set; }
-
     public virtual DbSet<ApplicationPerDistrict> ApplicationPerDistricts { get; set; }
 
     public virtual DbSet<Certificate> Certificates { get; set; }
@@ -38,6 +36,8 @@ public partial class SocialWelfareDepartmentContext : DbContext
     public virtual DbSet<Tehsil> Tehsils { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
+
+    public virtual DbSet<WebService> WebServices { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         => optionsBuilder.UseSqlServer("Name=DefaultConnection");
@@ -66,48 +66,6 @@ public partial class SocialWelfareDepartmentContext : DbContext
                 .HasColumnName("referenceNumber");
         });
 
-        modelBuilder.Entity<AllBankDetail>(entity =>
-        {
-            entity.HasNoKey();
-
-            entity.Property(e => e.Address)
-                .HasMaxLength(255)
-                .IsUnicode(false)
-                .HasColumnName("ADDRESS");
-            entity.Property(e => e.Bank)
-                .HasMaxLength(255)
-                .IsUnicode(false)
-                .HasColumnName("BANK");
-            entity.Property(e => e.Branch)
-                .HasMaxLength(255)
-                .IsUnicode(false)
-                .HasColumnName("BRANCH");
-            entity.Property(e => e.City1)
-                .HasMaxLength(255)
-                .IsUnicode(false)
-                .HasColumnName("CITY1");
-            entity.Property(e => e.City2)
-                .HasMaxLength(255)
-                .IsUnicode(false)
-                .HasColumnName("CITY2");
-            entity.Property(e => e.Ifsc)
-                .HasMaxLength(255)
-                .IsUnicode(false)
-                .HasColumnName("IFSC");
-            entity.Property(e => e.Phone)
-                .HasMaxLength(255)
-                .IsUnicode(false)
-                .HasColumnName("PHONE");
-            entity.Property(e => e.State)
-                .HasMaxLength(255)
-                .IsUnicode(false)
-                .HasColumnName("STATE");
-            entity.Property(e => e.StdCode)
-                .HasMaxLength(255)
-                .IsUnicode(false)
-                .HasColumnName("STD CODE");
-        });
-
         modelBuilder.Entity<ApplicationPerDistrict>(entity =>
         {
             entity.HasKey(e => e.Uuid);
@@ -124,9 +82,7 @@ public partial class SocialWelfareDepartmentContext : DbContext
         {
             entity.HasKey(e => e.Uuid);
 
-            entity.Property(e => e.Uuid)
-                .ValueGeneratedOnAdd()
-                .HasColumnName("UUID");
+            entity.Property(e => e.Uuid).HasColumnName("UUID");
             entity.Property(e => e.CertifiyingAuthority)
                 .IsUnicode(false)
                 .HasColumnName("certifiyingAuthority");
@@ -137,11 +93,6 @@ public partial class SocialWelfareDepartmentContext : DbContext
                 .HasMaxLength(50)
                 .HasColumnName("registeredDate");
             entity.Property(e => e.SerialNumber).HasColumnName("serialNumber");
-
-            entity.HasOne(d => d.Uu).WithOne(p => p.Certificate)
-                .HasForeignKey<Certificate>(d => d.Uuid)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Certificates_Users");
         });
 
         modelBuilder.Entity<CitizenApplication>(entity =>
@@ -280,6 +231,30 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.Username)
                 .HasMaxLength(100)
                 .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<WebService>(entity =>
+        {
+            entity.ToTable("WebService");
+
+            entity.Property(e => e.ApiEndPoint).HasColumnName("apiEndPoint");
+            entity.Property(e => e.CreatedAt)
+                .HasMaxLength(100)
+                .IsUnicode(false)
+                .HasColumnName("createdAt");
+            entity.Property(e => e.FieldMappings).HasColumnName("fieldMappings");
+            entity.Property(e => e.IsActive).HasColumnName("isActive");
+            entity.Property(e => e.OnAction).HasColumnName("onAction");
+            entity.Property(e => e.ServiceId).HasColumnName("serviceId");
+            entity.Property(e => e.UpdatedAt)
+                .HasMaxLength(100)
+                .IsUnicode(false)
+                .HasColumnName("updatedAt");
+
+            entity.HasOne(d => d.Service).WithMany(p => p.WebServices)
+                .HasForeignKey(d => d.ServiceId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_WebService_Services");
         });
 
         OnModelCreatingPartial(modelBuilder);

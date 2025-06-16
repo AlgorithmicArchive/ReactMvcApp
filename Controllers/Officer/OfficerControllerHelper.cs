@@ -274,5 +274,99 @@ namespace ReactMvcApp.Controllers.Officer
             }
         }
 
+
+
+        private JObject MapServiceFieldsFromForm(JObject formDetailsObj, JObject fieldMapping)
+        {
+            var formValues = new Dictionary<string, string>();
+
+            // Step 1: Extract form field values
+            foreach (var section in formDetailsObj.Properties())
+            {
+                if (section.Value is JArray fieldsArray)
+                {
+                    foreach (JObject field in fieldsArray)
+                    {
+                        var name = field["name"]?.ToString();
+                        var value = field["value"]?.ToString()
+                                    ?? field["File"]?.ToString()
+                                    ?? field["Enclosure"]?.ToString();
+
+                        if (!string.IsNullOrEmpty(name) && value != null)
+                        {
+                            formValues[name] = value;
+                        }
+                    }
+                }
+            }
+
+            // Step 2: Replace with values, and convert District/Tehsil IDs
+            JObject ReplaceKeys(JObject mapping)
+            {
+                var result = new JObject();
+
+                foreach (var prop in mapping.Properties())
+                {
+                    if (prop.Value.Type == JTokenType.Object)
+                    {
+                        result[prop.Name] = ReplaceKeys((JObject)prop.Value);
+                    }
+                    else if (prop.Value.Type == JTokenType.String)
+                    {
+                        string lookupKey = prop.Value.ToString();
+                        string? actualValue = null;
+
+                        if (formValues.TryGetValue(lookupKey, out var rawValue))
+                        {
+                            if (lookupKey.Contains("District", StringComparison.OrdinalIgnoreCase) && int.TryParse(rawValue, out int districtId))
+                            {
+                                actualValue = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == districtId)?.DistrictName;
+                            }
+                            else if (lookupKey.Contains("Tehsil", StringComparison.OrdinalIgnoreCase) && int.TryParse(rawValue, out int tehsilId))
+                            {
+                                actualValue = dbcontext.Tehsils.FirstOrDefault(t => t.TehsilId == tehsilId)?.TehsilName;
+                            }
+                            else
+                            {
+                                actualValue = rawValue;
+                            }
+                        }
+
+                        result[prop.Name] = actualValue ?? "";
+                    }
+                    else
+                    {
+                        result[prop.Name] = prop.Value;
+                    }
+                }
+
+                return result;
+            }
+
+            return ReplaceKeys(fieldMapping);
+        }
+
+
+
+
+
+        // Inside your controller or a service
+        private static async Task<string> SendApiRequestAsync(string url, object payload)
+        {
+            using (var client = new HttpClient())
+            {
+
+                var json = JsonConvert.SerializeObject(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await client.PostAsync(url, content);
+                response.EnsureSuccessStatusCode(); // throws if not 2xx
+
+                return await response.Content.ReadAsStringAsync();
+            }
+        }
+
+
+
     }
 }

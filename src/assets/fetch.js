@@ -209,15 +209,15 @@ export async function fetchAcknowledgement(applicationId) {
       params: { ApplicationId: applicationId },
     });
     console.log("RESPONSE", response.data);
-    const { path } = response.data;
-    console.log(path);
+    const { fullPath } = response.data;
+    console.log(fullPath);
 
     // Ensure that the path includes the protocol
-    const completePath = path.startsWith("http")
-      ? path
-      : `http://localhost:5004/${path}`;
+    const completePath = fullPath.startsWith("http")
+      ? fullPath
+      : `http://localhost:5004/${fullPath}`;
     console.log("Complete PDF Path:", completePath);
-    return { path, completePath };
+    return { fullPath, completePath };
   } catch (error) {
     console.error("Error fetching PDF path:", error);
   }

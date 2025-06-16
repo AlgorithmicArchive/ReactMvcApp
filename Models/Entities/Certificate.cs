@@ -16,6 +16,4 @@ public partial class Certificate
     public DateTime? ExpirationDate { get; set; }
 
     public string? RegisteredDate { get; set; }
-
-    public virtual User Uu { get; set; } = null!;
 }

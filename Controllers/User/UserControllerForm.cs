@@ -105,12 +105,46 @@ namespace ReactMvcApp.Controllers.User
 
             if (status == "Initiated")
             {
+                var getServices = dbcontext.WebServices.FirstOrDefault(ws => ws.ServiceId == serviceId && ws.IsActive);
+                if (getServices != null)
+                {
+                    var onAction = JsonConvert.DeserializeObject<List<string>>(getServices.OnAction);
+                    if (onAction != null && onAction.Contains("Submission"))
+                    {
+                        var fieldMapObj = JObject.Parse(getServices.FieldMappings);
+                        var fieldMap = MapServiceFieldsFromForm(formDetailsObj, fieldMapObj);
+                        await SendApiRequestAsync(getServices.ApiEndPoint, fieldMap);
+                    }
+                }
+                string fullPath = FetchAcknowledgementDetails(referenceNumber);
+                _logger.LogInformation($"--------- Full Path :{fullPath} ------------------");
+                string? fullName = GetFormFieldValue(formDetailsObj, "ApplicantName");
+                string? serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId)!.ServiceName;
+                string? email = GetFormFieldValue(formDetailsObj, "Email");
+                string htmlMessage = $@"
+                    <div style='font-family: Arial, sans-serif;'>
+                        <h2 style='color: #2e6c80;'>Form Submission Received</h2>
+                        <p>Dear {fullName},</p>
+                        <p>Thank you for submitting your form. We have successfully received your submission. Below are the details:</p>
+                        <ul style='line-height: 1.6;'>
+                            <li><strong>Form Type:</strong> {serviceName}</li>
+                            <li><strong>Submission Date:</strong> {DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")}</li>
+                            <li><strong>Reference ID:</strong> {referenceNumber}</li>
+                        </ul>
+                        <p>Please find the acknowledgment of your submission attached below. Kindly review it for your records.</p>
+                        <p>If you have any questions or did not submit this form, please contact our support team immediately.</p>
+                        <br />
+                        <p style='font-size: 12px; color: #888;'>Thank you,<br />Your Application Team</p>
+                    </div>";
+                var attachments = new List<string> { fullPath };
+                await emailSender.SendEmailWithAttachments(email!, "Form Submission", htmlMessage, attachments);
                 helper.InsertHistory(referenceNumber, "Application Submission", "Citizen");
                 return Json(new { status = true, referenceNumber, type = "Submit" });
             }
             else
                 return Json(new { status = true, referenceNumber, type = "Save" });
         }
+
         [HttpPost]
         public async Task<IActionResult> UpdateApplicationDetails([FromForm] IFormCollection form)
         {

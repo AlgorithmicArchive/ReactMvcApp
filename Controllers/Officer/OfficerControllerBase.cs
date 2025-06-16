@@ -410,7 +410,7 @@ namespace ReactMvcApp.Controllers.Officer
             return Json(new { status = true });
         }
         [HttpPost]
-        public IActionResult HandleAction([FromForm] IFormCollection form)
+        public async Task<IActionResult> HandleAction([FromForm] IFormCollection form)
         {
             OfficerDetailsModal officer = GetOfficerDetails();
             string applicationId = form["applicationId"].ToString();
@@ -420,6 +420,7 @@ namespace ReactMvcApp.Controllers.Officer
             try
             {
                 var formdetails = dbcontext.CitizenApplications.FirstOrDefault(fd => fd.ReferenceNumber == applicationId);
+                var formDetailsObj = JObject.Parse(formdetails!.FormDetails!);
                 var workFlow = formdetails!.WorkFlow;
                 int currentPlayer = formdetails.CurrentPlayer;
                 if (!string.IsNullOrEmpty(workFlow))
@@ -477,13 +478,50 @@ namespace ReactMvcApp.Controllers.Officer
                 formdetails.WorkFlow = workFlow;
                 dbcontext.SaveChanges();
                 helper.InsertHistory(applicationId, action, officer.Role!);
+
+                var getServices = dbcontext.WebServices.FirstOrDefault(ws => ws.ServiceId == formdetails.ServiceId && ws.IsActive);
+                if (getServices != null)
+                {
+                    var onAction = JsonConvert.DeserializeObject<List<string>>(getServices.OnAction);
+                    if (onAction != null && onAction.Contains(action))
+                    {
+                        var fieldMapObj = JObject.Parse(getServices.FieldMappings);
+                        var fieldMap = MapServiceFieldsFromForm(formDetailsObj, fieldMapObj);
+                        await SendApiRequestAsync(getServices.ApiEndPoint, fieldMap);
+                    }
+                }
+                string fullName = GetFieldValue("ApplicantName", formDetailsObj);
+                string serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == formdetails.ServiceId)!.ServiceName!;
+                string appliedDistrictId = GetFieldValue("District", formDetailsObj);
+                string districtName = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == Convert.ToInt32(appliedDistrictId))!.DistrictName!;
+                string userEmail = GetFieldValue("Email", formDetailsObj);
+                string htmlMessage = $@"
+                <div style='font-family: Arial, sans-serif;'>
+                    <h2 style='color: #2e6c80;'>Application Status Update</h2>
+                    <p>Dear {fullName},</p>
+                    <p>Your application for the service <strong>{serviceName}</strong> has been <strong>{action}</strong> by <strong>{officer.Role} {districtName}</strong>.</p>
+                    <ul style='line-height: 1.6;'>
+                        <li><strong>Form Type:</strong> {serviceName}</li>
+                        <li><strong>Status:</strong> {action}</li>
+                        <li><strong>Updated By:</strong> {officer.Role}</li>
+                        <li><strong>Reference ID:</strong> {formdetails.ReferenceNumber}</li>
+                        <li><strong>Update Date:</strong> {DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")}</li>
+                    </ul>
+                    <p>If you have any questions regarding this update, feel free to contact our support team.</p>
+                    <br />
+                    <p style='font-size: 12px; color: #888;'>Thank you,<br />Your Application Team</p>
+                </div>";
+
+
+                await emailSender.SendEmail(userEmail, "Application Status Update", htmlMessage);
+
                 if (action == "Sanction")
                 {
                     var lettersJson = dbcontext.Services
                         .FirstOrDefault(s => s.ServiceId == Convert.ToInt32(formdetails.ServiceId))?.Letters;
 
                     var parsed = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(lettersJson!);
-                    var sanctionSection = parsed!.TryGetValue("Sanction", out dynamic sanction) ? sanction : null;
+                    dynamic? sanctionSection = parsed!.TryGetValue("Sanction", out var sanction) ? sanction : null;
                     var tableFields = sanctionSection!.tableFields;
                     var sanctionLetterFor = sanctionSection.letterFor;
                     var information = sanctionSection.information;

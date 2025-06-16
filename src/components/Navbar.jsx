@@ -380,6 +380,13 @@ const MyNavbar = () => {
                     >
                       Letter Pdf
                     </NavDropdown.Item>
+                    <NavDropdown.Item
+                      onClick={() =>
+                        handleNavigate("/designer/createwebservice")
+                      }
+                    >
+                      Web Service
+                    </NavDropdown.Item>
                   </NavDropdown>
                 </div>
               </>

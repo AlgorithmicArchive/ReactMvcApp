@@ -36,4 +36,6 @@ public partial class Service
     public bool Active { get; set; }
 
     public virtual ICollection<Pool> Pools { get; set; } = new List<Pool>();
+
+    public virtual ICollection<WebService> WebServices { get; set; } = new List<WebService>();
 }

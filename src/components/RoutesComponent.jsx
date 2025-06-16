@@ -34,6 +34,7 @@ import ViewUserDetails from "../screens/officer/ViewUserDetails";
 import IncompleteForm from "../screens/user/IncompleteForm";
 import CreateLetterPdf from "../screens/designer/CreateLetterPdf";
 import RegisterDSC from "../screens/officer/RegisterDSC";
+import CreateWebService from "../screens/designer/CreateWebService";
 
 const RoutesComponent = () => {
   return (
@@ -83,6 +84,7 @@ const RoutesComponent = () => {
           <Route path="createservice" element={<CreateService />} />
           <Route path="createworkflow" element={<CreateWorkflow />} />
           <Route path="createletterpdf" element={<CreateLetterPdf />} />
+          <Route path="createwebservice" element={<CreateWebService />} />
           <Route path="dynamicform" element={<DynamicStepForm />} />
         </Route>
       </Route>

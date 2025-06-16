@@ -11,6 +11,12 @@ namespace SendEmails
 
         public async Task SendEmail(string email, string subject, string message)
         {
+            await SendEmailWithAttachments(email, subject, message, null);
+        }
+
+        // New method to support attachments
+        public async Task SendEmailWithAttachments(string email, string subject, string message, IList<string>? attachmentPaths = null)
+        {
             try
             {
                 string? senderEmail = _emailSettings.SenderEmail;
@@ -31,6 +37,24 @@ namespace SendEmails
                         IsBodyHtml = true
                     };
                     mailMessage.To.Add(email);
+
+                    // Add attachments if provided
+                    if (attachmentPaths != null && attachmentPaths.Any())
+                    {
+                        foreach (var path in attachmentPaths)
+                        {
+                            _logger.LogInformation($"---------full Path:{path}------------------");
+                            if (File.Exists(path))
+                            {
+                                var attachment = new Attachment(path);
+                                mailMessage.Attachments.Add(attachment);
+                            }
+                            else
+                            {
+                                _logger.LogWarning($"Attachment file not found: {path}");
+                            }
+                        }
+                    }
 
                     await client.SendMailAsync(mailMessage);
                 }

@@ -1,7 +1,6 @@
-namespace SendEmails
+// Ensure your interface reflects the new method
+public interface IEmailSender
 {
-    public interface IEmailSender
-    {
-        Task SendEmail(string email, string Subject, string message);
-    }
+    Task SendEmail(string email, string subject, string message);
+    Task SendEmailWithAttachments(string email, string subject, string message, IList<string>? attachmentPaths = null);
 }

@@ -1,20 +1,8 @@
-const sanctionLetterFields = [
-    {
-        Label:"Label",
-        string:"test string {0} and another field {1} {2}",
-        fileds:["Field1","Field2","Field3"]
-    }
-]
-
-
-// NO DDC IN Pension Scheme
-
-// Pension 
-//     Director SW Jammu
-//     Director SW Kashmir
-
-// Marriage 
-//     Director Finance
-
-
-
+const webservice = {
+    webServiceId:1,
+    serviceId:1,
+    apiEndPoint:"",
+    onAction:["Submission","Reject","Sanction"],
+    fieldMappings:{},
+    createdAt:""
+}

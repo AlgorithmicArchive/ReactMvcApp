@@ -75,69 +75,6 @@ namespace ReactMvcApp.Controllers.User
             return result;
         }
 
-
-
-        // public IActionResult GetApplicationDetails(string applicationId)
-        // {
-        //     var (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails, documents) = helper.GetUserDetailsAndRelatedData(applicationId);
-
-        //     var generalDetails = new List<KeyValuePair<string, object>>
-        //     {
-        //         new("Reference Number", userDetails.ApplicationId),
-        //         new("Applicant Name", userDetails.ApplicantName),
-        //         new("Applicant Image", userDetails.ApplicantImage),
-        //         new("Email", userDetails.Email),
-        //         new("Mobile Number", userDetails.MobileNumber),
-        //         new("Parentage", userDetails.RelationName + $"({userDetails.Relation})"),
-        //         new("Date Of Birth", userDetails.DateOfBirth),
-        //         new("Category", userDetails.Category),
-        //         new("Submission Date", userDetails.SubmissionDate)
-        //     };
-
-        //     foreach (var kvp in serviceSpecific!)
-        //     {
-        //         string key = kvp.Key;
-        //         string value = kvp.Value;
-        //         bool isDigitOnly = value.All(char.IsDigit);
-        //         if (!isDigitOnly)
-        //         {
-        //             generalDetails.Insert(8, new KeyValuePair<string, object>(FormatKey(key), value));
-        //         }
-        //     }
-
-        //     var presentAddressDetails = new List<KeyValuePair<string, object>>{
-        //         new("Address",preAddressDetails.Address!),
-        //         new("District",preAddressDetails.District!),
-        //         new("Tehsil",preAddressDetails.Tehsil!),
-        //         new("Block",preAddressDetails.Block!),
-        //         new("Panchayat/Muncipality",preAddressDetails.PanchayatMuncipality!),
-        //         new("Village",preAddressDetails.Village!),
-        //         new("Ward",preAddressDetails.Ward!),
-        //         new("Pincode",preAddressDetails.Pincode!),
-        //     };
-
-        //     var permanentAddressDetails = new List<KeyValuePair<string, object>>{
-        //         new("Address",perAddressDetails.Address!),
-        //         new("District",perAddressDetails.District!),
-        //         new("Tehsil",perAddressDetails.Tehsil!),
-        //         new("Block",perAddressDetails.Block!),
-        //         new("Panchayat/Muncipality",perAddressDetails.PanchayatMuncipality!),
-        //         new("Village",perAddressDetails.Village!),
-        //         new("Ward",perAddressDetails.Ward!),
-        //         new("Pincode",perAddressDetails.Pincode!),
-        //     };
-
-        //     var BankDetails = new List<KeyValuePair<string, object>>{
-        //         new("Bank Name",bankDetails.BankName),
-        //         new("Branch Name",bankDetails.BranchName),
-        //         new("IFSC Code",bankDetails.IfscCode),
-        //         new("Account Number",bankDetails.AccountNumber),
-        //     };
-
-
-        //     return Json(new { generalDetails, presentAddressDetails, permanentAddressDetails, BankDetails, documents });
-        // }
-
         [HttpGet]
         public IActionResult GetDistricts()
         {
@@ -165,14 +102,6 @@ namespace ReactMvcApp.Controllers.User
             var tehsils = dbcontext.Tehsils.Where(u => u.DistrictId == DistrictId).ToList();
             return Json(new { status = true, tehsils });
         }
-
-        // [HttpGet]
-        // public IActionResult GetBlocks(string districtId)
-        // {
-        //     int DistrictId = Convert.ToInt32(districtId);
-        //     var blocks = dbcontext.Blocks.Where(u => u.DistrictId == DistrictId).ToList();
-        //     return Json(new { status = true, blocks });
-        // }
 
         [HttpGet]
         public string GetDistrictName(int districtId)
@@ -311,8 +240,12 @@ namespace ReactMvcApp.Controllers.User
         [HttpGet]
         public IActionResult GetAcknowledgement(string ApplicationId)
         {
-            var result = FetchAcknowledgementDetails(ApplicationId);
-            return Json(result);
+            string fileName = ApplicationId.Replace("/", "_") + "Acknowledgement.pdf";
+            string path = $"files/{fileName}";
+
+            string fullPath = path;
+
+            return Json(new { fullPath });
         }
 
         public string GetFieldValue(string fieldName, dynamic data)
@@ -332,29 +265,7 @@ namespace ReactMvcApp.Controllers.User
             }
             return "";
         }
-        // public dynamic GetFormattedValue(dynamic item, dynamic data)
-        // {
-        //     var values = new List<object>();
-        //     foreach (var key in item.Fields)
-        //     {
-        //         // If GetValue is true and the key requires a lookup (e.g. District or Tehsil), get the looked‑up value.
-        //         // Otherwise, simply grab the raw value from data.
-        //         string fieldValue = (item.GetValue != null && item.GetValue == true &&
-        //                              (key.Contains("District") || key.Contains("Tehsil")))
-        //             ? GetStringValue(key, data)
-        //             : GetFieldValue(key, data);
-        //         values.Add(fieldValue);
-        //     }
 
-        //     // If a TransformString template is provided, format it with all values;
-        //     // otherwise, return the first value's string representation.
-        //     string formattedValue = item.TransformString != null
-        //            ? string.Format(item.TransformString, values.ToArray())
-        //            : (values.FirstOrDefault()?.ToString() ?? "");
-
-        //     // Note: fix the typo here: use item.Label, not item.Lable.
-        //     return new { Label = item.Label, Value = formattedValue };
-        // }
 
         private dynamic GetFormattedValue(dynamic item, JObject data)
         {
@@ -467,8 +378,6 @@ namespace ReactMvcApp.Controllers.User
             return s;
         }
 
-
-
         public string GetStringValue(string fieldName, dynamic data)
         {
             foreach (var section in data)
@@ -504,7 +413,7 @@ namespace ReactMvcApp.Controllers.User
                          .FirstOrDefault(s => s.ServiceId == Convert.ToInt32(formdetails!.ServiceId))?.Letters;
 
             var parsed = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(lettersJson!);
-            var sanctionSection = parsed!.TryGetValue("Sanction", out dynamic sanction) ? sanction : null;
+            dynamic? sanctionSection = parsed!.TryGetValue("Sanction", out var sanction) ? sanction : null;
             var tableFields = sanctionSection!.tableFields;
             var sanctionLetterFor = sanctionSection.sanctionLetterFor;
 
@@ -528,8 +437,7 @@ namespace ReactMvcApp.Controllers.User
             return Json(new { success = true, sanctionDetails = pdfFields });
         }
 
-
-        private dynamic FetchAcknowledgementDetails(string applicationId)
+        private string FetchAcknowledgementDetails(string applicationId)
         {
             // 1) Load the application record
             var details = dbcontext.CitizenApplications
@@ -537,17 +445,13 @@ namespace ReactMvcApp.Controllers.User
                 ?? throw new InvalidOperationException("Application not found.");
 
             // 2) Load and parse the Letters JSON from the related service
-            var lettersJson = dbcontext.Services
-                .FirstOrDefault(s => s.ServiceId == Convert.ToInt32(details.ServiceId))?.Letters;
-
-            if (lettersJson is null)
-                throw new InvalidOperationException("No letters JSON configured for this service.");
-
+            var lettersJson = (dbcontext.Services
+                .FirstOrDefault(s => s.ServiceId == Convert.ToInt32(details.ServiceId))?.Letters) ?? throw new InvalidOperationException("No letters JSON configured for this service.");
             var parsedLetters = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(lettersJson!)
                 ?? throw new InvalidOperationException("Letters JSON parsing failed.");
 
             // 3) Get the Acknowledgement section
-            if (!parsedLetters.TryGetValue("Acknowledgement", out dynamic ackSection))
+            if (!parsedLetters.TryGetValue("Acknowledgement", out var ackSection))
                 throw new InvalidOperationException("Acknowledgement section missing in Letters JSON.");
 
             var tableFields = (IEnumerable<dynamic>)ackSection.tableFields;
@@ -581,49 +485,125 @@ namespace ReactMvcApp.Controllers.User
             string fileName = applicationId.Replace("/", "_") + "Acknowledgement.pdf";
             string path = $"files/{fileName}";
 
-            return new { path };
+            string fullPath = Path.Combine(_webHostEnvironment.ContentRootPath, "wwwroot", path);
+
+
+            return fullPath;
         }
 
+        private JObject MapServiceFieldsFromForm(JObject formDetailsObj, JObject fieldMapping)
+        {
+            var formValues = new Dictionary<string, string>();
 
+            // Step 1: Extract form field values
+            foreach (var section in formDetailsObj.Properties())
+            {
+                if (section.Value is JArray fieldsArray)
+                {
+                    foreach (JObject field in fieldsArray)
+                    {
+                        var name = field["name"]?.ToString();
+                        var value = field["value"]?.ToString()
+                                    ?? field["File"]?.ToString()
+                                    ?? field["Enclosure"]?.ToString();
 
+                        if (!string.IsNullOrEmpty(name) && value != null)
+                        {
+                            formValues[name] = value;
+                        }
+                    }
+                }
+            }
 
+            // Step 2: Replace with values, and convert District/Tehsil IDs
+            JObject ReplaceKeys(JObject mapping)
+            {
+                var result = new JObject();
 
-        // public IActionResult GetEditForm(string applicationId)
-        // {
-        //     var application = dbcontext.Applications.FirstOrDefault(app => app.ApplicationId == applicationId);
-        //     var editList = JsonConvert.DeserializeObject<string[]>(application!.EditList);
-        //     var serviceSpecific = JsonConvert.DeserializeObject<dynamic>(application.ServiceSpecific);
-        //     var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == application.ServiceId);
-        //     var formElements = JsonConvert.DeserializeObject<dynamic>(service!.FormElement!);
-        //     List<dynamic> EditFields = [];
-        //     foreach (var element in formElements!)
-        //     {
-        //         var fields = element.fields;
-        //         foreach (var field in fields)
-        //         {
-        //             string fieldName = field.name.ToString();
-        //             string value = "";
-        //             if (editList!.Contains(fieldName))
-        //             {
-        //                 if (application.GetType().GetProperty(fieldName) != null)
-        //                     value = application.GetType().GetProperty(fieldName)!.GetValue(application)!.ToString()!;
-        //                 else
-        //                     value = serviceSpecific![fieldName];
+                foreach (var prop in mapping.Properties())
+                {
+                    if (prop.Value.Type == JTokenType.Object)
+                    {
+                        result[prop.Name] = ReplaceKeys((JObject)prop.Value);
+                    }
+                    else if (prop.Value.Type == JTokenType.String)
+                    {
+                        string lookupKey = prop.Value.ToString();
+                        string? actualValue = null;
 
-        //                 field["value"] = value;
-        //                 EditFields.Add(field);
-        //             }
-        //         }
-        //     }
+                        if (formValues.TryGetValue(lookupKey, out var rawValue))
+                        {
+                            if (lookupKey.Contains("District", StringComparison.OrdinalIgnoreCase) && int.TryParse(rawValue, out int districtId))
+                            {
+                                actualValue = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == districtId)?.DistrictName;
+                            }
+                            else if (lookupKey.Contains("Tehsil", StringComparison.OrdinalIgnoreCase) && int.TryParse(rawValue, out int tehsilId))
+                            {
+                                actualValue = dbcontext.Tehsils.FirstOrDefault(t => t.TehsilId == tehsilId)?.TehsilName;
+                            }
+                            else
+                            {
+                                actualValue = rawValue;
+                            }
+                        }
 
+                        result[prop.Name] = actualValue ?? "";
+                    }
+                    else
+                    {
+                        result[prop.Name] = prop.Value;
+                    }
+                }
 
+                return result;
+            }
 
-        //     return Json(new { EditFields });
-        // }
+            return ReplaceKeys(fieldMapping);
+        }
+
+        // Inside your controller or a service
+        private static async Task<string> SendApiRequestAsync(string url, object payload)
+        {
+            using (var client = new HttpClient())
+            {
+
+                var json = JsonConvert.SerializeObject(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await client.PostAsync(url, content);
+                response.EnsureSuccessStatusCode(); // throws if not 2xx
+
+                return await response.Content.ReadAsStringAsync();
+            }
+        }
 
         public static bool HasProperty<T>(string propertyName)
         {
             return typeof(T).GetProperty(propertyName) != null;
         }
+
+        private static string? GetFormFieldValue(JObject formDetailsObj, string fieldName)
+        {
+            foreach (var section in formDetailsObj.Properties())
+            {
+                if (section.Value is JArray fieldsArray)
+                {
+                    foreach (JObject field in fieldsArray)
+                    {
+                        var name = field["name"]?.ToString();
+                        if (name == fieldName)
+                        {
+                            // Prefer value, then File, then Enclosure
+                            return field["value"]?.ToString()
+                                ?? field["File"]?.ToString()
+                                ?? field["Enclosure"]?.ToString();
+                        }
+                    }
+                }
+            }
+
+            return null; // not found
+        }
+
     }
 }
