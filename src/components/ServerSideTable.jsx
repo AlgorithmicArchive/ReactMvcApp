@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 import { Container } from "react-bootstrap";
 import axiosInstance from "../axiosConfig";
-import { ToastContainer } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import RefreshIcon from "@mui/icons-material/Refresh";
 
@@ -29,11 +29,11 @@ const ServerSideTable = ({
   pendingApplications = false,
   serviceId,
   refreshTrigger,
-  onPushToPool, // New prop for push to pool
-  onExecuteAction, // New prop for bulk action execution
-  actionOptions, // New prop for action options
-  selectedAction, // New prop for selected action
-  setSelectedAction, // New prop to update selected action
+  onPushToPool,
+  onExecuteAction,
+  actionOptions,
+  selectedAction,
+  setSelectedAction,
 }) => {
   const theme = useTheme();
 
@@ -42,20 +42,20 @@ const ServerSideTable = ({
   const [poolData, setPoolData] = useState([]);
   const [customActions, setCustomActions] = useState([]);
   const [pageCount, setPageCount] = useState(0);
+  const [totalRecords, setTotalRecords] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [rowSelection, setRowSelection] = useState({});
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
   });
-  const [viewType, setViewType] = useState("Inbox"); // 'Inbox' or 'Pool'
+  const [viewType, setViewType] = useState("Inbox");
 
-  // Form control styles
   const formControlStyles = {
     "& .MuiOutlinedInput-root": {
       "& fieldset": { borderColor: "divider" },
       "&:hover fieldset": { borderColor: "primary.main" },
-      "&.Mui-focused fieldset": {
+      "&. stance": {
         borderColor: "primary.main",
         borderWidth: "2px",
       },
@@ -64,14 +64,13 @@ const ServerSideTable = ({
       borderRadius: 1,
     },
     "& .MuiInputLabel-root": {
-      color: "text.secondary",
+      color: "text.primary",
       "&.Mui-focused": { color: "primary.main" },
     },
     minWidth: 150,
     mr: 2,
   };
 
-  // Button styles
   const buttonStyles = {
     textTransform: "none",
     fontWeight: 600,
@@ -84,7 +83,6 @@ const ServerSideTable = ({
     },
   };
 
-  // Fetch table data
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -100,7 +98,8 @@ const ServerSideTable = ({
       setInboxData(json.data || []);
       setPoolData(json.poolData || []);
       setCustomActions(json.customActions || []);
-      setPageCount(json.pageCount || 0);
+      setTotalRecords(json.totalRecords || 0);
+      setPageCount(Math.ceil((json.totalRecords || 0) / pagination.pageSize));
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Failed to load table data. Please try again.", {
@@ -127,13 +126,14 @@ const ServerSideTable = ({
   const tableData = isPoolView ? poolData : inboxData;
   const showToggleButtons = poolData && poolData.length > 0;
 
-  // Handle view type change
   const handleViewTypeChange = (event, newViewType) => {
     if (newViewType !== null) {
       setViewType(newViewType);
-      setRowSelection({}); // Reset row selection when switching views
+      setRowSelection({});
     }
   };
+
+  console.log("pageCount passed to MaterialReactTable:", pageCount);
 
   return (
     <Container
@@ -159,13 +159,12 @@ const ServerSideTable = ({
           p: { xs: 2, md: 3 },
           transition: "transform 0.3s ease-in-out",
           "&:hover": {
-            transform: "translateY(-5px)", // Subtle hover animation
+            transform: "translateY(-5px)",
           },
         }}
         role="region"
         aria-labelledby="table-title"
       >
-        {/* Table Header */}
         <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
           <Tooltip title="Refresh Data" arrow>
             <Button
@@ -180,7 +179,6 @@ const ServerSideTable = ({
           </Tooltip>
         </Box>
 
-        {/* Toggle Buttons */}
         {showToggleButtons && (
           <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
             <ToggleButtonGroup
@@ -220,22 +218,23 @@ const ServerSideTable = ({
           </Box>
         )}
 
-        {/* Table */}
         <MaterialReactTable
+          key={`${pagination.pageIndex}-${pagination.pageSize}`}
           columns={columns}
           data={tableData}
           state={{
+            pagination,
             isLoading,
             ...(canSanction && pendingApplications && { rowSelection }),
-            ...(viewType === "Inbox" && { pagination }),
           }}
-          onPaginationChange={viewType === "Inbox" ? setPagination : undefined}
+          onPaginationChange={setPagination}
           onRowSelectionChange={
             canSanction && pendingApplications ? setRowSelection : undefined
           }
-          manualPagination={viewType === "Inbox"}
-          enableRowSelection={canHavePool && pendingApplications}
-          pageCount={viewType === "Inbox" ? pageCount : undefined}
+          manualPagination
+          enablePagination
+          pageCount={pageCount}
+          rowCount={totalRecords}
           muiTablePaperProps={{
             sx: {
               borderRadius: "12px",
@@ -292,6 +291,9 @@ const ServerSideTable = ({
           }}
           muiTablePaginationProps={{
             rowsPerPageOptions: [10, 25, 50],
+            showFirstButton: true,
+            showLastButton: true,
+            pageCount: pageCount,
             sx: {
               color: "text.primary",
               backgroundColor: "background.paper",
@@ -311,15 +313,20 @@ const ServerSideTable = ({
               No {viewType.toLowerCase()} applications available.
             </Box>
           )}
-          renderBottomToolbarCustomActions={() =>
-            isLoading && (
-              <CircularProgress
-                size={24}
-                color="primary"
-                aria-label="Loading table data"
-              />
-            )
-          }
+          renderBottomToolbarCustomActions={() => (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              {isLoading && (
+                <CircularProgress
+                  size={24}
+                  color="primary"
+                  aria-label="Loading table data"
+                />
+              )}
+              <Typography variant="body2" color="text.secondary">
+                Total Records: {totalRecords}
+              </Typography>
+            </Box>
+          )}
           enableRowActions={customActions.length > 0}
           positionActionsColumn="last"
           renderRowActions={({ row }) => (
@@ -327,7 +334,7 @@ const ServerSideTable = ({
               {customActions.map((action, index) => {
                 const onClickHandler = actionFunctions[action.actionFunction];
                 return (
-                  row.original.sno === action.id && (
+                  row.original.sno === action.id + 1 && (
                     <Tooltip
                       key={index}
                       title={action.tooltip || action.name}
@@ -417,7 +424,6 @@ const ServerSideTable = ({
         />
       </Box>
 
-      {/* Toast Container */}
       <ToastContainer />
     </Container>
   );

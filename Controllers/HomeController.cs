@@ -108,7 +108,7 @@ namespace ReactMvcApp.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> SendOtp(string userId = null)
+        public async Task<IActionResult> SendOtp(string? userId = null)
         {
             string otpKey;
             string email;
@@ -124,7 +124,7 @@ namespace ReactMvcApp.Controllers
                 }
                 otpKey = $"otp:{userId}";
                 email = user.Email;
-                userName = user.Name;
+                userName = user.Name!;
             }
             else
             {
@@ -145,7 +145,7 @@ namespace ReactMvcApp.Controllers
 
                 otpKey = $"otp:{userIdClaim}";
                 email = user.Email;
-                userName = user.Name;
+                userName = user.Name!;
             }
 
             string otp = GenerateOTP(6);

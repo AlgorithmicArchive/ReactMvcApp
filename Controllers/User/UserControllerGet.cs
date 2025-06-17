@@ -48,7 +48,7 @@ namespace ReactMvcApp.Controllers.User
 
             return Json(new { formDetails, AdditionalDetails = "" });
         }
-        public IActionResult GetInitiatedApplications()
+        public IActionResult GetInitiatedApplications(int pageIndex = 0, int pageSize = 10)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -56,6 +56,20 @@ namespace ReactMvcApp.Controllers.User
             var applications = dbcontext.CitizenApplications
                                         .Where(u => u.CitizenId.ToString() == userIdClaim && u.Status != "Incomplete")
                                         .ToList();
+
+            var totalRecords = applications.Count;
+
+            var pagedApplications = applications
+                .OrderBy(a =>
+                {
+                    var parts = a.ReferenceNumber.Split('/');
+                    var numberPart = parts.Last(); // Get the last part (e.g., "1", "10")
+                    return int.Parse(numberPart); // Convert to integer for numerical sorting
+                })
+                .ThenBy(a => a.ReferenceNumber)
+                .Skip(pageIndex * pageSize)
+                .Take(pageSize)
+                .ToList();
 
             // Initialize columns
             var columns = new List<dynamic>
@@ -70,7 +84,7 @@ namespace ReactMvcApp.Controllers.User
             // Correctly initialize data list
             List<dynamic> data = [];
             List<dynamic> customActions = [];
-            int index = 1;
+            int index = 0;
             Dictionary<string, string> actionMap = new()
             {
                 {"pending","Pending"},
@@ -85,14 +99,14 @@ namespace ReactMvcApp.Controllers.User
                 {"Failure","Payment Failed"},
             };
 
-            foreach (var application in applications)
+            foreach (var application in pagedApplications)
             {
                 var formDetails = JsonConvert.DeserializeObject<dynamic>(application.FormDetails!);
                 var officers = JsonConvert.DeserializeObject<dynamic>(application.WorkFlow!) as JArray;
                 var currentPlayer = application.CurrentPlayer;
                 data.Add(new
                 {
-                    sno = index,
+                    sno = (pageIndex * pageSize) + index + 1,
                     referenceNumber = application.ReferenceNumber,
                     applicantName = GetFieldValue("ApplicantName", formDetails),
                     currentlyWith = officers![currentPlayer]["designation"],
@@ -117,9 +131,9 @@ namespace ReactMvcApp.Controllers.User
             }
 
             // Ensure size is positive for pagination
-            return Json(new { data, columns, customActions });
+            return Json(new { data, columns, customActions, totalRecords });
         }
-        public IActionResult IncompleteApplications()
+        public IActionResult IncompleteApplications(int pageIndex = 0, int pageSize = 10)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -127,6 +141,20 @@ namespace ReactMvcApp.Controllers.User
             var applications = dbcontext.CitizenApplications
                                         .Where(u => u.CitizenId.ToString() == userIdClaim && u.Status == "Incomplete")
                                         .ToList();
+
+            var totalRecords = applications.Count;
+
+            var pagedApplications = applications
+                .OrderBy(a =>
+                {
+                    var parts = a.ReferenceNumber.Split('/');
+                    var numberPart = parts.Last(); // Get the last part (e.g., "1", "10")
+                    return int.Parse(numberPart); // Convert to integer for numerical sorting
+                })
+                .ThenBy(a => a.ReferenceNumber)
+                .Skip(pageIndex * pageSize)
+                .Take(pageSize)
+                .ToList();
 
             // Initialize columns
             var columns = new List<dynamic>
@@ -138,15 +166,15 @@ namespace ReactMvcApp.Controllers.User
             // Correctly initialize data list
             List<dynamic> data = [];
             List<dynamic> customActions = [];
-            int index = 1;
+            int index = 0;
 
 
-            foreach (var application in applications)
+            foreach (var application in pagedApplications)
             {
                 var formDetails = JsonConvert.DeserializeObject<dynamic>(application.FormDetails!);
                 data.Add(new
                 {
-                    sno = index,
+                    sno = (pageIndex * pageSize) + index + 1,
                     referenceNumber = application.ReferenceNumber,
                     serviceId = application.ServiceId,
                 });
@@ -155,7 +183,7 @@ namespace ReactMvcApp.Controllers.User
             }
 
             // Ensure size is positive for pagination
-            return Json(new { data, columns, customActions });
+            return Json(new { data, columns, customActions, totalRecords });
         }
 
 

@@ -54,10 +54,11 @@ export default function Initiated() {
   return (
     <Box
       sx={{
-        height: { xs: "100vh", md: "70vh" },
+        minHeight: { xs: "100vh", md: "70vh" },
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
+        paddingBottom: 5,
       }}
     >
       <Box sx={{ width: { xs: "100%", md: "80%" } }}>

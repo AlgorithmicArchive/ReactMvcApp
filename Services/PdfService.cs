@@ -75,7 +75,7 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
         string branchOffice = "";
 
         // Case 1: Contains division-specific structure
-        if (bankDetailsObj.ContainsKey("Jammu") || bankDetailsObj.ContainsKey("Kashmir"))
+        if (bankDetailsObj!.ContainsKey("Jammu") || bankDetailsObj.ContainsKey("Kashmir"))
         {
             var divisionObj = bankDetailsObj[division] as JObject;
             branchOffice = divisionObj?["BranchOffice"]?.ToString() ?? "";

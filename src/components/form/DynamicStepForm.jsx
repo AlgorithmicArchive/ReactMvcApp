@@ -1075,8 +1075,8 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     fontSize: { xs: 18, lg: 16 },
                     width: "20%",
                     fontWeight: "bold",
-                    disabled: { buttonLoading },
                   }}
+                  disabled={buttonLoading}
                   onClick={handlePrev}
                 >
                   Previous
@@ -1091,8 +1091,8 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     fontSize: { xs: 18, lg: 16 },
                     width: "20%",
                     fontWeight: "bold",
-                    disabled: { buttonLoading },
                   }}
+                  disabled={buttonLoading}
                   onClick={handleNext}
                 >
                   Next
@@ -1107,14 +1107,15 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     fontSize: { xs: 18, lg: 16 },
                     width: "20%",
                     fontWeight: "bold",
-                    disabled: { buttonLoading },
                   }}
+                  disabled={buttonLoading}
                   onClick={handleSubmit((data) => onSubmit(data, "submit"))}
                 >
-                  Submit
+                  Submit{buttonLoading ? "..." : ""}
                 </Button>
               )}
             </Box>
+
             <Box
               sx={{ display: "flex", justifyContent: "center", marginTop: 5 }}
             >
