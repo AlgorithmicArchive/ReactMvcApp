@@ -250,6 +250,10 @@ public partial class SocialWelfareDepartmentContext : DbContext
                 .HasMaxLength(100)
                 .IsUnicode(false)
                 .HasColumnName("updatedAt");
+            entity.Property(e => e.WebServiceName)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("webServiceName");
 
             entity.HasOne(d => d.Service).WithMany(p => p.WebServices)
                 .HasForeignKey(d => d.ServiceId)

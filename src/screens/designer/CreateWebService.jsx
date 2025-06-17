@@ -220,6 +220,8 @@ export default function CreateWebService() {
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [formFields, setFormFields] = useState([]);
   const [webServiceConfig, setWebServiceConfig] = useState({
+    webServiceId: "", // Added webServiceId
+    webServiceName: "",
     apiEndPoint: "",
     onAction: [],
     fieldMappings: {},
@@ -260,6 +262,8 @@ export default function CreateWebService() {
         if (configResponse.data.status && configResponse.data.config) {
           const config = configResponse.data.config;
           setWebServiceConfig({
+            webServiceId: config.id || "", // Store WebServiceId
+            webServiceName: config.webServiceName,
             apiEndPoint: config.apiEndPoint || "",
             onAction: config.onAction ? JSON.parse(config.onAction) : [],
             fieldMappings: config.fieldMappings
@@ -269,6 +273,8 @@ export default function CreateWebService() {
         } else {
           // No existing configuration, reset to defaults
           setWebServiceConfig({
+            webServiceId: "",
+            webServiceName: "",
             apiEndPoint: "",
             onAction: [],
             fieldMappings: {},
@@ -279,6 +285,8 @@ export default function CreateWebService() {
         console.error("Fetch web service config error:", err);
         toast.error("Error fetching web service configuration");
         setWebServiceConfig({
+          webServiceId: "",
+          webServiceName: "",
           apiEndPoint: "",
           onAction: [],
           fieldMappings: {},
@@ -605,7 +613,9 @@ export default function CreateWebService() {
     }
 
     const payload = {
+      webServiceId: webServiceConfig.webServiceId, // Include webServiceId
       serviceId: selectedServiceId,
+      webServiceName: webServiceConfig.webServiceName,
       apiEndPoint: webServiceConfig.apiEndPoint,
       onAction: JSON.stringify(webServiceConfig.onAction), // Stringify for consistency
       fieldMappings: JSON.stringify(
@@ -628,6 +638,8 @@ export default function CreateWebService() {
       if (response.data.status) {
         toast.success("Web service configuration saved successfully!");
         setWebServiceConfig({
+          webServiceId: "", // Update with returned webServiceId
+          webServiceName: "",
           apiEndPoint: "",
           onAction: [],
           fieldMappings: {},
@@ -707,6 +719,25 @@ export default function CreateWebService() {
                       ))}
                     </Select>
                   </FormControl>
+
+                  {/* Web Service Name */}
+                  <TextField
+                    fullWidth
+                    label="Web Service Name"
+                    name="webServiceName"
+                    value={webServiceConfig.webServiceName}
+                    onChange={handleInputChange}
+                    variant="outlined"
+                    placeholder="Web Service Name"
+                    sx={{
+                      bgcolor: "white",
+                      borderRadius: 1,
+                      "& .MuiOutlinedInput-root": {
+                        "& fieldset": { borderColor: "grey.300" },
+                        "&:hover fieldset": { borderColor: "primary.main" },
+                      },
+                    }}
+                  />
 
                   {/* API Endpoint */}
                   <TextField

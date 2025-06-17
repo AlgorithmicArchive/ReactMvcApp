@@ -1031,7 +1031,9 @@ namespace ReactMvcApp.Controllers
                     status = true,
                     config = new
                     {
+                        webService.Id, // Added WebServiceId
                         webService.ServiceId,
+                        webService.WebServiceName,
                         webService.ApiEndPoint,
                         webService.OnAction,
                         webService.FieldMappings,
@@ -1047,31 +1049,70 @@ namespace ReactMvcApp.Controllers
         }
 
         [HttpPost]
+        [Route("Base/SaveWebService")]
         public IActionResult SaveWebService([FromForm] IFormCollection form)
         {
             try
             {
+                var webServiceId = form["webServiceId"].ToString();
                 var serviceId = form["serviceId"];
+                var webServiceName = form["webServiceName"];
                 var apiEndPoint = form["apiEndPoint"].ToString();
                 var onAction = form["onAction"].ToString(); // JSON string
                 var fieldMappings = form["fieldMappings"].ToString(); // JSON string
                 var createdAt = form["createdAt"].ToString();
                 var updatedAt = form["updatedAt"].ToString();
 
-                var webservice = new WebService
-                {
-                    ServiceId = Convert.ToInt32(serviceId),
-                    ApiEndPoint = apiEndPoint,
-                    OnAction = onAction,
-                    FieldMappings = fieldMappings,
-                    CreatedAt = createdAt,
-                    UpdatedAt = updatedAt
-                };
+                // Validate serviceId
+                int parsedWebServiceId = Convert.ToInt32(webServiceId);
 
-                dbcontext.WebServices.Add(webservice);
+                WebService webService;
+
+                // Check if webServiceId is provided and valid
+                if (!string.IsNullOrEmpty(webServiceId))
+                {
+                    // Try to find existing web service by WebServiceId
+                    webService = dbcontext.WebServices
+                        .FirstOrDefault(ws => ws.Id == parsedWebServiceId && ws.IsActive)!;
+
+                    if (webService != null)
+                    {
+                        webService.WebServiceName = webServiceName;
+                        webService.ApiEndPoint = apiEndPoint;
+                        webService.OnAction = onAction;
+                        webService.FieldMappings = fieldMappings;
+                        webService.UpdatedAt = updatedAt; // Update timestamp
+                        // CreatedAt remains unchanged
+                    }
+                    else
+                    {
+                        return Json(new { status = false, message = "Web service not found for the provided WebServiceId" });
+                    }
+                }
+                else
+                {
+                    // Create new web service
+                    webService = new WebService
+                    {
+                        WebServiceName = webServiceName,
+                        ApiEndPoint = apiEndPoint,
+                        OnAction = onAction,
+                        FieldMappings = fieldMappings,
+                        CreatedAt = createdAt,
+                        UpdatedAt = updatedAt,
+                        IsActive = true
+                    };
+                    dbcontext.WebServices.Add(webService);
+                }
+
                 dbcontext.SaveChanges();
 
-                return Json(new { status = true, message = "Web service configuration saved successfully", serviceId, apiEndPoint });
+                return Json(new
+                {
+                    status = true,
+                    message = webServiceId != "" ? "Web service configuration updated successfully" : "Web service configuration saved successfully",
+                    webServiceId = webService.Id,
+                });
             }
             catch (Exception ex)
             {

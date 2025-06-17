@@ -7,6 +7,8 @@ public partial class WebService
 {
     public int Id { get; set; }
 
+    public string? WebServiceName { get; set; }
+
     public int ServiceId { get; set; }
 
     public string ApiEndPoint { get; set; } = null!;
