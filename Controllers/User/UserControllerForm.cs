@@ -117,7 +117,6 @@ namespace ReactMvcApp.Controllers.User
                     }
                 }
                 string fullPath = FetchAcknowledgementDetails(referenceNumber);
-                _logger.LogInformation($"--------- Full Path :{fullPath} ------------------");
                 string? fullName = GetFormFieldValue(formDetailsObj, "ApplicantName");
                 string? serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId)!.ServiceName;
                 string? email = GetFormFieldValue(formDetailsObj, "Email");

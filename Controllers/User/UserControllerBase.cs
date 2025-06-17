@@ -31,13 +31,11 @@ namespace ReactMvcApp.Controllers.User
             ViewData["UserName"] = citizen?.Username;
             ViewData["Profile"] = citizen?.Profile;
         }
-
         public IActionResult Index()
         {
             var details = GetUserDetails();
             return View(details);
         }
-
         public IActionResult GetServices(int pageIndex, int pageSize)
         {
             // Fetch services from the database
@@ -97,54 +95,6 @@ namespace ReactMvcApp.Controllers.User
                 totalCount = data.Count
             });
         }
-
-        // public IActionResult ServiceForm(string? ApplicationId, bool? returnToEdit)
-        // {
-        //     object? ApplicationDetails = null;
-        //     var serviceIdClaim = User.FindFirst("ServiceId")?.Value;
-
-        //     if (ApplicationId == null && serviceIdClaim != null)
-        //     {
-        //         var serviceId = int.Parse(serviceIdClaim);
-        //         var serviceContent = dbcontext.Services.FirstOrDefault(u => u.ServiceId == serviceId);
-        //         ApplicationDetails = new { serviceContent };
-        //     }
-        //     else
-        //     {
-        //         var generalDetails = dbcontext.Applications.FirstOrDefault(u => u.ApplicationId == ApplicationId);
-        //         var PresentAddressId = generalDetails?.PresentAddressId ?? "";
-        //         var PermanentAddressId = generalDetails?.PermanentAddressId ?? "";
-        //         var preAddressDetails = dbcontext.Set<AddressJoin>().FromSqlRaw("EXEC GetAddressDetails @AddressId", new SqlParameter("@AddressId", PresentAddressId)).ToList();
-        //         var perAddressDetails = dbcontext.Set<AddressJoin>().FromSqlRaw("EXEC GetAddressDetails @AddressId", new SqlParameter("@AddressId", PermanentAddressId)).ToList();
-        //         var serviceContent = dbcontext.Services.FirstOrDefault(u => u.ServiceId == generalDetails!.ServiceId);
-
-        //         ApplicationDetails = new
-        //         {
-        //             returnToEdit,
-        //             serviceContent,
-        //             generalDetails,
-        //             preAddressDetails,
-        //             perAddressDetails
-        //         };
-        //     }
-        //     return View(ApplicationDetails);
-        // }
-
-         // public IActionResult EditForm([FromForm] IFormCollection form)
-        // {
-        //     string applicationId = form["ApplicationId"].ToString();
-        //     foreach (var key in form.Keys)
-        //     {
-        //         bool hasProperty = HasProperty<Application>(key);
-        //         if (hasProperty && key != "ApplicationId")
-        //         {
-
-        //         }
-        //         var value = form[key];
-        //     }
-        //     return Json(new { });
-        // }
-
         public IActionResult UpdateRequest([FromForm] IFormCollection form)
         {
             var ApplicationId = new SqlParameter("@ApplicationId", form["ApplicationId"].ToString());
@@ -152,19 +102,6 @@ namespace ReactMvcApp.Controllers.User
             helper.UpdateApplication("UpdateRequest", updateRequest, ApplicationId);
             return Json(new { status = true });
         }
-
-
-        // public IActionResult GetApplications(string serviceId)
-        // {
-        //     var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        //     int ServiceId = Convert.ToInt32(serviceId);
-        //     var applications = dbcontext.Applications.Where(u => u.CitizenId.ToString() == userIdClaim && u.ServiceId == ServiceId).ToList();
-
-        //     var Ids = applications.Select(application => application.ApplicationId).ToList();
-
-        //     return Json(new { status = true, Ids });
-        // }
-
         public IActionResult GetServiceNames()
         {
             var services = dbcontext.Services.ToList();
@@ -222,7 +159,6 @@ namespace ReactMvcApp.Controllers.User
 
             return File(fileBytes, contentType, Path.GetFileName(fullPath));
         }
-
         private static string GetContentType(string path)
         {
             var types = new Dictionary<string, string>

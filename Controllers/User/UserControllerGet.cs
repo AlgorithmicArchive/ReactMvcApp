@@ -48,8 +48,6 @@ namespace ReactMvcApp.Controllers.User
 
             return Json(new { formDetails, AdditionalDetails = "" });
         }
-
-
         public IActionResult GetInitiatedApplications()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -121,7 +119,6 @@ namespace ReactMvcApp.Controllers.User
             // Ensure size is positive for pagination
             return Json(new { data, columns, customActions });
         }
-
         public IActionResult IncompleteApplications()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

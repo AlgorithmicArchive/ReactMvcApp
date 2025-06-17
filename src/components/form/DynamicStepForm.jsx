@@ -1075,6 +1075,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     fontSize: { xs: 18, lg: 16 },
                     width: "20%",
                     fontWeight: "bold",
+                    disabled: { buttonLoading },
                   }}
                   onClick={handlePrev}
                 >
@@ -1090,6 +1091,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     fontSize: { xs: 18, lg: 16 },
                     width: "20%",
                     fontWeight: "bold",
+                    disabled: { buttonLoading },
                   }}
                   onClick={handleNext}
                 >
@@ -1105,6 +1107,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     fontSize: { xs: 18, lg: 16 },
                     width: "20%",
                     fontWeight: "bold",
+                    disabled: { buttonLoading },
                   }}
                   onClick={handleSubmit((data) => onSubmit(data, "submit"))}
                 >
@@ -1124,6 +1127,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     fontSize: { xs: 18, lg: 16 },
                     width: "20%",
                     fontWeight: "bold",
+                    disabled: { buttonLoading },
                   }}
                   onClick={handleSubmit((data) => onSubmit(data, "save"))}
                 >

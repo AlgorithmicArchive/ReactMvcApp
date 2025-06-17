@@ -21,7 +21,6 @@ namespace ReactMvcApp.Controllers.User
 
             return Json(new { status = true, url = "/user/form" });
         }
-
         [HttpGet]
         public dynamic? GetUserDetails()
         {
@@ -63,7 +62,6 @@ namespace ReactMvcApp.Controllers.User
 
             return details;
         }
-
         public static string FormatKey(string input)
         {
             if (string.IsNullOrEmpty(input))
@@ -74,14 +72,12 @@ namespace ReactMvcApp.Controllers.User
 
             return result;
         }
-
         [HttpGet]
         public IActionResult GetDistricts()
         {
             var districts = dbcontext.Districts.ToList();
             return Json(new { status = true, districts });
         }
-
         [HttpGet]
         public IActionResult GetDistrictsForService()
         {
@@ -94,7 +90,6 @@ namespace ReactMvcApp.Controllers.User
 
             return Json(new { status = true, districts });
         }
-
         [HttpGet]
         public IActionResult GetTehsils(string districtId)
         {
@@ -102,21 +97,18 @@ namespace ReactMvcApp.Controllers.User
             var tehsils = dbcontext.Tehsils.Where(u => u.DistrictId == DistrictId).ToList();
             return Json(new { status = true, tehsils });
         }
-
         [HttpGet]
         public string GetDistrictName(int districtId)
         {
             string? districtName = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == districtId)!.DistrictName;
             return districtName!;
         }
-
         [HttpGet]
         public string GetTehsilName(int tehsilId)
         {
             string? tehsilName = dbcontext.Tehsils.FirstOrDefault(d => d.TehsilId == tehsilId)!.TehsilName;
             return tehsilName!;
         }
-
         [HttpGet]
         public async Task<IActionResult> GetApplicationHistory(string ApplicationId, int page, int size)
         {
@@ -166,7 +158,6 @@ namespace ReactMvcApp.Controllers.User
 
             return Json(new { data, columns, customActions = new { } });
         }
-
         public int GetCountPerDistrict(int districtId, int serviceId)
         {
 
@@ -198,7 +189,6 @@ namespace ReactMvcApp.Controllers.User
 
             return applicationsPerDistrict.CountValue;
         }
-
         private static string SaveFile(IFormFile file)
         {
             // Define the folder to store files (e.g., wwwroot/uploads)
@@ -220,7 +210,6 @@ namespace ReactMvcApp.Controllers.User
             // Return the relative path (or absolute, as needed) for storage in your JSON.
             return "/uploads/" + uniqueFileName;
         }
-
         [HttpGet]
         public IActionResult GetServiceContent(int serviceId)
         {
@@ -236,7 +225,6 @@ namespace ReactMvcApp.Controllers.User
                 return Json(new { status = false, message = "No Service Found" });
             }
         }
-
         [HttpGet]
         public IActionResult GetAcknowledgement(string ApplicationId)
         {
@@ -247,7 +235,6 @@ namespace ReactMvcApp.Controllers.User
 
             return Json(new { fullPath });
         }
-
         public string GetFieldValue(string fieldName, dynamic data)
         {
             foreach (var section in data)
@@ -265,8 +252,6 @@ namespace ReactMvcApp.Controllers.User
             }
             return "";
         }
-
-
         private dynamic GetFormattedValue(dynamic item, JObject data)
         {
             if (item == null)
@@ -340,7 +325,6 @@ namespace ReactMvcApp.Controllers.User
             var result = sb.ToString().TrimEnd();
             return new { Label = label, Value = result };
         }
-
         // Recursive search for a JObject with ["name"] == fieldName
         private JObject? FindFieldRecursively(JToken token, string fieldName)
         {
@@ -359,7 +343,6 @@ namespace ReactMvcApp.Controllers.User
             }
             return null;
         }
-
         // Extracts the string value (or does District/Tehsil lookups)
         private string ExtractValueWithSpecials(JObject fieldObj, string fieldName)
         {
@@ -377,7 +360,6 @@ namespace ReactMvcApp.Controllers.User
 
             return s;
         }
-
         public string GetStringValue(string fieldName, dynamic data)
         {
             foreach (var section in data)
@@ -404,7 +386,6 @@ namespace ReactMvcApp.Controllers.User
             }
             return "Unknown Value";
         }
-
         public dynamic GetSanctionDetails(string applicationId, string serviceId)
         {
             var formdetails = dbcontext.CitizenApplications.FirstOrDefault(fd => fd.ReferenceNumber == applicationId);
@@ -436,7 +417,6 @@ namespace ReactMvcApp.Controllers.User
             }
             return Json(new { success = true, sanctionDetails = pdfFields });
         }
-
         private string FetchAcknowledgementDetails(string applicationId)
         {
             // 1) Load the application record
@@ -490,7 +470,6 @@ namespace ReactMvcApp.Controllers.User
 
             return fullPath;
         }
-
         private JObject MapServiceFieldsFromForm(JObject formDetailsObj, JObject fieldMapping)
         {
             var formValues = new Dictionary<string, string>();
@@ -560,7 +539,6 @@ namespace ReactMvcApp.Controllers.User
 
             return ReplaceKeys(fieldMapping);
         }
-
         // Inside your controller or a service
         private static async Task<string> SendApiRequestAsync(string url, object payload)
         {
@@ -576,12 +554,10 @@ namespace ReactMvcApp.Controllers.User
                 return await response.Content.ReadAsStringAsync();
             }
         }
-
         public static bool HasProperty<T>(string propertyName)
         {
             return typeof(T).GetProperty(propertyName) != null;
         }
-
         private static string? GetFormFieldValue(JObject formDetailsObj, string fieldName)
         {
             foreach (var section in formDetailsObj.Properties())
