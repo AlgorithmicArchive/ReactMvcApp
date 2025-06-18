@@ -262,11 +262,6 @@ const MyNavbar = () => {
                     >
                       Register DSC
                     </NavDropdown.Item>
-                    <NavDropdown.Item
-                      onClick={() => handleNavigate("/officer/unregisterDSC")}
-                    >
-                      Register DSC
-                    </NavDropdown.Item>
                   </NavDropdown>
                 </div>
               </>

@@ -122,7 +122,7 @@ export default function Dashboard() {
         </Box>
         {activeTab === 0 && (
           <ServerSideTable
-            key={servicesRefreshTrigger}
+            key={`services-${servicesRefreshTrigger}`} // for services tab
             url={"/Base/GetServicesDashboard"}
             extraParams={{}}
             actionFunctions={actionFunctions}
@@ -130,7 +130,7 @@ export default function Dashboard() {
         )}
         {activeTab === 1 && (
           <ServerSideTable
-            key={webServicesRefreshTrigger}
+            key={`webservices-${webServicesRefreshTrigger}`} // for web services tab
             url={"/Base/GetWebServicesDashboard"}
             extraParams={{}}
             actionFunctions={actionFunctions}

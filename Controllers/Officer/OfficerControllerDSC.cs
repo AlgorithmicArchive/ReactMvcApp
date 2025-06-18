@@ -69,7 +69,60 @@ namespace ReactMvcApp.Controllers.Officer
             }
         }
 
+        public IActionResult AlreadyRegistered()
+        {
+            var officer = GetOfficerDetails();
+            try
+            {
 
+                // Validate user exists
+                bool officerExists = dbcontext.Users.Any(u => u.UserId == officer.UserId);
+                if (!officerExists)
+                {
+                    return BadRequest(new { success = false, message = "The officer/user ID does not exist." });
+                }
+
+
+                // Retrieve the certificate for the officer
+                var certificate = dbcontext.Certificates
+                    .Where(c => c.OfficerId == Convert.ToInt32(officer.UserId))
+                    .FirstOrDefault();
+
+                if (certificate == null)
+                {
+                    return Json(new
+                    {
+                        success = true,
+                        isAlreadyRegistered = false
+                    });
+                }
+
+                return Json(new
+                {
+                    success = true,
+                    certificate_id = certificate.Uuid,
+                    isAlreadyRegistered = true
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching registered DSC for User ID: {UserId}", officer?.UserId);
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        public IActionResult UnRegisteredDSC([FromForm] IFormCollection form)
+        {
+            int certificateId = Convert.ToInt32(form["certificateId"]);
+            var certificate = dbcontext.Certificates.FirstOrDefault(c => c.Uuid == certificateId);
+            if (certificate != null)
+            {
+                dbcontext.Certificates.Remove(certificate);
+                dbcontext.SaveChanges();
+                return Json(new { status = true });
+            }
+            return Json(new { status = false });
+        }
 
         public IActionResult GetRegisteredDSC()
         {

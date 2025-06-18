@@ -13,6 +13,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  darken,
 } from "@mui/material";
 import { Container } from "react-bootstrap";
 import axiosInstance from "../axiosConfig";
@@ -40,7 +41,6 @@ const ServerSideTable = ({
   const [columns, setColumns] = useState([]);
   const [inboxData, setInboxData] = useState([]);
   const [poolData, setPoolData] = useState([]);
-  const [customActions, setCustomActions] = useState([]);
   const [pageCount, setPageCount] = useState(0);
   const [totalRecords, setTotalRecords] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -50,12 +50,13 @@ const ServerSideTable = ({
     pageSize: 10,
   });
   const [viewType, setViewType] = useState("Inbox");
+  const [hasActions, setHasActions] = useState(false); // New state for actions column
 
   const formControlStyles = {
     "& .MuiOutlinedInput-root": {
       "& fieldset": { borderColor: "divider" },
       "&:hover fieldset": { borderColor: "primary.main" },
-      "&. stance": {
+      "&.Mui-focused": {
         borderColor: "primary.main",
         borderWidth: "2px",
       },
@@ -94,10 +95,17 @@ const ServerSideTable = ({
         },
       });
       const json = response.data;
+
+      // Check for customActions in data
+      const hasAnyActions =
+        json.data?.some((row) => row.customActions?.length > 0) ||
+        json.poolData?.some((row) => row.customActions?.length > 0) ||
+        false;
+
+      setHasActions(hasAnyActions);
       setColumns(json.columns || []);
       setInboxData(json.data || []);
       setPoolData(json.poolData || []);
-      setCustomActions(json.customActions || []);
       setTotalRecords(json.totalRecords || 0);
       setPageCount(Math.ceil((json.totalRecords || 0) / pagination.pageSize));
     } catch (error) {
@@ -132,8 +140,6 @@ const ServerSideTable = ({
       setRowSelection({});
     }
   };
-
-  console.log("pageCount passed to MaterialReactTable:", pageCount);
 
   return (
     <Container
@@ -327,49 +333,49 @@ const ServerSideTable = ({
               </Typography>
             </Box>
           )}
-          enableRowActions={customActions.length > 0}
-          positionActionsColumn="last"
-          renderRowActions={({ row }) => (
-            <Box sx={{ display: "flex", gap: 1 }}>
-              {customActions.map((action, index) => {
-                const onClickHandler = actionFunctions[action.actionFunction];
-                return (
-                  row.original.sno === action.id + 1 && (
-                    <Tooltip
-                      key={index}
-                      title={action.tooltip || action.name}
-                      arrow
-                    >
-                      <Button
-                        variant="contained"
-                        color={action.color || "primary"}
-                        size="small"
-                        sx={{
-                          textTransform: "none",
-                          fontWeight: 600,
-                          fontSize: { xs: 12, md: 13 },
-                          py: 0.5,
-                          "&:hover": {
-                            backgroundColor: `${
-                              action.color || "primary"
-                            }.dark`,
-                            transform: "scale(1.02)",
-                            transition: "all 0.2s ease",
-                          },
-                        }}
-                        onClick={() => onClickHandler && onClickHandler(row)}
-                        aria-label={`${action.name || action.tooltip} for row ${
-                          row.original.sno
-                        }`}
-                      >
-                        {action.name || action.tooltip}
-                      </Button>
-                    </Tooltip>
-                  )
-                );
-              })}
-            </Box>
-          )}
+          {...(hasActions && {
+            // Conditionally enable actions column
+            enableRowActions: true,
+            positionActionsColumn: "last",
+            renderRowActions: ({ row }) => {
+              return (
+                <Box sx={{ display: "flex", gap: 1 }}>
+                  {(row.original.customActions || []).map((action, index) => {
+                    const onClickHandler =
+                      actionFunctions[action.actionFunction];
+                    return (
+                      <Tooltip key={index} title={action.tooltip} arrow>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          sx={{
+                            textTransform: "none",
+                            fontWeight: 600,
+                            fontSize: { xs: 12, md: 13 },
+                            py: 0.5,
+                            backgroundColor: action.color || "primary.main",
+                            "&:hover": {
+                              backgroundColor: action.color
+                                ? darken(action.color, 0.1)
+                                : "primary.dark",
+                              transform: "scale(1.02)",
+                              transition: "all 0.2s ease",
+                            },
+                          }}
+                          onClick={() => onClickHandler && onClickHandler(row)}
+                          aria-label={`${
+                            action.name || action.tooltip
+                          } for row ${row.original.sno}`}
+                        >
+                          {action.name || action.tooltip}
+                        </Button>
+                      </Tooltip>
+                    );
+                  })}
+                </Box>
+              );
+            },
+          })}
           renderTopToolbarCustomActions={({ table }) => {
             const selectedRows = table.getSelectedRowModel().rows;
             if (canSanction && pendingApplications && viewType === "Inbox") {

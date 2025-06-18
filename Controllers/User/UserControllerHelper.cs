@@ -109,55 +109,7 @@ namespace ReactMvcApp.Controllers.User
             string? tehsilName = dbcontext.Tehsils.FirstOrDefault(d => d.TehsilId == tehsilId)!.TehsilName;
             return tehsilName!;
         }
-        [HttpGet]
-        public async Task<IActionResult> GetApplicationHistory(string ApplicationId, int page, int size)
-        {
-            if (string.IsNullOrEmpty(ApplicationId))
-            {
-                return BadRequest("ApplicationId is required.");
-            }
-
-            var parameter = new SqlParameter("@ApplicationId", ApplicationId);
-            var application = await dbcontext.CitizenApplications.FirstOrDefaultAsync(ca => ca.ReferenceNumber == ApplicationId);
-            var players = JsonConvert.DeserializeObject<dynamic>(application!.WorkFlow!) as JArray;
-            int currentPlayerIndex = application.CurrentPlayer;
-            var currentPlayer = players!.FirstOrDefault(o => (int)o["playerId"]! == currentPlayerIndex);
-            var history = await dbcontext.ActionHistories.Where(ah => ah.ReferenceNumber == ApplicationId).ToListAsync();
-
-            var columns = new List<dynamic>
-            {
-                new { header = "S.No", accessorKey="sno" },
-                new { header = "Action Taker", accessorKey="actionTaker" },
-                new { header = "Action Taken",accessorKey="actionTaken" },
-                new { header = "Action Taken On",accessorKey="actionTakenOn" },
-            };
-            int index = 1;
-            List<dynamic> data = [];
-            foreach (var item in history)
-            {
-                data.Add(new
-                {
-                    sno = index,
-                    actionTaker = item.ActionTaker,
-                    actionTaken = item.ActionTaken! == "ReturnToCitizen" ? "Returned for correction" : item.ActionTaken,
-                    actionTakenOn = item.ActionTakenDate,
-                });
-                index++;
-            }
-
-            if ((string)currentPlayer!["status"]! == "pending")
-            {
-                data.Add(new
-                {
-                    sno = index,
-                    actionTaker = currentPlayer["designation"],
-                    actionTaken = currentPlayer["status"],
-                    actionTakenOn = "",
-                });
-            }
-
-            return Json(new { data, columns, customActions = new { } });
-        }
+ 
         public int GetCountPerDistrict(int districtId, int serviceId)
         {
 

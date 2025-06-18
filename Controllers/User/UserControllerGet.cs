@@ -1,5 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -63,75 +65,79 @@ namespace ReactMvcApp.Controllers.User
                 .OrderBy(a =>
                 {
                     var parts = a.ReferenceNumber.Split('/');
-                    var numberPart = parts.Last(); // Get the last part (e.g., "1", "10")
-                    return int.Parse(numberPart); // Convert to integer for numerical sorting
+                    var numberPart = parts.Last();
+                    return int.Parse(numberPart);
                 })
                 .ThenBy(a => a.ReferenceNumber)
                 .Skip(pageIndex * pageSize)
                 .Take(pageSize)
                 .ToList();
 
-            // Initialize columns
+            // Define columns (exclude customActions)
             var columns = new List<dynamic>
             {
                 new { header = "S.No", accessorKey = "sno" },
                 new { header = "Reference Number", accessorKey = "referenceNumber" },
                 new { header = "Applicant Name", accessorKey = "applicantName" },
                 new { header = "Currently With", accessorKey = "currentlyWith" },
-                new { header = "Status", accessorKey = "status" },
+                new { header = "Status", accessorKey = "status" }
             };
 
-            // Correctly initialize data list
-            List<dynamic> data = [];
-            List<dynamic> customActions = [];
+            // Initialize data list with embedded actions
+            List<dynamic> data = new List<dynamic>();
             int index = 0;
             Dictionary<string, string> actionMap = new()
             {
-                {"pending","Pending"},
-                {"forwarded","Forwarded"},
-                {"sanctioned","Sanctioned"},
-                {"returned","Returned"},
-                {"rejected","Rejected"},
-                {"returntoedit","Returned to citizen for edition"},
-                {"Deposited","Inserted to Bank File"},
-                {"Dispatched","Payment Under Process"},
-                {"Disbursed","Payment Disbursed"},
-                {"Failure","Payment Failed"},
+                {"pending", "Pending"},
+                {"forwarded", "Forwarded"},
+                {"sanctioned", "Sanctioned"},
+                {"returned", "Returned"},
+                {"rejected", "Rejected"},
+                {"returntoedit", "Returned to citizen for edition"},
+                {"Deposited", "Inserted to Bank File"},
+                {"Dispatched", "Payment Under Process"},
+                {"Disbursed", "Payment Disbursed"},
+                {"Failure", "Payment Failed"},
             };
 
             foreach (var application in pagedApplications)
             {
                 var formDetails = JsonConvert.DeserializeObject<dynamic>(application.FormDetails!);
-                var officers = JsonConvert.DeserializeObject<dynamic>(application.WorkFlow!) as JArray;
+                var officers = JsonConvert.DeserializeObject<JArray>(application.WorkFlow!);
                 var currentPlayer = application.CurrentPlayer;
+
+                // Define actions for this row
+                var actions = new List<dynamic>();
+                if ((string)officers![currentPlayer]["status"]! != "returntoedit" && (string)officers[currentPlayer]["status"]! != "sanctioned")
+                {
+                    actions.Add(new { tooltip = "View", color = "#F0C38E", actionFunction = "CreateTimeLine" });
+                }
+                else if ((string)officers[currentPlayer]["status"]! == "sanctioned")
+                {
+                    actions.Add(new { tooltip = "View", color = "#F0C38E", actionFunction = "CreateTimeLine" });
+                    actions.Add(new { tooltip = "Download", color = "#F0C38E", actionFunction = "DownloadSanctionLetter" });
+                }
+                else
+                {
+                    actions.Add(new { tooltip = "Edit Form", color = "#F0C38E", actionFunction = "EditForm" });
+                }
+
+                // Add data object with embedded actions
                 data.Add(new
                 {
                     sno = (pageIndex * pageSize) + index + 1,
                     referenceNumber = application.ReferenceNumber,
                     applicantName = GetFieldValue("ApplicantName", formDetails),
-                    currentlyWith = officers![currentPlayer]["designation"],
+                    currentlyWith = officers[currentPlayer]["designation"],
                     status = actionMap[(string)officers[currentPlayer]["status"]!],
-                    serviceId = application.ServiceId
+                    serviceId = application.ServiceId,
+                    customActions = actions // Embed actions here
                 });
 
-                if ((string)officers[currentPlayer]["status"]! != "returntoedit" && (string)officers[currentPlayer]["status"]! != "sanctioned")
-                {
-                    customActions.Add(new { id = index, tooltip = "View", color = "#F0C38E", actionFunction = "CreateTimeLine" });
-                }
-                else if ((string)officers[currentPlayer]["status"]! == "sanctioned")
-                {
-                    customActions.Add(new { id = index, tooltip = "View", color = "#F0C38E", actionFunction = "CreateTimeLine" });
-                    customActions.Add(new { id = index, tooltip = "Download", color = "#F0C38E", actionFunction = "DownloadSanctionLetter" });
-                }
-                else
-                {
-                    customActions.Add(new { id = index, tooltip = "Edit Form", color = "#F0C38E", actionFunction = "EditForm" });
-                }
                 index++;
             }
 
-            // Ensure size is positive for pagination
-            return Json(new { data, columns, customActions, totalRecords });
+            return Json(new { data, columns, totalRecords });
         }
         public IActionResult IncompleteApplications(int pageIndex = 0, int pageSize = 10)
         {
@@ -165,28 +171,142 @@ namespace ReactMvcApp.Controllers.User
 
             // Correctly initialize data list
             List<dynamic> data = [];
-            List<dynamic> customActions = [];
+            List<dynamic> actions = [];
             int index = 0;
 
 
             foreach (var application in pagedApplications)
             {
                 var formDetails = JsonConvert.DeserializeObject<dynamic>(application.FormDetails!);
+                actions.Add(new { id = (pageIndex * pageSize) + index + 1, tooltip = "Edit", color = "#F0C38E", actionFunction = "IncompleteForm" });
                 data.Add(new
                 {
                     sno = (pageIndex * pageSize) + index + 1,
                     referenceNumber = application.ReferenceNumber,
                     serviceId = application.ServiceId,
+                    customActions = actions
                 });
-                customActions.Add(new { id = index, tooltip = "Edit", color = "#F0C38E", actionFunction = "IncompleteForm" });
                 index++;
             }
 
             // Ensure size is positive for pagination
-            return Json(new { data, columns, customActions, totalRecords });
+            return Json(new { data, columns, totalRecords });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetApplicationHistory(string ApplicationId, int page, int size)
+        {
+            if (string.IsNullOrEmpty(ApplicationId))
+            {
+                return BadRequest("ApplicationId is required.");
+            }
+
+            var parameter = new SqlParameter("@ApplicationId", ApplicationId);
+            var application = await dbcontext.CitizenApplications.FirstOrDefaultAsync(ca => ca.ReferenceNumber == ApplicationId);
+            var players = JsonConvert.DeserializeObject<dynamic>(application!.WorkFlow!) as JArray;
+            int currentPlayerIndex = application.CurrentPlayer;
+            var currentPlayer = players!.FirstOrDefault(o => (int)o["playerId"]! == currentPlayerIndex);
+            var history = await dbcontext.ActionHistories.Where(ah => ah.ReferenceNumber == ApplicationId).ToListAsync();
+
+            var columns = new List<dynamic>
+            {
+                new { header = "S.No", accessorKey="sno" },
+                new { header = "Action Taker", accessorKey="actionTaker" },
+                new { header = "Action Taken",accessorKey="actionTaken" },
+                new { header = "Action Taken On",accessorKey="actionTakenOn" },
+            };
+            int index = 1;
+            List<dynamic> data = [];
+            foreach (var item in history)
+            {
+                data.Add(new
+                {
+                    sno = index,
+                    actionTaker = item.ActionTaker,
+                    actionTaken = item.ActionTaken! == "ReturnToCitizen" ? "Returned for correction" : item.ActionTaken,
+                    actionTakenOn = item.ActionTakenDate,
+                });
+                index++;
+            }
+
+            if ((string)currentPlayer!["status"]! == "pending")
+            {
+                data.Add(new
+                {
+                    sno = index,
+                    actionTaker = currentPlayer["designation"],
+                    actionTaken = currentPlayer["status"],
+                    actionTakenOn = "",
+                });
+            }
+
+            return Json(new { data, columns, customActions = new { } });
         }
 
 
+        public IActionResult GetServices(int pageIndex = 0, int pageSize = 10)
+        {
+            // Fetch and materialize all active services
+            var services = dbcontext.Services
+                .FromSqlRaw("SELECT * FROM Services WHERE Active=1")
+                .ToList();
+
+            var totalCount = services.Count;
+
+            // Apply pagination
+            var pagedServices = services
+                .Skip(pageIndex * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            _logger.LogInformation($"----------SERVICES COUNT: {totalCount}---------------------------");
+
+            // Define table columns
+            var columns = new List<dynamic>
+            {
+                new { header = "S.No", accessorKey = "sno" },
+                new { header = "Service Name", accessorKey = "servicename" },
+                new { header = "Department", accessorKey = "department" }
+            };
+
+            // Prepare paginated data with embedded customActions
+            List<dynamic> data = [];
+            int index = 0;
+
+            foreach (var item in pagedServices)
+            {
+                int serialNo = (pageIndex * pageSize) + index + 1;
+
+                var row = new
+                {
+                    sno = serialNo,
+                    servicename = item.ServiceName,
+                    department = item.Department,
+                    serviceId = item.ServiceId,
+                    customActions = new List<dynamic>
+            {
+                new
+                {
+                    tooltip = "Apply",
+                    color = "#F0C38E",
+                    actionFunction = "OpenForm",
+                    parameters = new[] { item.ServiceId }
+                }
+            }
+                };
+
+                data.Add(row);
+                index++;
+            }
+
+            return Json(new
+            {
+                status = true,
+                data,
+                columns,
+                totalCount
+            });
+        }
 
 
     }

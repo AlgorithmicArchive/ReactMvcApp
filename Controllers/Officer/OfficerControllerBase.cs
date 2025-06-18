@@ -229,14 +229,13 @@ namespace ReactMvcApp.Controllers.Officer
         }
 
         [HttpGet]
-        public IActionResult GetApplications(int ServiceId, string type)
+        public IActionResult GetApplications(int ServiceId, string type, int pageIndex = 0, int pageSize = 10)
         {
             var officerDetails = GetOfficerDetails();
             var role = new SqlParameter("@Role", officerDetails.Role);
             var accessLevel = new SqlParameter("@AccessLevel", officerDetails.AccessLevel);
             var accessCode = new SqlParameter("@AccessCode", officerDetails.AccessCode);
-            // If 'type' is null, supply DBNull.Value (or you could supply a default string)
-            var applicationStatus = new SqlParameter("@ApplicationStatus", (object)type.ToLower() ?? DBNull.Value);
+            var applicationStatus = new SqlParameter("@ApplicationStatus", (object)type?.ToLower()! ?? DBNull.Value);
             var serviceId = new SqlParameter("@ServiceId", ServiceId);
 
             var response = dbcontext.CitizenApplications
@@ -246,62 +245,180 @@ namespace ReactMvcApp.Controllers.Officer
 
             _logger.LogInformation($"----------Type : {type}------------------");
 
+            // Sorting for consistent pagination based on ReferenceNumber
+            var sortedResponse = response.OrderBy(a =>
+            {
+                var parts = a.ReferenceNumber.Split('/');
+                var numberPart = parts.Last();
+                return int.TryParse(numberPart, out int num) ? num : 0;
+            }).ToList();
+
+            var totalRecords = sortedResponse.Count;
+
+            var pagedResponse = sortedResponse
+                .Skip(pageIndex * pageSize)
+                .Take(pageSize)
+                .ToList();
+
             List<dynamic> columns =
             [
-                new { accessorKey = "referenceNumber", header = "Refernece Number" },
+                new { accessorKey = "referenceNumber", header = "Reference Number" },
                 new { accessorKey = "applicantName", header = "Applicant Name" },
                 new { accessorKey = "submissionDate", header = "Submission Date" }
             ];
 
             List<dynamic> data = [];
-            List<dynamic> customActions = [];
-
-            // var serviceDetails = dbcontext.Services.FirstOrDefault(s => s.ServiceId == ServiceId);
-            // bool? ApproveListEnabled = serviceDetails!.ApprovalListEnabled;
-            // var poolList = !string.IsNullOrWhiteSpace(serviceDetails.Pool) ? JsonConvert.DeserializeObject<List<string>>(serviceDetails.Pool!) : [];
-            // var approveList = !string.IsNullOrWhiteSpace(serviceDetails.Pool) ? JsonConvert.DeserializeObject<List<string>>(serviceDetails.Approve!) : [];
-
-            var officer = GetOfficerDetails();
-            var PoolList = dbcontext.Pools.FirstOrDefault(p => p.ServiceId == ServiceId && p.AccessLevel == officer.AccessLevel && p.AccessCode == officer.AccessCode);
-            var pool = PoolList != null && !string.IsNullOrWhiteSpace(PoolList!.List) ? JsonConvert.DeserializeObject<List<string>>(PoolList.List) : [];
             List<dynamic> poolData = [];
-            if (type == "Pending")
-                customActions.Add(new { type = "Open", tooltip = "View", color = "#F0C38E", actionFunction = "handleOpenApplication" });
-            else customActions.Add(new { type = "View", tooltip = "View", color = "#F0C38E", actionFunction = "handleViewApplication" });
 
-            foreach (var details in response)
+            var poolList = dbcontext.Pools.FirstOrDefault(p =>
+                p.ServiceId == ServiceId &&
+                p.AccessLevel == officerDetails.AccessLevel &&
+                p.AccessCode == officerDetails.AccessCode
+            );
+
+            var pool = poolList != null && !string.IsNullOrWhiteSpace(poolList.List)
+                ? JsonConvert.DeserializeObject<List<string>>(poolList.List)
+                : new List<string>();
+
+            int index = 0;
+
+            foreach (var details in pagedResponse)
             {
                 var formDetails = JsonConvert.DeserializeObject<dynamic>(details.FormDetails!);
-                var officers = JsonConvert.DeserializeObject<dynamic>(details.WorkFlow!) as JArray;
+                var officers = JsonConvert.DeserializeObject<JArray>(details.WorkFlow!);
+
+                var customActions = new List<dynamic>();
+
                 if (pool!.Contains(details.ReferenceNumber) && type == "Pending")
                 {
+                    customActions.Add(new
+                    {
+                        type = "View",
+                        tooltip = "View",
+                        color = "#F0C38E",
+                        actionFunction = "handleOpenApplication"
+                    });
+
                     poolData.Add(new
                     {
                         referenceNumber = details.ReferenceNumber,
                         applicantName = GetFieldValue("ApplicantName", formDetails),
                         submissionDate = details.CreatedAt,
-
+                        customActions
                     });
-                    customActions.Clear();
-                    customActions.Add(new { type = "View", tooltip = "View", color = "#F0C38E", actionFunction = "handleOpenApplication" });
-                    continue;
                 }
-
-
-                if (type == "Forwarded" || type == "Returned")
+                else
                 {
-                    var currentOfficer = officers!.FirstOrDefault(o => (string)o["designation"]! == officerDetails.Role);
-                    if ((bool)currentOfficer!["canPull"]!)
+                    if (type == "Pending")
                     {
-                        customActions.Clear();
-                        customActions.Add(new { type = "Pull", tooltip = "Pull", color = "#F0C38E", actionFunction = "pullApplication" });
+                        customActions.Add(new
+                        {
+                            type = "Open",
+                            tooltip = "View",
+                            color = "#F0C38E",
+                            actionFunction = "handleOpenApplication"
+                        });
                     }
+                    else if (type == "Forwarded" || type == "Returned")
+                    {
+                        var currentOfficer = officers!.FirstOrDefault(o => (string)o["designation"]! == officerDetails.Role);
+                        if (currentOfficer != null && (bool)currentOfficer["canPull"]!)
+                        {
+                            customActions.Add(new
+                            {
+                                type = "Pull",
+                                tooltip = "Pull",
+                                color = "#F0C38E",
+                                actionFunction = "pullApplication"
+                            });
+                        }
+                    }
+                    else
+                    {
+                        customActions.Add(new
+                        {
+                            type = "View",
+                            tooltip = "View",
+                            color = "#F0C38E",
+                            actionFunction = "handleViewApplication"
+                        });
+                    }
+
+                    data.Add(new
+                    {
+                        referenceNumber = details.ReferenceNumber,
+                        applicantName = GetFieldValue("ApplicantName", formDetails),
+                        submissionDate = details.CreatedAt,
+                        customActions
+                    });
                 }
+
+                index++;
+            }
+
+            return Json(new
+            {
+                data,
+                columns,
+                poolData,
+                totalRecords
+            });
+        }
+
+
+        [HttpGet]
+        public IActionResult GetApplicationsForReports(int AccessCode, int ServiceId, string StatusType, int pageIndex = 0, int pageSize = 10)
+        {
+            var officerDetails = GetOfficerDetails();
+            string type = StatusType;
+            var role = new SqlParameter("@Role", officerDetails!.Role);
+            var accessLevel = new SqlParameter("@AccessLevel", officerDetails.AccessLevel);
+            var accessCode = new SqlParameter("@AccessCode", AccessCode);
+            var applicationStatus = new SqlParameter("@ApplicationStatus", (object)type?.ToLower()! ?? DBNull.Value);
+            var serviceId = new SqlParameter("@ServiceId", ServiceId);
+
+            var response = dbcontext.CitizenApplications
+                .FromSqlRaw("EXEC GetApplicationsForReport  @AccessCode, @ApplicationStatus, @ServiceId",
+                   accessCode, applicationStatus, serviceId)
+                .ToList();
+
+            _logger.LogInformation($"----------Type : {type}------------------");
+
+            // Sorting for consistent pagination based on ReferenceNumber
+            var sortedResponse = response.OrderBy(a =>
+            {
+                var parts = a.ReferenceNumber.Split('/');
+                var numberPart = parts.Last();
+                return int.TryParse(numberPart, out int num) ? num : 0;
+            }).ToList();
+
+            var totalRecords = sortedResponse.Count;
+
+            var pagedResponse = sortedResponse
+                .Skip(pageIndex * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            List<dynamic> columns =
+            [
+                new { accessorKey = "referenceNumber", header = "Reference Number" },
+                new { accessorKey = "applicantName", header = "Applicant Name" },
+                new { accessorKey = "parentage", header = "Parentage" },
+                new { accessorKey = "submissionDate", header = "Submission Date" }
+            ];
+
+            List<dynamic> data = [];
+
+            foreach (var details in pagedResponse)
+            {
+                var formDetails = JsonConvert.DeserializeObject<dynamic>(details.FormDetails!);
+
                 data.Add(new
                 {
                     referenceNumber = details.ReferenceNumber,
                     applicantName = GetFieldValue("ApplicantName", formDetails),
-                    submissionDate = details.CreatedAt,
+                    parentage = $"{GetFieldValue("RelationName", formDetails)}({GetFieldValue("Relation", formDetails)})",
+                    submissionDate = details.CreatedAt
                 });
             }
 
@@ -309,10 +426,11 @@ namespace ReactMvcApp.Controllers.Officer
             {
                 data,
                 columns,
-                customActions,
-                poolData,
+                totalRecords
             });
         }
+
+
 
         [HttpGet]
         public IActionResult GetUserDetails(string applicationId)
@@ -379,7 +497,6 @@ namespace ReactMvcApp.Controllers.Officer
                 currentOfficerDetails = currentOfficer
             });
         }
-
 
 
         [HttpGet]

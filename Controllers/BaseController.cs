@@ -364,59 +364,26 @@ namespace ReactMvcApp.Controllers
             return Json(new { countList, canSanction = (bool)authorities.canSanction });
         }
 
-        // public IActionResult GetApplicationDetails(int? ServiceId = null, int? DistrictId = null, string? ApplicationStatus = null, int page = 0, int size = 10)
-        // {
-        //     var officerDetails = GetOfficerDetails();
-        //     var serviceIdParam = new SqlParameter("@ServiceId", ServiceId ?? (object)DBNull.Value);
-        //     var districtIdParam = new SqlParameter("@DistrictId", DistrictId ?? (object)DBNull.Value);
-        //     var accessLevelParam = new SqlParameter("@AccessLevel", officerDetails.AccessLevel ?? (object)DBNull.Value);
-        //     var accessCodeParam = new SqlParameter("@AccessCode", officerDetails.AccessCode);
-        //     var appStatusParam = new SqlParameter("@ApplicationStatus", ApplicationStatus ?? (object)DBNull.Value);
 
-        //     var applications = dbcontext.Database
-        //         .SqlQueryRaw<ApplicationDetailsSA>(
-        //             "EXEC GetApplications_SA @ServiceId, @DistrictId, @AccessLevel, @AccessCode, @ApplicationStatus",
-        //              serviceIdParam, districtIdParam, accessLevelParam, accessCodeParam, appStatusParam)
-        //         .ToList();
-
-        //     var columns = new List<dynamic>
-        //     {
-        //         new { label = "S.No", value = "sno" },
-        //         new { label = "Reference Number", value = "referenceNumber" },
-        //         new { label = "Applicant Name", value = "applicantName" },
-        //         new { label = "Submission Date", value = "submissionDate" },
-        //         new { label = "Applied District", value = "appliedDistrict" },
-        //         new { label = "Applied Service", value = "appliedService" },
-        //         new { label = "Currently With", value = "currentlyWith" },
-        //         new { label = "Status", value = "status" }
-        //     };
-
-        //     List<dynamic> data = [];
-        //     int index = 1;
-
-        //     foreach (var item in applications)
-        //     {
-        //         var cell = new
-        //         {
-        //             sno = index,
-        //             referenceNumber = item.ReferenceNumber,
-        //             applicantName = item.ApplicantName,
-        //             submissionDate = item.SubmissionDate,
-        //             appliedDistrict = item.AppliedDistrict,
-        //             appliedService = item.AppliedService,
-        //             currentlyWith = item.CurrentlyWith,
-        //             status = item.Status
-        //         };
-        //         data.Add(cell);
-        //         index++;
-        //     }
+        public string GetFieldValue(string fieldName, dynamic data)
+        {
+            foreach (var section in data)
+            {
+                if (section.First is JArray fields)
+                {
+                    foreach (var field in fields)
+                    {
+                        if (field["name"] != null && field["name"]?.ToString() == fieldName)
+                        {
+                            return field["value"]?.ToString() ?? "";
+                        }
+                    }
+                }
+            }
+            return "";
+        }
 
 
-        //     var paginatedData = data.AsEnumerable()
-        //         .Skip(page * size)
-        //         .Take(size).ToList();
-        //     return Json(new { columns, data = paginatedData, totalCount = data.Count });
-        // }
 
         [HttpGet]
         public IActionResult GetDesignations()
@@ -561,7 +528,7 @@ namespace ReactMvcApp.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetDistricts()
+        public IActionResult GetAccessAreas()
         {
             var officer = GetOfficerDetails();
             if (officer == null)
@@ -750,7 +717,7 @@ namespace ReactMvcApp.Controllers
 
                 // Parse existing Letters JSON or initialize a new JObject if null/empty
                 JObject existingJson = string.IsNullOrWhiteSpace(service.Letters)
-                    ? new JObject()
+                    ? []
                     : JObject.Parse(service.Letters);
 
                 // Update the specified object in the existing JSON, preserving other objects
@@ -821,12 +788,23 @@ namespace ReactMvcApp.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetServicesDashboard(int pageIndex, int pageSize)
+        [HttpGet]
+        public IActionResult GetServicesDashboard(int pageIndex = 0, int pageSize = 10)
         {
-            // Fetch services from the database
-            var services = dbcontext.Services.FromSqlRaw("SELECT * FROM Services");
+            // Fetch all services from the database
+            var services = dbcontext.Services
+                                    .OrderBy(s => s.ServiceId)
+                                    .ToList();
 
-            // Initialize columns
+            var totalRecords = services.Count;
+
+            // Apply pagination
+            var pagedData = services
+                .Skip(pageIndex * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            // Define columns (Actions column can be added if needed)
             var columns = new List<dynamic>
             {
                 new { header = "S.No", accessorKey = "sno" },
@@ -834,112 +812,110 @@ namespace ReactMvcApp.Controllers
                 new { header = "Department", accessorKey = "department" },
             };
 
-            // Initialize data list
-            List<dynamic> data = [];
-            List<dynamic> customActions = [];
-            int index = 1;
+            // Prepare data
+            var data = new List<dynamic>();
+            int index = 0;
 
-            foreach (var item in services)
+            foreach (var item in pagedData)
             {
-                var button = new
+                var actions = new List<dynamic>
                 {
-                    function = "OpenForm",
-                    parameters = new[] { item.ServiceId },
-                    buttonText = "Apply"
+                    new
+                    {
+                        id = (pageIndex * pageSize) + index + 1,
+                        tooltip = item.Active ? "Deactivate" : "Activate",
+                        color = "#F0C38E",
+                        actionFunction = "ToggleServiceActivation"
+                    }
                 };
 
                 data.Add(new
                 {
-                    sno = index,
+                    sno = (pageIndex * pageSize) + index + 1,
                     servicename = item.ServiceName,
                     department = item.Department,
                     serviceId = item.ServiceId,
                     isActive = item.Active,
+                    customActions = actions,
                 });
 
-                customActions.Add(new
-                {
-                    id = index,
-                    tooltip = item.Active ? "Deactivate" : "Activate",
-                    color = "#F0C38E",
-                    actionFunction = "ToggleServiceActivation"
-                });
                 index++;
             }
 
-            // Pagination logic
-            var pagedData = data.Skip(pageIndex * pageSize).Take(pageSize).ToList();
-
             return Json(new
             {
-                status = true,
-                data = pagedData,
+                data,
                 columns,
-                customActions,
-                totalCount = data.Count
+                totalRecords
             });
         }
 
 
-        [HttpGet]
-        public IActionResult GetWebServicesDashboard(int pageIndex, int pageSize)
-        {
-            // Fetch services from the database
-            var webServices = dbcontext.WebServices.FromSqlRaw("SELECT * FROM WebService");
 
-            // Initialize columns
+        [HttpGet]
+        public IActionResult GetWebServicesDashboard(int pageIndex = 0, int pageSize = 10)
+        {
+            // Fetch all services from the database
+            var webServices = dbcontext.WebServices
+                                       .Include(ws => ws.Service) // Assuming navigation property
+                                       .ToList();
+
+            var totalRecords = webServices.Count;
+
+            var pagedData = webServices
+                .OrderBy(w => w.Id)
+                .Skip(pageIndex * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            // Define columns (Actions column last)
             var columns = new List<dynamic>
             {
                 new { header = "S.No", accessorKey = "sno" },
                 new { header = "Service Name", accessorKey = "servicename" },
+                new { header = "Web Service Name", accessorKey = "webservicename" },
             };
 
-            // Initialize data list
-            List<dynamic> data = [];
-            List<dynamic> customActions = [];
-            int index = 1;
+            // Prepare data
+            var data = new List<dynamic>();
+            int index = 0;
 
-            foreach (var item in webServices)
+            foreach (var item in pagedData)
             {
-                var button = new
-                {
-                    function = "OpenForm",
-                    parameters = new[] { item.ServiceId },
-                    buttonText = "Apply"
-                };
+                var serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == item.ServiceId)?.ServiceName ?? "N/A";
 
-                string serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == item.ServiceId)!.ServiceName!;
+                var actions = new List<dynamic>
+                {
+                    new
+                    {
+                        id = (pageIndex * pageSize) + index + 1,
+                        tooltip = item.IsActive ? "Deactivate" : "Activate",
+                        color = "#F0C38E",
+                        actionFunction = "ToggleWebServiceActivation"
+                    }
+                };
 
                 data.Add(new
                 {
-                    sno = index,
+                    sno = (pageIndex * pageSize) + index + 1,
                     servicename = serviceName,
+                    webservicename = item.WebServiceName,
+                    customActions = actions,
                     webserviceId = item.Id,
-                    isActive = item.IsActive,
+                    isActive = item.IsActive
                 });
 
-                customActions.Add(new
-                {
-                    id = index,
-                    tooltip = item.IsActive ? "Deactivate" : "Activate",
-                    color = "#F0C38E",
-                    actionFunction = "ToggleWebServiceActivation"
-                });
                 index++;
             }
 
-            // Pagination logic
-            var pagedData = data.Skip(pageIndex * pageSize).Take(pageSize).ToList();
-
             return Json(new
             {
-                status = true,
-                data = pagedData,
+                data,
                 columns,
-                customActions,
-                totalCount = data.Count
+                totalRecords
             });
         }
+
 
 
         [HttpPost]

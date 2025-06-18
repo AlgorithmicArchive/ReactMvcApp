@@ -36,65 +36,7 @@ namespace ReactMvcApp.Controllers.User
             var details = GetUserDetails();
             return View(details);
         }
-        public IActionResult GetServices(int pageIndex, int pageSize)
-        {
-            // Fetch services from the database
-            var services = dbcontext.Services.FromSqlRaw("SELECT * FROM Services WHERE Active=1");
-
-            _logger.LogInformation($"----------SERVICES COUNT: {services.Count()}---------------------------");
-            // Initialize columns
-            var columns = new List<dynamic>
-            {
-                new { header = "S.No", accessorKey = "sno" },
-                new { header = "Service Name", accessorKey = "servicename" },
-                new { header = "Department", accessorKey = "department" },
-            };
-
-            // Initialize data list
-            List<dynamic> data = [];
-            List<dynamic> customActions = [];
-            int index = 1;
-
-            foreach (var item in services)
-            {
-                var button = new
-                {
-                    function = "OpenForm",
-                    parameters = new[] { item.ServiceId },
-                    buttonText = "Apply"
-                };
-
-                data.Add(new
-                {
-                    sno = index,
-                    servicename = item.ServiceName,
-                    department = item.Department,
-                    serviceId = item.ServiceId
-                });
-
-                customActions.Add(new
-                {
-                    id = index,
-                    tooltip = "Apply",
-                    color = "#F0C38E",
-                    actionFunction = "OpenForm"
-                });
-
-                index++;
-            }
-
-            // Pagination logic
-            var pagedData = data.Skip(pageIndex * pageSize).Take(pageSize).ToList();
-
-            return Json(new
-            {
-                status = true,
-                data = pagedData,
-                columns,
-                customActions,
-                totalCount = data.Count
-            });
-        }
+   
         public IActionResult UpdateRequest([FromForm] IFormCollection form)
         {
             var ApplicationId = new SqlParameter("@ApplicationId", form["ApplicationId"].ToString());

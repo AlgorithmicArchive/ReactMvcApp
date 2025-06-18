@@ -21,6 +21,8 @@ import {
   Legend,
 } from "chart.js";
 import axiosInstance from "../../axiosConfig";
+import { Container } from "react-bootstrap";
+import ServerSideTable from "../../components/ServerSideTable";
 
 // Register Chart.js components
 ChartJS.register(
@@ -42,6 +44,14 @@ export default function Reports() {
   const [error, setError] = useState(null);
   const [isTehsil, setIsTehsil] = useState(false);
   const [isButtonDisabled, setIsButtonDisabled] = useState(true);
+  const [statusType, setSatatusType] = useState("");
+  const [showTable, setShowTable] = useState(false);
+
+  const statustTypes = [
+    { label: "In Progress", value: "pending" },
+    { label: "Rejected", value: "rejected" },
+    { label: "Sanctioned", value: "sanctioned" },
+  ];
 
   const API_BASE_URL = "http://127.0.0.1:5004";
 
@@ -52,7 +62,7 @@ export default function Reports() {
       setError(null);
       try {
         const [districtsRes, servicesRes] = await Promise.all([
-          axiosInstance.get(`${API_BASE_URL}/Base/GetDistricts`),
+          axiosInstance.get(`${API_BASE_URL}/Base/GetAccessAreas`),
           axiosInstance.get(`${API_BASE_URL}/Base/GetServices`),
         ]);
 
@@ -98,112 +108,36 @@ export default function Reports() {
 
   const handleDistrictChange = (event) => {
     setDistrict(event.target.value);
-    if (service) {
+    setShowTable(false); // hide table on change
+    if (service && statusType) {
       setIsButtonDisabled(false);
     }
   };
 
   const handleServiceChange = (event) => {
     setService(event.target.value);
-    if (district) {
+    setShowTable(false); // hide table on change
+    if (district && statusType) {
+      setIsButtonDisabled(false);
+    }
+  };
+
+  const handleStatusTypeChange = (event) => {
+    setSatatusType(event.target.value);
+    setShowTable(false); // hide table on change
+    if (district && service) {
       setIsButtonDisabled(false);
     }
   };
 
   const handleGetReports = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const params = new URLSearchParams();
-      if (district) params.append("DistrictId", district);
-      if (service) params.append("ServiceId", service);
-
-      const response = await axiosInstance.get(
-        `${API_BASE_URL}/Base/GetApplicationsCount?${params.toString()}`
-      );
-
-      if (response.data && response.data.countList) {
-        setCountList(response.data.countList);
-      } else {
-        throw new Error("Invalid response from GetApplicationsCount");
-      }
-    } catch (err) {
-      setError(err.message);
-      toast.error(`Error: ${err.message}`, {
-        position: "top-right",
-        autoClose: 3000,
-      });
-    } finally {
-      setLoading(false);
-    }
+    setShowTable(true);
   };
 
-  const chartData = {
-    labels: countList.map((item) => item.label),
-    datasets: [
-      {
-        label: "Application Counts",
-        data: countList.map((item) => item.count),
-        backgroundColor: countList.map((item) => item.bgColor),
-        borderColor: countList.map((item) => item.textColor),
-        borderWidth: 1,
-      },
-    ],
-  };
-
-  const barOptions = {
-    responsive: true,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-          label: (context) => `${context.label}: ${context.raw}`,
-        },
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        title: {
-          display: true,
-          text: "Number of Applications",
-        },
-      },
-    },
-  };
-
-  const pieChartData = {
-    labels: countList
-      .filter((item) => item.label !== "Total Applications")
-      .map((item) => item.label),
-    datasets: [
-      {
-        label: "Application Counts",
-        data: countList
-          .filter((item) => item.label !== "Total Applications")
-          .map((item) => item.count),
-        backgroundColor: countList
-          .filter((item) => item.label !== "Total Applications")
-          .map((item) => item.bgColor),
-        borderColor: countList
-          .filter((item) => item.label !== "Total Applications")
-          .map((item) => item.textColor),
-        borderWidth: 1,
-      },
-    ],
-  };
-
-  const pieOptions = {
-    responsive: true,
-    plugins: {
-      legend: { position: "right" },
-      tooltip: {
-        callbacks: {
-          label: (context) => `${context.label}: ${context.raw}`,
-        },
-      },
-    },
+  const extraParams = {
+    AccessCode: district,
+    ServiceId: service,
+    StatusType: statusType,
   };
 
   if (loading && countList.length === 0) {
@@ -258,7 +192,6 @@ export default function Reports() {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
         p: { xs: 2, md: 4 },
       }}
     >
@@ -318,6 +251,25 @@ export default function Reports() {
             ))}
           </Select>
         </FormControl>
+
+        <FormControl fullWidth>
+          <InputLabel id="status-type-label">Status</InputLabel>
+          <Select
+            labelId="status-type-label"
+            value={statusType}
+            label="statusType"
+            onChange={handleStatusTypeChange}
+          >
+            <MenuItem value="">
+              <em>Please Select</em>
+            </MenuItem>
+            {statustTypes.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Box>
 
       <Button
@@ -342,65 +294,14 @@ export default function Reports() {
         Get Reports
       </Button>
 
-      {countList.length > 0 && (
-        <Box
-          sx={{
-            width: "100%",
-            display: "flex",
-            justifyContent: "center", // Center horizontally
-            mt: 4,
-          }}
-        >
-          <Box
-            sx={{
-              width: { xs: "100%", md: "80%" },
-              display: "flex",
-              flexDirection: { xs: "column", md: "row" },
-              justifyContent: "center", // Ensure even row layout
-              gap: 4,
-            }}
-          >
-            <Box
-              sx={{
-                flex: 1,
-                bgcolor: "#fff",
-                p: 2,
-                borderRadius: "8px",
-                boxShadow: 20,
-              }}
-            >
-              <Typography variant="h6" sx={{ mb: 2, textAlign: "center" }}>
-                Application Status Counts
-              </Typography>
-              <Bar
-                data={chartData}
-                options={barOptions}
-                width={500}
-                height={500}
-              />
-            </Box>
-
-            <Box
-              sx={{
-                flex: 1,
-                bgcolor: "#fff",
-                p: 2,
-                borderRadius: "8px",
-                boxShadow: 20,
-              }}
-            >
-              <Typography variant="h6" sx={{ mb: 2, textAlign: "center" }}>
-                Status Distribution
-              </Typography>
-              <Pie
-                data={pieChartData}
-                options={pieOptions}
-                width={500}
-                height={500}
-              />
-            </Box>
-          </Box>
-        </Box>
+      {showTable && (
+        <Container>
+          <ServerSideTable
+            key={`${service}-${statusType}-${district}`}
+            url="/Officer/GetApplicationsForReports"
+            extraParams={extraParams}
+          />
+        </Container>
       )}
     </Box>
   );
