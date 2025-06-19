@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Data.SqlClient;
@@ -164,6 +165,120 @@ namespace ReactMvcApp.Controllers
 
             await _emailSender.SendEmail(email, "OTP For Registration", htmlMessage);
             return Json(new { status = true });
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> SendPasswordResetOtp([FromForm] IFormCollection form)
+        {
+            string email = form["email"].ToString();
+            if (string.IsNullOrEmpty(email) || !Regex.IsMatch(email?.Trim()!, @"^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$"))
+            {
+                return Json(new { status = false, message = "Please provide a valid email address." });
+            }
+
+            var user = _dbContext.Users.FirstOrDefault(u => u.Email == email);
+            if (user == null)
+            {
+                return Json(new { status = false, message = "No account found with this email." });
+            }
+
+            string otpKey = $"otp:{user.UserId}";
+            string userName = user.Name ?? "User";
+
+            string otp = GenerateOTP(6);
+            _otpStore.StoreOtp(otpKey, otp);
+
+            string htmlMessage = $@"
+                <div style='font-family: Arial, sans-serif;'>
+                    <h2 style='color: #2e6c80;'>Your OTP Code for Password Reset</h2>
+                    <p>Dear {userName},</p>
+                    <p>Use the following One-Time Password (OTP) to reset your password. It is valid for <strong>5 minutes</strong>.</p>
+                    <div style='font-size: 24px; font-weight: bold; color: #333; margin: 20px 0;'>{otp}</div>
+                    <p>If you did not request a password reset, please ignore this email.</p>
+                    <br />
+                    <p style='font-size: 12px; color: #888;'>Thank you,<br />Your Application Team</p>
+                </div>";
+
+            await _emailSender.SendEmail(email!, "OTP for Password Reset", htmlMessage);
+            return Json(new { status = true, message = "OTP sent to your email." });
+        }
+
+
+        public class ResetPasswordResult
+        {
+            public int Result { get; set; }
+            public string? Message { get; set; }
+            public int UserId { get; set; }
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> ValidateOtpAndResetPassword([FromForm] IFormCollection form)
+        {
+            string email = form["email"].ToString();
+            string otp = form["otp"].ToString();
+            string newPassword = form["newPassword"].ToString();
+            _logger.LogInformation($"------------------ Email: {email} OTP: {otp}  PASSWORD: {newPassword}-------------------------------");
+
+            if (string.IsNullOrEmpty(email) || !Regex.IsMatch(email, @"^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$"))
+            {
+                return Json(new { status = false, message = "Please provide a valid email address." });
+            }
+
+            if (string.IsNullOrEmpty(otp) || !Regex.IsMatch(otp, @"^\d{6}$"))
+            {
+                return Json(new { status = false, message = "Please provide a valid 6-digit OTP." });
+            }
+
+            if (string.IsNullOrEmpty(newPassword) || newPassword.Length < 8)
+            {
+                return Json(new { status = false, message = "Password must be at least 8 characters long." });
+            }
+
+            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (user == null)
+            {
+                return Json(new { status = false, message = "No account found with this email." });
+            }
+
+            string otpKey = $"otp:{user.UserId}";
+            var storedOtp = _otpStore.RetrieveOtp(otpKey);
+
+            if (storedOtp == null || storedOtp != otp)
+            {
+                return Json(new { status = false, message = "Invalid or expired OTP." });
+            }
+
+            try
+            {
+                // Execute the ResetUserPassword stored procedure
+                var parameters = new[]
+                {
+                    new SqlParameter("@Email", email),
+                    new SqlParameter("@NewPassword", newPassword)
+                };
+
+                var result = await _dbContext.Database
+                .SqlQueryRaw<ResetPasswordResult>("EXEC ResetUserPassword @Email, @NewPassword", parameters)
+                .ToListAsync();
+
+
+                var resetResult = result.FirstOrDefault();
+                if (resetResult != null && resetResult.Result == 1)
+                {
+                    return Json(new { status = true, message = resetResult.Message });
+                }
+                else
+                {
+                    return Json(new { status = false, message = resetResult?.Message ?? "Failed to reset password." });
+                }
+
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = $"An error occurred: {ex.Message}" });
+            }
         }
 
         [HttpPost]

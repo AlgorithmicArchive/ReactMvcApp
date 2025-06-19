@@ -35,6 +35,7 @@ import IncompleteForm from "../screens/user/IncompleteForm";
 import CreateLetterPdf from "../screens/designer/CreateLetterPdf";
 import RegisterDSC from "../screens/officer/RegisterDSC";
 import CreateWebService from "../screens/designer/CreateWebService";
+import ForgotPassword from "../screens/home/ForgotPassword";
 
 const RoutesComponent = () => {
   return (
@@ -45,6 +46,7 @@ const RoutesComponent = () => {
       <Route path="/verification" element={<Verification />} />
       <Route path="/register" element={<RegisterScreen />} />
       <Route path="/officerRegistration" element={<OfficerRegisterScreen />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
       {/* Unauthorized Route */}
       <Route path="/unauthorized" element={<Unauthorized />} />

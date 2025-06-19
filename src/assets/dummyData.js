@@ -312,7 +312,7 @@ export const defaultFormConfig = [
         accept: "",
         sectionId: "section-1",
         optionsType: "independent",
-        editable: false,
+        editable: true,
       },
       {
         type: "select",
@@ -332,7 +332,7 @@ export const defaultFormConfig = [
         editable: true,
       },
     ],
-    editable: false,
+    editable: true,
   },
   {
     id: "section-2",
@@ -352,7 +352,7 @@ export const defaultFormConfig = [
         additionalFields: {},
         accept: "",
         sectionId: "section-2",
-        editable: false,
+        editable: true,
       },
       {
         type: "file",
@@ -368,7 +368,7 @@ export const defaultFormConfig = [
         additionalFields: {},
         accept: ".jpg,.png,.jpeg",
         sectionId: "section-2",
-        editable: false,
+        editable: true,
       },
       {
         type: "date",
@@ -400,7 +400,7 @@ export const defaultFormConfig = [
         additionalFields: {},
         accept: "",
         sectionId: "section-2",
-        editable: false,
+        editable: true,
       },
       {
         type: "email",
@@ -416,7 +416,7 @@ export const defaultFormConfig = [
         additionalFields: {},
         accept: "",
         sectionId: "section-2",
-        editable: false,
+        editable: true,
       },
       {
         type: "select",
@@ -437,7 +437,7 @@ export const defaultFormConfig = [
         accept: "",
         sectionId: "section-2",
         optionsType: "independent",
-        editable: false,
+        editable: true,
       },
       {
         type: "text",
@@ -453,9 +453,10 @@ export const defaultFormConfig = [
         additionalFields: {},
         accept: "",
         sectionId: "section-2",
-        editable: false,
+        editable: true,
       },
     ],
+    editable:true,
   },
   {
     id: "section-3",
@@ -475,7 +476,7 @@ export const defaultFormConfig = [
         additionalFields: {},
         accept: "",
         sectionId: "section-3",
-        editable: false,
+        editable: true,
       },
       {
         type: "select",
@@ -514,7 +515,7 @@ export const defaultFormConfig = [
         accept: "",
         sectionId: "section-3",
         optionsType: "independent",
-        editable: false,
+        editable: true,
       },
       {
         type: "select",
@@ -530,7 +531,7 @@ export const defaultFormConfig = [
         additionalFields: {},
         accept: "",
         sectionId: "section-3",
-        editable: false,
+        editable: true,
       },
       {
         type: "text",
@@ -546,7 +547,7 @@ export const defaultFormConfig = [
         additionalFields: {},
         accept: "",
         sectionId: "section-3",
-        editable: false,
+        editable: true,
       },
       {
         type: "text",
@@ -562,7 +563,7 @@ export const defaultFormConfig = [
         additionalFields: {},
         accept: "",
         sectionId: "section-3",
-        editable: false,
+        editable: true,
       },
       {
         type: "text",
@@ -578,7 +579,7 @@ export const defaultFormConfig = [
         additionalFields: {},
         accept: "",
         sectionId: "section-3",
-        editable: false,
+        editable: true,
       },
       {
         type: "text",
@@ -594,10 +595,10 @@ export const defaultFormConfig = [
         additionalFields: {},
         accept: "",
         sectionId: "section-3",
-        editable: false,
+        editable: true,
       },
     ],
-    editable: false,
+    editable: true,
   },
   {
     id: "section-4",
@@ -617,7 +618,7 @@ export const defaultFormConfig = [
         additionalFields: {},
         accept: "",
         sectionId: "section-3",
-        editable: false,
+        editable: true,
       },
       {
         type: "select",
@@ -656,7 +657,7 @@ export const defaultFormConfig = [
         accept: "",
         sectionId: "section-4",
         optionsType: "independent",
-        editable: false,
+        editable: true,
       },
       {
         type: "select",
@@ -672,7 +673,7 @@ export const defaultFormConfig = [
         additionalFields: {},
         accept: "",
         sectionId: "section-4",
-        editable: false,
+        editable: true,
       },
       {
         type: "text",
@@ -739,6 +740,7 @@ export const defaultFormConfig = [
         editable: false,
       },
     ],
+    editable:true,
   },
   {
     id: "section-5",

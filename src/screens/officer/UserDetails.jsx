@@ -699,7 +699,7 @@ export default function UserDetails() {
             mx: "auto",
           }}
         >
-          <form onSubmit={handleSubmit(onSubmit)}>
+          <form onSubmit={handleSubmit(onSubmit)} autoComplete="off">
             {actionForm.length > 0 ? (
               actionForm.map((field, index) => {
                 const selectedValue =
