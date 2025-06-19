@@ -25,7 +25,9 @@ export default function Footer() {
             gap: 5,
           }}
         >
-          <Typography sx={{ color: "text.secondary" }}>SiteName</Typography>
+          <Typography sx={{ color: "text.secondary" }}>
+            Sahayata Nidhi
+          </Typography>
           <Divider
             orientation="vertical"
             flexItem
