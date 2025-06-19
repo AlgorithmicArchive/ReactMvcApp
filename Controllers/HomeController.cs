@@ -335,7 +335,7 @@ namespace ReactMvcApp.Controllers
             if (user != null)
             {
                 if (!user.IsEmailValid)
-                    return Json(new { status = false, response = "Email Not Verified." });
+                    return Json(new { status = false, response = "Email Not Verified.", isEmailVerified = false, email = user.Email, username = user.Username });
 
                 // Create JWT claims
                 var claims = new List<Claim>
@@ -432,6 +432,59 @@ namespace ReactMvcApp.Controllers
                 return Json(new { status = false, response = "Registration failed." });
             }
         }
+
+
+        [HttpPost]
+        public async Task<IActionResult> SendEmailVerificationOtp([FromForm] IFormCollection form)
+        {
+            string email = form["email"].ToString();
+            var user = _dbContext.Users.FirstOrDefault(u => u.Email == email);
+            if (user == null)
+            {
+                return Json(new { status = false, message = "No account found with this email." });
+            }
+
+            if (user.IsEmailValid)
+            {
+                return Json(new { status = false, message = "Email is already verified." });
+            }
+
+            string otpKey = $"email_verify_otp:{user.UserId}";
+            string otp = GenerateOTP(6);
+            _otpStore.StoreOtp(otpKey, otp);
+
+            string htmlMessage = $@"
+            <div>
+                <h3>Email Verification OTP</h3>
+                <p>Your OTP is <strong>{otp}</strong>. It is valid for 5 minutes.</p>
+            </div>";
+
+            await _emailSender.SendEmail(email, "Email Verification OTP", htmlMessage);
+
+            return Json(new { status = true, message = "OTP sent to your email." });
+        }
+
+
+        [HttpPost]
+        public IActionResult VerifyEmailOtp([FromForm] IFormCollection form)
+        {
+            string email = form["email"].ToString();
+            string otp = form["otp"].ToString();
+            var user = _dbContext.Users.FirstOrDefault(u => u.Email == email);
+            if (user == null) return Json(new { status = false, message = "User not found" });
+
+            string otpKey = $"email_verify_otp:{user.UserId}";
+            var storedOtp = _otpStore.RetrieveOtp(otpKey);
+
+            if (storedOtp == null || storedOtp != otp)
+                return Json(new { status = false, message = "Invalid or expired OTP." });
+
+            user.IsEmailValid = true;
+            _dbContext.SaveChanges();
+
+            return Json(new { status = true, message = "Email verified successfully." });
+        }
+
 
 
         [HttpPost]

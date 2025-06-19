@@ -1,6 +1,16 @@
 import React, { useContext, useState } from "react";
+import {
+  Box,
+  Typography,
+  Link,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+} from "@mui/material";
 import { useForm } from "react-hook-form";
-import { Box, Button, Typography, Link } from "@mui/material";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import CustomInputField from "../../components/form/CustomInputField";
@@ -9,16 +19,13 @@ import { Login } from "../../assets/fetch";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../../UserContext";
 import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import CircularProgress from "@mui/material/CircularProgress";
+import "react-toastify/dist/ReactToastify.css";
 
 // Validation schema
 const schema = yup.object().shape({
   username: yup.string().required("Username is required"),
-  password: yup
-    .string()
-    .min(6, "Password must be at least 6 characters")
-    .required("Password is required"),
+  password: yup.string().min(6).required("Password is required"),
 });
 
 export default function LoginScreen() {
@@ -38,45 +45,110 @@ export default function LoginScreen() {
     setVerified,
     setDesignation,
   } = useContext(UserContext);
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
 
-  // Handle form submission
+  const navigate = useNavigate();
+
+  const [loading, setLoading] = useState(false);
+  const [otpModalOpen, setOtpModalOpen] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [email, setEmail] = useState("");
+
   const onSubmit = async (data) => {
     const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      formData.append(key, value);
-    });
+    formData.append("username", data.username);
+    formData.append("password", data.password);
+
     setLoading(true);
     try {
       const response = await Login(formData);
+
       if (response.status) {
         setToken(response.token);
         setUserType(response.userType);
         setProfile(response.profile);
         setUsername(response.username);
-        setVerified(false);
+        setVerified(true);
         setDesignation(response.designation);
-        navigate("/Verification");
-      } else {
-        toast.error(response.response, {
-          position: "top-center",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          theme: "colored",
+        navigate("/verification");
+      } else if (response.isEmailVerified === false) {
+        const formDataEmail = new FormData();
+        formDataEmail.append("email", response.email);
+
+        const res = await fetch("/Home/SendEmailVerificationOtp", {
+          method: "POST",
+          body: formDataEmail,
         });
+
+        const resJson = await res.json();
+
+        if (resJson.status) {
+          setEmail(response.email);
+          setUsername(response.username);
+          setOtpModalOpen(true);
+          toast.success("OTP sent to your email.");
+        } else {
+          toast.error(resJson.message || "Failed to send OTP.");
+        }
+      } else {
+        toast.error(response.response || "Invalid credentials.");
       }
-    } catch (error) {
-      console.error("Login failed:", error);
-      toast.error("An error occurred. Please try again.", {
-        position: "top-center",
-        autoClose: 3000,
-      });
+    } catch (err) {
+      console.error("Login Error:", err);
+      toast.error("An error occurred. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOtpVerify = async () => {
+    if (!otp || otp.length !== 6) {
+      toast.error("OTP must be 6 digits.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("email", email);
+      formData.append("otp", otp);
+
+      const res = await fetch("/Home/VerifyEmailOtp", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await res.json();
+
+      if (result.status) {
+        setOtpModalOpen(false);
+        toast.success("Email verified. Please login again.");
+      } else {
+        toast.error(result.message || "OTP verification failed.");
+      }
+    } catch (err) {
+      toast.error("Error verifying OTP.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    const formData = new FormData();
+    formData.append("email", email);
+
+    try {
+      const res = await fetch("/Home/SendEmailVerificationOtp", {
+        method: "POST",
+        body: formData,
+      });
+      const result = await res.json();
+      if (result.status) {
+        toast.success("OTP resent to your email.");
+      } else {
+        toast.error(result.message || "Failed to resend OTP.");
+      }
+    } catch (err) {
+      toast.error("Error resending OTP.");
     }
   };
 
@@ -89,7 +161,7 @@ export default function LoginScreen() {
         alignItems: "center",
         minHeight: "80vh",
         background:
-          "linear-gradient(135deg,rgb(252, 252, 252) 0%,rgb(240, 236, 236) 100%)", // Subtle gradient background
+          "linear-gradient(135deg,rgb(252, 252, 252) 0%,rgb(240, 236, 236) 100%)",
         padding: { xs: 2, md: 4 },
       }}
     >
@@ -103,23 +175,16 @@ export default function LoginScreen() {
           boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
           transition: "transform 0.3s ease-in-out",
           "&:hover": {
-            transform: "translateY(-5px)", // Subtle hover animation
+            transform: "translateY(-5px)",
           },
         }}
-        role="form"
-        aria-labelledby="login-title"
       >
-        {/* Logo or Branding */}
         <Box sx={{ textAlign: "center", mb: 3 }}>
           <Typography
             variant="h4"
             component="h1"
             id="login-title"
-            sx={{
-              fontWeight: 700,
-              color: "primary.main",
-              mb: 1,
-            }}
+            sx={{ fontWeight: 700, color: "primary.main", mb: 1 }}
           >
             Welcome Back
           </Typography>
@@ -128,7 +193,6 @@ export default function LoginScreen() {
           </Typography>
         </Box>
 
-        {/* Form */}
         <Box
           component="form"
           noValidate
@@ -136,7 +200,6 @@ export default function LoginScreen() {
           onSubmit={handleSubmit(onSubmit)}
           sx={{ display: "flex", flexDirection: "column", gap: 3 }}
         >
-          {/* Username Field */}
           <CustomInputField
             label="Username"
             name="username"
@@ -147,7 +210,6 @@ export default function LoginScreen() {
             disabled={loading}
           />
 
-          {/* Password Field */}
           <CustomInputField
             label="Password"
             name="password"
@@ -159,7 +221,6 @@ export default function LoginScreen() {
             disabled={loading}
           />
 
-          {/* Forgot Password Link */}
           <Box sx={{ textAlign: "right" }}>
             <Link
               href="/forgot-password"
@@ -171,7 +232,6 @@ export default function LoginScreen() {
             </Link>
           </Box>
 
-          {/* Submit Button */}
           <CustomButton
             text={loading ? "Logging In..." : "Log In"}
             bgColor="primary.main"
@@ -194,7 +254,6 @@ export default function LoginScreen() {
             }}
           />
 
-          {/* Sign Up Link */}
           <Box sx={{ textAlign: "center", mt: 2 }}>
             <Typography variant="body2" color="text.secondary">
               Don't have an account?{" "}
@@ -215,7 +274,47 @@ export default function LoginScreen() {
         </Box>
       </Box>
 
-      {/* Toast Container */}
+      {/* OTP Dialog */}
+      <Dialog open={otpModalOpen} onClose={() => setOtpModalOpen(false)}>
+        <DialogTitle>Verify Your Email</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" mb={1}>
+            Enter the 6-digit OTP sent to <strong>{email}</strong>
+          </Typography>
+          <TextField
+            fullWidth
+            label="OTP"
+            variant="outlined"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+            slotProps={{ maxLength: 6 }}
+            disabled={loading}
+          />
+          <Box mt={1}>
+            <Link
+              component="button"
+              variant="body2"
+              onClick={handleResendOtp}
+              disabled={loading}
+            >
+              Resend OTP
+            </Link>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOtpModalOpen(false)} disabled={loading}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleOtpVerify}
+            disabled={loading}
+          >
+            Verify
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <ToastContainer />
     </Box>
   );
