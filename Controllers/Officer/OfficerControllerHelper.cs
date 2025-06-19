@@ -22,19 +22,14 @@ namespace ReactMvcApp.Controllers.Officer
 
             return result;
         }
-
-
         public string GetDistrictName(int districtId)
         {
             return dbcontext.Districts.FirstOrDefault(d => d.DistrictId == districtId)!.DistrictName!;
         }
-
-
         public string GetTehsilName(int tehsilId)
         {
             return dbcontext.Tehsils.FirstOrDefault(d => d.TehsilId == tehsilId)!.TehsilName!;
         }
-
         public string GetFieldValue(string fieldName, dynamic data)
         {
             foreach (var section in data)
@@ -52,8 +47,6 @@ namespace ReactMvcApp.Controllers.Officer
             }
             return "";
         }
-
-
         public IActionResult UpdatePool(int ServiceId, string list)
         {
             var officer = GetOfficerDetails();
@@ -118,9 +111,6 @@ namespace ReactMvcApp.Controllers.Officer
 
             return Json(new { status = true, ServiceId, removedItem = itemToRemove });
         }
-
-
-
         [HttpPost]
         public async Task<IActionResult> UpdatePdf([FromForm] IFormCollection form)
         {
@@ -149,8 +139,6 @@ namespace ReactMvcApp.Controllers.Officer
 
             return Json(new { status = true });
         }
-
-
 
         private dynamic GetFormattedValue(dynamic item, JObject data)
         {
@@ -199,7 +187,6 @@ namespace ReactMvcApp.Controllers.Officer
             var result = sb.ToString().TrimEnd();
             return new { Label = label, Value = result };
         }
-
         // Recursive search for a JObject with ["name"] == fieldName
         private static JObject? FindFieldRecursively(JToken token, string fieldName)
         {
@@ -218,7 +205,6 @@ namespace ReactMvcApp.Controllers.Officer
             }
             return null;
         }
-
         // Extracts the string value (or does District/Tehsil lookups)
         private string ExtractValueWithSpecials(JObject fieldObj, string fieldName)
         {
@@ -236,8 +222,6 @@ namespace ReactMvcApp.Controllers.Officer
 
             return s;
         }
-
-
         [HttpGet]
         public IActionResult GetCertificateDetails()
         {
@@ -273,9 +257,6 @@ namespace ReactMvcApp.Controllers.Officer
                 return StatusCode(500, new { success = false, message = ex.Message });
             }
         }
-
-
-
         private JObject MapServiceFieldsFromForm(JObject formDetailsObj, JObject fieldMapping)
         {
             var formValues = new Dictionary<string, string>();
@@ -345,11 +326,6 @@ namespace ReactMvcApp.Controllers.Officer
 
             return ReplaceKeys(fieldMapping);
         }
-
-
-
-
-
         // Inside your controller or a service
         private static async Task<string> SendApiRequestAsync(string url, object payload)
         {
