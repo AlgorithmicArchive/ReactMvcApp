@@ -491,6 +491,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
       "status",
       operationType === "submit" ? "Initiated" : "Incomplete"
     );
+    console.log("Reference Number", referenceNumber);
     formdata.append("referenceNumber", referenceNumber);
     let url = "/User/InsertFormDetails";
     console.log(additionalDetails);
@@ -508,9 +509,11 @@ const DynamicStepForm = ({ mode = "new", data }) => {
           navigate("/user/acknowledge", {
             state: { applicationId: result.referenceNumber },
           });
-        } else if (result.type !== "Save") {
+        } else if (result.type == "Edit") {
           setReferenceNumber(result.referenceNumber);
           navigate("/user/initiated");
+        } else {
+          setReferenceNumber(result.referenceNumber);
         }
       } else {
         console.error("Submission failed:", result);

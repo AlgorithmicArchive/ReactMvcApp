@@ -453,5 +453,11 @@ namespace ReactMvcApp.Controllers.Officer
             });
         }
 
+
+        [HttpGet]
+        public IActionResult GetRecordsForBankFile()
+        {
+            return Json(new { });
+        }
     }
 }

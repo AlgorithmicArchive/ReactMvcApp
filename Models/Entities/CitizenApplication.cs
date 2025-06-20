@@ -11,6 +11,8 @@ public partial class CitizenApplication
 
     public int ServiceId { get; set; }
 
+    public string? DistrictUidForBank { get; set; }
+
     public string? FormDetails { get; set; }
 
     public string? WorkFlow { get; set; }
@@ -20,6 +22,10 @@ public partial class CitizenApplication
     public int CurrentPlayer { get; set; }
 
     public string? Status { get; set; }
+
+    public bool? DeptVerified { get; set; }
+
+    public string? VerifiedByDeptOn { get; set; }
 
     public string? CreatedAt { get; set; }
 }

@@ -109,7 +109,7 @@ namespace ReactMvcApp.Controllers.User
             string? tehsilName = dbcontext.Tehsils.FirstOrDefault(d => d.TehsilId == tehsilId)!.TehsilName;
             return tehsilName!;
         }
- 
+
         public int GetCountPerDistrict(int districtId, int serviceId)
         {
 
@@ -141,6 +141,8 @@ namespace ReactMvcApp.Controllers.User
 
             return applicationsPerDistrict.CountValue;
         }
+
+
         private static string SaveFile(IFormFile file)
         {
             // Define the folder to store files (e.g., wwwroot/uploads)

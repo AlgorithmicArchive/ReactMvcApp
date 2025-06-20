@@ -1,55 +1,94 @@
-import { Box, Typography } from "@mui/material";
 import React, { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import CustomSelectField from "../../components/form/CustomSelectField";
-import CustomButton from "../../components/CustomButton";
 import {
-  checkBankFile,
-  fetchDistricts,
-  fetchServiceList,
-  createBankFile,
-  fetchData,
-} from "../../assets/fetch";
+  Box,
+  Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Button,
+  CircularProgress,
+} from "@mui/material";
+import { toast } from "react-toastify";
+import { Container } from "react-bootstrap";
+import ServerSideTable from "../../components/ServerSideTable";
+import axiosInstance from "../../axiosConfig";
 import connection, {
   startSignalRConnection,
 } from "../../assets/signalRService";
 import SftpModal from "../../components/SftpModal";
-import CustomTable from "../../components/CustomTable";
-import BasicModal from "../../components/BasicModal";
 
 export default function BankFile() {
-  const {
-    control,
-    formState: { errors },
-    handleSubmit,
-    getValues,
-  } = useForm();
-
+  const [district, setDistrict] = useState("");
+  const [service, setService] = useState("");
   const [districts, setDistricts] = useState([]);
   const [services, setServices] = useState([]);
-  const [currentList, setCurrentList] = useState("");
-  const [isBankFile, setIsBankFile] = useState(null);
-  const [totalCount, setTotalCount] = useState(0);
-  const [bankFileRecords, setBankFileRecords] = useState(0);
-  const [isTriggered, setIsTriggered] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isTehsil, setIsTehsil] = useState(false);
+  const [isButtonDisabled, setIsButtonDisabled] = useState(true);
+  const [showTable, setShowTable] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [table, setTable] = useState(null);
-  const [basicTable, setBasicTable] = useState(null);
-
   const [open, setOpen] = useState(false);
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
 
-  const [basicOpen, setBasicOpen] = useState(false);
-  const handleBasicOpen = () => setBasicOpen(true);
-  const handleBasicClose = () => setBasicOpen(false);
+  const API_BASE_URL = "http://127.0.0.1:5004";
 
+  // Fetch districts and services
   useEffect(() => {
-    // Fetch initial data for districts and services
-    fetchDistricts(setDistricts);
-    fetchServiceList(setServices);
+    const fetchDropdowns = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [districtsRes, servicesRes] = await Promise.all([
+          axiosInstance.get(`${API_BASE_URL}/Base/GetAccessAreas`),
+          axiosInstance.get(`${API_BASE_URL}/Base/GetServices`),
+        ]);
 
+        if (districtsRes.data.status && servicesRes.data.status) {
+          if (districtsRes.data.tehsils) {
+            setIsTehsil(true);
+            setDistricts(
+              districtsRes.data.tehsils.map((d) => ({
+                value: d.tehsilId,
+                label: d.tehsilName,
+              }))
+            );
+          } else {
+            setDistricts(
+              districtsRes.data.districts.map((d) => ({
+                value: d.districtId,
+                label: d.districtName,
+              }))
+            );
+          }
+          setServices(
+            servicesRes.data.services.map((s) => ({
+              value: s.serviceId,
+              label: s.serviceName,
+            }))
+          );
+        } else {
+          throw new Error("Failed to fetch districts or services");
+        }
+      } catch (err) {
+        setError(err.message);
+        toast.error(`Error: ${err.message}`, {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDropdowns();
+
+    // SignalR setup
     startSignalRConnection();
+    connection.on("ReceiveProgress", (progress) => {
+      console.log("Progress update:", progress);
+      setProgress(progress);
+    });
 
     connection.onreconnecting((error) => {
       console.log("SignalR reconnecting due to error:", error);
@@ -59,167 +98,258 @@ export default function BankFile() {
       console.log("SignalR reconnected. Connection ID:", connectionId);
     });
 
-    // Listen for progress updates and set progress
-    connection.on("ReceiveProgress", (progress) => {
-      console.log("Progress update:", progress);
-      setProgress(progress); // Set progress state to trigger re-render
-    });
-
     return () => {
-      // Clean up event listener when component unmounts
       connection.off("ReceiveProgress");
     };
   }, []);
 
-  const handleButtonAction = (functionName, parameters) => {
-    const isBankFileSent = parameters.isBankFileSent;
-    const districtId = getValues("district");
-    const serviceId = getValues("service");
-    if (
-      functionName == "CreateBankFile" ||
-      functionName == "AppendToBankFile"
-    ) {
-      handleCreateBankFile();
-      setTable({
-        url: "/Officer/VerifyBankFileAndRecords",
-        params: {
-          ServiceId: serviceId,
-          DistrictId: districtId,
-        },
-        key: Date.now(),
-      });
-    } else if (
-      functionName == "ViewBankRecords" ||
-      functionName == "ViewNewRecords"
-    ) {
-      const status =
-        functionName == "ViewBankRecords" ? "BankRecords" : "Sanctioned";
-      handleBasicOpen();
-      setBasicTable({
-        url: "/Officer/GetBankFileRecords",
-        params: {
-          ServiceId: serviceId,
-          DistrictId: districtId,
-          status: status,
-        },
-        key: Date.now(),
-      });
-    } else if (functionName == "SendBankFile") handleOpen();
+  const handleDistrictChange = (event) => {
+    setDistrict(event.target.value);
+    setShowTable(false);
+    if (service) {
+      setIsButtonDisabled(false);
+    }
   };
 
-  const onSubmit = async (data) => {
-    const districtId = data.district;
-    const serviceId = data.service;
-    setTable({
-      url: "/Officer/VerifyBankFileAndRecords",
-      params: {
-        ServiceId: serviceId,
-        DistrictId: districtId,
-      },
-      key: Date.now(),
-    });
-    setIsTriggered(true);
+  const handleServiceChange = (event) => {
+    setService(event.target.value);
+    setShowTable(false);
+    if (district) {
+      setIsButtonDisabled(false);
+    }
+  };
+
+  const handleGetTable = async () => {
+    setShowTable(true);
   };
 
   const handleCreateBankFile = async () => {
     try {
-      // Reset progress before starting a new file creation
       setProgress(0);
-
-      const districtId = getValues("district");
-      const serviceId = getValues("service");
-      await createBankFile(districtId, serviceId); // Ensure this function triggers the backend process
+      await axiosInstance.post(`${API_BASE_URL}/Officer/CreateBankFile`, {
+        DistrictId: district,
+        ServiceId: service,
+      });
+      setShowTable(true);
     } catch (error) {
       console.error("Error creating bank file:", error);
+      toast.error(`Error creating bank file: ${error.message}`, {
+        position: "top-right",
+        autoClose: 3000,
+      });
     }
   };
+
+  const handleCheckRecords = async () => {
+    
+  };
+
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+
+  const extraParams = {
+    ServiceId: service,
+    DistrictId: district,
+  };
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          width: "100%",
+          height: { xs: "100vh", lg: "70vh" },
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          bgcolor: "#f5f5f5",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box
+        sx={{
+          width: "100%",
+          height: { xs: "100vh", lg: "70vh" },
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          bgcolor: "#f5f5f5",
+        }}
+      >
+        <Typography color="error" variant="h6">
+          {error}
+        </Typography>
+        <Button
+          variant="contained"
+          onClick={() => window.location.reload()}
+          sx={{ mt: 2 }}
+        >
+          Retry
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box
       sx={{
-        width: "100vw",
-        height: "100vh",
+        width: "100%",
+        minHeight: { xs: "auto", lg: "100vh" },
         display: "flex",
         flexDirection: "column",
-        gap: "1rem",
-        justifyContent: "flex-start",
         alignItems: "center",
-        paddingTop: "10%",
+        p: { xs: 2, md: 4 },
       }}
     >
+      <Typography
+        variant="h5"
+        sx={{ mb: 4, fontWeight: "bold", color: "#333333" }}
+      >
+        Bank File Management
+      </Typography>
+
       <Box
         sx={{
           display: "flex",
-          flexDirection: "column",
-          backgroundColor: "primary.main",
-          width: "40%",
-          height: "max-content",
-          padding: 3,
-          borderRadius: 3,
+          flexDirection: { xs: "column", md: "row" },
+          gap: 3,
+          width: { xs: "100%", sm: "80%", md: "60%" },
+          maxWidth: "600px",
+          mb: 4,
         }}
       >
-        <CustomSelectField
-          label="Select District"
-          name="district"
-          control={control}
-          options={districts}
-          placeholder="Select District"
-          rules={{ required: "This field is required" }}
-          errors={errors}
-        />
-        <CustomSelectField
-          label="Select Service"
-          name="service"
-          control={control}
-          options={services}
-          placeholder="Select Service"
-          rules={{ required: "This field is required" }}
-          errors={errors}
-        />
-        <CustomButton
-          text="Check"
-          type="submit"
-          bgColor="background.paper"
-          color="primary.main"
-          onClick={handleSubmit(onSubmit)}
-        />
+        <FormControl fullWidth>
+          <InputLabel id="district-select-label">
+            {isTehsil ? "Tehsil" : "District"}
+          </InputLabel>
+          <Select
+            labelId="district-select-label"
+            value={district}
+            label={isTehsil ? "Tehsil" : "District"}
+            onChange={handleDistrictChange}
+          >
+            <MenuItem value="">
+              <em>Please Select</em>
+            </MenuItem>
+            {districts.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl fullWidth>
+          <InputLabel id="service-select-label">Service</InputLabel>
+          <Select
+            labelId="service-select-label"
+            value={service}
+            label="Service"
+            onChange={handleServiceChange}
+          >
+            <MenuItem value="">
+              <em>Please Select</em>
+            </MenuItem>
+            {services.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Box>
 
-      {isTriggered && (
-        <Box>
-          {table != null && (
-            <CustomTable
-              key={table.key}
-              fetchData={fetchData}
-              url={table.url}
-              params={table.params}
-              title={currentList + " List"}
-              buttonActionHandler={handleButtonAction}
-            />
-          )}
-          {progress > 0 && (
-            <Box sx={{ width: "100%", mt: 2 }}>
-              <Typography>Progress: {progress}%</Typography>
-              <progress value={progress} max="100" style={{ width: "100%" }} />
-            </Box>
-          )}
+      <Box sx={{ display: "flex", gap: 2, mb: 4 }}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleGetTable}
+          disabled={isButtonDisabled}
+          sx={{
+            px: 4,
+            py: 1.5,
+            fontSize: "1rem",
+            fontWeight: "bold",
+            borderRadius: "8px",
+            textTransform: "none",
+            bgcolor: isButtonDisabled ? "#cccccc" : "#1976d2",
+            "&:hover": {
+              bgcolor: isButtonDisabled ? "#cccccc" : "#1565c0",
+            },
+          }}
+        >
+          Check Records
+        </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleCreateBankFile}
+          disabled={isButtonDisabled}
+          sx={{
+            px: 4,
+            py: 1.5,
+            fontSize: "1rem",
+            fontWeight: "bold",
+            borderRadius: "8px",
+            textTransform: "none",
+            bgcolor: isButtonDisabled ? "#cccccc" : "#1976d2",
+            "&:hover": {
+              bgcolor: isButtonDisabled ? "#cccccc" : "#1565c0",
+            },
+          }}
+        >
+          Create Bank File
+        </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleOpen}
+          disabled={isButtonDisabled}
+          sx={{
+            px: 4,
+            py: 1.5,
+            fontSize: "1rem",
+            fontWeight: "bold",
+            borderRadius: "8px",
+            textTransform: "none",
+            bgcolor: isButtonDisabled ? "#cccccc" : "#1976d2",
+            "&:hover": {
+              bgcolor: isButtonDisabled ? "#cccccc" : "#1565c0",
+            },
+          }}
+        >
+          Send Bank File
+        </Button>
+      </Box>
+
+      {progress > 0 && (
+        <Box sx={{ width: "60%", maxWidth: "600px", mb: 4 }}>
+          <Typography>Progress: {progress}%</Typography>
+          <progress value={progress} max="100" style={{ width: "100%" }} />
         </Box>
       )}
 
-      <BasicModal
-        open={basicOpen}
-        handleClose={handleBasicClose}
-        table={basicTable}
-        pdf={null}
-        handleActionButton={() => {}}
-        buttonText=""
-      />
+      {showTable && (
+        <Container>
+          <ServerSideTable
+            key={`${service}-${district}`}
+            url="/Officer/VerifyBankFileAndRecords"
+            extraParams={extraParams}
+          />
+        </Container>
+      )}
 
       <SftpModal
         open={open}
         handleClose={handleClose}
-        serviceId={getValues("service")}
-        districtId={getValues("district")}
+        serviceId={service}
+        districtId={district}
         type={"send"}
       />
     </Box>

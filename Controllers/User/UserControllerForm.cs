@@ -52,10 +52,11 @@ namespace ReactMvcApp.Controllers.User
             .Select(field => Convert.ToInt32(field["value"]))
             .FirstOrDefault();
 
-
+            _logger.LogInformation($"------------ REFERENCE NUMBER:{referenceNumber} -----------------");
             if (string.IsNullOrEmpty(referenceNumber))
             {
                 int count = GetCountPerDistrict(districtId, serviceId);
+                string bankUid = count.ToString("D6");
                 var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
                 string? districtShort = dbcontext.Districts.FirstOrDefault(s => s.DistrictId == districtId)!.DistrictShort;
                 var workFlow = service!.OfficerEditableField;
@@ -81,6 +82,7 @@ namespace ReactMvcApp.Controllers.User
                     ReferenceNumber = referenceNumber,
                     CitizenId = userId,
                     ServiceId = serviceId,
+                    DistrictUidForBank = bankUid,
                     FormDetails = formDetailsObj.ToString(),
                     WorkFlow = workFlow!,
                     Status = status,
@@ -221,7 +223,7 @@ namespace ReactMvcApp.Controllers.User
 
             dbcontext.SaveChanges();
 
-            return Json(new { status = true, message = "Application updated successfully" });
+            return Json(new { status = true, message = "Application updated successfully", type = "Edit" });
         }
 
 

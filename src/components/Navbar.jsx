@@ -210,7 +210,7 @@ const MyNavbar = () => {
                   Reports
                 </Nav.Link>
 
-                {designation === "Director Finance" && (
+                {designation.toLowerCase().includes("director") && (
                   <div
                     onMouseEnter={() => handleMouseEnter("bank-file")}
                     onMouseLeave={handleMouseLeave}

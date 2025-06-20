@@ -29,6 +29,8 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     public virtual DbSet<OfficersDesignation> OfficersDesignations { get; set; }
 
+    public virtual DbSet<PensionPayment> PensionPayments { get; set; }
+
     public virtual DbSet<Pool> Pools { get; set; }
 
     public virtual DbSet<Service> Services { get; set; }
@@ -109,7 +111,14 @@ public partial class SocialWelfareDepartmentContext : DbContext
                 .HasMaxLength(50)
                 .IsUnicode(false)
                 .HasColumnName("Created_at");
+            entity.Property(e => e.DeptVerified).HasDefaultValue(false);
+            entity.Property(e => e.DistrictUidForBank)
+                .HasMaxLength(6)
+                .IsUnicode(false);
             entity.Property(e => e.Status)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+            entity.Property(e => e.VerifiedByDeptOn)
                 .HasMaxLength(50)
                 .IsUnicode(false);
         });
@@ -157,6 +166,112 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.DesignationShort)
                 .HasMaxLength(100)
                 .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<PensionPayment>(entity =>
+        {
+            entity.HasNoKey();
+
+            entity.Property(e => e.BankResBankDateExecuted)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("bankRes_BankDateExecuted");
+            entity.Property(e => e.BankResPensionerCategory)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("bankRes_pensionerCategory");
+            entity.Property(e => e.BankResStatusFromBank)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("bankRes_StatusFromBank");
+            entity.Property(e => e.BankResTransactionId)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("bankRes_TransactionId");
+            entity.Property(e => e.BankResTransactionStatus)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("bankRes_TransactionStatus");
+            entity.Property(e => e.DistrictBankUid)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("districtBankUID");
+            entity.Property(e => e.DistrictId)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("districtId");
+            entity.Property(e => e.DistrictName)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("districtName");
+            entity.Property(e => e.DivisionCode)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("divisionCode");
+            entity.Property(e => e.DivisionName)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("divisionName");
+            entity.Property(e => e.PayingDepartment)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("payingDepartment");
+            entity.Property(e => e.PayingDeptAccountNumber)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("payingDeptAccountNumber");
+            entity.Property(e => e.PayingDeptBankName)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("payingDeptBankName");
+            entity.Property(e => e.PayingDeptIfscCode)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("payingDeptIfscCode");
+            entity.Property(e => e.PaymentFileGenerationDate)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("paymentFileGenerationDate");
+            entity.Property(e => e.PaymentOfMonth)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("paymentOfMonth");
+            entity.Property(e => e.PaymentOfYear)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("paymentOfYear");
+            entity.Property(e => e.PensionAmount)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("pensionAmount");
+            entity.Property(e => e.PensionerAccountNo)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("pensionerAccountNo");
+            entity.Property(e => e.PensionerIfscCode)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("pensionerIfscCode");
+            entity.Property(e => e.PensionerName)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("pensionerName");
+            entity.Property(e => e.PensionerType)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("pensionerType");
+            entity.Property(e => e.ReferenceNumber)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("referenceNumber");
+            entity.Property(e => e.StateCode)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("stateCode");
+            entity.Property(e => e.StateName)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("stateName");
         });
 
         modelBuilder.Entity<Pool>(entity =>
