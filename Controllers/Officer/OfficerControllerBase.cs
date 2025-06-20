@@ -187,12 +187,18 @@ namespace SahayataNidhi.Controllers.Officer
                 string serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == formdetails.ServiceId)!.ServiceName!;
                 string appliedDistrictId = GetFieldValue("District", formDetailsObj);
                 string districtName = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == Convert.ToInt32(appliedDistrictId))!.DistrictName!;
+                string officerArea = officer.AccessLevel == "District" ? districtName :
+                     officer.AccessLevel == "Division" ? (officer.AccessCode == 1 ? "Jammu" :
+                                                          officer.AccessCode == 2 ? "Kashmir" : "Unknown Division") :
+                     officer.AccessLevel == "State" ? "Jammu and Kashmir" :
+                     "Unknown";
+
                 string userEmail = GetFieldValue("Email", formDetailsObj);
                 string htmlMessage = $@"
                 <div style='font-family: Arial, sans-serif;'>
                     <h2 style='color: #2e6c80;'>Application Status Update</h2>
                     <p>Dear {fullName},</p>
-                    <p>Your application for the service <strong>{serviceName}</strong> has been <strong>{action}</strong> by <strong>{officer.Role} {districtName}</strong>.</p>
+                    <p>Your application for the service <strong>{serviceName}</strong> has been <strong>{action}ed</strong> by <strong>{officer.Role} {officerArea}</strong>.</p>
                     <ul style='line-height: 1.6;'>
                         <li><strong>Form Type:</strong> {serviceName}</li>
                         <li><strong>Status:</strong> {action}</li>
@@ -206,7 +212,8 @@ namespace SahayataNidhi.Controllers.Officer
                 </div>";
 
 
-                await emailSender.SendEmail(userEmail, "Application Status Update", htmlMessage);
+                if (action != "Sanction")
+                    await emailSender.SendEmail(userEmail, "Application Status Update", htmlMessage);
 
                 if (action == "Sanction")
                 {
@@ -241,6 +248,11 @@ namespace SahayataNidhi.Controllers.Officer
                     // Call your PDF generator
                     _pdfService.CreateSanctionPdf(pdfFields, sanctionLetterFor?.ToString() ?? "", information?.ToString() ?? "", officer, applicationId);
                     string fileName = applicationId.Replace("/", "_") + "SanctionLetter.pdf";
+                    string path = $"files/{fileName}";
+                    string fullPath = Path.Combine(_webHostEnvironment.ContentRootPath, "wwwroot", path);
+                    var attachments = new List<string> { fullPath };
+                    await emailSender.SendEmailWithAttachments(userEmail!, "Form Submission", htmlMessage, attachments);
+
                     return Json(new
                     {
                         status = true,

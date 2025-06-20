@@ -83,6 +83,7 @@ export default function UserDetails() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pin, setPin] = useState("");
   const [certificateDetails, setCertificateDetails] = useState(null);
+  const [isSanctionLetter, setIsSanctionLetter] = useState(false);
 
   const navigate = useNavigate();
   const {
@@ -331,6 +332,7 @@ export default function UserDetails() {
         setPdfUrl(blobUrl);
         setIsSignedPdf(false);
         setPdfModalOpen(true);
+        setIsSanctionLetter(true);
       } else {
         toast.success("Action completed successfully!", {
           position: "top-center",
@@ -358,6 +360,7 @@ export default function UserDetails() {
     setPdfUrl("");
     setPdfBlob(null);
     setIsSignedPdf(false);
+    setIsSanctionLetter(false);
   };
 
   // Render form fields
@@ -821,8 +824,10 @@ export default function UserDetails() {
         <BasicModal
           open={pdfModalOpen}
           handleClose={handleModalClose}
-          handleActionButton={!isSignedPdf ? () => setConfirmOpen(true) : null}
-          buttonText={!isSignedPdf ? "Sign PDF" : null}
+          handleActionButton={
+            isSanctionLetter && !isSignedPdf ? () => setConfirmOpen(true) : null
+          }
+          buttonText={isSanctionLetter && !isSignedPdf ? "Sign PDF" : null}
           Title={isSignedPdf ? "Signed Document" : "Document Preview"}
           pdf={pdfUrl}
           sx={{
