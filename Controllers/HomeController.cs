@@ -10,11 +10,11 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
-using ReactMvcApp.Models;
-using ReactMvcApp.Models.Entities;
+using SahayataNidhi.Models;
+using SahayataNidhi.Models.Entities;
 using SendEmails;
 
-namespace ReactMvcApp.Controllers
+namespace SahayataNidhi.Controllers
 {
     public class HomeController : Controller
     {

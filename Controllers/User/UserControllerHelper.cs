@@ -4,13 +4,13 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using ReactMvcApp.Models.Entities;
+using SahayataNidhi.Models.Entities;
 using System.Collections.Specialized;
 using System.Security.Claims;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace ReactMvcApp.Controllers.User
+namespace SahayataNidhi.Controllers.User
 {
     public partial class UserController
     {

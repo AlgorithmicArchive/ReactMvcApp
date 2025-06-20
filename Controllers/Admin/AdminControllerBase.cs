@@ -4,9 +4,9 @@
 // using Microsoft.AspNetCore.Mvc.Filters;
 // using Microsoft.Data.SqlClient;
 // using Microsoft.EntityFrameworkCore;
-// using ReactMvcApp.Models.Entities;
+// using SahayataNidhi.Models.Entities;
 
-// namespace ReactMvcApp.Controllers.Admin
+// namespace SahayataNidhi.Controllers.Admin
 // {
 //     [Authorize(Roles = "Admin")]
 //     public partial class AdminController(SocialWelfareDepartmentContext dbcontext, ILogger<AdminController> logger, UserHelperFunctions helper) : Controller

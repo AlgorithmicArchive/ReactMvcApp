@@ -5,11 +5,11 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using SendEmails;
-using ReactMvcApp.Models.Entities;
+using SahayataNidhi.Models.Entities;
 using System.Security.Claims;
 using Newtonsoft.Json.Linq;
 
-namespace ReactMvcApp.Controllers.User
+namespace SahayataNidhi.Controllers.User
 {
     [Authorize(Roles = "Citizen")]
     public partial class UserController(SocialWelfareDepartmentContext dbcontext, ILogger<UserController> logger, UserHelperFunctions helper, EmailSender emailSender, PdfService pdfService, IWebHostEnvironment webHostEnvironment) : Controller
@@ -36,7 +36,7 @@ namespace ReactMvcApp.Controllers.User
             var details = GetUserDetails();
             return View(details);
         }
-   
+
         public IActionResult UpdateRequest([FromForm] IFormCollection form)
         {
             var ApplicationId = new SqlParameter("@ApplicationId", form["ApplicationId"].ToString());

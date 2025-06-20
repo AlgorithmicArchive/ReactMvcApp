@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/home/momin/Github/ReactMvcApp/ReactMvcApp.csproj": {}
+    "/home/momin/Github/SahayataNidhi/ReactMvcApp.csproj": {}
   },
   "projects": {
-    "/home/momin/Github/ReactMvcApp/ReactMvcApp.csproj": {
+    "/home/momin/Github/SahayataNidhi/ReactMvcApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/momin/Github/ReactMvcApp/ReactMvcApp.csproj",
+        "projectUniqueName": "/home/momin/Github/SahayataNidhi/ReactMvcApp.csproj",
         "projectName": "ReactMvcApp",
-        "projectPath": "/home/momin/Github/ReactMvcApp/ReactMvcApp.csproj",
+        "projectPath": "/home/momin/Github/SahayataNidhi/ReactMvcApp.csproj",
         "packagesPath": "/home/momin/.nuget/packages/",
-        "outputPath": "/home/momin/Github/ReactMvcApp/obj/",
+        "outputPath": "/home/momin/Github/SahayataNidhi/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/home/momin/.nuget/NuGet/NuGet.Config"

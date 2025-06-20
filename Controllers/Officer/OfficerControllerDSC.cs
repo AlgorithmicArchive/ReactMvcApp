@@ -15,7 +15,7 @@ using iText.IO.Font.Constants;
 using iText.Kernel.Colors;
 using System.Text;
 
-namespace ReactMvcApp.Controllers.Officer
+namespace SahayataNidhi.Controllers.Officer
 {
     public partial class OfficerController : Controller
     {

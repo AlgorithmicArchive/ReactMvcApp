@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
-namespace ReactMvcApp.Models.Entities;
+namespace SahayataNidhi.Models.Entities;
 
 public partial class SocialWelfareDepartmentContext : DbContext
 {

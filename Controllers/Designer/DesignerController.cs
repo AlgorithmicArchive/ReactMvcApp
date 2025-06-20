@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using ReactMvcApp.Models.Entities;
+using SahayataNidhi.Models.Entities;
 
-namespace ReactMvcApp.Controllers
+namespace SahayataNidhi.Controllers
 {
     [Authorize(Roles = "Designer")]
     public class DesignerController(SocialWelfareDepartmentContext dbcontext) : Controller

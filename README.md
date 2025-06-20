@@ -104,8 +104,8 @@ The platform uses **Google Translate** to offer live UI translation in:
 ### Backend Setup
 
 ```bash
-git clone https://github.com/AlgorithmicArchive/ReactMvcApp.git
-cd ReactMvcApp
+git clone https://github.com/AlgorithmicArchive/SahayataNidhi.git
+cd SahayataNidhi
 
 #Restore node_modules
 npm install

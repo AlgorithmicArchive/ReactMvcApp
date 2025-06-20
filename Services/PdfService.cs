@@ -10,7 +10,7 @@ using iText.Layout.Element;
 using iText.Layout.Properties;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using ReactMvcApp.Models.Entities;
+using SahayataNidhi.Models.Entities;
 
 
 public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDepartmentContext dbcontext)

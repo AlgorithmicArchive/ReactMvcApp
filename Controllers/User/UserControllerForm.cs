@@ -3,11 +3,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using ReactMvcApp.Models.Entities;
+using SahayataNidhi.Models.Entities;
 using System.Security.Claims;
 using Newtonsoft.Json.Linq;
 
-namespace ReactMvcApp.Controllers.User
+namespace SahayataNidhi.Controllers.User
 {
     public partial class UserController
     {

@@ -4,7 +4,7 @@ using Encryption;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using ReactMvcApp.Models.Entities;
+using SahayataNidhi.Models.Entities;
 using SendEmails;
 using Microsoft.AspNetCore.DataProtection;
 using System.Security.Claims;
@@ -27,7 +27,7 @@ builder.Services.AddDbContext<SocialWelfareDepartmentContext>(options =>
 
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtection-Keys")))
-    .SetApplicationName("ReactMvcApp"); // Set a unique application name to prevent key conflicts
+    .SetApplicationName("SahayataNidhi"); // Set a unique application name to prevent key conflicts
 
 builder.Services.AddControllers().AddNewtonsoftJson(options =>
 {

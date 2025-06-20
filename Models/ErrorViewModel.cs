@@ -1,4 +1,4 @@
-namespace ReactMvcApp.Models;
+namespace SahayataNidhi.Models;
 
 public class ErrorViewModel
 {

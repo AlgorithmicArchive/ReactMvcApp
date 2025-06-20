@@ -5,9 +5,9 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using ReactMvcApp.Models.Entities;
+using SahayataNidhi.Models.Entities;
 
-namespace ReactMvcApp.Controllers.Profile
+namespace SahayataNidhi.Controllers.Profile
 {
     [Authorize(Roles = "Citizen,Officer,Admin")]
     public class ProfileController : Controller

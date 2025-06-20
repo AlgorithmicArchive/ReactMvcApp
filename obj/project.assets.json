@@ -11199,11 +11199,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/momin/Github/ReactMvcApp/ReactMvcApp.csproj",
-      "projectName": "ReactMvcApp",
-      "projectPath": "/home/momin/Github/ReactMvcApp/ReactMvcApp.csproj",
+      "projectUniqueName": "/home/momin/Github/SahayataNidhi/SahayataNidhi.csproj",
+      "projectName": "SahayataNidhi",
+      "projectPath": "/home/momin/Github/SahayataNidhi/SahayataNidhi.csproj",
       "packagesPath": "/home/momin/.nuget/packages/",
-      "outputPath": "/home/momin/Github/ReactMvcApp/obj/",
+      "outputPath": "/home/momin/Github/SahayataNidhi/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/home/momin/.nuget/NuGet/NuGet.Config"

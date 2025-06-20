@@ -7,12 +7,12 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using SendEmails;
-using ReactMvcApp.Models.Entities;
+using SahayataNidhi.Models.Entities;
 using System.Security.Claims;
 using System.Dynamic;
 using Newtonsoft.Json.Linq;
 
-namespace ReactMvcApp.Controllers.Officer
+namespace SahayataNidhi.Controllers.Officer
 {
     [Authorize(Roles = "Officer")]
     public partial class OfficerController(

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using Renci.SshNet;
-using ReactMvcApp.Models.Entities;
+using SahayataNidhi.Models.Entities;
 using Microsoft.AspNetCore.SignalR;
 using CsvHelper;
 using CsvHelper.Configuration;
@@ -12,7 +12,7 @@ using System.Security.Claims;
 using System.Data;
 using System.Text.RegularExpressions;
 
-namespace ReactMvcApp.Controllers.Officer
+namespace SahayataNidhi.Controllers.Officer
 {
     public partial class OfficerController : Controller
     {

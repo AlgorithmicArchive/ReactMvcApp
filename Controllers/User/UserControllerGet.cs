@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace ReactMvcApp.Controllers.User
+namespace SahayataNidhi.Controllers.User
 {
     public partial class UserController
     {

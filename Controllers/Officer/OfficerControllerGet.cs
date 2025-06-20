@@ -5,9 +5,9 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using ReactMvcApp.Models.Entities;
+using SahayataNidhi.Models.Entities;
 
-namespace ReactMvcApp.Controllers.Officer
+namespace SahayataNidhi.Controllers.Officer
 {
     public partial class OfficerController : Controller
     {

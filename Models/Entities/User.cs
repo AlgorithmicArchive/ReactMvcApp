@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace ReactMvcApp.Models.Entities;
+namespace SahayataNidhi.Models.Entities;
 
 public partial class User
 {
