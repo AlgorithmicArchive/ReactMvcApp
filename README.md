@@ -85,8 +85,8 @@ Sahayata Nidhi is structured into multiple modules:
 The platform uses **Google Translate** to offer live UI translation in:
 
 - 🇮🇳 Hindi
-- 🇵🇰 Urdu
-- 🇬🇧 English
+- 🇮🇳 Urdu
+- 🇮🇳 English
 
 > Users can change their preferred language from the header menu at any point.
 
