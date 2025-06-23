@@ -73,7 +73,7 @@ const MyNavbar = () => {
       expanded={expanded}
       onToggle={(isExpanded) => setExpanded(isExpanded)}
       expand="lg"
-      style={{ backgroundColor: "#FFFFFF" }}
+      style={{ backgroundColor: "#FFFFFF", zIndex: 1000 }}
     >
       <Container>
         {/* Logo Section */}

@@ -76,7 +76,7 @@ export default function UserHome() {
   return (
     <Box
       sx={{
-        minHeight: "80vh",
+        minHeight: { xs: "100vh", lg: "80vh" },
         background:
           "linear-gradient(135deg, rgb(252, 252, 252) 0%, rgb(240, 236, 236) 100%)",
         display: "flex",

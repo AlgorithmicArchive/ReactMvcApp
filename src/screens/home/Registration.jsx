@@ -141,7 +141,7 @@ export default function RegisterScreen() {
   return (
     <Box
       sx={{
-        minHeight: "80vh",
+        minHeight: { xs: "90vh", lg: "80vh" },
         display: "flex",
         justifyContent: "center",
         alignItems: "center",

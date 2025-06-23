@@ -85,12 +85,20 @@ export default function HomeScreen() {
       <Box
         ref={section1Ref}
         sx={{
-          height: "70vh",
+          height: { xs: "100vh", lg: "70vh" },
           width: "100%",
         }}
       >
-        <Container>
-          <Row>
+        <Container
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100%",
+            width: "100%",
+          }}
+        >
+          <Row style={{ width: "100%" }}>
             <Col xs={12} lg={6}>
               <Box
                 sx={{
@@ -101,11 +109,12 @@ export default function HomeScreen() {
                 }}
               >
                 <Typography
-                  variant="h2"
                   sx={{
-                    fontWeight: "bold",
+                    fontWeight: "Bold",
                     wordBreak: "break-word", // ensures words break properly
                     maxWidth: "500px", // set your desired width
+                    fontSize: { xs: "46px", lg: "60px" },
+                    lineHeight: 1.2,
                   }}
                 >
                   Facilitating Financial Assistance for Every Citizen
@@ -141,23 +150,24 @@ export default function HomeScreen() {
                 </Box>
               </Box>
             </Col>
-            <Col
-              xs={12}
-              lg={6}
-              style={{
-                display: "flex",
-                justifyContent: "end",
-              }}
-            >
+            <Col xs={12} lg={6}>
               <Box
-                component={"img"}
-                src="/assets/images/socialwelfare.png"
                 sx={{
-                  width: 500,
-                  backgroundColor: "background.default",
-                  borderRadius: 5,
+                  display: "flex",
+                  justifyContent: { xs: "center", lg: "end" },
+                  marginTop: { xs: 2, lg: 0 },
                 }}
-              />
+              >
+                <Box
+                  component="img"
+                  src="/assets/images/socialwelfare.png"
+                  sx={{
+                    width: { xs: 200, lg: 500 },
+                    backgroundColor: "background.default",
+                    borderRadius: 5,
+                  }}
+                />
+              </Box>
             </Col>
           </Row>
         </Container>
@@ -165,7 +175,7 @@ export default function HomeScreen() {
       {/* Section 2 */}
       <Box
         sx={{
-          height: "100vh",
+          height: { xs: "100vh", lg: "90vh" },
           width: "100%",
           backgroundColor: "background.default",
         }}
@@ -193,16 +203,22 @@ export default function HomeScreen() {
                   justifyContent: "center",
                 }}
               >
-                <Typography variant="h1" sx={{ textAlign: "center" }}>
+                <Typography
+                  sx={{
+                    textAlign: "center",
+                    fontSize: { xs: "24px", lg: "96px" },
+                    lineHeight: 1.6,
+                  }}
+                >
                   Services Provided
                 </Typography>
                 <Typography
-                  variant="subtitle1"
                   sx={{
                     textAlign: "center",
                     color: "text.secondary",
                     wordBreak: "break-word",
-                    padding: 5,
+                    padding: { xs: 0, lg: 5 },
+                    fontSize: { xs: "12px", lg: "16px" },
                   }}
                 >
                   Our platform offers a wide array of government-backed
@@ -214,7 +230,7 @@ export default function HomeScreen() {
                 </Typography>
               </Col>
             </Row>
-            <Row>
+            <Row className="g-5 g-lg-2">
               <Col xs={12} lg={4}>
                 <div ref={card1Ref}>
                   <CustomCard
@@ -253,7 +269,7 @@ export default function HomeScreen() {
       <Box
         ref={section3Ref}
         sx={{
-          height: "100vh",
+          height: { xs: "100vh", lg: "90vh" },
           width: "100%",
         }}
       >
@@ -315,15 +331,20 @@ export default function HomeScreen() {
                 </Box>
               </Col>
               <Col xs={12} lg={6}>
-                <Typography variant="h5" sx={{ color: "text.primary" }}>
+                <Typography
+                  sx={{
+                    color: "text.primary",
+                    fontSize: { xs: "24px", lg: "96px" },
+                    marginTop: { xs: 10, lg: 0 },
+                  }}
+                >
                   Contact Us
                 </Typography>
-                <Typography variant="h3" sx={{ color: "text.primary" }}>
-                  Get In Touch
-                </Typography>
                 <Typography
-                  variant="subtitle1"
-                  sx={{ color: "text.secondary" }}
+                  sx={{
+                    color: "text.secondary",
+                    fontSize: { xs: "12px", lg: "16px" },
+                  }}
                 >
                   We are here to assist you with any queries regarding welfare
                   schemes, application processes, or general information.
@@ -337,12 +358,14 @@ export default function HomeScreen() {
                 <Row>
                   <Col xs={6} lg={6}>
                     <Box sx={{ display: "flex", marginTop: 5 }}>
-                      <LocalPhoneIcon sx={{ fontSize: 50 }} />
+                      <LocalPhoneIcon sx={{ fontSize: { xs: 10, lg: 50 } }} />
                       <Box sx={{ display: "flex", flexDirection: "column" }}>
                         <Typography>Call Us</Typography>
                         <Typography
-                          variant="subtitle1"
-                          sx={{ color: "text.secondary" }}
+                          sx={{
+                            color: "text.secondary",
+                            fontSize: { xs: "12px", lg: "16px" },
+                          }}
                         >
                           91XXXXX9238
                         </Typography>
@@ -351,12 +374,16 @@ export default function HomeScreen() {
                   </Col>
                   <Col xs={6} lg={6}>
                     <Box sx={{ display: "flex", marginTop: 5 }}>
-                      <AlternateEmailIcon sx={{ fontSize: 50 }} />
+                      <AlternateEmailIcon
+                        sx={{ fontSize: { xs: 10, lg: 50 } }}
+                      />
                       <Box sx={{ display: "flex", flexDirection: "column" }}>
                         <Typography>Email Us</Typography>
                         <Typography
-                          variant="subtitle1"
-                          sx={{ color: "text.secondary" }}
+                          sx={{
+                            color: "text.secondary",
+                            fontSize: { xs: "12px", lg: "16px" },
+                          }}
                         >
                           example@gmail.com
                         </Typography>
@@ -367,12 +394,14 @@ export default function HomeScreen() {
                 <Row>
                   <Col xs={6} lg={6}>
                     <Box sx={{ display: "flex", marginTop: 5 }}>
-                      <PlaceIcon sx={{ fontSize: 50 }} />
+                      <PlaceIcon sx={{ fontSize: { xs: 10, lg: 50 } }} />
                       <Box sx={{ display: "flex", flexDirection: "column" }}>
                         <Typography>Address</Typography>
                         <Typography
-                          variant="subtitle1"
-                          sx={{ color: "text.secondary" }}
+                          sx={{
+                            color: "text.secondary",
+                            fontSize: { xs: "12px", lg: "16px" },
+                          }}
                         >
                           22,B.Baker Street
                         </Typography>

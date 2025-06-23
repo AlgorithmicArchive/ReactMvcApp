@@ -30,7 +30,7 @@ export default function Services() {
         height: { xs: "100vh", lg: "70vh" },
       }}
     >
-      <Box sx={{ width: { xs: "100%", md: "80%" } }}>
+      <Box sx={{ width: { xs: "90%", md: "80%" } }}>
         <ServerSideTable
           url="User/GetServices"
           extraParams={{}}

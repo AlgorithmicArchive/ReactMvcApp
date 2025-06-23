@@ -992,7 +992,24 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     >
       <form onSubmit={handleSubmit((data) => onSubmit(data, "submit"))}>
         {formSections.length > 0 && (
-          <Stepper activeStep={currentStep} alternativeLabel sx={{ mb: 4 }}>
+          <Stepper
+            activeStep={currentStep}
+            alternativeLabel
+            sx={{
+              mb: { xs: 2, sm: 3, md: 4 },
+              flexWrap: "wrap", // allow wrapping on small screens
+              gap: { xs: 1, md: 2 }, // spacing between steps
+              "& .MuiStepLabel-label": {
+                fontSize: { xs: "0.7rem", sm: "0.85rem", md: "1rem" },
+                textAlign: "center",
+                wordBreak: "break-word",
+                maxWidth: { xs: "70px", sm: "100px", md: "none" },
+              },
+              "& .MuiStepIcon-root": {
+                fontSize: { xs: "1.5rem", sm: "2rem", md: "2.5rem" },
+              },
+            }}
+          >
             {formSections.map((section) => (
               <Step key={section.id}>
                 <StepLabel
@@ -1076,7 +1093,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     borderRadius: 5,
                     color: "#FFFFFF",
                     fontSize: { xs: 18, lg: 16 },
-                    width: "20%",
+                    width: { xs: "50%", lg: "20%" },
                     fontWeight: "bold",
                   }}
                   disabled={buttonLoading}
@@ -1092,7 +1109,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     borderRadius: 5,
                     color: "#FFFFFF",
                     fontSize: { xs: 18, lg: 16 },
-                    width: "20%",
+                    width: { xs: "50%", lg: "20%" },
                     fontWeight: "bold",
                   }}
                   disabled={buttonLoading}
@@ -1108,7 +1125,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     borderRadius: 5,
                     color: "#FFFFFF",
                     fontSize: { xs: 18, lg: 16 },
-                    width: "20%",
+                    width: { xs: "50%", lg: "20%" },
                     fontWeight: "bold",
                   }}
                   disabled={buttonLoading}
@@ -1129,7 +1146,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     borderRadius: 5,
                     color: "#FFFFFF",
                     fontSize: { xs: 18, lg: 16 },
-                    width: "20%",
+                    width: { xs: "50%", lg: "20%" },
                     fontWeight: "bold",
                     disabled: { buttonLoading },
                   }}
