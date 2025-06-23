@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
@@ -455,9 +456,123 @@ namespace SahayataNidhi.Controllers.Officer
 
 
         [HttpGet]
-        public IActionResult GetRecordsForBankFile()
+        public IActionResult GetRecordsForBankFile(int AccessCode, int ServiceId, string type, int Month, int Year, int pageIndex = 0, int pageSize = 10)
         {
-            return Json(new { });
+            var officerDetails = GetOfficerDetails();
+            var accessCode = new SqlParameter("@AccessCode", AccessCode);
+            var applicationStatus = new SqlParameter("@ApplicationStatus", type);
+            var serviceId = new SqlParameter("@ServiceId", ServiceId);
+            var month = new SqlParameter("@Month", Month);
+            var year = new SqlParameter("@Year", Year);
+
+            var rawResults = dbcontext.CitizenApplications
+                .FromSqlRaw("EXEC GetRecordsForBankFile @AccessCode, @ApplicationStatus, @ServiceId, @Month, @Year",
+                    accessCode, applicationStatus, serviceId, month, year)
+                .ToList();
+
+            var sortedResults = rawResults.OrderBy(a =>
+            {
+                var parts = a.ReferenceNumber.Split('/');
+                var numberPart = parts.Last();
+                return int.TryParse(numberPart, out int num) ? num : 0;
+            }).ToList();
+
+            var totalRecords = sortedResults.Count;
+
+            var pagedResults = sortedResults
+                .Skip(pageIndex * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            var columns = new List<dynamic>
+            {
+                new { accessorKey = "referenceNumber", header = "Reference Number" },
+                new { accessorKey = "districtbankuid", header = "District Bank Uid" },
+                new { accessorKey = "applicantName", header = "Applicant Name" },
+                new { accessorKey = "submissionDate", header = "Submission Date" },
+                new { accessorKey = "sanctionedon", header = "Sanctioned Date" }
+            };
+
+            var monthAbbreviation = new DateTime(Year, Month, 1).ToString("MMM", CultureInfo.InvariantCulture).ToUpper();
+            var yearAbbreviation = Year.ToString().Substring(2, 2);
+            string districtNameShort = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == AccessCode)!.DistrictShort!;
+
+            var data = new List<dynamic>();
+
+            foreach (var details in pagedResults)
+            {
+                var formDetails = JsonConvert.DeserializeObject<dynamic>(details.FormDetails!);
+                var workFlowSteps = JsonConvert.DeserializeObject<List<dynamic>>(details.WorkFlow!);
+                var currentPalyerIndex = details.CurrentPlayer;
+                string completedAt = workFlowSteps![currentPalyerIndex].completedAt;
+
+                var finalUid = $"{districtNameShort}{monthAbbreviation}{yearAbbreviation}00{details.DistrictUidForBank?.PadLeft(8, '0')}";
+
+
+                data.Add(new Dictionary<string, object>
+                {
+                    { "referenceNumber", details.ReferenceNumber },
+                    { "districtbankuid", finalUid ?? "" },
+                    { "applicantName", GetFieldValue("ApplicantName", formDetails) },
+                    { "submissionDate", details.CreatedAt! },
+                    { "sanctionedon", completedAt }
+                });
+            }
+
+            return Ok(new
+            {
+                data,
+                columns,
+                totalRecords,
+                pageIndex,
+                pageSize
+            });
         }
+
+
+        [HttpGet]
+        public IActionResult GetSanctionLetter(string applicationId)
+        {
+            OfficerDetailsModal officer = GetOfficerDetails();
+            var formdetails = dbcontext.CitizenApplications.FirstOrDefault(fd => fd.ReferenceNumber == applicationId);
+            var lettersJson = dbcontext.Services
+                       .FirstOrDefault(s => s.ServiceId == Convert.ToInt32(formdetails!.ServiceId))?.Letters;
+
+            var parsed = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(lettersJson!);
+            dynamic? sanctionSection = parsed!.TryGetValue("Sanction", out var sanction) ? sanction : null;
+            var tableFields = sanctionSection!.tableFields;
+            var sanctionLetterFor = sanctionSection.letterFor;
+            var information = sanctionSection.information;
+
+            var details = dbcontext.CitizenApplications
+                .FirstOrDefault(ca => ca.ReferenceNumber == applicationId);
+
+
+
+            var formData = JsonConvert.DeserializeObject<JObject>(details!.FormDetails!);
+
+            // Final key-value pair list for the PDF
+            var pdfFields = new Dictionary<string, string>();
+
+            foreach (var item in tableFields)
+            {
+                var formatted = GetFormattedValue(item, formData);
+                string label = formatted.Label ?? "[Label Missing]";
+                string value = formatted.Value ?? "";
+
+                pdfFields[label] = value;
+            }
+
+            // Call your PDF generator
+            _pdfService.CreateSanctionPdf(pdfFields, sanctionLetterFor?.ToString() ?? "", information?.ToString() ?? "", officer, applicationId);
+            string fileName = applicationId.Replace("/", "_") + "SanctionLetter.pdf";
+
+            return Json(new
+            {
+                status = true,
+                path = Url.Content($"~/files/{fileName}")
+            });
+        }
+
     }
 }

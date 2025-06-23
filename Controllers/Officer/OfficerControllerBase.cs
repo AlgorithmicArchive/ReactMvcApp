@@ -214,52 +214,14 @@ namespace SahayataNidhi.Controllers.Officer
 
                 if (action != "Sanction")
                     await emailSender.SendEmail(userEmail, "Application Status Update", htmlMessage);
-
-                if (action == "Sanction")
+                else
                 {
-                    var lettersJson = dbcontext.Services
-                        .FirstOrDefault(s => s.ServiceId == Convert.ToInt32(formdetails.ServiceId))?.Letters;
-
-                    var parsed = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(lettersJson!);
-                    dynamic? sanctionSection = parsed!.TryGetValue("Sanction", out var sanction) ? sanction : null;
-                    var tableFields = sanctionSection!.tableFields;
-                    var sanctionLetterFor = sanctionSection.letterFor;
-                    var information = sanctionSection.information;
-
-                    var details = dbcontext.CitizenApplications
-                        .FirstOrDefault(ca => ca.ReferenceNumber == applicationId);
-
-
-
-                    var formData = JsonConvert.DeserializeObject<JObject>(details!.FormDetails!);
-
-                    // Final key-value pair list for the PDF
-                    var pdfFields = new Dictionary<string, string>();
-
-                    foreach (var item in tableFields)
-                    {
-                        var formatted = GetFormattedValue(item, formData);
-                        string label = formatted.Label ?? "[Label Missing]";
-                        string value = formatted.Value ?? "";
-
-                        pdfFields[label] = value;
-                    }
-
-                    // Call your PDF generator
-                    _pdfService.CreateSanctionPdf(pdfFields, sanctionLetterFor?.ToString() ?? "", information?.ToString() ?? "", officer, applicationId);
                     string fileName = applicationId.Replace("/", "_") + "SanctionLetter.pdf";
                     string path = $"files/{fileName}";
                     string fullPath = Path.Combine(_webHostEnvironment.ContentRootPath, "wwwroot", path);
                     var attachments = new List<string> { fullPath };
                     await emailSender.SendEmailWithAttachments(userEmail!, "Form Submission", htmlMessage, attachments);
-
-                    return Json(new
-                    {
-                        status = true,
-                        path = Url.Content($"~/files/{fileName}")
-                    });
                 }
-
 
                 return Json(new { status = true });
 

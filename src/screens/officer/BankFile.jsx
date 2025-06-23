@@ -13,14 +13,13 @@ import { toast } from "react-toastify";
 import { Container } from "react-bootstrap";
 import ServerSideTable from "../../components/ServerSideTable";
 import axiosInstance from "../../axiosConfig";
-import connection, {
-  startSignalRConnection,
-} from "../../assets/signalRService";
 import SftpModal from "../../components/SftpModal";
 
 export default function BankFile() {
   const [district, setDistrict] = useState("");
   const [service, setService] = useState("");
+  const [month, setMonth] = useState("");
+  const [year, setYear] = useState("");
   const [districts, setDistricts] = useState([]);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -28,12 +27,24 @@ export default function BankFile() {
   const [isTehsil, setIsTehsil] = useState(false);
   const [isButtonDisabled, setIsButtonDisabled] = useState(true);
   const [showTable, setShowTable] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [open, setOpen] = useState(false);
 
   const API_BASE_URL = "http://127.0.0.1:5004";
 
-  // Fetch districts and services
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth(); // 0-indexed
+  const currentYear = currentDate.getFullYear();
+
+  // Show only current and previous month
+  const visibleMonths = [currentMonth - 1, currentMonth].filter((m) => m >= 0);
+
+  const monthOptions = visibleMonths.map((m) => ({
+    value: m + 1,
+    label: new Date(0, m).toLocaleString("default", { month: "long" }),
+  }));
+
+  const yearOptions = [currentYear - 1, currentYear];
+
   useEffect(() => {
     const fetchDropdowns = async () => {
       setLoading(true);
@@ -82,57 +93,50 @@ export default function BankFile() {
     };
 
     fetchDropdowns();
-
-    // SignalR setup
-    startSignalRConnection();
-    connection.on("ReceiveProgress", (progress) => {
-      console.log("Progress update:", progress);
-      setProgress(progress);
-    });
-
-    connection.onreconnecting((error) => {
-      console.log("SignalR reconnecting due to error:", error);
-    });
-
-    connection.onreconnected((connectionId) => {
-      console.log("SignalR reconnected. Connection ID:", connectionId);
-    });
-
-    return () => {
-      connection.off("ReceiveProgress");
-    };
   }, []);
+
+  useEffect(() => {
+    if (district && service && month && year) {
+      setIsButtonDisabled(false);
+    } else {
+      setIsButtonDisabled(true);
+    }
+  }, [district, service, month, year]);
 
   const handleDistrictChange = (event) => {
     setDistrict(event.target.value);
     setShowTable(false);
-    if (service) {
-      setIsButtonDisabled(false);
-    }
   };
 
   const handleServiceChange = (event) => {
     setService(event.target.value);
     setShowTable(false);
-    if (district) {
-      setIsButtonDisabled(false);
-    }
   };
 
-  const handleGetTable = async () => {
+  const handleMonthChange = (event) => {
+    setMonth(event.target.value);
+    setShowTable(false);
+  };
+
+  const handleYearChange = (event) => {
+    setYear(event.target.value);
+    setShowTable(false);
+  };
+
+  const handleGetTable = () => {
     setShowTable(true);
   };
 
   const handleCreateBankFile = async () => {
     try {
-      setProgress(0);
       await axiosInstance.post(`${API_BASE_URL}/Officer/CreateBankFile`, {
         DistrictId: district,
         ServiceId: service,
+        Month: month,
+        Year: year,
       });
       setShowTable(true);
     } catch (error) {
-      console.error("Error creating bank file:", error);
       toast.error(`Error creating bank file: ${error.message}`, {
         position: "top-right",
         autoClose: 3000,
@@ -140,16 +144,15 @@ export default function BankFile() {
     }
   };
 
-  const handleCheckRecords = async () => {
-    
-  };
-
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
   const extraParams = {
     ServiceId: service,
-    DistrictId: district,
+    AccessCode: district,
+    type: "Sanctioned",
+    Month: month,
+    Year: year,
   };
 
   if (loading) {
@@ -217,13 +220,14 @@ export default function BankFile() {
       <Box
         sx={{
           display: "flex",
-          flexDirection: { xs: "column", md: "row" },
+          flexDirection: "column",
           gap: 3,
-          width: { xs: "100%", sm: "80%", md: "60%" },
-          maxWidth: "600px",
+          width: "100%",
+          maxWidth: "700px",
           mb: 4,
         }}
       >
+        {/* District/Tehsil Dropdown */}
         <FormControl fullWidth>
           <InputLabel id="district-select-label">
             {isTehsil ? "Tehsil" : "District"}
@@ -245,6 +249,7 @@ export default function BankFile() {
           </Select>
         </FormControl>
 
+        {/* Service Dropdown */}
         <FormControl fullWidth>
           <InputLabel id="service-select-label">Service</InputLabel>
           <Select
@@ -263,6 +268,46 @@ export default function BankFile() {
             ))}
           </Select>
         </FormControl>
+
+        {/* Month Dropdown */}
+        <FormControl fullWidth>
+          <InputLabel id="month-select-label">Month</InputLabel>
+          <Select
+            labelId="month-select-label"
+            value={month}
+            label="Month"
+            onChange={handleMonthChange}
+          >
+            <MenuItem value="">
+              <em>Please Select</em>
+            </MenuItem>
+            {monthOptions.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        {/* Year Dropdown */}
+        <FormControl fullWidth>
+          <InputLabel id="year-select-label">Year</InputLabel>
+          <Select
+            labelId="year-select-label"
+            value={year}
+            label="Year"
+            onChange={handleYearChange}
+          >
+            <MenuItem value="">
+              <em>Please Select</em>
+            </MenuItem>
+            {yearOptions.map((option) => (
+              <MenuItem key={option} value={option}>
+                {option}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Box>
 
       <Box sx={{ display: "flex", gap: 2, mb: 4 }}>
@@ -271,18 +316,6 @@ export default function BankFile() {
           color="primary"
           onClick={handleGetTable}
           disabled={isButtonDisabled}
-          sx={{
-            px: 4,
-            py: 1.5,
-            fontSize: "1rem",
-            fontWeight: "bold",
-            borderRadius: "8px",
-            textTransform: "none",
-            bgcolor: isButtonDisabled ? "#cccccc" : "#1976d2",
-            "&:hover": {
-              bgcolor: isButtonDisabled ? "#cccccc" : "#1565c0",
-            },
-          }}
         >
           Check Records
         </Button>
@@ -291,18 +324,6 @@ export default function BankFile() {
           color="primary"
           onClick={handleCreateBankFile}
           disabled={isButtonDisabled}
-          sx={{
-            px: 4,
-            py: 1.5,
-            fontSize: "1rem",
-            fontWeight: "bold",
-            borderRadius: "8px",
-            textTransform: "none",
-            bgcolor: isButtonDisabled ? "#cccccc" : "#1976d2",
-            "&:hover": {
-              bgcolor: isButtonDisabled ? "#cccccc" : "#1565c0",
-            },
-          }}
         >
           Create Bank File
         </Button>
@@ -311,35 +332,16 @@ export default function BankFile() {
           color="primary"
           onClick={handleOpen}
           disabled={isButtonDisabled}
-          sx={{
-            px: 4,
-            py: 1.5,
-            fontSize: "1rem",
-            fontWeight: "bold",
-            borderRadius: "8px",
-            textTransform: "none",
-            bgcolor: isButtonDisabled ? "#cccccc" : "#1976d2",
-            "&:hover": {
-              bgcolor: isButtonDisabled ? "#cccccc" : "#1565c0",
-            },
-          }}
         >
           Send Bank File
         </Button>
       </Box>
 
-      {progress > 0 && (
-        <Box sx={{ width: "60%", maxWidth: "600px", mb: 4 }}>
-          <Typography>Progress: {progress}%</Typography>
-          <progress value={progress} max="100" style={{ width: "100%" }} />
-        </Box>
-      )}
-
       {showTable && (
         <Container>
           <ServerSideTable
-            key={`${service}-${district}`}
-            url="/Officer/VerifyBankFileAndRecords"
+            key={`${service}-${district}-${month}-${year}`}
+            url="/Officer/GetRecordsForBankFile"
             extraParams={extraParams}
           />
         </Container>

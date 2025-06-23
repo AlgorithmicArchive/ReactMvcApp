@@ -52,7 +52,6 @@ namespace SahayataNidhi.Controllers.User
             .Select(field => Convert.ToInt32(field["value"]))
             .FirstOrDefault();
 
-            _logger.LogInformation($"------------ REFERENCE NUMBER:{referenceNumber} -----------------");
             if (string.IsNullOrEmpty(referenceNumber))
             {
                 int count = GetCountPerDistrict(districtId, serviceId);

@@ -112,35 +112,26 @@ namespace SahayataNidhi.Controllers.User
 
         public int GetCountPerDistrict(int districtId, int serviceId)
         {
+            var financialYear = helper.GetCurrentFinancialYear();
 
-            // Attempt to find an existing record for the district and service
-            var applicationsPerDistrict = dbcontext.ApplicationPerDistricts
-                .FirstOrDefault(apd => apd.DistrictId == districtId && apd.ServiceId == serviceId);
-
-            if (applicationsPerDistrict != null)
+            // Define the output parameter
+            var newCountParam = new SqlParameter
             {
-                // Record exists: increment the count
-                applicationsPerDistrict.CountValue += 1;
-                dbcontext.ApplicationPerDistricts.Update(applicationsPerDistrict);
-            }
-            else
-            {
-                // Record does not exist: create a new record with count 1
-                applicationsPerDistrict = new ApplicationPerDistrict
-                {
-                    DistrictId = districtId,
-                    ServiceId = serviceId,
-                    FinancialYear = helper.GetCurrentFinancialYear(),
-                    CountValue = 1
-                };
-                dbcontext.ApplicationPerDistricts.Add(applicationsPerDistrict);
-            }
+                ParameterName = "@NewCount",
+                SqlDbType = System.Data.SqlDbType.Int,
+                Direction = System.Data.ParameterDirection.Output
+            };
 
-            // Save changes to the database
-            dbcontext.SaveChanges();
+            // Call the stored procedure
+            dbcontext.Database.ExecuteSqlRaw(
+                "EXEC GetAndIncrementCount @DistrictId = {0}, @ServiceId = {1}, @FinancialYear = {2}, @NewCount = @NewCount OUTPUT",
+                districtId, serviceId, financialYear, newCountParam
+            );
 
-            return applicationsPerDistrict.CountValue;
+            // Retrieve the output value
+            return (int)newCountParam.Value;
         }
+
 
 
         private static string SaveFile(IFormFile file)

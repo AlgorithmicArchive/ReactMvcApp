@@ -84,6 +84,7 @@ export default function UserDetails() {
   const [pin, setPin] = useState("");
   const [certificateDetails, setCertificateDetails] = useState(null);
   const [isSanctionLetter, setIsSanctionLetter] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState(null);
 
   const navigate = useNavigate();
   const {
@@ -207,38 +208,38 @@ export default function UserDetails() {
       value?.toString().replace(/\s+/g, "").toUpperCase();
 
     setButtonLoading(true);
-    const certificates = await fetchCertificates(pin);
-    if (!certificates || certificates.length === 0) {
-      throw new Error("No certificates found on the USB token.");
-    }
-
-    const selectedCertificate = certificates[0];
-    const expiration = new Date(certificateDetails.expirationDate);
-    const now = new Date();
-    const tokenSerial = normalizeSerial(selectedCertificate.serial_number);
-    const registeredSerial = normalizeSerial(certificateDetails.serial_number);
-    console.log("certificateDetails:", certificateDetails);
-    console.log("tokenSerial:", tokenSerial);
-    console.log("registeredSerial:", registeredSerial);
-
-    if (tokenSerial !== registeredSerial) {
-      toast.error("Not the registered certificate.", {
-        position: "top-center",
-        autoClose: 3000,
-        theme: "colored",
-      });
-      return;
-    } else if (expiration < now) {
-      toast.error("The registered certificate has expired.", {
-        position: "top-center",
-        autoClose: 3000,
-        theme: "colored",
-      });
-      return;
-    }
-
     try {
+      const certificates = await fetchCertificates(pin);
+      if (!certificates || certificates.length === 0) {
+        throw new Error("No certificates found on the USB token.");
+      }
+
+      const selectedCertificate = certificates[0];
+      const expiration = new Date(certificateDetails.expirationDate);
+      const now = new Date();
+      const tokenSerial = normalizeSerial(selectedCertificate.serial_number);
+      const registeredSerial = normalizeSerial(
+        certificateDetails.serial_number
+      );
+
+      if (tokenSerial !== registeredSerial) {
+        toast.error("Not the registered certificate.", {
+          position: "top-center",
+          autoClose: 3000,
+          theme: "colored",
+        });
+        return;
+      } else if (expiration < now) {
+        toast.error("The registered certificate has expired.", {
+          position: "top-center",
+          autoClose: 3000,
+          theme: "colored",
+        });
+        return;
+      }
+
       const signedBlob = await signPdf(pdfBlob, pin);
+
       const updateFormData = new FormData();
       updateFormData.append("signedPdf", signedBlob, "signed.pdf");
       updateFormData.append("applicationId", applicationId);
@@ -246,23 +247,26 @@ export default function UserDetails() {
         "/Officer/UpdatePdf",
         updateFormData
       );
+
       if (!updateResponse.data.status) {
         throw new Error(
           "Failed to update PDF on server: " +
             (updateResponse.data.response || "Unknown error")
         );
       }
+
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
       const blobUrl = URL.createObjectURL(signedBlob);
       setPdfUrl(blobUrl);
       setPdfBlob(null);
       setIsSignedPdf(true);
+      setConfirmOpen(false);
       setPdfModalOpen(true);
-      toast.success("PDF signed successfully!", {
-        position: "top-center",
-        autoClose: 2000,
-        theme: "colored",
-      });
+
+      if (pendingFormData) {
+        await handleFinalSubmit(pendingFormData); // Submit form after sign
+        setPendingFormData(null); // Clear after submission
+      }
     } catch (error) {
       console.error("Signing error:", error);
       toast.error("Error signing PDF: " + error.message, {
@@ -272,35 +276,33 @@ export default function UserDetails() {
       });
     } finally {
       setButtonLoading(false);
-      setConfirmOpen(false);
       setPin("");
     }
   };
 
-  // Handle form submission
-  const onSubmit = async (data) => {
-    const defaultAction = data.defaultAction;
-
-    if (defaultAction.toLowerCase() == "sanction") {
-      const certificateDetails = await fetchCertificateDetails();
-      if (certificateDetails == null) {
-        toast.error(
-          "You have not registered DSC you can't sanction this application.",
-          {
-            position: "top-center",
-            autoClose: 3000,
-            theme: "colored",
-          }
-        );
-        return;
-      } else {
-        const isAppRunning = await checkDesktopApp();
-        if (!isAppRunning) return;
-        setCertificateDetails(certificateDetails);
-      }
+  const sanctionAction = async () => {
+    const response = await axiosInstance.get("/Officer/GetSanctionLetter", {
+      params: { applicationId: applicationId },
+    });
+    const result = response.data;
+    if (!result.status) {
+      throw new Error(result.response || "Something went wrong");
     }
+    const pdfResponse = await fetch(result.path);
+    if (!pdfResponse.ok) {
+      throw new Error("Failed to fetch PDF from server");
+    }
+    const newPdfBlob = await pdfResponse.blob();
+    if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    const blobUrl = URL.createObjectURL(newPdfBlob);
+    setPdfBlob(newPdfBlob);
+    setPdfUrl(blobUrl);
+    setIsSignedPdf(false);
+    setPdfModalOpen(true);
+    setIsSanctionLetter(true);
+  };
 
-    setButtonLoading(true);
+  const handleFinalSubmit = async (data) => {
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
       if (value instanceof File) {
@@ -319,27 +321,17 @@ export default function UserDetails() {
       );
       if (!result.status) {
         throw new Error(result.response || "Something went wrong");
-      }
-      if (result.path && defaultAction.toLowerCase() === "sanction") {
-        const pdfResponse = await fetch(result.path);
-        if (!pdfResponse.ok) {
-          throw new Error("Failed to fetch PDF from server");
-        }
-        const newPdfBlob = await pdfResponse.blob();
-        if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-        const blobUrl = URL.createObjectURL(newPdfBlob);
-        setPdfBlob(newPdfBlob);
-        setPdfUrl(blobUrl);
-        setIsSignedPdf(false);
-        setPdfModalOpen(true);
-        setIsSanctionLetter(true);
       } else {
         toast.success("Action completed successfully!", {
           position: "top-center",
-          autoClose: 2000,
+          autoClose: 6000,
           theme: "colored",
         });
-        navigate("/officer/home");
+        if (certificateDetails != null) {
+          setTimeout(() => {
+            navigate("/officer/home");
+          }, 6000);
+        } else navigate("/officer/home");
       }
     } catch (error) {
       console.error("Submission error:", error);
@@ -351,6 +343,43 @@ export default function UserDetails() {
     } finally {
       setButtonLoading(false);
     }
+  };
+
+  // Handle form submission
+  const onSubmit = async (data) => {
+    const defaultAction = data.defaultAction?.toLowerCase();
+    setButtonLoading(true);
+
+    if (defaultAction === "sanction") {
+      const certDetails = await fetchCertificateDetails();
+      if (!certDetails) {
+        toast.error(
+          "You have not registered DSC, so you can't sanction this application.",
+          {
+            position: "top-center",
+            autoClose: 3000,
+            theme: "colored",
+          }
+        );
+        setButtonLoading(false);
+        return;
+      }
+
+      const isAppRunning = await checkDesktopApp();
+      if (!isAppRunning) {
+        setButtonLoading(false);
+        return;
+      }
+
+      setCertificateDetails(certDetails);
+      setPendingFormData(data); // Save form data for later
+      await sanctionAction(); // Fetch PDF and open modal
+      setButtonLoading(false);
+      return;
+    }
+
+    // For other actions, proceed directly
+    await handleFinalSubmit(data);
   };
 
   // Handle modal close
