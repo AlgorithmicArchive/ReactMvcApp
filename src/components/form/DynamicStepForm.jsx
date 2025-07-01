@@ -396,7 +396,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     let returnFieldsArray = [];
     if (additionalDetails != null && additionalDetails != "") {
       const returnFields = additionalDetails?.returnFields || "";
-      returnFieldsArray = returnFields.split(",").map((f) => f.trim());
+      returnFieldsArray = JSON.parse(additionalDetails.returnFields);
     }
 
     const processField = (field, data) => {
@@ -459,6 +459,16 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     formdata.append("serviceId", selectedServiceId);
     formdata.append("formDetails", JSON.stringify(groupedFormData));
 
+    if (mode === "edit" && returnFieldsArray.length > 0) {
+      returnFieldsArray.forEach((fieldName) => {
+        const fieldValue = data[fieldName];
+        console.log(fieldName, fieldValue);
+        if (fieldValue !== undefined && fieldValue !== null) {
+          formdata.append(fieldName, fieldValue);
+        }
+      });
+    }
+
     for (const section in groupedFormData) {
       groupedFormData[section].forEach((field) => {
         if (field.hasOwnProperty("File") && field.File instanceof File) {
@@ -485,8 +495,9 @@ const DynamicStepForm = ({ mode = "new", data }) => {
 
     let url = "/User/InsertFormDetails";
     if (additionalDetails != null && additionalDetails != "") {
-      formdata.append("returnFields", returnFieldsArray.join(",")); // ✅ fix: send as string
+      formdata.append("returnFields", JSON.stringify(returnFieldsArray)); // ✅ fix: send as string
       url = "/User/UpdateApplicationDetails";
+      console.log("Edit Mode", formdata);
     }
 
     try {

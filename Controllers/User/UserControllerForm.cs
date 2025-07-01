@@ -164,6 +164,8 @@ namespace SahayataNidhi.Controllers.User
             string referenceNumber = form["referenceNumber"].ToString();
             string returnFieldsJson = form["returnFields"].ToString();
 
+            _logger.LogInformation($"----------Return Fields:{returnFieldsJson}--------------");
+
             var returnFields = JsonConvert.DeserializeObject<List<string>>(returnFieldsJson);
 
             // Fetch existing application
@@ -183,6 +185,7 @@ namespace SahayataNidhi.Controllers.User
                 foreach (var field in fields.OfType<JObject>())
                 {
                     string fieldName = field["name"]?.ToString() ?? "";
+                    _logger.LogInformation($"--------- Field Name: {fieldName}  IS IN ReturnFields: {returnFields!.Contains(fieldName)}---------------");
 
                     if (returnFields != null && returnFields!.Contains(fieldName)) // Only update if present in returnFields
                     {
@@ -212,6 +215,7 @@ namespace SahayataNidhi.Controllers.User
                         {
                             // Non-file fields: update "value"
                             string newValue = form[fieldName].ToString();
+                            _logger.LogInformation($"------- NEW VALUE: {newValue}----------------------");
                             if (field.ContainsKey("value"))
                             {
                                 field["value"] = newValue;
