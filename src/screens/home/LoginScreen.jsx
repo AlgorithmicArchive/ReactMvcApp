@@ -67,7 +67,6 @@ export default function LoginScreen() {
         setUserType(response.userType);
         setProfile(response.profile);
         setUsername(response.username);
-        setVerified(true);
         setDesignation(response.designation);
         navigate("/verification");
       } else if (response.isEmailVerified === false) {

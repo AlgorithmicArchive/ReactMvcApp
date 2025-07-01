@@ -129,15 +129,45 @@ export default function BankFile() {
 
   const handleCreateBankFile = async () => {
     try {
-      await axiosInstance.post(`${API_BASE_URL}/Officer/CreateBankFile`, {
-        DistrictId: district,
-        ServiceId: service,
-        Month: month,
-        Year: year,
+      const response = await axiosInstance.get(`/Officer/ExportBankFileCsv`, {
+        params: {
+          AccessCode: district,
+          ServiceId: service,
+          Month: month,
+          Year: year,
+          type: "Sanctioned",
+        },
+        responseType: "blob", // Needed for file download
       });
-      setShowTable(true);
+
+      // Extract filename from Content-Disposition header
+      const disposition = response.headers["content-disposition"];
+      let filename = "BankFile.csv"; // fallback
+
+      if (disposition && disposition.indexOf("filename=") !== -1) {
+        const match = disposition.match(/filename="?(.+?)"?$/);
+        if (match?.[1]) {
+          filename = match[1];
+        }
+      }
+
+      // Create Blob & Download
+      const blob = new Blob([response.data], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Bank file downloaded successfully", {
+        position: "top-right",
+        autoClose: 3000,
+      });
     } catch (error) {
-      toast.error(`Error creating bank file: ${error.message}`, {
+      toast.error(`Error downloading bank file: ${error.message}`, {
         position: "top-right",
         autoClose: 3000,
       });
@@ -352,7 +382,9 @@ export default function BankFile() {
         handleClose={handleClose}
         serviceId={service}
         districtId={district}
-        type={"send"}
+        month={month}
+        year={year}
+        type={"Sanctioned"}
       />
     </Box>
   );

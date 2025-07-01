@@ -41,8 +41,8 @@ export default function Form() {
       ],
       "Present Address Details": [
         { label: "Address", name: "PresentAddress", value: "123 Old Road" },
-        { label: "District", name: "PresentDistrict", value: 1 },
-        { label: "Tehsil", name: "PresentTehsil", value: 11 },
+        { label: "District", name: "PresentDistrict", value: 5 },
+        { label: "Tehsil", name: "PresentTehsil", value: 79 },
         { label: "Block", name: "PresentBlock", value: "BLOCK A" },
         {
           label: "Halqa Panchayat / Municipality Name",
@@ -55,8 +55,8 @@ export default function Form() {
       ],
       "Permanent Address Details": [
         { label: "Address", name: "PermanentAddress", value: "123 Old Road" },
-        { label: "District", name: "PermanentDistrict", value: 1 },
-        { label: "Tehsil", name: "PermanentTehsil", value: 11 },
+        { label: "District", name: "PermanentDistrict", value: 5 },
+        { label: "Tehsil", name: "PermanentTehsil", value: 79 },
         { label: "Block", name: "PermanentBlock", value: "BLOCK A" },
         {
           label: "Halqa Panchayat / Municipality Name ",
@@ -129,8 +129,8 @@ export default function Form() {
       ],
       "Present Address Details": [
         { label: "Address", name: "PresentAddress", value: "456 New Lane" },
-        { label: "District", name: "PresentDistrict", value: 2 },
-        { label: "Tehsil", name: "PresentTehsil", value: 22 },
+        { label: "District", name: "PresentDistrict", value: 5 },
+        { label: "Tehsil", name: "PresentTehsil", value: 79 },
         { label: "Block", name: "PresentBlock", value: "BLOCK B" },
         {
           label: "Halqa Panchayat / Municipality Name",
@@ -143,8 +143,8 @@ export default function Form() {
       ],
       "Permanent Address Details": [
         { label: "Address", name: "PermanentAddress", value: "456 New Lane" },
-        { label: "District", name: "PermanentDistrict", value: 2 },
-        { label: "Tehsil", name: "PermanentTehsil", value: 22 },
+        { label: "District", name: "PermanentDistrict", value: 5 },
+        { label: "Tehsil", name: "PermanentTehsil", value: 79 },
         { label: "Block", name: "PermanentBlock", value: "BLOCK B" },
         {
           label: "Halqa Panchayat / Municipality Name ",
@@ -221,8 +221,8 @@ export default function Form() {
       ],
       "Present Address Details": [
         { label: "Address", name: "PresentAddress", value: "789 North Street" },
-        { label: "District", name: "PresentDistrict", value: 3 },
-        { label: "Tehsil", name: "PresentTehsil", value: 33 },
+        { label: "District", name: "PresentDistrict", value: 5 },
+        { label: "Tehsil", name: "PresentTehsil", value: 79 },
         { label: "Block", name: "PresentBlock", value: "BLOCK C" },
         {
           label: "Halqa Panchayat / Municipality Name",
@@ -239,8 +239,8 @@ export default function Form() {
           name: "PermanentAddress",
           value: "789 North Street",
         },
-        { label: "District", name: "PermanentDistrict", value: 3 },
-        { label: "Tehsil", name: "PermanentTehsil", value: 33 },
+        { label: "District", name: "PermanentDistrict", value: 5 },
+        { label: "Tehsil", name: "PermanentTehsil", value: 79 },
         { label: "Block", name: "PermanentBlock", value: "BLOCK C" },
         {
           label: "Halqa Panchayat / Municipality Name ",
@@ -313,8 +313,8 @@ export default function Form() {
       ],
       "Present Address Details": [
         { label: "Address", name: "PresentAddress", value: "999 South Road" },
-        { label: "District", name: "PresentDistrict", value: 4 },
-        { label: "Tehsil", name: "PresentTehsil", value: 44 },
+        { label: "District", name: "PresentDistrict", value: 5 },
+        { label: "Tehsil", name: "PresentTehsil", value: 79 },
         { label: "Block", name: "PresentBlock", value: "BLOCK D" },
         {
           label: "Halqa Panchayat / Municipality Name",
@@ -327,8 +327,8 @@ export default function Form() {
       ],
       "Permanent Address Details": [
         { label: "Address", name: "PermanentAddress", value: "999 South Road" },
-        { label: "District", name: "PermanentDistrict", value: 4 },
-        { label: "Tehsil", name: "PermanentTehsil", value: 44 },
+        { label: "District", name: "PermanentDistrict", value: 5 },
+        { label: "Tehsil", name: "PermanentTehsil", value: 79 },
         { label: "Block", name: "PermanentBlock", value: "BLOCK D" },
         {
           label: "Halqa Panchayat / Municipality Name ",

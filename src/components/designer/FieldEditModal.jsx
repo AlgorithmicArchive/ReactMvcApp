@@ -22,7 +22,7 @@ const fetchDistricts = async () => {
     const response = await fetch("/Base/GetDistricts");
     const data = await response.json();
     if (data.status) {
-      return data.districts; // Assume districts is an array of objects with districtId and districtName.
+      return data.districts;
     }
     return [];
   } catch (error) {
@@ -31,12 +31,48 @@ const fetchDistricts = async () => {
   }
 };
 
+// Utility function to collect all selectable fields
+const getSelectableFields = (sections) => {
+  const selectableFields = [];
+
+  sections.forEach((section) => {
+    section.fields.forEach((field) => {
+      if (field.type === "select") {
+        selectableFields.push({
+          id: field.name,
+          label: field.label,
+          options: field.options || [],
+          isAdditional: false,
+        });
+      }
+
+      if (field.additionalFields) {
+        Object.values(field.additionalFields).forEach(
+          (additionalFieldArray) => {
+            additionalFieldArray.forEach((additionalField) => {
+              if (additionalField.type === "select") {
+                selectableFields.push({
+                  id: additionalField.name, // Use name directly (e.g., CivilCondition)
+                  label: `${field.label} > ${additionalField.label}`,
+                  options: additionalField.options || [],
+                  isAdditional: true,
+                  parentFieldName: field.name,
+                });
+              }
+            });
+          }
+        );
+      }
+    });
+  });
+
+  return selectableFields.filter((field) => !field.id.includes("District"));
+};
+
 const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
   const [dependentOn, setDependentOn] = useState(
     selectedField.dependentOn || ""
   );
-
-  // Initialize state with all field properties, including defaults for optional ones
   const [formData, setFormData] = useState({
     id: selectedField.id || `field-${Date.now()}`,
     type: selectedField.type || "text",
@@ -69,7 +105,9 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
     dependentValues: selectedField.dependentValues || [],
   });
 
-  // Determine if maxLength is dependent
+  const [optionInputText, setOptionInputText] = useState(
+    formData.options.map((opt) => opt.label).join(", ")
+  );
   const initialIsDependentMaxLength =
     typeof selectedField.maxLength === "object" &&
     selectedField.maxLength.dependentOn;
@@ -78,12 +116,10 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
   );
 
   const saveChanges = () => {
-    // Ensure all properties are included in the update
     updateField(formData);
     onClose();
   };
 
-  // Handler for district checkbox
   const handleDistrictCheckboxChange = async (e) => {
     const checked = e.target.checked;
     if (checked) {
@@ -104,6 +140,8 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
     }
   };
 
+  const selectableFields = getSelectableFields(sections);
+
   return (
     <Dialog
       open={true}
@@ -117,14 +155,18 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
           fullWidth
           label="Field Label"
           value={formData.label}
-          onChange={(e) => setFormData({ ...formData, label: e.target.value })}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, label: e.target.value }))
+          }
           margin="dense"
         />
         <TextField
           fullWidth
           label="Field Name"
           value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, name: e.target.value }))
+          }
           margin="dense"
         />
         <TextField
@@ -133,15 +175,13 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
           type="number"
           value={formData.minLength}
           onChange={(e) =>
-            setFormData({
-              ...formData,
+            setFormData((prev) => ({
+              ...prev,
               minLength: parseInt(e.target.value, 10) || 0,
-            })
+            }))
           }
           margin="dense"
         />
-
-        {/* Maximum Length Section */}
         <Box sx={{ marginTop: 2 }}>
           <Typography variant="body2">Maximum Length</Typography>
           <FormControlLabel
@@ -170,42 +210,32 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                   labelId="maxLength-dependent-on-label"
                   value={formData.maxLength.dependentOn || ""}
                   label="Dependent Field"
-                  onChange={(e) => {
+                  onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
                       maxLength: {
                         ...prev.maxLength,
                         dependentOn: e.target.value,
                       },
-                    }));
-                  }}
+                    }))
+                  }
                 >
-                  {sections
-                    .flatMap((section) => section.fields)
-                    .filter(
-                      (field) =>
-                        field.type === "select" &&
-                        !field.name.includes("District")
-                    )
-                    .map((field) => (
-                      <MenuItem key={field.name} value={field.name}>
-                        {field.label}
-                      </MenuItem>
-                    ))}
+                  {selectableFields.map((field) => (
+                    <MenuItem key={field.id} value={field.id}>
+                      {field.label}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
               {formData.maxLength.dependentOn && (
                 <>
                   {(() => {
-                    const dependentFieldName = formData.maxLength.dependentOn;
-                    const allFields = sections.flatMap(
-                      (section) => section.fields
+                    const dependentFieldId = formData.maxLength.dependentOn;
+                    const selectedField = selectableFields.find(
+                      (field) => field.id === dependentFieldId
                     );
-                    const parentField = allFields.find(
-                      (field) => field.name === dependentFieldName
-                    );
-                    if (parentField && parentField.options) {
-                      return parentField.options.map((option) => (
+                    if (selectedField && selectedField.options) {
+                      return selectedField.options.map((option) => (
                         <TextField
                           key={option.value}
                           fullWidth
@@ -242,26 +272,25 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
               type="number"
               value={formData.maxLength}
               onChange={(e) =>
-                setFormData({
-                  ...formData,
+                setFormData((prev) => ({
+                  ...prev,
                   maxLength: parseInt(e.target.value, 10) || 50,
-                })
+                }))
               }
               margin="dense"
             />
           )}
         </Box>
-
         <TextField
           fullWidth
           label="Span (Grid)"
           type="number"
           value={formData.span}
           onChange={(e) =>
-            setFormData({
-              ...formData,
+            setFormData((prev) => ({
+              ...prev,
               span: parseInt(e.target.value, 10) || 12,
-            })
+            }))
           }
           margin="dense"
         />
@@ -274,7 +303,9 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
             labelId="field-type-label"
             value={formData.type}
             label="Field Type"
-            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, type: e.target.value }))
+            }
           >
             <MenuItem value="text">Text</MenuItem>
             <MenuItem value="email">Email</MenuItem>
@@ -284,7 +315,6 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
             <MenuItem value="enclosure">Enclosure</MenuItem>
           </Select>
         </FormControl>
-        {/* Select Type Options */}
         {formData.type === "select" && (
           <>
             <FormControl fullWidth margin="dense">
@@ -294,16 +324,16 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                 value={formData.optionsType || ""}
                 label="Options Type"
                 onChange={(e) =>
-                  setFormData({
-                    ...formData,
+                  setFormData((prev) => ({
+                    ...prev,
                     optionsType: e.target.value,
                     dependentOn:
                       e.target.value === "dependent" ? dependentOn : "",
                     dependentOptions:
                       e.target.value === "dependent" ? {} : undefined,
                     options:
-                      e.target.value === "independent" ? [] : formData.options,
-                  })
+                      e.target.value === "independent" ? [] : prev.options,
+                  }))
                 }
               >
                 <MenuItem value="">Please Select</MenuItem>
@@ -317,8 +347,8 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                 label="Default Options (comma-separated)"
                 value={formData.options.map((opt) => opt.label).join(", ")}
                 onChange={(e) =>
-                  setFormData({
-                    ...formData,
+                  setFormData((prev) => ({
+                    ...prev,
                     options: e.target.value
                       .split(",")
                       .map((optStr) => {
@@ -328,7 +358,7 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                           : null;
                       })
                       .filter((opt) => opt !== null),
-                  })
+                  }))
                 }
                 margin="dense"
               />
@@ -356,31 +386,21 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                     <MenuItem value="">
                       <em>Select a field</em>
                     </MenuItem>
-                    {sections
-                      .flatMap((section) => section.fields)
-                      .filter(
-                        (field) =>
-                          field.type === "select" &&
-                          !field.name.includes("District")
-                      )
-                      .map((field) => (
-                        <MenuItem key={field.name} value={field.name}>
-                          {field.label}
-                        </MenuItem>
-                      ))}
+                    {selectableFields.map((field) => (
+                      <MenuItem key={field.id} value={field.id}>
+                        {field.label}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
                 {dependentOn && (
                   <>
                     {(() => {
-                      const allFields = sections.flatMap(
-                        (section) => section.fields
+                      const selectedField = selectableFields.find(
+                        (field) => field.id === dependentOn
                       );
-                      const parentField = allFields.find(
-                        (field) => field.name === dependentOn
-                      );
-                      if (parentField && parentField.options) {
-                        return parentField.options.map((option) => (
+                      if (selectedField && selectedField.options) {
+                        return selectedField.options.map((option) => (
                           <TextField
                             key={option.value}
                             fullWidth
@@ -426,7 +446,6 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
             />
           </>
         )}
-        {/* Enclosure Type Options */}
         {formData.type === "enclosure" && (
           <>
             <FormControlLabel
@@ -434,12 +453,12 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                 <Checkbox
                   checked={formData.isDependentEnclosure || false}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
+                    setFormData((prev) => ({
+                      ...prev,
                       isDependentEnclosure: e.target.checked,
                       dependentField: e.target.checked ? "" : null,
                       dependentValues: e.target.checked ? [] : null,
-                    })
+                    }))
                   }
                 />
               }
@@ -455,23 +474,21 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                     labelId="dependent-field-label"
                     value={formData.dependentField || ""}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
+                      setFormData((prev) => ({
+                        ...prev,
                         dependentField: e.target.value,
-                      })
+                        dependentValues: [],
+                      }))
                     }
                   >
                     <MenuItem value="">
                       <em>Select a field</em>
                     </MenuItem>
-                    {sections
-                      .flatMap((section) => section.fields)
-                      .filter((field) => field.type === "select")
-                      .map((field) => (
-                        <MenuItem key={field.name} value={field.name}>
-                          {field.label}
-                        </MenuItem>
-                      ))}
+                    {selectableFields.map((field) => (
+                      <MenuItem key={field.id} value={field.id}>
+                        {field.label}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
                 {formData.dependentField && (
@@ -484,37 +501,31 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                       multiple
                       value={formData.dependentValues || []}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
+                        setFormData((prev) => ({
+                          ...prev,
                           dependentValues: e.target.value,
-                        })
+                        }))
                       }
                       renderValue={(selected) =>
                         selected
-                          .map(
-                            (val) =>
-                              sections
-                                .flatMap((section) => section.fields)
-                                .find(
-                                  (field) =>
-                                    field.name === formData.dependentField
-                                )
-                                ?.options.find((opt) => opt.value === val)
-                                ?.label
-                          )
+                          .map((val) => {
+                            const selectedField = selectableFields.find(
+                              (field) => field.id === formData.dependentField
+                            );
+                            return selectedField?.options.find(
+                              (opt) => opt.value === val
+                            )?.label;
+                          })
                           .filter((label) => label)
                           .join(", ")
                       }
                     >
                       {(() => {
-                        const allFields = sections.flatMap(
-                          (section) => section.fields
-                        );
-                        const parentField = allFields.find(
-                          (field) => field.name === formData.dependentField
+                        const selectedField = selectableFields.find(
+                          (field) => field.id === formData.dependentField
                         );
                         return (
-                          parentField?.options?.map((option) => (
+                          selectedField?.options?.map((option) => (
                             <MenuItem key={option.value} value={option.value}>
                               {option.label}
                             </MenuItem>
@@ -528,12 +539,13 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
             )}
             <TextField
               fullWidth
-              label="Options (comma-separated)"
-              value={formData.options.map((opt) => opt.label).join(", ")}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  options: e.target.value
+              label="Default Options (comma-separated)"
+              value={optionInputText}
+              onChange={(e) => setOptionInputText(e.target.value)}
+              onBlur={() =>
+                setFormData((prev) => ({
+                  ...prev,
+                  options: optionInputText
                     .split(",")
                     .map((optStr) => {
                       const trimmed = optStr.trim();
@@ -542,9 +554,10 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                         : null;
                     })
                     .filter((opt) => opt !== null),
-                })
+                }))
               }
               margin="dense"
+              placeholder="Type options separated by commas"
             />
           </>
         )}
@@ -554,7 +567,7 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
             label="File Type Allowed"
             value={formData.accept}
             onChange={(e) =>
-              setFormData({ ...formData, accept: e.target.value })
+              setFormData((prev) => ({ ...prev, accept: e.target.value }))
             }
             margin="dense"
           />
@@ -577,10 +590,10 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                       (id) => id !== func.id
                     );
                   }
-                  setFormData({
-                    ...formData,
+                  setFormData((prev) => ({
+                    ...prev,
                     validationFunctions: updatedValidations,
-                  });
+                  }));
                 }}
               />
             }

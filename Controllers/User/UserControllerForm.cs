@@ -61,20 +61,49 @@ namespace SahayataNidhi.Controllers.User
                 var districtDetails = dbcontext.Districts.FirstOrDefault(s => s.DistrictId == districtId);
                 string districtShort = districtDetails!.DistrictShort!;
                 districtName = districtDetails.DistrictName!;
-                var workFlow = service!.OfficerEditableField;
+                var officerEditableField = service!.OfficerEditableField;
 
-                // Update the first player's status to "pending" if workflow is not null/empty.
-                if (!string.IsNullOrEmpty(workFlow))
+                if (string.IsNullOrEmpty(officerEditableField))
                 {
-                    var players = JArray.Parse(workFlow);
-                    if (players.Count > 0)
-                    {
-                        players[0]["status"] = "pending";
-                        startingPlayer = players[0]["designation"]!.ToString();
-                    }
-                    workFlow = players.ToString(Formatting.None);
+                    return Json(new { status = false });
                 }
 
+                // Parse the OfficerEditableField JSON
+                var players = JArray.Parse(officerEditableField);
+                if (players.Count == 0)
+                {
+                    return Json(new { status = false });
+                }
+
+                // Create a new JArray to store filtered workflow
+                var filteredWorkflow = new JArray();
+
+                foreach (var player in players)
+                {
+                    // Create a new JObject with only the required fields
+                    var filteredPlayer = new JObject
+                    {
+                        ["designation"] = player["designation"],
+                        ["status"] = player["status"],
+                        ["completedAt"] = player["completedAt"],
+                        ["remarks"] = player["remarks"],
+                        ["playerId"] = player["playerId"],
+                        ["prevPlayerId"] = player["prevPlayerId"],
+                        ["nextPlayerId"] = player["nextPlayerId"],
+                        ["canPUll"] = player["canPull"]
+                    };
+
+                    filteredWorkflow.Add(filteredPlayer);
+                }
+
+                // Set the status of the first player to "pending"
+                if (filteredWorkflow.Count > 0)
+                {
+                    filteredWorkflow[0]["status"] = "pending";
+                    startingPlayer = filteredWorkflow[0]["designation"]?.ToString() ?? string.Empty;
+                }
+
+                var workFlow = filteredWorkflow.ToString(Formatting.None);
                 var finYear = helper.GetCurrentFinancialYear();
                 referenceNumber = "JK-" + service.NameShort + "-" + districtShort + "/" + finYear + "/" + count;
                 var createdAt = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");

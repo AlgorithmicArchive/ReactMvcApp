@@ -16,7 +16,7 @@ export default function Verification() {
     formState: { errors },
   } = useForm();
 
-  const { setVerified } = useContext(UserContext);
+  const { setVerified, userType } = useContext(UserContext);
   const navigate = useNavigate();
 
   const handleOptionSelect = (option) => {
@@ -92,22 +92,24 @@ export default function Verification() {
           >
             Use OTP Verification
           </Button>
-          <Button
-            variant="contained"
-            onClick={() => handleOptionSelect("backup")}
-            sx={{
-              backgroundColor: "background.paper",
-              color: "primary.main",
-              borderRadius: 3,
-              fontWeight: "bold",
-              textTransform: "none",
-              "&:hover": {
+          {userType != "Citizen" && (
+            <Button
+              variant="contained"
+              onClick={() => handleOptionSelect("backup")}
+              sx={{
                 backgroundColor: "background.paper",
-              },
-            }}
-          >
-            Use Backup Codes
-          </Button>
+                color: "primary.main",
+                borderRadius: 3,
+                fontWeight: "bold",
+                textTransform: "none",
+                "&:hover": {
+                  backgroundColor: "background.paper",
+                },
+              }}
+            >
+              Use Backup Codes
+            </Button>
+          )}
         </Box>
       )}
 

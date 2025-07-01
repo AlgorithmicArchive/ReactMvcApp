@@ -30,7 +30,6 @@ const ProtectedRoute = ({ requiredRoles }) => {
       setProfile(null);
       setVerified(false);
       localStorage.clear(); // Clear all localStorage on logout
-      console.log("Token ", token);
       // Redirect to appropriate page after clearing data
       navigate(!token ? "/login" : "/unauthorized", { replace: true });
     }

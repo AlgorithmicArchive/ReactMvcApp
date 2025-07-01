@@ -262,9 +262,10 @@ namespace SahayataNidhi.Controllers.Officer
                             actionFunction = "handleOpenApplication"
                         });
                     }
-                    else if (type == "Forwarded" || type == "Returned")
+                    else if (type == "Forwarded" || type == "Returned" || type == "Sanctioned")
                     {
                         var currentOfficer = officers!.FirstOrDefault(o => (string)o["designation"]! == officerDetails.Role);
+                        _logger.LogInformation($"---------- CAN OFFICER PULL: {currentOfficer!["canPull"]}-------------");
                         if (currentOfficer != null && (bool)currentOfficer["canPull"]!)
                         {
                             customActions.Add(new
@@ -408,85 +409,113 @@ namespace SahayataNidhi.Controllers.Officer
                 return Json(new { error = "Application not found" });
             }
 
-            // Deserialize form details into a JToken so we can traverse and update it.
+            var serviceDetails = dbcontext.Services
+                .FirstOrDefault(s => s.ServiceId == details.ServiceId);
+
+            // Deserialize form details
             JToken formDetailsToken = JToken.Parse(details.FormDetails!);
 
-            // Deserialize officer details.
+            // Deserialize workflow
             var officerDetails = JsonConvert.DeserializeObject<dynamic>(details.WorkFlow!);
             int currentPlayer = details.CurrentPlayer;
 
-            // Convert officerDetails to a JArray and get current, previous, and next officer.
+            // Convert workflow to JArray
             JArray? officerArray = officerDetails as JArray;
             var currentOfficer = officerArray?.FirstOrDefault(o => (int)o["playerId"]! == currentPlayer);
             var previousOfficer = officerArray?.FirstOrDefault(o => (int)o["playerId"]! == (currentPlayer - 1));
-            if (previousOfficer != null) previousOfficer["canPull"] = false;
             var nextOfficer = officerArray?.FirstOrDefault(o => (int)o["playerId"]! == (currentPlayer + 1));
+
+            if (previousOfficer != null) previousOfficer["canPull"] = false;
             if (nextOfficer != null) nextOfficer["canPull"] = false;
 
-            // Save the updated workflow details.
+            // Save updated workflow (only canPull changes)
             details.WorkFlow = JsonConvert.SerializeObject(officerArray);
             dbcontext.SaveChanges();
 
-            // Iterate through each section in the form details JSON.
+            // Clone currentOfficer and inject actionForm (without modifying DB)
+            JObject currentOfficerClone = currentOfficer != null ? (JObject)currentOfficer.DeepClone() : new JObject();
+
+            if (!string.IsNullOrWhiteSpace(serviceDetails!.OfficerEditableField) && currentOfficerClone != null)
+            {
+                var editableFields = JsonConvert.DeserializeObject<List<JObject>>(serviceDetails.OfficerEditableField);
+                int playerId = (int)currentOfficerClone["playerId"]!;
+
+                var match = editableFields!.FirstOrDefault(f => (int)f["playerId"]! == playerId);
+                if (match != null && match["actionForm"] != null)
+                {
+                    currentOfficerClone["actionForm"] = match["actionForm"];
+                }
+            }
+
+            // Replace district and tehsil codes with names
             foreach (JProperty section in formDetailsToken.Children<JProperty>())
             {
-                // Each section's value is expected to be an array of field objects.
-                foreach (JObject field in section.Value.Children<JObject>())
+                foreach (var fieldToken in section.Value.Children())
                 {
+                    if (fieldToken is not JObject field)
+                        continue;
+
                     string fieldName = field["name"]?.ToString() ?? "";
-                    // Check for District fields.
+
                     if (fieldName.Equals("District", StringComparison.OrdinalIgnoreCase) ||
                         fieldName.EndsWith("District", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Convert the numeric district code to a district name.
-                        int districtCode = field["value"]!.Value<int>();
-                        string districtName = GetDistrictName(districtCode);
-                        field["value"] = districtName;
+                        if (field["value"] != null && int.TryParse(field["value"]!.ToString(), out int districtCode))
+                        {
+                            field["value"] = GetDistrictName(districtCode);
+                        }
                     }
-                    // Check for Tehsil fields.
                     else if (fieldName.Equals("Tehsil", StringComparison.OrdinalIgnoreCase) ||
                              fieldName.EndsWith("Tehsil", StringComparison.OrdinalIgnoreCase))
                     {
-                        int tehsilCode = field["value"]!.Value<int>();
-                        string tehsilName = GetTehsilName(tehsilCode);
-                        field["value"] = tehsilName;
+                        if (field["value"] != null && int.TryParse(field["value"]!.ToString(), out int tehsilCode))
+                        {
+                            field["value"] = GetTehsilName(tehsilCode);
+                        }
                     }
                 }
             }
 
-            // Return the updated form details along with current officer details.
+            // Return the updated details
             return Json(new
             {
                 list = formDetailsToken,
-                currentOfficerDetails = currentOfficer
+                currentOfficerDetails = currentOfficerClone
             });
         }
-
 
         [HttpGet]
         public IActionResult GetRecordsForBankFile(int AccessCode, int ServiceId, string type, int Month, int Year, int pageIndex = 0, int pageSize = 10)
         {
-            var officerDetails = GetOfficerDetails();
             var accessCode = new SqlParameter("@AccessCode", AccessCode);
             var applicationStatus = new SqlParameter("@ApplicationStatus", type);
             var serviceId = new SqlParameter("@ServiceId", ServiceId);
             var month = new SqlParameter("@Month", Month);
             var year = new SqlParameter("@Year", Year);
 
-            var rawResults = dbcontext.CitizenApplications
-                .FromSqlRaw("EXEC GetRecordsForBankFile @AccessCode, @ApplicationStatus, @ServiceId, @Month, @Year",
-                    accessCode, applicationStatus, serviceId, month, year)
-                .ToList();
+            // Call new stored procedure
+            var rawResults = dbcontext.Database
+            .SqlQueryRaw<BankFileRawResult>(
+                "EXEC GetRecordsForBankFile_New @AccessCode, @ApplicationStatus, @ServiceId, @Month, @Year",
+                new SqlParameter("@AccessCode", AccessCode),
+                new SqlParameter("@ApplicationStatus", type),
+                new SqlParameter("@ServiceId", ServiceId),
+                new SqlParameter("@Month", Month),
+                new SqlParameter("@Year", Year)
+            )
+            .ToList();
 
+            // Optional: Sort by ReferenceNumber (last part)
             var sortedResults = rawResults.OrderBy(a =>
             {
-                var parts = a.ReferenceNumber.Split('/');
+                var parts = a.ReferenceNumber!.Split('/');
                 var numberPart = parts.Last();
                 return int.TryParse(numberPart, out int num) ? num : 0;
             }).ToList();
 
             var totalRecords = sortedResults.Count;
 
+            // Paginate
             var pagedResults = sortedResults
                 .Skip(pageIndex * pageSize)
                 .Take(pageSize)
@@ -496,45 +525,106 @@ namespace SahayataNidhi.Controllers.Officer
             {
                 new { accessorKey = "referenceNumber", header = "Reference Number" },
                 new { accessorKey = "districtbankuid", header = "District Bank Uid" },
+                new { accessorKey = "department", header = "Department" },
+                new { accessorKey = "payingBankAccountNumber", header = "Paying Bank Account Number" },
+                new { accessorKey = "payingBankIfscCode", header = "Paying IFSC Code" },
+                new { accessorKey = "amount", header = "Pension Amount" },
+                new { accessorKey = "fileGenerationDate", header = "File Generation Date" },
+                new { accessorKey = "payingBankName", header = "Paying Bank Name" },
                 new { accessorKey = "applicantName", header = "Applicant Name" },
-                new { accessorKey = "submissionDate", header = "Submission Date" },
-                new { accessorKey = "sanctionedon", header = "Sanctioned Date" }
+                new { accessorKey = "receivingIfscCode", header = "Receiving IFSC Code" },
+                new { accessorKey = "receivingAccountNumber", header = "Receiving Account Number" },
+                new { accessorKey = "pensionType", header = "Pension Type" },
             };
-
-            var monthAbbreviation = new DateTime(Year, Month, 1).ToString("MMM", CultureInfo.InvariantCulture).ToUpper();
-            var yearAbbreviation = Year.ToString().Substring(2, 2);
-            string districtNameShort = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == AccessCode)!.DistrictShort!;
-
-            var data = new List<dynamic>();
-
-            foreach (var details in pagedResults)
-            {
-                var formDetails = JsonConvert.DeserializeObject<dynamic>(details.FormDetails!);
-                var workFlowSteps = JsonConvert.DeserializeObject<List<dynamic>>(details.WorkFlow!);
-                var currentPalyerIndex = details.CurrentPlayer;
-                string completedAt = workFlowSteps![currentPalyerIndex].completedAt;
-
-                var finalUid = $"{districtNameShort}{monthAbbreviation}{yearAbbreviation}00{details.DistrictUidForBank?.PadLeft(8, '0')}";
-
-
-                data.Add(new Dictionary<string, object>
-                {
-                    { "referenceNumber", details.ReferenceNumber },
-                    { "districtbankuid", finalUid ?? "" },
-                    { "applicantName", GetFieldValue("ApplicantName", formDetails) },
-                    { "submissionDate", details.CreatedAt! },
-                    { "sanctionedon", completedAt }
-                });
-            }
 
             return Ok(new
             {
-                data,
+                data = pagedResults,
                 columns,
                 totalRecords,
                 pageIndex,
                 pageSize
             });
+        }
+
+        [HttpGet]
+        public IActionResult ExportBankFileCsv(int AccessCode, int ServiceId, string type, int Month, int Year)
+        {
+            // Fetch district short name from DB based on AccessCode
+            var districtShortName = dbcontext.Districts
+                .Where(d => d.DistrictId == AccessCode)
+                .Select(d => d.DistrictShort) // ensure this column exists
+                .FirstOrDefault();
+
+            if (string.IsNullOrEmpty(districtShortName))
+                return BadRequest("District not found");
+
+            // Prepare filename
+            string monthShort = new DateTime(Year, Month, 1).ToString("MMM"); // e.g., "Jul"
+            string fileName = $"BankFile_{districtShortName}_{monthShort}_{Year}.csv";
+
+            // SQL parameters
+            var accessCode = new SqlParameter("@AccessCode", AccessCode);
+            var applicationStatus = new SqlParameter("@ApplicationStatus", type);
+            var serviceId = new SqlParameter("@ServiceId", ServiceId);
+            var month = new SqlParameter("@Month", Month);
+            var year = new SqlParameter("@Year", Year);
+
+            // Execute stored procedure
+            var rawResults = dbcontext.Database
+                .SqlQueryRaw<BankFileRawResult>(
+                    "EXEC GetRecordsForBankFile_New @AccessCode, @ApplicationStatus, @ServiceId, @Month, @Year",
+                    accessCode, applicationStatus, serviceId, month, year)
+                .ToList();
+
+            if (rawResults.Count == 0)
+                return NotFound("No records found for the provided parameters.");
+
+            // Build CSV
+            var csvBuilder = new StringBuilder();
+            foreach (var item in rawResults)
+            {
+                var line = string.Join(",",
+                    EscapeCsv(item.ReferenceNumber),
+                    EscapeCsv(item.Districtbankuid),
+                    EscapeCsv(item.Department),
+                    EscapeCsv(item.PayingBankAccountNumber),
+                    EscapeCsv(item.PayingBankIfscCode),
+                    EscapeCsv(item.PayingBankName),
+                    EscapeCsv(item.FileGenerationDate.ToString("yyyy-MM-dd HH:mm:ss")),
+                    item.Amount,
+                    EscapeCsv(item.ApplicantName),
+                    EscapeCsv(item.ReceivingIfscCode),
+                    EscapeCsv(item.ReceivingAccountNumber),
+                    EscapeCsv(item.PensionType)
+                );
+
+                csvBuilder.AppendLine(line);
+            }
+
+            // Define file path on the server
+            string folderPath = System.IO.Path.Combine(_webHostEnvironment.WebRootPath, "BankFiles");
+            if (!Directory.Exists(folderPath))
+                Directory.CreateDirectory(folderPath);
+
+            string filePath = System.IO.Path.Combine(folderPath, fileName);
+
+            // Save file to disk
+            System.IO.File.WriteAllText(filePath, csvBuilder.ToString(), Encoding.UTF8);
+
+            // Return file to frontend
+            var mimeType = "text/csv";
+            return PhysicalFile(filePath, mimeType, fileName);
+        }
+
+
+        private static string EscapeCsv(string? input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return "";
+            if (input.Contains(",") || input.Contains("\"") || input.Contains("\n"))
+                return $"\"{input.Replace("\"", "\"\"")}\"";
+            return input;
         }
 
 
@@ -582,7 +672,6 @@ namespace SahayataNidhi.Controllers.Officer
             });
         }
 
-
         [HttpGet]
         public async Task<IActionResult> GetApplicationHistory(string ApplicationId, int page, int size)
         {
@@ -619,18 +708,6 @@ namespace SahayataNidhi.Controllers.Officer
                     actionTakenOn = item.ActionTakenDate,
                 });
                 index++;
-            }
-
-            if ((string)currentPlayer!["status"]! == "pending")
-            {
-                data.Add(new
-                {
-                    sno = index,
-                    actionTaker = currentPlayer["designation"],
-                    actionTaken = currentPlayer["status"],
-                    remarks = currentPlayer["remarks"],
-                    actionTakenOn = "",
-                });
             }
 
             return Json(new { data, columns, customActions = new { } });

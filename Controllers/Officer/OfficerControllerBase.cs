@@ -11,6 +11,7 @@ using SahayataNidhi.Models.Entities;
 using System.Security.Claims;
 using System.Dynamic;
 using Newtonsoft.Json.Linq;
+using Renci.SshNet;
 
 namespace SahayataNidhi.Controllers.Officer
 {
@@ -76,32 +77,65 @@ namespace SahayataNidhi.Controllers.Officer
             return Json(new { serviceList });
         }
         [HttpGet]
-        public IActionResult PullApplication(string applicationId)
+        public async Task<IActionResult> PullApplication(string applicationId)
         {
             var officer = GetOfficerDetails();
             var details = dbcontext.CitizenApplications.FirstOrDefault(ca => ca.ReferenceNumber == applicationId);
             var players = JsonConvert.DeserializeObject<dynamic>(details?.WorkFlow!) as JArray;
             var currentPlayer = players?.FirstOrDefault(p => (string)p["designation"]! == officer.Role);
             string status = (string)currentPlayer?["status"]!;
-
+            var formDetailsObj = JObject.Parse(details!.FormDetails!);
             dynamic otherPlayer = new { };
+
             if (status == "forwarded")
             {
                 otherPlayer = players?.FirstOrDefault(p => (int)p["playerId"]! == ((int)currentPlayer?["playerId"]! + 1))!;
+                otherPlayer["status"] = ""; // Clear status of next player
+                currentPlayer!["status"] = "pending"; // Pull back to current
             }
             else if (status == "returned")
             {
                 otherPlayer = players?.FirstOrDefault(p => (int)p["playerId"]! == ((int)currentPlayer?["playerId"]! - 1))!;
+                otherPlayer["status"] = "forwarded"; // Restore status to previous
+                currentPlayer!["status"] = "pending"; // Pull back
             }
-            otherPlayer["status"] = status == "forwarded" ? "" : "forwarded";
-            currentPlayer!["status"] = "pending";
+            else if (status == "sanctioned")
+            {
+                // Do NOT change currentPlayer or move to other player
+                currentPlayer!["status"] = "pending"; // Optional: Mark as pending if needed
+            }
+
+            try
+            {
+                var getServices = dbcontext.WebServices.FirstOrDefault(ws => ws.ServiceId == details!.ServiceId && ws.IsActive);
+                if (getServices != null)
+                {
+                    var onAction = JsonConvert.DeserializeObject<List<string>>(getServices.OnAction);
+                    if (status == "sanctioned" && onAction != null && onAction.Contains("CallbackOnSanction"))
+                    {
+                        var fieldMapObj = JObject.Parse(getServices.FieldMappings);
+                        var fieldMap = MapServiceFieldsFromForm(formDetailsObj, fieldMapObj);
+                        await SendApiRequestAsync(getServices.ApiEndPoint, fieldMap);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Optional: log the error
+                Console.WriteLine("Error in external service call: " + ex.Message);
+                // Or use a logger: _logger.LogError(ex, "Service call failed");
+            }
+
 
             details!.WorkFlow = JsonConvert.SerializeObject(players);
-            details.CurrentPlayer = (int)currentPlayer["playerId"]!;
+            details.CurrentPlayer = (int)currentPlayer!["playerId"]!;
             dbcontext.SaveChanges();
+
             helper.InsertHistory(applicationId, "Pulled Application", (string)currentPlayer["designation"]!, "Call back Application");
+
             return Json(new { status = true });
         }
+
         [HttpPost]
         public async Task<IActionResult> HandleAction([FromForm] IFormCollection form)
         {
@@ -172,17 +206,27 @@ namespace SahayataNidhi.Controllers.Officer
                 dbcontext.SaveChanges();
                 helper.InsertHistory(applicationId, action, officer.Role!, remarks);
 
-                var getServices = dbcontext.WebServices.FirstOrDefault(ws => ws.ServiceId == formdetails.ServiceId && ws.IsActive);
-                if (getServices != null)
+                try
                 {
-                    var onAction = JsonConvert.DeserializeObject<List<string>>(getServices.OnAction);
-                    if (onAction != null && onAction.Contains(action))
+                    var getServices = dbcontext.WebServices.FirstOrDefault(ws => ws.ServiceId == formdetails.ServiceId && ws.IsActive);
+                    if (getServices != null)
                     {
-                        var fieldMapObj = JObject.Parse(getServices.FieldMappings);
-                        var fieldMap = MapServiceFieldsFromForm(formDetailsObj, fieldMapObj);
-                        await SendApiRequestAsync(getServices.ApiEndPoint, fieldMap);
+                        var onAction = JsonConvert.DeserializeObject<List<string>>(getServices.OnAction);
+                        if (onAction != null && onAction.Contains(action))
+                        {
+                            var fieldMapObj = JObject.Parse(getServices.FieldMappings);
+                            var fieldMap = MapServiceFieldsFromForm(formDetailsObj, fieldMapObj);
+                            await SendApiRequestAsync(getServices.ApiEndPoint, fieldMap);
+                        }
                     }
                 }
+                catch (Exception ex)
+                {
+                    // Optional: log the error
+                    Console.WriteLine("Error in external service call: " + ex.Message);
+                    // Or use a logger: _logger.LogError(ex, "Service call failed");
+                }
+
                 string fullName = GetFieldValue("ApplicantName", formDetailsObj);
                 string serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == formdetails.ServiceId)!.ServiceName!;
                 string appliedDistrictId = GetFieldValue("District", formDetailsObj);
@@ -268,6 +312,82 @@ namespace SahayataNidhi.Controllers.Officer
             }
 
 
+        }
+
+
+        [HttpPost]
+        public IActionResult UploadToSftp([FromForm] IFormCollection form)
+        {
+            try
+            {
+                // Validate required fields
+                if (!form.TryGetValue("AccessCode", out var accessCodeStr) ||
+                    !form.TryGetValue("ServiceId", out var serviceIdStr) ||
+                    !form.TryGetValue("Type", out var type) ||
+                    !form.TryGetValue("Month", out var monthStr) ||
+                    !form.TryGetValue("Year", out var yearStr) ||
+                    !form.TryGetValue("FtpHost", out var ftpHost) ||
+                    !form.TryGetValue("FtpUser", out var ftpUser) ||
+                    !form.TryGetValue("FtpPassword", out var ftpPassword))
+                {
+                    return BadRequest(new { status = false, message = "Missing required form fields" });
+                }
+
+                // Parse form values
+                if (!int.TryParse(accessCodeStr, out int accessCode) ||
+                    !int.TryParse(serviceIdStr, out int serviceId) ||
+                    !int.TryParse(monthStr, out int month) ||
+                    !int.TryParse(yearStr, out int year))
+                {
+                    return BadRequest(new { status = false, message = "Invalid form field values" });
+                }
+
+                // Fetch district short name
+                var districtShortName = dbcontext.Districts
+                    .Where(d => d.DistrictId == accessCode)
+                    .Select(d => d.DistrictShort)
+                    .FirstOrDefault();
+
+                if (string.IsNullOrEmpty(districtShortName))
+                    return BadRequest(new { status = false, message = "District not found" });
+
+                // Prepare filename using the same naming convention
+                string monthShort = new DateTime(year, month, 1).ToString("MMM");
+                string fileName = $"BankFile_{districtShortName}_{monthShort}_{year}.csv";
+
+                // Define file path on the server
+                string folderPath = Path.Combine(_webHostEnvironment.WebRootPath, "BankFiles");
+                string filePath = Path.Combine(folderPath, fileName);
+
+                // Check if file exists
+                if (!System.IO.File.Exists(filePath))
+                    return NotFound(new { status = false, message = "CSV file not found on server" });
+
+                // Read the existing file
+                byte[] fileBytes = System.IO.File.ReadAllBytes(filePath);
+
+                // Connect to SFTP
+                using (var client = new SftpClient(ftpHost.ToString(), ftpUser.ToString(), ftpPassword.ToString()))
+                {
+                    client.Connect();
+                    if (!client.IsConnected)
+                        return StatusCode(500, new { status = false, message = "Failed to connect to SFTP server" });
+
+                    // Upload file
+                    using (var stream = new MemoryStream(fileBytes))
+                    {
+                        client.UploadFile(stream, fileName, true);
+                    }
+
+                    client.Disconnect();
+                }
+
+                return Ok(new { status = true, message = "File uploaded successfully to SFTP" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = $"Error uploading to SFTP: {ex.Message}" });
+            }
         }
     }
 }

@@ -1067,20 +1067,18 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                       }}
                     />
                   )}
-                  <Row
-                    style={{
-                      display: "flex",
-                      flexDirection:
-                        section.section === "Documents" ? "column" : "row",
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                  >
-                    {section.fields.map((field) => (
-                      <Col xs={12} lg={field.span} key={field.id}>
-                        {renderField(field, index)}
-                      </Col>
-                    ))}
+                  <Row>
+                    {section.fields.map((field) => {
+                      const element = renderField(field, index);
+                      if (element != null) {
+                        return (
+                          <Col xs={12} lg={field.span} key={field.id}>
+                            {element}
+                          </Col>
+                        );
+                      }
+                      return null; // Explicitly return null for non-rendered fields
+                    })}
                   </Row>
                 </div>
               );

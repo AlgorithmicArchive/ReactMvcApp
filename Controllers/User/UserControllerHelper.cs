@@ -271,7 +271,7 @@ namespace SahayataNidhi.Controllers.User
             return new { Label = label, Value = result };
         }
         // Recursive search for a JObject with ["name"] == fieldName
-        private JObject? FindFieldRecursively(JToken token, string fieldName)
+        private static JObject? FindFieldRecursively(JToken token, string fieldName)
         {
             if (token is JObject obj)
             {
@@ -300,8 +300,19 @@ namespace SahayataNidhi.Controllers.User
                 return GetDistrictName(did);
 
             if (fieldName.Contains("Tehsil", StringComparison.OrdinalIgnoreCase)
-             && int.TryParse(s, out int tid))
-                return GetTehsilName(tid);
+                    && int.TryParse(s, out int tid))
+            {
+                try
+                {
+                    return GetTehsilName(tid);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning($"Tehsil lookup failed for ID: {tid}. Exception: {ex.Message}");
+                    return $"Unknown Tehsil ({tid})";
+                }
+            }
+
 
             return s;
         }
