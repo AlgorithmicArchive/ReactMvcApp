@@ -482,6 +482,7 @@ export default function OfficerHome() {
                 count={item.count}
                 bgColor={item.bgColor}
                 textColor={item.textColor}
+                tooltipText={item.tooltipText}
                 onClick={() => handleCardClick(item.label)}
               />
             </Col>

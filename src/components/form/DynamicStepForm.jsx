@@ -48,15 +48,12 @@ const flattenFormDetails = (nestedDetails) => {
           selected: field.Enclosure || "",
           file: field.File || "",
         };
-        // flat[`${field.name}_Enclosure`] = field.Enclosure;
-        // flat[`${field.name}_File`] = field.File;
       } else {
         if ("value" in field) flat[field.name] = field.value;
         if ("File" in field && field.File) flat[field.name] = field.File;
       }
 
       if (field.additionalFields) {
-        // handle both array‐ and map‐shaped additionalFields
         const branches = Array.isArray(field.additionalFields)
           ? field.additionalFields
           : Object.values(field.additionalFields).flat();
@@ -87,7 +84,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     formState: { errors, dirtyFields },
   } = useForm({
     mode: "onChange",
-    shouldUnregister: false, // keep dynamically-rendered fields
+    shouldUnregister: false,
     defaultValues: {},
   });
 
@@ -107,7 +104,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Watch BankName and BranchName
   const bankName = watch("BankName");
   const branchName = watch("BranchName");
   const [bankNameBlurred, setBankNameBlured] = useState(false);
@@ -126,7 +122,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     return false;
   };
 
-  // Update image preview when the applicant file changes
   useEffect(() => {
     if (applicantImageFile && applicantImageFile instanceof File) {
       const objectUrl = URL.createObjectURL(applicantImageFile);
@@ -135,37 +130,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     }
   }, [applicantImageFile]);
 
-  // Fetch IFSC Code when both BankName and BranchName are present
-  useEffect(() => {
-    async function fetchIFSCCode() {
-      if (
-        bankName &&
-        branchName &&
-        bankName !== "Please Select" &&
-        branchName.trim()
-      ) {
-        try {
-          if (bankNameBlurred && branchNameBlurred) {
-            const response = await axiosInstance.get("/Base/GetIFSCCode", {
-              params: { bankName, branchName },
-            });
-            const data = await response.data;
-            if (data.status && data.result[0]) {
-              setValue("IfscCode", data.result[0], { shouldValidate: true });
-            } else {
-              setValue("IfscCode", "", { shouldValidate: false });
-            }
-          }
-        } catch (error) {
-          console.error("Error fetching IFSC code:", error);
-          setValue("IfscCode", "", { shouldValidate: false });
-        }
-      }
-    }
-    fetchIFSCCode();
-  }, [bankName, branchName, bankNameBlurred, branchNameBlurred, setValue]);
-
-  // Load service content and, if mode === "incomplete" or "edit", fetch and flatten existing form details
   useEffect(() => {
     async function loadForm() {
       try {
@@ -192,7 +156,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
           setInitialData(flatDetails);
           const resetData = {
             ...flatDetails,
-            // Explicitly set enclosure fields
             ...Object.keys(flatDetails).reduce((acc, key) => {
               if (
                 flatDetails[key] &&
@@ -235,7 +198,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     loadForm();
   }, [location.state, mode, reset, data, getValues]);
 
-  // Set default file for fields that require it
   const setDefaultFile = async (path) => {
     try {
       const response = await fetch(path);
@@ -250,7 +212,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     }
   };
 
-  // Set dependent defaults and enclosure fields
   useEffect(() => {
     if (!formSections.length || !initialData) return;
     if (hasRunRef.current) return;
@@ -261,18 +222,15 @@ const DynamicStepForm = ({ mode = "new", data }) => {
         const name = field.name;
         const value = initialData[name];
 
-        // ── 1️⃣ District → populate Tehsils ─────────────────────
         if (name.toLowerCase().includes("district") && value) {
           handleDistrictChange(sectionIndex, { ...field, name }, value);
         }
 
-        // ── 2️⃣ ApplicantImage → preview + default file ────────
         if (name.toLowerCase().includes("applicantimage") && value) {
           setApplicantImagePreview(value);
           setDefaultFile(value);
         }
 
-        // ── 3️⃣ Enclosure → set select + file ──────────────────
         if (field.type === "enclosure" && value) {
           setValue(`${name}_select`, value.selected || "", {
             shouldValidate: true,
@@ -282,7 +240,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
           });
         }
 
-        // ── 4️⃣ Recurse deeper into additionalFields ────────────
         if (field.additionalFields) {
           const branches = Array.isArray(field.additionalFields)
             ? field.additionalFields
@@ -337,26 +294,42 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     }
   };
 
-  const handleNext = async () => {
-    // 1️⃣ Build a flat list of every field key in this step
-    const stepFields = formSections[currentStep].fields.flatMap((field) => {
-      if (field.type === "enclosure") {
-        // enclosure contributes two keys
-        return [`${field.name}_select`, `${field.name}_file`];
-      }
-      if (field.type === "select" && field.additionalFields) {
-        const sel = getValues(field.name);
-        const extra = field.additionalFields[sel] || [];
-        const nested = extra.map((af) => af.name || `${field.name}_${af.id}`);
-        return [field.name, ...nested];
-      }
-      return [field.name];
-    });
+  const collectNestedFields = (field, formData) => {
+    const fields = [];
+    if (field.type === "enclosure") {
+      fields.push(`${field.name}_select`, `${field.name}_file`);
+    } else if (field.type === "select" && field.additionalFields) {
+      const sel = formData[field.name] || "";
+      const extra = field.additionalFields[sel] || [];
+      fields.push(field.name);
+      extra.forEach((af) => {
+        const nestedFieldName = af.name || `${field.name}_${af.id}`;
+        fields.push(nestedFieldName);
+        // Recursively collect nested fields of nested fields
+        if (af.type === "select" && af.additionalFields) {
+          const nestedSel = formData[nestedFieldName] || "";
+          const nestedExtra = af.additionalFields[nestedSel] || [];
+          nestedExtra.forEach((nestedAf) => {
+            const nestedNestedFieldName =
+              nestedAf.name || `${nestedFieldName}_${nestedAf.id}`;
+            fields.push(nestedNestedFieldName);
+          });
+        }
+      });
+    } else {
+      fields.push(field.name);
+    }
+    return fields;
+  };
 
-    // 2️⃣ Filter out disabled fields
+  const handleNext = async () => {
+    const formData = getValues();
+    const stepFields = formSections[currentStep].fields.flatMap((field) =>
+      collectNestedFields(field, formData)
+    );
+
     const enabledFields = stepFields.filter((name) => !isFieldDisabled(name));
 
-    // 3️⃣ In edit mode, require *all* enabled fields to have been changed
     if (mode === "edit") {
       const allUpdated = enabledFields.every((name) => dirtyFields[name]);
       if (!allUpdated) {
@@ -365,15 +338,20 @@ const DynamicStepForm = ({ mode = "new", data }) => {
       }
     }
 
-    // 4️⃣ Run validation on every field (including disabled if you want)
-    const valid = await trigger(stepFields);
+    // Explicitly trigger validation for each field
+    const validationResults = await Promise.all(
+      stepFields.map((fieldName) => trigger(fieldName))
+    );
+    const valid = validationResults.every((result) => result);
     if (valid) {
-      setCurrentStep((prev) => prev + 1);
+      setCurrentStep((prev) => Math.min(prev + 1, formSections.length - 1));
+    } else {
+      console.log("Validation failed for step:", currentStep);
     }
   };
 
   const handlePrev = () => {
-    setCurrentStep((prev) => prev - 1);
+    setCurrentStep((prev) => Math.max(prev - 1, 0));
   };
 
   const handleDistrictChange = async (sectionIndex, districtField, value) => {
@@ -414,6 +392,13 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     const groupedFormData = {};
     setButtonLoading(true);
 
+    // Move this here so it's defined before usage
+    let returnFieldsArray = [];
+    if (additionalDetails != null && additionalDetails != "") {
+      const returnFields = additionalDetails?.returnFields || "";
+      returnFieldsArray = returnFields.split(",").map((f) => f.trim());
+    }
+
     const processField = (field, data) => {
       if (field.type === "enclosure" && field.isDependentEnclosure) {
         const parentValue = data[field.dependentField];
@@ -452,6 +437,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
             .filter((nestedField) => nestedField !== null);
         }
       }
+
       return sectionFormData;
     };
 
@@ -459,7 +445,11 @@ const DynamicStepForm = ({ mode = "new", data }) => {
       groupedFormData[section.section] = [];
       section.fields.forEach((field) => {
         const sectionData = processField(field, data);
-        if (sectionData !== null) {
+        if (
+          sectionData !== null &&
+          (returnFieldsArray.length === 0 ||
+            returnFieldsArray.includes(sectionData.name))
+        ) {
           groupedFormData[section.section].push(sectionData);
         }
       });
@@ -491,12 +481,11 @@ const DynamicStepForm = ({ mode = "new", data }) => {
       "status",
       operationType === "submit" ? "Initiated" : "Incomplete"
     );
-    console.log("Reference Number", referenceNumber);
     formdata.append("referenceNumber", referenceNumber);
+
     let url = "/User/InsertFormDetails";
-    console.log(additionalDetails);
     if (additionalDetails != null && additionalDetails != "") {
-      formdata.append("returnFields", additionalDetails["returnFields"] || "");
+      formdata.append("returnFields", returnFieldsArray.join(",")); // ✅ fix: send as string
       url = "/User/UpdateApplicationDetails";
     }
 
@@ -527,62 +516,62 @@ const DynamicStepForm = ({ mode = "new", data }) => {
   const renderField = (field, sectionIndex) => {
     const commonStyles = {
       "& .MuiOutlinedInput-root": {
-        backgroundColor: "#ffffff", // Tailwind white
+        backgroundColor: "#ffffff",
         borderRadius: "8px",
         transition: "all 0.3s ease-in-out",
         "& fieldset": {
-          borderColor: "#d1d5db", // Tailwind gray-300
+          borderColor: "#d1d5db",
         },
         "&:hover fieldset": {
-          borderColor: "#D2946A", // Tailwind blue-600
+          borderColor: "#D2946A",
         },
         "&.Mui-focused fieldset": {
           borderColor: "#D2946A",
-          boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.1)", // Blue glow
+          boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.1)",
         },
         "&.Mui-error fieldset": {
-          borderColor: "#ef4444", // Tailwind red-500
+          borderColor: "#ef4444",
         },
         "&.Mui-disabled": {
-          backgroundColor: "#f3f4f6", // Tailwind gray-100
+          backgroundColor: "#f3f4f6",
         },
       },
       "& .MuiInputLabel-root": {
-        color: "#6b7280", // Tailwind gray-500
+        color: "#6b7280",
         fontWeight: "500",
-        fontSize: "0.875rem", // Tailwind text-sm
+        fontSize: "0.875rem",
         "&.Mui-focused": {
-          color: "#D2946A", // Tailwind blue-600
+          color: "#D2946A",
         },
         "&.Mui-error": {
-          color: "#ef4444", // Tailwind red-500
+          color: "#ef4444",
         },
       },
       "& .MuiInputBase-input": {
-        fontSize: "1rem", // Tailwind text-base
-        color: "#1f2937", // Tailwind gray-800
+        fontSize: "1rem",
+        color: "#1f2937",
         padding: "12px 14px",
       },
       "& .MuiFormHelperText-root": {
-        color: "#ef4444", // Tailwind red-500
-        fontSize: "0.75rem", // Tailwind text-xs
+        color: "#ef4444",
+        fontSize: "0.75rem",
       },
       marginBottom: 3,
     };
 
     const buttonStyles = {
-      backgroundColor: "primary.main", // Tailwind blue-600
+      backgroundColor: "primary.main",
       color: "background.paper",
       fontWeight: "bold",
       textTransform: "none",
       borderRadius: "8px",
       padding: "8px 16px",
       "&:hover": {
-        backgroundColor: "#1d4ed8", // Tailwind blue-700
+        backgroundColor: "#1d4ed8",
       },
       "&.Mui-disabled": {
-        backgroundColor: "#9ca3af", // Tailwind gray-400
-        color: "#d1d5db", // Tailwind gray-300
+        backgroundColor: "#9ca3af",
+        color: "#d1d5db",
       },
       marginBottom: 3,
     };
@@ -633,11 +622,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                 margin="normal"
                 InputLabelProps={{ shrink: true }}
                 inputProps={{
-                  maxLength: field.validationFunctions?.includes(
-                    "specificLength"
-                  )
-                    ? field.maxLength
-                    : undefined,
+                  maxLength: field.maxLength,
                 }}
                 sx={commonStyles}
               />
@@ -708,7 +693,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
               } else {
                 options = field.options || [];
               }
-              // Ensure the selected value is in options
               if (value && !options.some((opt) => opt.value === value)) {
                 options = [...options, { value, label: value }];
               }
@@ -773,23 +757,26 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                   </TextField>
                   {field.additionalFields &&
                     field.additionalFields[value] &&
-                    field.additionalFields[value].map((additionalField) => (
-                      <Col
-                        xs={12}
-                        lg={additionalField.span}
-                        key={additionalField.id}
-                      >
-                        {renderField(
-                          {
-                            ...additionalField,
-                            name:
-                              additionalField.name ||
-                              `${field.name}_${additionalField.id}`,
-                          },
-                          sectionIndex
-                        )}
-                      </Col>
-                    ))}
+                    field.additionalFields[value].map((additionalField) => {
+                      const nestedFieldName =
+                        additionalField.name ||
+                        `${field.name}_${additionalField.id}`;
+                      return (
+                        <Col
+                          xs={12}
+                          lg={additionalField.span}
+                          key={additionalField.id}
+                        >
+                          {renderField(
+                            {
+                              ...additionalField,
+                              name: nestedFieldName,
+                            },
+                            sectionIndex
+                          )}
+                        </Col>
+                      );
+                    })}
                 </>
               );
             }}
@@ -810,7 +797,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
           initialData?.[field.name]?.selected ||
           "";
         const options = field.options || [];
-        // Ensure the selected value is in options
         if (selectValue && !options.some((opt) => opt.value === selectValue)) {
           options.push({ value: selectValue, label: selectValue });
         }
@@ -961,15 +947,19 @@ const DynamicStepForm = ({ mode = "new", data }) => {
           width: "36px",
           height: "36px",
           borderRadius: "50%",
-          backgroundColor: active || completed ? "#dbeafe" : "#f3f4f6", // Tailwind blue-100 or gray-100
-          boxShadow: active ? "0 0 0 3px rgba(59, 130, 246, 0.1)" : "none", // Blue glow
+          backgroundColor: completed
+            ? "#04918aff"
+            : active
+            ? "#dbeafe"
+            : "#f3f4f6",
+          boxShadow: active ? "0 0 0 3px rgba(59, 130, 246, 0.1)" : "none",
           transition: "all 0.3s ease-in-out",
         }}
       >
         {React.cloneElement(icon, {
           sx: {
-            fontSize: "24px", // Consistent size for all icons
-            color: active || completed ? "#D2946A" : "#6b7280", // Tailwind blue-600 or gray-500
+            fontSize: "24px",
+            color: active || completed ? "#D2946A" : "#6b7280",
           },
         })}
       </div>
@@ -997,8 +987,8 @@ const DynamicStepForm = ({ mode = "new", data }) => {
             alternativeLabel
             sx={{
               mb: { xs: 2, sm: 3, md: 4 },
-              flexWrap: "wrap", // allow wrapping on small screens
-              gap: { xs: 1, md: 2 }, // spacing between steps
+              flexWrap: "wrap",
+              gap: { xs: 1, md: 2 },
               "& .MuiStepLabel-label": {
                 fontSize: { xs: "0.7rem", sm: "0.85rem", md: "1rem" },
                 textAlign: "center",
@@ -1096,7 +1086,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     width: { xs: "50%", lg: "20%" },
                     fontWeight: "bold",
                   }}
-                  disabled={buttonLoading}
+                  disabled={buttonLoading || loading}
                   onClick={handlePrev}
                 >
                   Previous
@@ -1112,7 +1102,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     width: { xs: "50%", lg: "20%" },
                     fontWeight: "bold",
                   }}
-                  disabled={buttonLoading}
+                  disabled={buttonLoading || loading}
                   onClick={handleNext}
                 >
                   Next
@@ -1128,7 +1118,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     width: { xs: "50%", lg: "20%" },
                     fontWeight: "bold",
                   }}
-                  disabled={buttonLoading}
+                  disabled={buttonLoading || loading}
                   onClick={handleSubmit((data) => onSubmit(data, "submit"))}
                 >
                   Submit{buttonLoading ? "..." : ""}
@@ -1148,8 +1138,8 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     fontSize: { xs: 18, lg: 16 },
                     width: { xs: "50%", lg: "20%" },
                     fontWeight: "bold",
-                    disabled: { buttonLoading },
                   }}
+                  disabled={buttonLoading || loading}
                   onClick={handleSubmit((data) => onSubmit(data, "save"))}
                 >
                   Save

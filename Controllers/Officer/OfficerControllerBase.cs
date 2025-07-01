@@ -99,7 +99,7 @@ namespace SahayataNidhi.Controllers.Officer
             details!.WorkFlow = JsonConvert.SerializeObject(players);
             details.CurrentPlayer = (int)currentPlayer["playerId"]!;
             dbcontext.SaveChanges();
-            helper.InsertHistory(applicationId, "Pulled Application", (string)currentPlayer["designation"]!);
+            helper.InsertHistory(applicationId, "Pulled Application", (string)currentPlayer["designation"]!, "Call back Application");
             return Json(new { status = true });
         }
         [HttpPost]
@@ -170,7 +170,7 @@ namespace SahayataNidhi.Controllers.Officer
                 }
                 formdetails.WorkFlow = workFlow;
                 dbcontext.SaveChanges();
-                helper.InsertHistory(applicationId, action, officer.Role!);
+                helper.InsertHistory(applicationId, action, officer.Role!, remarks);
 
                 var getServices = dbcontext.WebServices.FirstOrDefault(ws => ws.ServiceId == formdetails.ServiceId && ws.IsActive);
                 if (getServices != null)
@@ -186,35 +186,66 @@ namespace SahayataNidhi.Controllers.Officer
                 string fullName = GetFieldValue("ApplicantName", formDetailsObj);
                 string serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == formdetails.ServiceId)!.ServiceName!;
                 string appliedDistrictId = GetFieldValue("District", formDetailsObj);
-                string districtName = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == Convert.ToInt32(appliedDistrictId))!.DistrictName!;
-                string officerArea = officer.AccessLevel == "District" ? districtName :
-                     officer.AccessLevel == "Division" ? (officer.AccessCode == 1 ? "Jammu" :
-                                                          officer.AccessCode == 2 ? "Kashmir" : "Unknown Division") :
-                     officer.AccessLevel == "State" ? "Jammu and Kashmir" :
-                     "Unknown";
+                string appliedTehsilId = GetFieldValue("Tehsil", formDetailsObj);
+
+                // Get district name safely
+                string districtName = dbcontext.Districts
+                    .FirstOrDefault(d => d.DistrictId == Convert.ToInt32(appliedDistrictId))?.DistrictName ?? "Unknown District";
+
+                // Get tehsil name safely if provided
+                string? tehsilName = null;
+                if (!string.IsNullOrWhiteSpace(appliedTehsilId) && int.TryParse(appliedTehsilId, out int tehsilId))
+                {
+                    tehsilName = dbcontext.Tehsils
+                        .FirstOrDefault(t => t.TehsilId == tehsilId)?.TehsilName;
+                }
+
+                // Determine officerArea based on access level
+                string officerArea = officer.AccessLevel switch
+                {
+                    "Tehsil" => !string.IsNullOrWhiteSpace(tehsilName)
+                        ? $"{tehsilName}, {districtName}"
+                        : districtName,
+
+                    "District" => districtName,
+
+                    "Division" => officer.AccessCode == 1 ? "Jammu"
+                                    : officer.AccessCode == 2 ? "Kashmir"
+                                    : "Unknown Division",
+
+                    "State" => "Jammu and Kashmir",
+
+                    _ => "Unknown"
+                };
+
 
                 string userEmail = GetFieldValue("Email", formDetailsObj);
+                string Action = action == "ReturnedToCitzen" ? "Returned for rivision" : action + "ed";
+                string rejectionNote = Action == "Rejected"
+                ? "<p>Kindly check the rejection reason by logging into your account.</p>"
+                : "";
+
                 string htmlMessage = $@"
                 <div style='font-family: Arial, sans-serif;'>
-                    <h2 style='color: #2e6c80;'>Application Status Update</h2>
+                    <h2 style='color: #2e6c80;'>Application Status</h2>
                     <p>Dear {fullName},</p>
-                    <p>Your application for the service <strong>{serviceName}</strong> has been <strong>{action}ed</strong> by <strong>{officer.Role} {officerArea}</strong>.</p>
+                    <p>Your application for the service <strong>{serviceName}</strong> has been <strong>{Action}</strong> by <strong>{officer.Role} {officerArea}</strong>.</p>
                     <ul style='line-height: 1.6;'>
-                        <li><strong>Form Type:</strong> {serviceName}</li>
-                        <li><strong>Status:</strong> {action}</li>
+                        <li><strong>Service:</strong> {serviceName}</li>
+                        <li><strong>Status:</strong> {Action}</li>
                         <li><strong>Updated By:</strong> {officer.Role}</li>
                         <li><strong>Reference ID:</strong> {formdetails.ReferenceNumber}</li>
-                        <li><strong>Update Date:</strong> {DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")}</li>
+                        <li><strong>Update Date:</strong> {DateTime.Now:dd MMM yyyy hh:mm:ss tt}</li>
                     </ul>
+                    {rejectionNote}
                     <p>If you have any questions regarding this update, feel free to contact our support team.</p>
                     <br />
                     <p style='font-size: 12px; color: #888;'>Thank you,<br />Your Application Team</p>
                 </div>";
 
 
-                if (action != "Sanction")
-                    await emailSender.SendEmail(userEmail, "Application Status Update", htmlMessage);
-                else
+
+                if (action == "Sanction")
                 {
                     string fileName = applicationId.Replace("/", "_") + "SanctionLetter.pdf";
                     string path = $"files/{fileName}";
@@ -222,6 +253,11 @@ namespace SahayataNidhi.Controllers.Officer
                     var attachments = new List<string> { fullPath };
                     await emailSender.SendEmailWithAttachments(userEmail!, "Form Submission", htmlMessage, attachments);
                 }
+                else if (action != "Forward" && action != "Returned")
+                {
+                    await emailSender.SendEmail(userEmail, "Application Status Update", htmlMessage);
+                }
+
 
                 return Json(new { status = true });
 

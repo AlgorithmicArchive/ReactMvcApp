@@ -266,7 +266,7 @@ export default function HomeScreen() {
         </Container>
       </Box>
       {/* Section 3 */}
-      <Box
+      {/* <Box
         ref={section3Ref}
         sx={{
           height: { xs: "100vh", lg: "90vh" },
@@ -413,7 +413,7 @@ export default function HomeScreen() {
             </Row>
           </Box>
         </Container>
-      </Box>
+      </Box> */}
     </Box>
   );
 }

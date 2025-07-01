@@ -323,13 +323,14 @@ public class UserHelperFunctions(IWebHostEnvironment webHostEnvironment, SocialW
 
     // }
 
-    public void InsertHistory(string referenceNumber, string ActionTaken, string ActionTaker)
+    public void InsertHistory(string referenceNumber, string ActionTaken, string ActionTaker, string Remarks)
     {
         var history = new ActionHistory
         {
             ReferenceNumber = referenceNumber,
             ActionTaken = ActionTaken,
             ActionTaker = ActionTaker,
+            Remarks = Remarks,
             ActionTakenDate = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")
         };
         dbcontext.ActionHistories.Add(history);

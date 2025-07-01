@@ -1,12 +1,19 @@
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.IO;
+using iText.Kernel.Geom;
+using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Element;
+using iText.Layout.Properties;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SahayataNidhi.Models.Entities;
+using iText.IO.Image;
 
 namespace SahayataNidhi.Controllers.Officer
 {
@@ -124,7 +131,8 @@ namespace SahayataNidhi.Controllers.Officer
                     label = "Citizen Pending",
                     count = counts.ReturnToEditCount,
                     bgColor = "#CE93D8",
-                    textColor = "#4A148C"
+                    textColor = "#4A148C",
+                    tooltipText = "Application is pending at Citizen level for correction."
                 });
             }
 
@@ -574,5 +582,253 @@ namespace SahayataNidhi.Controllers.Officer
             });
         }
 
+
+        [HttpGet]
+        public async Task<IActionResult> GetApplicationHistory(string ApplicationId, int page, int size)
+        {
+            if (string.IsNullOrEmpty(ApplicationId))
+            {
+                return BadRequest("ApplicationId is required.");
+            }
+
+            var parameter = new SqlParameter("@ApplicationId", ApplicationId);
+            var application = await dbcontext.CitizenApplications.FirstOrDefaultAsync(ca => ca.ReferenceNumber == ApplicationId);
+            var players = JsonConvert.DeserializeObject<dynamic>(application!.WorkFlow!) as JArray;
+            int currentPlayerIndex = application.CurrentPlayer;
+            var currentPlayer = players!.FirstOrDefault(o => (int)o["playerId"]! == currentPlayerIndex);
+            var history = await dbcontext.ActionHistories.Where(ah => ah.ReferenceNumber == ApplicationId).ToListAsync();
+
+            var columns = new List<dynamic>
+            {
+                new { header = "S.No", accessorKey="sno" },
+                new { header = "Action Taker", accessorKey="actionTaker" },
+                new { header = "Action Taken",accessorKey="actionTaken" },
+                new { header = "Remarks",accessorKey="remarks" },
+                new { header = "Action Taken On",accessorKey="actionTakenOn" },
+            };
+            int index = 1;
+            List<dynamic> data = [];
+            foreach (var item in history)
+            {
+                data.Add(new
+                {
+                    sno = index,
+                    actionTaker = item.ActionTaker,
+                    actionTaken = item.ActionTaken! == "ReturnToCitizen" ? "Returned for correction" : item.ActionTaken,
+                    remarks = item.Remarks,
+                    actionTakenOn = item.ActionTakenDate,
+                });
+                index++;
+            }
+
+            if ((string)currentPlayer!["status"]! == "pending")
+            {
+                data.Add(new
+                {
+                    sno = index,
+                    actionTaker = currentPlayer["designation"],
+                    actionTaken = currentPlayer["status"],
+                    remarks = currentPlayer["remarks"],
+                    actionTakenOn = "",
+                });
+            }
+
+            return Json(new { data, columns, customActions = new { } });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GenerateUserDetailsPdf(string applicationId)
+        {
+            if (string.IsNullOrEmpty(applicationId))
+            {
+                return BadRequest("Application ID is required.");
+            }
+
+            // Retrieve application details
+            var application = await dbcontext.CitizenApplications
+                .Where(ca => ca.ReferenceNumber == applicationId)
+                .FirstOrDefaultAsync();
+
+            if (application == null)
+            {
+                return NotFound("Application not found.");
+            }
+
+            using (var memoryStream = new MemoryStream())
+            {
+                // Initialize PDF writer and document
+                var writer = new PdfWriter(memoryStream);
+                var pdf = new PdfDocument(writer);
+                var document = new Document(pdf, PageSize.A4);
+                document.SetMargins(20, 20, 20, 20);
+
+                // Add title
+                document.Add(new Paragraph("User Details")
+                    .SetFontSize(16)
+                    .SetBold()
+                    .SetTextAlignment(TextAlignment.CENTER));
+
+                // Parse FormDetails JSON
+                var formDetails = JObject.Parse(application.FormDetails!);
+
+                // Iterate through each section except Documents
+                foreach (var section in formDetails)
+                {
+                    if (section.Key == "Documents") continue; // Skip Documents section for textual part
+
+                    document.Add(new Paragraph(section.Key)
+                        .SetFontSize(14)
+                        .SetBold()
+                        .SetMarginTop(10));
+
+                    if (section.Value is JArray sectionArray)
+                    {
+                        foreach (var item in sectionArray)
+                        {
+                            var label = item["label"]?.ToString();
+                            var value = item["value"]?.ToString();
+
+                            if (!string.IsNullOrEmpty(label) && !string.IsNullOrEmpty(value))
+                            {
+                                // Convert integer values for District and Tehsil fields
+                                string displayValue = value;
+                                if (label.Contains("District", StringComparison.OrdinalIgnoreCase) && int.TryParse(value, out int districtId))
+                                {
+                                    displayValue = GetDistrictName(districtId);
+                                }
+                                else if (label.Contains("Tehsil", StringComparison.OrdinalIgnoreCase) && int.TryParse(value, out int tehsilId))
+                                {
+                                    displayValue = GetTehsilName(tehsilId);
+                                }
+
+                                document.Add(new Paragraph($"{label}: {displayValue}")
+                                    .SetFontSize(12)
+                                    .SetMarginLeft(10));
+                            }
+
+                            // Handle additional fields (e.g., in Pension Type)
+                            if (item["additionalFields"] is JArray additionalFields)
+                            {
+                                foreach (var additionalField in additionalFields)
+                                {
+                                    var addLabel = additionalField["label"]?.ToString();
+                                    var addValue = additionalField["value"]?.ToString();
+                                    if (!string.IsNullOrEmpty(addLabel) && !string.IsNullOrEmpty(addValue))
+                                    {
+                                        // Convert integer values for District and Tehsil in additional fields
+                                        string addDisplayValue = addValue;
+                                        if (addLabel.Contains("District", StringComparison.OrdinalIgnoreCase) && int.TryParse(addValue, out int districtId))
+                                        {
+                                            addDisplayValue = GetDistrictName(districtId);
+                                        }
+                                        else if (addLabel.Contains("Tehsil", StringComparison.OrdinalIgnoreCase) && int.TryParse(addValue, out int tehsilId))
+                                        {
+                                            addDisplayValue = GetTehsilName(tehsilId);
+                                        }
+
+                                        document.Add(new Paragraph($"{addLabel}: {addDisplayValue}")
+                                            .SetFontSize(12)
+                                            .SetMarginLeft(20));
+                                    }
+
+                                    // Handle nested additional fields
+                                    if (additionalField["additionalFields"] is JArray nestedFields)
+                                    {
+                                        foreach (var nestedField in nestedFields)
+                                        {
+                                            var nestedLabel = nestedField["label"]?.ToString();
+                                            var nestedValue = nestedField["value"]?.ToString();
+                                            if (!string.IsNullOrEmpty(nestedLabel) && !string.IsNullOrEmpty(nestedValue))
+                                            {
+                                                // Convert integer values for District and Tehsil in nested fields
+                                                string nestedDisplayValue = nestedValue;
+                                                if (nestedLabel.Contains("District", StringComparison.OrdinalIgnoreCase) && int.TryParse(nestedValue, out int districtId))
+                                                {
+                                                    nestedDisplayValue = GetDistrictName(districtId);
+                                                }
+                                                else if (nestedLabel.Contains("Tehsil", StringComparison.OrdinalIgnoreCase) && int.TryParse(nestedValue, out int tehsilId))
+                                                {
+                                                    nestedDisplayValue = GetTehsilName(tehsilId);
+                                                }
+
+                                                document.Add(new Paragraph($"{nestedLabel}: {nestedDisplayValue}")
+                                                    .SetFontSize(12)
+                                                    .SetMarginLeft(30));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Add attached documents from Documents section
+                var documents = formDetails["Documents"] as JArray;
+                if (documents != null && documents.Any())
+                {
+                    document.Add(new Paragraph("Attached Documents")
+                        .SetFontSize(14)
+                        .SetBold()
+                        .SetMarginTop(20));
+
+                    foreach (var doc in documents)
+                    {
+                        var filePath = doc["File"]?.ToString();
+                        var enclosure = doc["Enclosure"]?.ToString();
+                        if (!string.IsNullOrEmpty(filePath) && !string.IsNullOrEmpty(enclosure))
+                        {
+                            // Convert relative path to absolute path
+                            var fullPath = System.IO.Path.Combine(_webHostEnvironment.WebRootPath, filePath.TrimStart('/'));
+                            if (System.IO.File.Exists(fullPath))
+                            {
+                                try
+                                {
+                                    document.Add(new Paragraph($"Document: {enclosure}")
+                                        .SetFontSize(12)
+                                        .SetMarginTop(10));
+
+                                    // Handle image attachments
+                                    if (filePath.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                                        filePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        var imageData = ImageDataFactory.Create(System.IO.File.ReadAllBytes(fullPath));
+                                        var image = new Image(imageData).ScaleToFit(500, 700);
+                                        document.Add(image);
+                                    }
+                                    // Handle PDF attachments
+                                    else if (filePath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        using (var reader = new PdfReader(fullPath))
+                                        {
+                                            var srcPdf = new PdfDocument(reader);
+                                            srcPdf.CopyPagesTo(1, srcPdf.GetNumberOfPages(), pdf);
+                                        }
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    document.Add(new Paragraph($"Error loading document {enclosure}: {ex.Message}")
+                                        .SetFontSize(12)
+                                        .SetFontColor(iText.Kernel.Colors.ColorConstants.RED));
+                                }
+                            }
+                            else
+                            {
+                                document.Add(new Paragraph($"Document {enclosure}: File not found")
+                                    .SetFontSize(12)
+                                    .SetFontColor(iText.Kernel.Colors.ColorConstants.RED));
+                            }
+                        }
+                    }
+                }
+
+                document.Close();
+                writer.Close();
+
+                var pdfBytes = memoryStream.ToArray();
+                return File(pdfBytes, "application/pdf", $"{applicationId}_UserDetails.pdf");
+            }
+        }
     }
 }

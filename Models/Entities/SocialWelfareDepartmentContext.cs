@@ -66,6 +66,9 @@ public partial class SocialWelfareDepartmentContext : DbContext
                 .HasMaxLength(30)
                 .IsUnicode(false)
                 .HasColumnName("referenceNumber");
+            entity.Property(e => e.Remarks)
+                .HasMaxLength(255)
+                .IsUnicode(false);
         });
 
         modelBuilder.Entity<ApplicationPerDistrict>(entity =>

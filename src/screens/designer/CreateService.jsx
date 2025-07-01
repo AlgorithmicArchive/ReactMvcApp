@@ -31,6 +31,62 @@ import axiosInstance from "../../axiosConfig";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+// Function to normalize a field object to include all required properties
+const normalizeField = (field, timestamp = Date.now()) => ({
+  id:
+    field.id ||
+    `field-${timestamp}-${Math.random().toString(36).substring(2, 9)}`,
+  type: field.type || "text",
+  label: field.label || "New Field",
+  name: field.name || `NewField_${timestamp}`,
+  minLength: field.minLength !== undefined ? field.minLength : 5,
+  maxLength: field.maxLength !== undefined ? field.maxLength : 50,
+  options: Array.isArray(field.options) ? field.options : [],
+  span: field.span !== undefined ? field.span : 12,
+  validationFunctions: Array.isArray(field.validationFunctions)
+    ? field.validationFunctions
+    : [],
+  transformationFunctions: Array.isArray(field.transformationFunctions)
+    ? field.transformationFunctions
+    : [],
+  additionalFields: normalizeAdditionalFields(
+    field.additionalFields || {},
+    timestamp
+  ),
+  accept: field.accept || "",
+  editable: field.editable !== undefined ? field.editable : true,
+  value: field.value || undefined,
+  dependentOn: field.dependentOn || undefined,
+  dependentOptions: field.dependentOptions || undefined,
+  isDependentEnclosure: field.isDependentEnclosure || false,
+  dependentField: field.dependentField || undefined,
+  dependentValues: Array.isArray(field.dependentValues)
+    ? field.dependentValues
+    : [],
+});
+
+// Function to recursively normalize additionalFields
+const normalizeAdditionalFields = (additionalFields, timestamp) => {
+  const normalized = {};
+  Object.keys(additionalFields).forEach((option) => {
+    normalized[option] = (additionalFields[option] || []).map((field) =>
+      normalizeField(field, timestamp)
+    );
+  });
+  return normalized;
+};
+
+// Function to normalize sections and their fields
+const normalizeSections = (sections) => {
+  return sections.map((section) => ({
+    ...section,
+    id: section.id || `section-${Date.now()}`,
+    section: section.section || `Section ${sections.length + 1}`,
+    fields: (section.fields || []).map((field) => normalizeField(field)),
+    editable: section.editable !== undefined ? section.editable : true,
+  }));
+};
+
 export default function CreateService() {
   const [sections, setSections] = useState(defaultFormConfig);
   const [services, setServices] = useState([]);
@@ -69,7 +125,6 @@ export default function CreateService() {
     }
 
     const service = services.find((s) => s.serviceId === serviceId);
-    console.log(service);
     if (service) {
       setServiceName(service.serviceName || "");
       setServiceNameShort(service.nameShort || "");
@@ -77,14 +132,14 @@ export default function CreateService() {
       if (service.formElement) {
         try {
           const config = JSON.parse(service.formElement);
-          setSections(config);
+          setSections(normalizeSections(config));
         } catch (err) {
           console.error("Error parsing formElements:", err);
           toast.error("Invalid form data format.");
-          setSections([]);
+          setSections(defaultFormConfig);
         }
       } else {
-        setSections([]);
+        setSections(defaultFormConfig);
       }
     }
   };
@@ -127,12 +182,14 @@ export default function CreateService() {
         ...sectionToDuplicate,
         id: `section-${sections.length + 1}`,
         section: `${sectionToDuplicate.section} Copy`,
-        fields: sectionToDuplicate.fields.map((field) => ({
-          ...field,
-          id: `field-${Date.now()}-${Math.random()
-            .toString(36)
-            .substring(2, 9)}`,
-        })),
+        fields: sectionToDuplicate.fields.map((field) =>
+          normalizeField({
+            ...field,
+            id: `field-${Date.now()}-${Math.random()
+              .toString(36)
+              .substring(2, 9)}`,
+          })
+        ),
       };
       setSections((prev) => [...prev, newSection]);
     }
@@ -147,7 +204,7 @@ export default function CreateService() {
       id: `field-${Date.now()}`,
       type: "text",
       label: "New Field",
-      name: "NewField",
+      name: `NewField_${Date.now()}`,
       minLength: 5,
       maxLength: 50,
       options: [],
@@ -157,6 +214,12 @@ export default function CreateService() {
       additionalFields: {},
       accept: "",
       editable: true,
+      value: undefined,
+      dependentOn: undefined,
+      dependentOptions: undefined,
+      isDependentEnclosure: false,
+      dependentField: undefined,
+      dependentValues: [],
     };
 
     setSections((prev) =>
@@ -197,6 +260,7 @@ export default function CreateService() {
     formdata.append("departmentName", departmentName);
     formdata.append("serviceId", selectedServiceId);
     formdata.append("formElement", JSON.stringify(sections));
+    console.log("Saving formElement:", JSON.stringify(sections, null, 2));
 
     try {
       const response = await axiosInstance.post("/Base/FormElement", formdata);
@@ -228,18 +292,38 @@ export default function CreateService() {
   };
 
   const updateField = (updatedField) => {
-    setSections((prev) =>
-      prev.map((section) =>
-        section.id === updatedField.sectionId
-          ? {
-              ...section,
-              fields: section.fields.map((field) =>
-                field.id === updatedField.id ? updatedField : field
-              ),
-            }
-          : section
-      )
-    );
+    setSections((prev) => {
+      // If sectionId is present, update main field
+      if (updatedField.sectionId) {
+        return prev.map((section) =>
+          section.id === updatedField.sectionId
+            ? {
+                ...section,
+                fields: section.fields.map((field) =>
+                  field.id === updatedField.id
+                    ? normalizeField(updatedField)
+                    : field
+                ),
+              }
+            : section
+        );
+      } else {
+        // Handle additional fields (no sectionId)
+        return prev.map((section) =>
+          section.fields.some((field) => field.id === updatedField.id)
+            ? {
+                ...section,
+                fields: section.fields.map((field) =>
+                  field.id === updatedField.id
+                    ? normalizeField(updatedField)
+                    : field
+                ),
+              }
+            : section
+        );
+      }
+    });
+    console.log("Updated field in CreateService:", updatedField);
   };
 
   const handleRemoveField = (sectionId, fieldId) => {
@@ -268,6 +352,7 @@ export default function CreateService() {
           : section
       )
     );
+    console.log("Updated field value:", { sectionId, fieldId, newValue });
   };
 
   const sectionSensors = useSensors(
@@ -283,7 +368,12 @@ export default function CreateService() {
   };
 
   const handleEditField = (field) => {
-    setSelectedField(field);
+    setSelectedField({
+      ...field,
+      sectionId: sections.find((section) =>
+        section.fields.some((f) => f.id === field.id)
+      )?.id,
+    });
     setIsModalOpen(true);
   };
 

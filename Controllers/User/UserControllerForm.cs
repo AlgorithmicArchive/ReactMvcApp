@@ -21,7 +21,8 @@ namespace SahayataNidhi.Controllers.User
             string formDetailsJson = form["formDetails"].ToString();
             string status = form["status"].ToString();
             string referenceNumber = form["referenceNumber"].ToString();
-
+            string startingPlayer = "";
+            string districtName = "";
 
             var formDetailsObj = JObject.Parse(formDetailsJson);
 
@@ -57,7 +58,9 @@ namespace SahayataNidhi.Controllers.User
                 int count = GetCountPerDistrict(districtId, serviceId);
                 string bankUid = count.ToString("D6");
                 var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
-                string? districtShort = dbcontext.Districts.FirstOrDefault(s => s.DistrictId == districtId)!.DistrictShort;
+                var districtDetails = dbcontext.Districts.FirstOrDefault(s => s.DistrictId == districtId);
+                string districtShort = districtDetails!.DistrictShort!;
+                districtName = districtDetails.DistrictName!;
                 var workFlow = service!.OfficerEditableField;
 
                 // Update the first player's status to "pending" if workflow is not null/empty.
@@ -67,6 +70,7 @@ namespace SahayataNidhi.Controllers.User
                     if (players.Count > 0)
                     {
                         players[0]["status"] = "pending";
+                        startingPlayer = players[0]["designation"]!.ToString();
                     }
                     workFlow = players.ToString(Formatting.None);
                 }
@@ -112,22 +116,31 @@ namespace SahayataNidhi.Controllers.User
                     var onAction = JsonConvert.DeserializeObject<List<string>>(getServices.OnAction);
                     if (onAction != null && onAction.Contains("Submission"))
                     {
-                        var fieldMapObj = JObject.Parse(getServices.FieldMappings);
-                        var fieldMap = MapServiceFieldsFromForm(formDetailsObj, fieldMapObj);
-                        await SendApiRequestAsync(getServices.ApiEndPoint, fieldMap);
+                        try
+                        {
+                            var fieldMapObj = JObject.Parse(getServices.FieldMappings);
+                            var fieldMap = MapServiceFieldsFromForm(formDetailsObj, fieldMapObj);
+                            await SendApiRequestAsync(getServices.ApiEndPoint, fieldMap);
+                        }
+                        catch (Exception ex)
+                        {
+                            // Log the error but continue execution
+                            _logger.LogError(ex, $"Failed to send API request to {getServices.ApiEndPoint} for Reference: {referenceNumber}");
+                        }
                     }
                 }
+
                 string fullPath = FetchAcknowledgementDetails(referenceNumber);
                 string? fullName = GetFormFieldValue(formDetailsObj, "ApplicantName");
                 string? serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId)!.ServiceName;
                 string? email = GetFormFieldValue(formDetailsObj, "Email");
                 string htmlMessage = $@"
                     <div style='font-family: Arial, sans-serif;'>
-                        <h2 style='color: #2e6c80;'>Form Submission Received</h2>
-                        <p>Dear {fullName},</p>
-                        <p>Thank you for submitting your form. We have successfully received your submission. Below are the details:</p>
+                        <h2 style='color: #2e6c80;'>Application Submission</h2>
+                        <p>{fullName},</p>
+                        <p>Your Application has been sent succesfully in the Office of {startingPlayer} {districtName}. Below are the details:</p>
                         <ul style='line-height: 1.6;'>
-                            <li><strong>Form Type:</strong> {serviceName}</li>
+                            <li><strong>Service:</strong> {serviceName}</li>
                             <li><strong>Submission Date:</strong> {DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")}</li>
                             <li><strong>Reference ID:</strong> {referenceNumber}</li>
                         </ul>
@@ -138,7 +151,7 @@ namespace SahayataNidhi.Controllers.User
                     </div>";
                 var attachments = new List<string> { fullPath };
                 await emailSender.SendEmailWithAttachments(email!, "Form Submission", htmlMessage, attachments);
-                helper.InsertHistory(referenceNumber, "Application Submission", "Citizen");
+                helper.InsertHistory(referenceNumber, "Application Submission", "Citizen", "Submitted");
                 return Json(new { status = true, referenceNumber, type = "Submit" });
             }
             else

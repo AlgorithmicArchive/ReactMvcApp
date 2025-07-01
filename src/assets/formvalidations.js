@@ -84,15 +84,30 @@ export function isDateWithinRange(field, value) {
   return true;
 }
 
-export async function duplicateAccountNumber(field, value,{},referenceNumber) {
-  console.log(field,value);
+export async function duplicateAccountNumber(
+  field,
+  value,
+  formData,
+  referenceNumber
+) {
   try {
+    console.log(formData);
+
+    const bankName =
+      formData["BankDetail"] != null
+        ? formData["Bank Details"][0].value
+        : formData.BankName;
+    const ifscCode =
+      formData["BankDetail"] != null
+        ? formData["Bank Details"][2].value
+        : formData.IfscCode;
+    console.log(formData);
     const res = await fetch(
-      `/Base/IsDuplicateAccNo?accNo=${value}&applicationId=${referenceNumber}`
+      `/Base/IsDuplicateAccNo?bankName=${bankName}&ifscCode=${ifscCode}accNo=${value}&applicationId=${referenceNumber}`
     );
     const data = await res.json();
     if (data.status) {
-      return "Application with this account number already exists.";
+      return "Account Numumber already exists.";
     }
     return true;
   } catch (error) {
@@ -153,7 +168,12 @@ export async function tehsilForDistrict(field, districtValue) {
   }
 }
 
-export const runValidations = async (field, value, formData,referenceNumber) => {
+export const runValidations = async (
+  field,
+  value,
+  formData,
+  referenceNumber
+) => {
   if (!Array.isArray(field.validationFunctions)) return true;
 
   for (const validationFn of field.validationFunctions) {

@@ -29,6 +29,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import { CollapsibleFormDetails } from "../../components/officer/CollapsibleFormDetails";
+import CollapsibleActionHistory from "../../components/officer/CollapsibleActionHistory";
 
 // Common styles for form fields
 const commonStyles = {
@@ -72,8 +73,10 @@ export default function UserDetails() {
   const location = useLocation();
   const { applicationId } = location.state || {};
   const [formDetails, setFormDetails] = useState({});
+  const [applicationHistory, setApplicationsHistory] = useState(null);
   const [actionForm, setActionForm] = useState([]);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState("");
   const [pdfBlob, setPdfBlob] = useState(null);
@@ -92,6 +95,7 @@ export default function UserDetails() {
     handleSubmit,
     watch,
     getValues,
+    setValue,
     formState: { errors },
   } = useForm({ mode: "onChange" });
 
@@ -127,6 +131,46 @@ export default function UserDetails() {
     setPdfUrl(url);
     setIsSignedPdf(false);
     setPdfModalOpen(true);
+  };
+
+  // Generate and download user details PDF
+  const handleGenerateUserDetailsPdf = async () => {
+    setButtonLoading(true);
+    try {
+      const response = await axiosInstance.get(
+        "/Officer/GenerateUserDetailsPdf",
+        {
+          params: { applicationId },
+          responseType: "blob",
+        }
+      );
+
+      // Create a blob URL and trigger download
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${applicationId}_UserDetails.pdf`; // Match backend filename
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success("PDF downloaded successfully!", {
+        position: "top-center",
+        autoClose: 3000,
+        theme: "colored",
+      });
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF. Please try again.", {
+        position: "top-center",
+        autoClose: 3000,
+        theme: "colored",
+      });
+    } finally {
+      setButtonLoading(false);
+    }
   };
 
   // Sign PDF
@@ -695,6 +739,25 @@ export default function UserDetails() {
             fontWeight: 700,
           }}
         >
+          Application History
+        </Typography>
+        <CollapsibleActionHistory
+          detailsOpen={historyOpen}
+          setDetailsOpen={setHistoryOpen}
+          applicationId={applicationId}
+        />
+
+        <Typography
+          variant="h4"
+          id="user-details-title"
+          sx={{
+            fontFamily: "'Playfair Display', serif",
+            color: "primary.main",
+            textAlign: "center",
+            mb: 4,
+            fontWeight: 700,
+          }}
+        >
           User Details
         </Typography>
 
@@ -706,6 +769,20 @@ export default function UserDetails() {
           setDetailsOpen={setDetailsOpen}
           onViewPdf={handleViewPdf}
         />
+
+        {/* Generate PDF Button */}
+        <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
+          <CustomButton
+            text="Generate User Details PDF"
+            sx={{ ...buttonStyles, width: { xs: "100%", sm: "auto" } }}
+            disabled={buttonLoading}
+            startIcon={
+              buttonLoading && <CircularProgress size={20} color="inherit" />
+            }
+            onClick={handleGenerateUserDetailsPdf}
+            aria-label="Generate user details PDF"
+          />
+        </Box>
 
         {/* Action Form */}
         <Typography

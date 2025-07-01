@@ -247,7 +247,7 @@ export async function fetchUserDetail(
   const response = await axiosInstance.get("/Officer/GetUserDetails", {
     params: { applicationId: applicationId },
   });
-  setFormDetails(response.data.list); 
+  setFormDetails(response.data.list);
   setActionForm(response.data.currentOfficerDetails.actionForm);
 }
 
@@ -263,7 +263,7 @@ export async function fetchFormDetails(applicationId) {
 
 export async function fetchCertificateDetails() {
   try {
-    const response = await axiosInstance.get('/Officer/GetCertificateDetails');
+    const response = await axiosInstance.get("/Officer/GetCertificateDetails");
     console.log("fetchCertificateDetails response:", response.data); // Debug
     if (!response.data.success || !response.data.certificateDetails) {
       throw new Error("Failed to fetch certificate details.");

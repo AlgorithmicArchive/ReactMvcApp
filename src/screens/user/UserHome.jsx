@@ -34,26 +34,8 @@ export default function UserHome() {
     }
   }
 
-  // Fetch sanction details
-  async function GetSanctionDetails() {
-    try {
-      const response = await axiosInstance.get("/User/GetSanctionDetails", {
-        params: { applicationId: "JK-PN-JMU/2025-2026/2", serviceId: "1" },
-      });
-      console.log(response.data); // Consider displaying this data in the UI
-    } catch (error) {
-      console.error("Error fetching sanction details", error);
-      toast.error("Failed to load sanction details.", {
-        position: "top-center",
-        autoClose: 3000,
-        theme: "colored",
-      });
-    }
-  }
-
   useEffect(() => {
     GetUserDetails();
-    GetSanctionDetails();
   }, []);
 
   if (loading) {
@@ -136,31 +118,6 @@ export default function UserHome() {
               >
                 {userDetails?.name || "User Name"}
               </Typography>
-              <Button
-                variant="outlined"
-                color="primary"
-                sx={{
-                  textTransform: "none",
-                  fontWeight: 600,
-                  mt: 2,
-                  py: 1,
-                  "&:hover": {
-                    backgroundColor: "primary.light",
-                    transform: "scale(1.02)",
-                    transition: "all 0.2s ease",
-                  },
-                }}
-                aria-label="Edit profile"
-                onClick={() => {
-                  toast.info("Edit profile functionality coming soon!", {
-                    position: "top-center",
-                    autoClose: 3000,
-                    theme: "colored",
-                  });
-                }}
-              >
-                Edit Profile
-              </Button>
             </Box>
           </Col>
 

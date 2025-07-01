@@ -86,7 +86,7 @@ const MyNavbar = () => {
               className="d-inline-block align-top"
             />
             <span className="ms-2 fw-bold" style={{ color: "#333333" }}>
-              Sahayata Nidhi
+              ISSS Pension
             </span>
           </div>
         </Navbar.Brand>

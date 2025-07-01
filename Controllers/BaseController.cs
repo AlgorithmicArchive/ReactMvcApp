@@ -88,125 +88,6 @@ namespace SahayataNidhi.Controllers
             return Json(new { status = true });
         }
 
-        // public int GetCount(string type, Dictionary<string, string> conditions)
-        // {
-        //     StringBuilder Condition1 = new StringBuilder();
-        //     StringBuilder Condition2 = new StringBuilder();
-
-        //     if (type == "Pending")
-        //         Condition1.Append("AND application.ApplicationStatus='Initiated'");
-        //     else if (type == "Sanction")
-        //         Condition1.Append("AND application.ApplicationStatus='Sanctioned'");
-        //     else if (type == "Reject")
-        //         Condition1.Append("AND application.ApplicationStatus='Rejected'");
-        //     else if (type == "PendingWithCitizen")
-        //         Condition1.Append("AND Application.ApplicationStatus='Initiated' AND JSON_VALUE(app.value, '$.ActionTaken')='ReturnToEdit'");
-
-        //     int conditionCount = 0;
-        //     int splitPoint = conditions != null ? conditions.Count / 2 : 0;
-
-        //     if (conditions != null && conditions.Count != 0)
-        //     {
-        //         foreach (var condition in conditions)
-        //         {
-        //             if (conditionCount < splitPoint)
-        //                 Condition1.Append($" AND {condition.Key}='{condition.Value}'");
-        //             else
-        //                 Condition2.Append($" AND {condition.Key}='{condition.Value}'");
-
-        //             conditionCount++;
-        //         }
-
-        //     }
-
-        //     if (conditions != null && conditions.ContainsKey("JSON_VALUE(app.value, '$.Officer')") && type != "Total")
-        //     {
-        //         Condition2.Append($" AND JSON_VALUE(app.value, '$.ActionTaken') = '{type}'");
-        //     }
-        //     else if (type == "Total")
-        //     {
-        //         Condition2.Append($" AND JSON_VALUE(app.value, '$.ActionTaken') != ''");
-        //     }
-
-        //     int count = dbcontext.Applications.FromSqlRaw("EXEC GetApplications @Condition1, @Condition2",
-        // new SqlParameter("@Condition1", Condition1.ToString()),
-        // new SqlParameter("@Condition2", Condition2.ToString())).ToList().Count;
-
-        //     return count;
-        // }
-
-        // public IActionResult GetFilteredCount(string? conditions)
-        // {
-        //     var Conditions = JsonConvert.DeserializeObject<Dictionary<string, string>>(conditions!);
-        //     int TotalCount = GetCount("Total", Conditions!);
-        //     int PendingCount = GetCount("Pending", Conditions!);
-        //     int RejectCount = GetCount("Reject", Conditions!);
-        //     int SanctionCount = GetCount("Sanction", Conditions!);
-
-        //     return Json(new { status = true, TotalCount, PendingCount, RejectCount, SanctionCount });
-        // }
-
-        // [HttpGet]
-        // public IActionResult GetApplicationsCount(int? ServiceId = null, int? DistrictId = null)
-        // {
-        //     var officerDetails = GetOfficerDetails();
-
-        //     var authorities = dbcontext.WorkFlows.FirstOrDefault(wf => wf.ServiceId == ServiceId && wf.Role == officerDetails!.Role);
-        //     _logger.LogInformation($"------Access Level: {officerDetails.AccessLevel}--------");
-
-        //     var officer = dbcontext.OfficerDetails.FirstOrDefault(od => od.OfficerId == officerDetails.UserId);
-        //     var districts = dbcontext.Districts
-        //     .Where(d =>
-        //         (officer!.AccessLevel == "District" && officer.AccessCode == d.DistrictId) || // Match single district
-        //         (officer.AccessLevel == "Division" && officer.AccessCode == d.Division) ||  // Match all districts in division
-        //         (officer.AccessLevel == "State")) // Match all districts for state-level access
-        //     .Select(d => new
-        //     {
-        //         label = d.DistrictName,
-        //         value = d.DistrictId
-        //     })
-        //     .ToList();
-
-
-
-        //     var services = dbcontext.Services
-        //         .Select(s => new
-        //         {
-        //             label = s.ServiceName,
-        //             value = s.ServiceId
-        //         })
-        //         .ToList();
-
-        //     // Populate lists directly
-        //     List<dynamic> Districts = districts.Cast<dynamic>().ToList();
-        //     List<dynamic> Services = services.Cast<dynamic>().ToList();
-
-
-        //     var serviceIdParam = new SqlParameter("@ServiceId", (object)ServiceId! ?? DBNull.Value);
-        //     var districtIdParam = new SqlParameter("@DistrictId", (object)DistrictId! ?? DBNull.Value);
-        //     var accessLevelParam = new SqlParameter("@AccessLevel", officerDetails.AccessLevel);
-        //     var accessCodeParam = new SqlParameter("@AccessCode", officerDetails.AccessCode);
-
-        //     // Execute the stored procedure with parameters
-        //     var counts = dbcontext.Database
-        //         .SqlQueryRaw<StatusCountsSA>(
-        //             "EXEC GetStatusCount_SA @ServiceId, @DistrictId, @AccessLevel, @AccessCode",
-        //              serviceIdParam, districtIdParam, accessLevelParam, accessCodeParam)
-        //         .AsEnumerable()
-        //         .FirstOrDefault();
-
-        //     List<dynamic> countList = [];
-        //     countList.Add(new { label = "Total", count = counts!.TotalApplications, bgColor = "#F0C38E", textColor = "#312C51" });
-        //     countList.Add(new { label = "Pending", count = counts!.PendingCount, bgColor = "#FFC107", textColor = "#000000" });
-        //     countList.Add(new { label = "Citizen Pending", count = counts!.ReturnToEditCount, bgColor = "#CE93D8", textColor = "#4A148C" });
-        //     countList.Add(new { label = "Sanctioned", count = counts!.SanctionCount, bgColor = "#81C784", textColor = "#1B5E20" });
-        //     countList.Add(new { label = "Disbursed", count = counts!.DisbursedCount, bgColor = "#4CAF50", textColor = "#FFFFFF" });
-        //     countList.Add(new { label = "Failed Payment", count = counts!.FailureCount, bgColor = "#FF7043", textColor = "#B71C1C" });
-        //     countList.Add(new { label = "Rejected", count = counts!.RejectCount, bgColor = "#FF7043", textColor = "#B71C1C" });
-
-        //     return Json(new { countList, Districts, Services });
-        // }
-
         public IActionResult GetApplicationsCount(int? ServiceId = null, int? DistrictId = null)
         {
             // Get the current officer's details.
@@ -563,19 +444,33 @@ namespace SahayataNidhi.Controllers
         // }
 
         [HttpGet]
-        public IActionResult IsDuplicateAccNo(string accNo, string applicationId)
-        {
-            var application = dbcontext.CitizenApplications.FromSqlRaw("EXEC GetDuplicateAccNo @AccountNo", new SqlParameter("@AccountNo", accNo)).ToList();
 
-            if (application.Count == 0)
+        public IActionResult IsDuplicateAccNo(string bankName, string ifscCode, string accNo, string applicationId)
+        {
+            // Input validation
+            if (string.IsNullOrEmpty(bankName) || string.IsNullOrEmpty(ifscCode) ||
+                string.IsNullOrEmpty(accNo))
+            {
                 return Json(new { status = false });
-            else if (application[0].ReferenceNumber == applicationId)
+            }
+
+            var parameters = new[]
+            {
+                new SqlParameter("@AccountNumber", accNo),
+                new SqlParameter("@BankName", bankName),
+                new SqlParameter("@IfscCode", ifscCode)
+            };
+
+            var applications = dbcontext.CitizenApplications
+                .FromSqlRaw("EXEC GetDuplicateAccNo @AccountNumber, @BankName, @IfscCode", parameters)
+                .ToList();
+
+            if (applications.Count == 0)
+                return Json(new { status = false });
+            else if (applications.Any(app => app.ReferenceNumber == applicationId))
                 return Json(new { status = false });
             else
-            {
-                if (application[0].Status == "Rejected") return Json(new { status = false });
-                else return Json(new { status = true });
-            }
+                return Json(new { status = true });
         }
 
         [HttpPost]
@@ -787,7 +682,6 @@ namespace SahayataNidhi.Controllers
             }
         }
 
-        [HttpGet]
         [HttpGet]
         public IActionResult GetServicesDashboard(int pageIndex = 0, int pageSize = 10)
         {

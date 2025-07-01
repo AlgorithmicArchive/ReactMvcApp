@@ -1,59 +1,81 @@
 import React from "react";
-import { Box, Card, CardContent, Typography } from "@mui/material";
+import { Box, Card, CardContent, Typography, Tooltip } from "@mui/material";
 import StatusIcons from "./StatusIcons";
 
-// Accept an onClick prop
 const StatusCountCard = ({
   statusName,
   count,
   bgColor,
   textColor,
   onClick,
+  tooltipText, // optional prop
 }) => {
   return (
-    <Card
-      sx={{
-        minWidth: 300,
-        minHeight: 200,
-        margin: "10px",
-        padding: "10px",
-        backgroundColor: bgColor,
-        cursor: statusName != "" ? "pointer" : "default",
-        borderRadius: 5,
+    <Tooltip
+      title={tooltipText || statusName}
+      arrow
+      slotProps={{
+        tooltip: {
+          sx: {
+            backgroundColor: "#333",
+            color: "#fff",
+            fontSize: "14px",
+            padding: "10px",
+            borderRadius: "8px",
+            boxShadow: 3,
+          },
+        },
+        arrow: {
+          sx: {
+            color: "#333",
+          },
+        },
       }}
-      onClick={onClick} // Attach onClick handler
     >
-      <CardContent
+      <Card
         sx={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          height: "100%",
+          minWidth: 300,
+          minHeight: 200,
+          margin: "10px",
+          padding: "10px",
+          backgroundColor: bgColor,
+          cursor: statusName !== "" ? "pointer" : "default",
+          borderRadius: 5,
         }}
+        onClick={onClick}
       >
-        <Box
+        <CardContent
           sx={{
             display: "flex",
+            flexDirection: "column",
             justifyContent: "space-between",
-            alignItems: "center",
+            height: "100%",
           }}
         >
-          <Typography
-            variant="h6"
-            component="div"
-            gutterBottom
-            color={textColor}
-            sx={{ fontSize: 36 }}
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
           >
-            {statusName}
+            <Typography
+              variant="h6"
+              component="div"
+              gutterBottom
+              color={textColor}
+              sx={{ fontSize: 36 }}
+            >
+              {statusName}
+            </Typography>
+            <StatusIcons status={statusName} textColor={textColor} />
+          </Box>
+          <Typography variant="h4" color={textColor} sx={{ fontSize: 80 }}>
+            {count}
           </Typography>
-          <StatusIcons status={statusName} textColor={textColor} />
-        </Box>
-        <Typography variant="h4" color={textColor} sx={{ fontSize: 80 }}>
-          {count}
-        </Typography>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </Tooltip>
   );
 };
 

@@ -13,5 +13,7 @@ public partial class ActionHistory
 
     public string ActionTaken { get; set; } = null!;
 
+    public string? Remarks { get; set; }
+
     public string ActionTakenDate { get; set; } = null!;
 }
