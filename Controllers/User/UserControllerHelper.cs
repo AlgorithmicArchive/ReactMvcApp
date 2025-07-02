@@ -132,6 +132,41 @@ namespace SahayataNidhi.Controllers.User
             return (int)newCountParam.Value;
         }
 
+        public string GetOfficerArea(string designation, dynamic formDetails)
+        {
+            var officerDesignation = dbcontext.OfficersDesignations
+                .FirstOrDefault(od => od.Designation == designation);
+
+            if (officerDesignation == null)
+                return string.Empty;
+
+            string accessLevel = officerDesignation.AccessLevel ?? string.Empty;
+            int accessCode;
+
+            switch (accessLevel)
+            {
+                case "Tehsil":
+                    accessCode = Convert.ToInt32(GetFieldValue("Tehsil", formDetails));
+                    var tehsil = dbcontext.Tehsils.FirstOrDefault(t => t.TehsilId == accessCode);
+                    return tehsil?.TehsilName ?? string.Empty;
+
+                case "District":
+                    accessCode = Convert.ToInt32(GetFieldValue("District", formDetails));
+                    var district = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == accessCode);
+                    return district?.DistrictName ?? string.Empty;
+
+                case "Division":
+                    accessCode = Convert.ToInt32(GetFieldValue("District", formDetails));
+                    var districtForDivision = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == accessCode);
+                    if (districtForDivision == null)
+                        return string.Empty;
+                    return districtForDivision.Division == 1 ? "Jammu" : "Kashmir";
+                case "State":
+                    return "J&K";
+                default:
+                    return string.Empty;
+            }
+        }
 
 
         private static string SaveFile(IFormFile file)

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "5bZnRJH514s=",
+  "dgSpecHash": "WlPAWbhCWhE=",
   "success": true,
   "projectFilePath": "/home/momin/Github/SahayataNidhi/SahayataNidhi.csproj",
   "expectedPackageFiles": [
@@ -209,7 +209,7 @@
     "/home/momin/.nuget/packages/system.xml.xdocument/4.3.0/system.xml.xdocument.4.3.0.nupkg.sha512",
     "/home/momin/.nuget/packages/system.xml.xmldocument/4.3.0/system.xml.xmldocument.4.3.0.nupkg.sha512",
     "/home/momin/.nuget/packages/xlparser/1.5.2/xlparser.1.5.2.nupkg.sha512",
-    "/home/momin/.nuget/packages/microsoft.aspnetcore.app.ref/9.0.4/microsoft.aspnetcore.app.ref.9.0.4.nupkg.sha512"
+    "/home/momin/.nuget/packages/microsoft.aspnetcore.app.ref/9.0.5/microsoft.aspnetcore.app.ref.9.0.5.nupkg.sha512"
   ],
   "logs": []
 }

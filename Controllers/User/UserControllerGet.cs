@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using DocumentFormat.OpenXml.Office.CustomUI;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -105,6 +106,8 @@ namespace SahayataNidhi.Controllers.User
                 var formDetails = JsonConvert.DeserializeObject<dynamic>(application.FormDetails!);
                 var officers = JsonConvert.DeserializeObject<JArray>(application.WorkFlow!);
                 var currentPlayer = application.CurrentPlayer;
+                string officerDesignation = (string)officers![currentPlayer]["designation"]!;
+                string officerArea = GetOfficerArea(officerDesignation, formDetails);
 
                 // Define actions for this row
                 var actions = new List<dynamic>();
@@ -128,7 +131,7 @@ namespace SahayataNidhi.Controllers.User
                     sno = (pageIndex * pageSize) + index + 1,
                     referenceNumber = application.ReferenceNumber,
                     applicantName = GetFieldValue("ApplicantName", formDetails),
-                    currentlyWith = officers[currentPlayer]["designation"],
+                    currentlyWith = officerDesignation + " " + officerArea,
                     status = actionMap[(string)officers[currentPlayer]["status"]!],
                     serviceId = application.ServiceId,
                     customActions = actions // Embed actions here
@@ -207,6 +210,7 @@ namespace SahayataNidhi.Controllers.User
             int currentPlayerIndex = application.CurrentPlayer;
             var currentPlayer = players!.FirstOrDefault(o => (int)o["playerId"]! == currentPlayerIndex);
             var history = await dbcontext.ActionHistories.Where(ah => ah.ReferenceNumber == ApplicationId).ToListAsync();
+            var formDetails = JsonConvert.DeserializeObject<dynamic>(application.FormDetails!);
 
             var columns = new List<dynamic>
             {
@@ -219,10 +223,12 @@ namespace SahayataNidhi.Controllers.User
             List<dynamic> data = [];
             foreach (var item in history)
             {
+                string officerArea = GetOfficerArea(item.ActionTaker, formDetails);
+
                 data.Add(new
                 {
                     sno = index,
-                    actionTaker = item.ActionTaker,
+                    actionTaker = item.ActionTaker + " " + officerArea,
                     actionTaken = item.ActionTaken! == "ReturnToCitizen" ? "Returned for correction" : item.ActionTaken,
                     actionTakenOn = item.ActionTakenDate,
                 });
@@ -231,10 +237,12 @@ namespace SahayataNidhi.Controllers.User
 
             if ((string)currentPlayer!["status"]! == "pending")
             {
+                string designation = (string)currentPlayer["designation"]!;
+                string officerArea = GetOfficerArea(designation, formDetails);
                 data.Add(new
                 {
                     sno = index,
-                    actionTaker = currentPlayer["designation"],
+                    actionTaker = currentPlayer["designation"] + " " + officerArea,
                     actionTaken = currentPlayer["status"],
                     actionTakenOn = "",
                 });
