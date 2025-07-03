@@ -14,7 +14,6 @@ import FieldEditModal from "./FieldEditModal";
 
 // Function to normalize a field, preserving existing values
 const normalizeField = (field) => {
-  console.log("Normalizing field, input:", field); // Debug input
   const normalized = {
     id: field.id || `field-${Date.now()}`,
     type: field.type || "text",
@@ -41,25 +40,25 @@ const normalizeField = (field) => {
     dependentValues: Array.isArray(field.dependentValues)
       ? field.dependentValues
       : [],
+    optionsType:
+      field.optionsType || (field.type === "select" ? "independent" : ""),
   };
-  console.log("Normalized field, output:", normalized); // Debug output
   return normalized;
 };
 
 // Function to normalize additionalFields recursively
 const normalizeAdditionalFields = (additionalFields) => {
-  console.log("Normalizing additionalFields, input:", additionalFields); // Debug input
   const normalized = {};
   Object.keys(additionalFields).forEach((option) => {
     normalized[option] = (additionalFields[option] || []).map((field) =>
       normalizeField(field)
     );
   });
-  console.log("Normalized additionalFields, output:", normalized); // Debug output
   return normalized;
 };
 
 const AdditionalFieldsModal = ({
+  sections,
   selectedField,
   onClose,
   updateField,
@@ -77,15 +76,13 @@ const AdditionalFieldsModal = ({
   const [nestedFieldToEdit, setNestedFieldToEdit] = useState(null);
 
   useEffect(() => {
-    console.log("AdditionalFieldsModal initialized with:", {
-      selectedField,
-      localAdditionalFields,
-    });
+    setLocalAdditionalFields(
+      normalizeAdditionalFields(selectedField.additionalFields || {})
+    );
   }, [selectedField]);
 
   const handleOptionChange = (e) => {
     setSelectedOption(e.target.value);
-    console.log("Selected option:", e.target.value);
   };
 
   const addAdditionalField = () => {
@@ -110,34 +107,21 @@ const AdditionalFieldsModal = ({
       dependentField: undefined,
       dependentValues: [],
     };
-    setLocalAdditionalFields((prev) => {
-      const updatedFields = {
-        ...prev,
-        [selectedOption]: prev[selectedOption]
-          ? [...prev[selectedOption], newField]
-          : [newField],
-      };
-      console.log(
-        "Added new field:",
-        newField,
-        "Updated fields:",
-        updatedFields
-      );
-      return updatedFields;
-    });
+    setLocalAdditionalFields((prev) => ({
+      ...prev,
+      [selectedOption]: prev[selectedOption]
+        ? [...prev[selectedOption], newField]
+        : [newField],
+    }));
   };
 
   const removeAdditionalField = (fieldId) => {
-    setLocalAdditionalFields((prev) => {
-      const updatedFields = {
-        ...prev,
-        [selectedOption]: (prev[selectedOption] || []).filter(
-          (field) => field.id !== fieldId
-        ),
-      };
-      console.log("Removed field:", fieldId, "Updated fields:", updatedFields);
-      return updatedFields;
-    });
+    setLocalAdditionalFields((prev) => ({
+      ...prev,
+      [selectedOption]: (prev[selectedOption] || []).filter(
+        (field) => field.id !== fieldId
+      ),
+    }));
   };
 
   const handleEditField = (field) => {
@@ -149,112 +133,48 @@ const AdditionalFieldsModal = ({
   };
 
   const handleSaveField = (updatedField) => {
+    console.log("Saving field in AdditionalFieldsModal:", updatedField);
     setLocalAdditionalFields((prev) => {
-      let updatedFields = { ...prev };
-      const selectedOption =
-        updatedField.parentOption || "PHYSICALLY CHALLENGED PERSON"; // Ensure this matches your context
-      const parentFields = updatedFields[selectedOption] || [];
-
-      const parentField = parentFields.find(
-        (f) =>
-          f.additionalFields &&
-          Object.values(f.additionalFields).some((fields) =>
-            fields.some((nestedField) => nestedField.id === updatedField.id)
-          )
-      );
-
-      if (!parentField) {
-        console.log("Parent field not found for ID:", updatedField.id);
-        return prev; // No update if parent not found
-      }
-
-      const nestedOption = Object.keys(parentField.additionalFields).find(
-        (opt) =>
-          parentField.additionalFields[opt].some(
-            (f) => f.id === updatedField.id
-          )
-      );
-
-      if (!nestedOption) {
-        console.log("Nested option not found for ID:", updatedField.id);
-        return prev; // No update if nested option not found
-      }
-
-      // Update the nested fields
-      const updatedNestedFields = parentField.additionalFields[
-        nestedOption
-      ].map((f) => {
-        if (f.id === updatedField.id) {
-          const mergedField = { ...f, ...updatedField };
-          console.log(
-            "Merging field:",
-            f,
-            "with",
-            updatedField,
-            "Result:",
-            mergedField
-          );
-          return mergedField;
-        }
-        return f;
-      });
-
-      // Construct the updated parent field
-      const updatedParentField = {
-        ...parentField,
-        additionalFields: {
-          ...parentField.additionalFields,
-          [nestedOption]: updatedNestedFields,
-        },
-      };
-
-      // Update the parent fields array
-      updatedFields = {
-        ...updatedFields,
-        [selectedOption]: parentFields.map((field) =>
-          field.id === parentField.id ? updatedParentField : field
+      const updatedFields = {
+        ...prev,
+        [selectedOption]: (prev[selectedOption] || []).map((field) =>
+          field.id === updatedField.id ? normalizeField(updatedField) : field
         ),
       };
-
-      // Verify the update
-      const finalNestedField = updatedFields[selectedOption]
-        .find((f) => f.id === parentField.id)
-        .additionalFields[nestedOption].find((f) => f.id === updatedField.id);
-      console.log("Final nested field maxLength:", finalNestedField.maxLength);
-
+      console.log("Updated localAdditionalFields:", updatedFields);
       return updatedFields;
     });
     setEditingField(null);
   };
+
   const handleSaveNestedFields = (updatedNestedField) => {
     setLocalAdditionalFields((prev) => {
-      const currentFields = prev[selectedOption] || [];
-      const updatedFields = currentFields.map((field) => {
-        if (field.additionalFields) {
-          const updatedAdditionalFields = Object.fromEntries(
-            Object.entries(field.additionalFields).map(
-              ([option, nestedFields]) => [
-                option,
-                nestedFields.map((nestedField) =>
-                  nestedField.id === updatedNestedField.id
-                    ? { ...nestedField, ...updatedNestedField }
-                    : nestedField
-                ),
-              ]
-            )
-          );
-          return { ...field, additionalFields: updatedAdditionalFields };
-        }
-        return field;
-      });
-      const newLocalFields = { ...prev, [selectedOption]: updatedFields };
-      console.log(
-        "Saved nested field:",
-        updatedNestedField,
-        "New localAdditionalFields:",
-        newLocalFields
-      );
-      return newLocalFields;
+      const updatedFields = {
+        ...prev,
+        [selectedOption]: (prev[selectedOption] || []).map((field) => {
+          if (field.id === updatedNestedField.id) {
+            return normalizeField(updatedNestedField);
+          }
+          if (field.additionalFields) {
+            const updatedAdditionalFields = Object.fromEntries(
+              Object.entries(field.additionalFields).map(
+                ([option, nestedFields]) => [
+                  option,
+                  nestedFields.map((nestedField) =>
+                    nestedField.id === updatedNestedField.id
+                      ? normalizeField(updatedNestedField)
+                      : nestedField
+                  ),
+                ]
+              )
+            );
+            return { ...field, additionalFields: updatedAdditionalFields };
+          }
+          return field;
+        }),
+      };
+      console.log("Updated localAdditionalFields (nested):", updatedFields);
+      return updatedFields;
     });
     setNestedFieldToEdit(null);
   };
@@ -267,7 +187,7 @@ const AdditionalFieldsModal = ({
       ...selectedField,
       additionalFields: updatedAdditionalFields,
     };
-    console.log("Saving to parent:", updatedField);
+    console.log("Saving to parent field:", updatedField);
     updateField(updatedField);
     onClose();
   };
@@ -396,13 +316,14 @@ const AdditionalFieldsModal = ({
       {editingField && (
         <FieldEditModal
           selectedField={editingField}
-          sections={[]}
+          sections={sections}
           onClose={() => setEditingField(null)}
           updateField={handleSaveField}
         />
       )}
       {nestedFieldToEdit && (
         <AdditionalFieldsModal
+          sections={sections}
           selectedField={nestedFieldToEdit}
           onClose={() => setNestedFieldToEdit(null)}
           updateField={handleSaveNestedFields}

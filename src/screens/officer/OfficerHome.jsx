@@ -14,13 +14,39 @@ import {
 } from "@mui/material";
 import { useForm } from "react-hook-form";
 import axiosInstance from "../../axiosConfig";
-import { Col, Container, Row } from "react-bootstrap";
+import { Container, Row, Col } from "react-bootstrap";
 import StatusCountCard from "../../components/StatusCountCard";
 import ServerSideTable from "../../components/ServerSideTable";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import BasicModal from "../../components/BasicModal";
+import styled from "@emotion/styled";
+
+// Styled components for modern look
+const StyledButton = styled(Button)`
+  background: linear-gradient(45deg, #1976d2, #2196f3);
+  padding: 12px 24px;
+  font-weight: 600;
+  border-radius: 8px;
+  text-transform: none;
+  &:hover {
+    background: linear-gradient(45deg, #1565c0, #1976d2);
+    transform: scale(1.05);
+  }
+  &:disabled {
+    background: #cccccc;
+    color: #666666;
+  }
+`;
+
+const StyledDialog = styled(Dialog)`
+  & .MuiDialog-paper {
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    background: linear-gradient(135deg, #ffffff, #f8f9fa);
+  }
+`;
 
 export default function OfficerHome() {
   const [services, setServices] = useState([]);
@@ -78,7 +104,7 @@ export default function OfficerHome() {
   // Handle card click
   const handleCardClick = async (statusName) => {
     console.log(statusName);
-    setType(statusName);
+    setType(statusName == "Citizen Pending" ? "returntoedit" : statusName);
     setShowTable(true);
     setTimeout(() => {
       tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -90,13 +116,13 @@ export default function OfficerHome() {
     handleOpenApplication: (row) => {
       const userdata = row.original;
       navigate("/officer/userDetails", {
-        state: { applicationId: userdata.referenceNumber },
+        state: { applicationId: userdata.referenceNumber, notaction: false },
       });
     },
     handleViewApplication: (row) => {
       const data = row.original;
-      navigate("/officer/viewUserDetails", {
-        state: { applicationId: data.referenceNumber },
+      navigate("/officer/userDetails", {
+        state: { applicationId: data.referenceNumber, notaction: true },
       });
     },
     pullApplication: async (row) => {
@@ -452,66 +478,94 @@ export default function OfficerHome() {
   return (
     <Box
       sx={{
-        height: "auto",
+        width: "100%",
         display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
         flexDirection: "column",
-        marginBottom: "5vh",
-        gap: 5,
+        alignItems: "center",
+        p: { xs: 3, md: 5 },
+        bgcolor: "#f8f9fa",
       }}
     >
-      <ServiceSelectionForm
-        services={services}
-        errors={errors}
-        onServiceSelect={handleRecords}
-      />
-      <Container
+      <Typography
+        variant="h4"
         sx={{
-          display: "flex",
-          justifyContent: "space-evenly",
-          marginTop: "50px",
-          width: "100%",
+          mb: 5,
+          fontWeight: 700,
+          color: "#2d3748",
+          fontFamily: "'Inter', sans-serif",
         }}
       >
-        <Row>
+        Officer Dashboard
+      </Typography>
+
+      <Container fluid>
+        <Row className="mb-5 justify-content-center">
+          <Col
+            xs={12}
+            md={8}
+            lg={6}
+            style={{ display: "flex", justifyContent: "center" }}
+          >
+            <ServiceSelectionForm
+              services={services}
+              errors={errors}
+              onServiceSelect={handleRecords}
+              sx={{ bgcolor: "#fff", borderRadius: "8px" }}
+            />
+          </Col>
+        </Row>
+
+        <Row className="mb-5 justify-content-center">
           {countList.map((item, index) => (
-            <Col key={index} xs={12} lg={4}>
+            <Col
+              key={index}
+              xs={12}
+              sm={6}
+              md={4}
+              lg={3}
+              className="mb-4 d-flex justify-content-center"
+            >
               <StatusCountCard
                 statusName={item.label}
                 count={item.count}
                 bgColor={item.bgColor}
-                textColor={item.textColor}
                 tooltipText={item.tooltipText}
+                textColor={item.textColor}
                 onClick={() => handleCardClick(item.label)}
               />
             </Col>
           ))}
         </Row>
+
+        {showTable && (
+          <Row ref={tableRef}>
+            <Col xs={12}>
+              <ServerSideTable
+                key={`${serviceId}-${type}`}
+                url="/Officer/GetApplications"
+                extraParams={extraParams}
+                actionFunctions={actionFunctions}
+                canSanction={canSanction}
+                canHavePool={canHavePool}
+                pendingApplications={type === "Pending"}
+                serviceId={serviceId}
+                onPushToPool={handlePushToPool}
+                onExecuteAction={handleExecuteAction}
+                actionOptions={getActionOptions()}
+                selectedAction={selectedAction}
+                setSelectedAction={setSelectedAction}
+              />
+            </Col>
+          </Row>
+        )}
       </Container>
-      {showTable && (
-        <Container ref={tableRef}>
-          <ServerSideTable
-            key={`${serviceId}-${type}`}
-            url="/Officer/GetApplications"
-            extraParams={extraParams}
-            actionFunctions={actionFunctions}
-            canSanction={canSanction}
-            canHavePool={canHavePool}
-            pendingApplications={type === "Pending"}
-            serviceId={serviceId}
-            onPushToPool={handlePushToPool}
-            onExecuteAction={handleExecuteAction}
-            actionOptions={getActionOptions()}
-            selectedAction={selectedAction}
-            setSelectedAction={setSelectedAction}
-          />
-        </Container>
-      )}
-      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
-        <DialogTitle>Enter USB Token PIN</DialogTitle>
+
+      <StyledDialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+        <DialogTitle sx={{ fontWeight: 600, color: "#2d3748" }}>
+          Enter USB Token PIN
+        </DialogTitle>
         <DialogContent>
-          <Typography>
+          <Typography sx={{ mb: 2, color: "#2d3748" }}>
             Please enter the PIN for your USB token to sign the document.
           </Typography>
           <TextField
@@ -523,25 +577,29 @@ export default function OfficerHome() {
             margin="normal"
             aria-label="USB Token PIN"
             inputProps={{ "aria-describedby": "pin-helper-text" }}
+            sx={{ bgcolor: "#fff", borderRadius: "8px" }}
           />
           <FormHelperText id="pin-helper-text">
             Required to sign the document.
           </FormHelperText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmOpen(false)} aria-label="Cancel">
+          <StyledButton
+            onClick={() => setConfirmOpen(false)}
+            aria-label="Cancel"
+          >
             Cancel
-          </Button>
-          <Button
+          </StyledButton>
+          <StyledButton
             onClick={handlePinSubmit}
-            color="primary"
             disabled={!pin}
             aria-label="Submit PIN"
           >
             Submit
-          </Button>
+          </StyledButton>
         </DialogActions>
-      </Dialog>
+      </StyledDialog>
+
       <BasicModal
         open={pdfModalOpen}
         handleClose={handleModalClose}
@@ -554,7 +612,9 @@ export default function OfficerHome() {
             width: { xs: "90%", md: "80%" },
             maxWidth: 800,
             height: "80vh",
-            borderRadius: 2,
+            borderRadius: 12,
+            background: "linear-gradient(135deg, #ffffff, #f8f9fa)",
+            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
           },
         }}
       />

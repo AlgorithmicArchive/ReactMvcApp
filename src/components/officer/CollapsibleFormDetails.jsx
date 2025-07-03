@@ -1,18 +1,27 @@
-import {
-  Box,
-  Button,
-  Collapse,
-  Divider,
-  Tooltip,
-  Typography,
-} from "@mui/material";
 import React, { useMemo } from "react";
+import { Box, Button, Collapse, Divider, Typography } from "@mui/material";
 import { Col, Row } from "react-bootstrap";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 
-// CollapsibleFormDetails
+const buttonStyles = {
+  backgroundColor: "#FFFFFF",
+  color: "primary.main",
+  textTransform: "none",
+  fontSize: "14px",
+  fontWeight: 500,
+  padding: "8px 16px",
+  border: "1px solid",
+  borderColor: "primary.main",
+  borderRadius: "8px",
+  "&:hover": {
+    backgroundColor: "#E3F2FD",
+    borderColor: "#1565C0",
+    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+  },
+};
+
 export const CollapsibleFormDetails = ({
   formDetails,
   formatKey,
@@ -27,64 +36,37 @@ export const CollapsibleFormDetails = ({
   }, [formDetails]);
 
   return (
-    <Box sx={{ width: "100%", maxWidth: 800, mx: "auto", mb: 4 }}>
+    <Box sx={{ width: "100%", mx: "auto", mb: 3 }}>
       <Box sx={{ display: "flex", justifyContent: "center" }}>
-        <Tooltip
-          title={detailsOpen ? "Collapse details" : "Expand details"}
-          arrow
+        <Button
+          onClick={() => setDetailsOpen(!detailsOpen)}
+          sx={buttonStyles}
+          startIcon={detailsOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          aria-expanded={detailsOpen}
+          aria-label={detailsOpen ? "Collapse details" : "Expand details"}
         >
-          <Button
-            onClick={() => setDetailsOpen((prev) => !prev)}
-            sx={{
-              backgroundColor: "primary.main",
-              color: "background.paper",
-              fontWeight: 600,
-              textTransform: "none",
-              py: 1,
-              px: 3,
-              borderRadius: 2,
-              mb: 2,
-              "&:hover": {
-                backgroundColor: "primary.dark",
-                transform: "scale(1.02)",
-                transition: "all 0.2s ease",
-              },
-            }}
-            startIcon={detailsOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-            aria-expanded={detailsOpen}
-            aria-label={detailsOpen ? "Collapse details" : "Expand details"}
-          >
-            {detailsOpen ? "Collapse" : "Expand"} Details
-          </Button>
-        </Tooltip>
+          {detailsOpen ? "Hide Details" : "Show Details"}
+        </Button>
       </Box>
       <Collapse in={detailsOpen} timeout={500}>
         <Box
           sx={{
             bgcolor: "#FFFFFF",
-            borderRadius: 3,
-            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
-            p: { xs: 3, md: 5 },
+            borderRadius: "12px",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+            p: 3,
             border: "1px solid",
-            borderColor: "divider",
-            maxHeight: 400,
+            borderColor: "primary.main",
+            maxHeight: "800px",
             overflowY: "auto",
           }}
         >
           {sections.length > 0 ? (
             sections.map((section, index) => (
-              <Box key={index} sx={{ mb: 4 }}>
+              <Box key={index} sx={{ mb: 3 }}>
                 <Typography
                   variant="h6"
-                  sx={{
-                    fontFamily: "'Playfair Display', serif",
-                    color: "primary.main",
-                    fontWeight: 700,
-                    mb: 2,
-                    borderBottom: "2px solid",
-                    borderColor: "primary.main",
-                    pb: 1,
-                  }}
+                  sx={{ fontWeight: 600, color: "primary.main", mb: 2 }}
                 >
                   {Object.keys(section)[0]}
                 </Typography>
@@ -93,21 +75,12 @@ export const CollapsibleFormDetails = ({
                     fields.map((field, fieldIndex) => (
                       <Col xs={12} md={6} key={fieldIndex}>
                         <Box sx={{ display: "flex", flexDirection: "column" }}>
-                          <Tooltip title={field.label || field.name} arrow>
-                            <Typography
-                              variant="subtitle2"
-                              sx={{
-                                fontWeight: 600,
-                                color: "text.secondary",
-                                mb: 1,
-                                maxWidth: "100%",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                              }}
-                            >
-                              {field.label || field.name}
-                            </Typography>
-                          </Tooltip>
+                          <Typography
+                            variant="subtitle2"
+                            sx={{ fontWeight: 500, color: "#616161", mb: 1 }}
+                          >
+                            {field.label || field.name}
+                          </Typography>
                           {field.File && field.File !== "" ? (
                             /\.(jpg|jpeg|png|gif)$/i.test(field.File) ? (
                               <Box
@@ -116,44 +89,37 @@ export const CollapsibleFormDetails = ({
                                 alt={field.label}
                                 sx={{
                                   width: "100%",
-                                  height: 150,
-                                  objectFit: "cover",
-                                  borderRadius: 2,
-                                  border: "1px solid",
-                                  borderColor: "divider",
-                                  p: 1,
+                                  maxHeight: 200,
+                                  objectFit: "contain",
+                                  borderRadius: "8px",
+                                  border: "1px solid #E0E0E0",
                                   transition: "transform 0.3s ease",
-                                  "&:hover": {
-                                    transform: "scale(1.02)",
-                                  },
+                                  "&:hover": { transform: "scale(1.02)" },
                                 }}
                               />
                             ) : (
                               <Box sx={{ mt: 1 }}>
-                                <Tooltip title="View document" arrow>
-                                  <Button
-                                    variant="outlined"
-                                    onClick={() => onViewPdf(field.File)}
-                                    startIcon={<PictureAsPdfIcon />}
-                                    sx={{
-                                      textTransform: "none",
-                                      borderColor: "primary.main",
-                                      color: "primary.main",
-                                      "&:hover": {
-                                        backgroundColor: "primary.light",
-                                        borderColor: "primary.dark",
-                                      },
-                                    }}
-                                    aria-label={`View ${field.label} document`}
-                                  >
-                                    View Document
-                                  </Button>
-                                </Tooltip>
+                                <Button
+                                  variant="outlined"
+                                  onClick={() => onViewPdf(field.File)}
+                                  startIcon={<PictureAsPdfIcon />}
+                                  sx={{
+                                    textTransform: "none",
+                                    borderColor: "#1976D2",
+                                    color: "#1976D2",
+                                    "&:hover": {
+                                      backgroundColor: "#E3F2FD",
+                                      borderColor: "#1565C0",
+                                    },
+                                  }}
+                                  aria-label={`View ${field.label} document`}
+                                >
+                                  View Document
+                                </Button>
                                 {field.Enclosure && (
                                   <Typography
                                     variant="caption"
-                                    display="block"
-                                    sx={{ mt: 1, color: "text.secondary" }}
+                                    sx={{ mt: 1, color: "#757575" }}
                                   >
                                     Enclosure: {field.Enclosure}
                                   </Typography>
@@ -164,14 +130,10 @@ export const CollapsibleFormDetails = ({
                             <Typography
                               variant="body1"
                               sx={{
-                                border: "1px solid",
-                                borderColor: "divider",
-                                borderRadius: 2,
+                                border: "1px solid #E0E0E0",
+                                borderRadius: "8px",
                                 p: 2,
-                                mt: 1,
-                                color: field.value
-                                  ? "text.primary"
-                                  : "text.secondary",
+                                color: field.value ? "#212121" : "#B0BEC5",
                               }}
                             >
                               {field.value ?? "--"}
@@ -182,45 +144,26 @@ export const CollapsibleFormDetails = ({
                               <Box sx={{ ml: 2, mt: 2 }}>
                                 {field.additionalFields.map(
                                   (nestedField, nestedIndex) => (
-                                    <Box
-                                      key={nestedIndex}
-                                      sx={{
-                                        display: "flex",
-                                        flexDirection: "column",
-                                      }}
-                                    >
-                                      <Tooltip
-                                        title={
-                                          nestedField.label || nestedField.name
-                                        }
-                                        arrow
+                                    <Box key={nestedIndex} sx={{ mb: 2 }}>
+                                      <Typography
+                                        variant="subtitle2"
+                                        sx={{
+                                          fontWeight: 500,
+                                          color: "#616161",
+                                          mb: 1,
+                                        }}
                                       >
-                                        <Typography
-                                          variant="subtitle2"
-                                          sx={{
-                                            fontWeight: 600,
-                                            color: "text.secondary",
-                                            mb: 1,
-                                            maxWidth: "100%",
-                                            overflow: "hidden",
-                                            textOverflow: "ellipsis",
-                                          }}
-                                        >
-                                          {nestedField.label ||
-                                            nestedField.name}
-                                        </Typography>
-                                      </Tooltip>
+                                        {nestedField.label || nestedField.name}
+                                      </Typography>
                                       <Typography
                                         variant="body1"
                                         sx={{
-                                          border: "1px solid",
-                                          borderColor: "divider",
-                                          borderRadius: 2,
+                                          border: "1px solid #E0E0E0",
+                                          borderRadius: "8px",
                                           p: 2,
-                                          mt: 1,
                                           color: nestedField.value
-                                            ? "text.primary"
-                                            : "text.secondary",
+                                            ? "#212121"
+                                            : "#B0BEC5",
                                         }}
                                       >
                                         {nestedField.value ?? "--"}
@@ -236,20 +179,12 @@ export const CollapsibleFormDetails = ({
                   )}
                 </Row>
                 {index < sections.length - 1 && (
-                  <Divider
-                    sx={{
-                      my: 3,
-                      borderColor: "primary.main",
-                      borderWidth: "1px",
-                    }}
-                  />
+                  <Divider sx={{ my: 3, borderColor: "#E0E0E0" }} />
                 )}
               </Box>
             ))
           ) : (
-            <Typography
-              sx={{ textAlign: "center", color: "text.secondary", py: 4 }}
-            >
+            <Typography sx={{ textAlign: "center", color: "#B0BEC5", py: 4 }}>
               No form details available.
             </Typography>
           )}
@@ -258,3 +193,5 @@ export const CollapsibleFormDetails = ({
     </Box>
   );
 };
+
+export default CollapsibleFormDetails;

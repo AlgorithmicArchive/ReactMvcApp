@@ -316,6 +316,39 @@ namespace SahayataNidhi.Controllers.User
             });
         }
 
+        [HttpGet]
+        public dynamic? GetUserDetails()
+        {
+            // Retrieve userId from JWT token
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
+            if (userId == null)
+            {
+                return null; // Handle case where userId is not available
+            }
+
+            int initiated = dbcontext.CitizenApplications
+                .Where(u => u.CitizenId.ToString() == userId && u.Status != "Incomplete")
+                .Count();
+            int incomplete = dbcontext.CitizenApplications
+                .Where(u => u.CitizenId.ToString() == userId && u.Status == "Incomplete")
+                .Count();
+
+            var userDetails = dbcontext.Users.FirstOrDefault(u => u.UserId.ToString() == userId);
+
+            var details = new
+            {
+                userDetails!.Name,
+                userDetails.Username,
+                userDetails.Profile,
+                userDetails.Email,
+                userDetails.MobileNumber,
+                userDetails.BackupCodes,
+                initiated,
+                incomplete,
+            };
+
+            return details;
+        }
     }
 }

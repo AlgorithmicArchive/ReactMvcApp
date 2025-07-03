@@ -9,3 +9,9 @@ html {
 body {
   font-size: 1rem; /* now scales with html's root */
 }
+
+
+html, body {
+  overflow: auto !important;
+  height: auto !important;
+}

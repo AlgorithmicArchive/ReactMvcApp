@@ -382,7 +382,7 @@ export default function Form() {
         boxSizing: "border-box",
       }}
     >
-      <DynamicStepForm data={dummyData} />
+      <DynamicStepForm data={{}} />
     </Box>
   );
 }

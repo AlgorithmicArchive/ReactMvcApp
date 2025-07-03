@@ -23,7 +23,6 @@ export default function UserHome() {
       setUserDetails(response.data);
       setProfile({ file: "", url: response.data.profile || "" });
     } catch (error) {
-      console.error("Error fetching user details", error);
       toast.error("Failed to load user details. Please try again.", {
         position: "top-center",
         autoClose: 3000,
@@ -161,10 +160,6 @@ export default function UserHome() {
                   {
                     label: "Incomplete Applications",
                     value: userDetails?.incomplete,
-                  },
-                  {
-                    label: "Sanctioned Applications",
-                    value: userDetails?.sanctioned,
                   },
                 ].map((item, index) => (
                   <Box

@@ -342,7 +342,74 @@ namespace SahayataNidhi.Controllers.Officer
             }
         }
 
+        public JToken ReorderFormDetails(JToken formDetailsToken)
+        {
+            if (formDetailsToken is not JObject formDetailsObject)
+                return formDetailsToken; // If not an object, return as is
 
+            if (!formDetailsObject.ContainsKey("Location") || !formDetailsObject.ContainsKey("Applicant Details"))
+                return formDetailsToken; // If required keys are missing, return as is
 
+            // Extract and remove the desired sections
+            var locationSection = formDetailsObject.Property("Location");
+            var applicantSection = formDetailsObject.Property("Applicant Details");
+
+            locationSection?.Remove();
+            applicantSection?.Remove();
+
+            // Create new JObject with reordered properties
+            JObject reordered = new JObject
+    {
+        { "Location", locationSection!.Value },
+        { "Applicant Details", applicantSection!.Value }
+    };
+
+            // Add the rest of the sections in their original order
+            foreach (var prop in formDetailsObject.Properties())
+            {
+                if (prop.Name != "Location" && prop.Name != "Applicant Details")
+                {
+                    reordered.Add(prop.Name, prop.Value);
+                }
+            }
+
+            return reordered;
+        }
+
+        private string FormatSectionKey(string key)
+        {
+            if (string.IsNullOrEmpty(key)) return key;
+
+            // Convert camelCase to Title Case with spaces
+            var result = System.Text.RegularExpressions.Regex.Replace(key, "([a-z])([A-Z])", "$1 $2");
+            return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(result);
+        }
+
+        // Helper method to format field labels
+        private string FormatFieldLabel(string label)
+        {
+            if (string.IsNullOrEmpty(label)) return label;
+
+            // Ensure proper formatting for labels
+            return label.EndsWith(":") ? label : $"{label}:";
+        }
+
+        // Helper method to convert values for display (similar to your existing logic)
+        private string ConvertValueForDisplay(string label, string value)
+        {
+            if (string.IsNullOrEmpty(value)) return value;
+
+            // Convert integer values for District and Tehsil fields
+            if (label.Contains("District", StringComparison.OrdinalIgnoreCase) && int.TryParse(value, out int districtId))
+            {
+                return GetDistrictName(districtId);
+            }
+            else if (label.Contains("Tehsil", StringComparison.OrdinalIgnoreCase) && int.TryParse(value, out int tehsilId))
+            {
+                return GetTehsilName(tehsilId);
+            }
+
+            return value;
+        }
     }
 }

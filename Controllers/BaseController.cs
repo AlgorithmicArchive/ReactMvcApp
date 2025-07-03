@@ -426,6 +426,13 @@ namespace SahayataNidhi.Controllers
             return Json(new { status = true, districts });
         }
 
+        [HttpGet]
+        public IActionResult GetDistricts()
+        {
+            var districts = dbcontext.Districts.ToList();
+            return Json(new { status = true, districts });
+        }
+
 
         [HttpGet]
         public IActionResult GetTeshilForDistrict(string districtId)
@@ -435,16 +442,8 @@ namespace SahayataNidhi.Controllers
             return Json(new { status = true, tehsils });
         }
 
-        // [HttpGet]
-        // public IActionResult GetBlockForDistrict(string districtId)
-        // {
-        //     int DistrictId = Convert.ToInt32(districtId);
-        //     var blocks = dbcontext.Blocks.Where(u => u.DistrictId == DistrictId).ToList();
-        //     return Json(new { status = true, blocks });
-        // }
 
         [HttpGet]
-
         public IActionResult IsDuplicateAccNo(string bankName, string ifscCode, string accNo, string applicationId)
         {
             // Input validation
@@ -989,5 +988,60 @@ namespace SahayataNidhi.Controllers
                 return Json(new { status = false, message = "Failed to save configuration", error = ex.Message });
             }
         }
+
+
+        [HttpGet]
+        public IActionResult GetAreaList(string table, int parentId)
+        {
+            _logger.LogInformation($"------------------TABLE: {table} Value: {parentId}--------------------");
+            object? data = null;
+
+            switch (table)
+            {
+                case "Tehsil":
+                    data = dbcontext.Tehsils
+                        .Where(t => t.DistrictId == parentId)
+                        .Select(t => new { value = t.TehsilId, label = t.TehsilName }) // Optional: project only needed fields
+                        .ToList();
+                    break;
+
+                case "Muncipality":
+                    data = dbcontext.Muncipalities.Where(m => m.DistrictId == parentId)
+                    .Select(m => new { value = m.MuncipalityId, label = m.MuncipalityName })
+                    .ToList();
+                    break;
+
+                case "Block":
+                    data = dbcontext.Blocks.Where(m => m.DistrictId == parentId)
+                    .Select(m => new { value = m.BlockId, label = m.BlockName })
+                    .ToList();
+                    break;
+
+                case "Ward":
+                    data = dbcontext.Wards.Where(m => m.MuncipalityId == parentId)
+                    .Select(m => new { value = m.WardCode, label = "Ward No " + m.WardNo })
+                    .ToList();
+                    break;
+
+                case "HalqaPanchayat":
+                    data = dbcontext.HalqaPanchayats.Where(m => m.BlockId == parentId)
+                            .Select(m => new { value = m.HalqaPanchayatId, label = m.HalqaPanchayatName })
+                            .ToList();
+                    break;
+                case "Village":
+                    data = dbcontext.Villages.Where(m => m.HalqaPanchayatId == parentId)
+                          .Select(m => new { value = m.VillageId, label = m.VillageName })
+                          .ToList();
+                    break;
+                // Add other cases as needed
+
+                default:
+                    return BadRequest("Invalid table name.");
+            }
+
+            return Json(new { data });
+        }
+
+
     }
 }

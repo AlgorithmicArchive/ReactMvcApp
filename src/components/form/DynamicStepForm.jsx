@@ -17,6 +17,7 @@ import {
   Step,
   StepLabel,
   StepIcon,
+  IconButton,
 } from "@mui/material";
 import { Col, Row } from "react-bootstrap";
 import { fetchFormDetails, GetServiceContent } from "../../assets/fetch";
@@ -28,6 +29,7 @@ import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import CloseIcon from "@mui/icons-material/CloseOutlined";
 
 const sectionIconMap = {
   Location: <LocationOnIcon sx={{ fontSize: 36 }} />,
@@ -93,7 +95,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
   const [buttonLoading, setButtonLoading] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState("");
   const [selectedServiceId, setSelectedServiceId] = useState("");
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(3);
   const [initialData, setInitialData] = useState(null);
   const [additionalDetails, setAdditionalDetails] = useState(null);
   const [isCopyAddressChecked, setIsCopyAddressChecked] = useState(false);
@@ -388,6 +390,130 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     }
   };
 
+  const handleAreaChange = async (sectionIndex, field, value) => {
+    try {
+      const AddressType = getValues("AddressType"); // 'Urban' or 'Rural'
+
+      const fieldNames = [
+        {
+          name: "PresentDistrict",
+          childname: { Urban: "PresentMuncipality", Rural: "PresentBlock" },
+          respectiveTable: { Urban: "Muncipality", Rural: "Block" },
+        },
+        {
+          name: "PermanentDistrict",
+          childname: { Urban: "PermanentMuncipality", Rural: "PermanentBlock" },
+          respectiveTable: { Urban: "Muncipality", Rural: "Block" },
+        },
+        {
+          name: "PresentMuncipality",
+          childname: "PresentWardNo",
+          respectiveTable: "Ward",
+        },
+        {
+          name: "PermanentMuncipality",
+          childname: "PermanentWardNo",
+          respectiveTable: "Ward",
+        },
+        {
+          name: "PresentBlock",
+          childname: "PresentHalqaPanchayat",
+          respectiveTable: "HalqaPanchayat",
+        },
+        {
+          name: "PermanentBlock",
+          childname: "PermanentHalqaPanchayat",
+          respectiveTable: "HalqaPanchayat",
+        },
+        {
+          name: "PresentHalqaPanchayat",
+          childname: "PresentVillage",
+          respectiveTable: "Village",
+        },
+        {
+          name: "PermanentHalqaPanchayat",
+          childname: "PermanentVillage",
+          respectiveTable: "Village",
+        },
+      ];
+
+      const match = fieldNames.find((f) => f.name === field.name);
+      if (!match) {
+        console.warn(`Field "${field.name}" not found in fieldNames.`);
+        return;
+      }
+
+      const childFieldName =
+        typeof match.childname === "object"
+          ? match.childname[AddressType]
+          : match.childname;
+
+      const tableName =
+        typeof match.respectiveTable === "object"
+          ? match.respectiveTable[AddressType]
+          : match.respectiveTable;
+
+      if (!childFieldName || !tableName) {
+        console.warn(
+          `Invalid child field or table for AddressType: ${AddressType}`
+        );
+        return;
+      }
+
+      // ✅ Fetch data
+      const response = await axiosInstance.get(
+        `/Base/GetAreaList?table=${tableName}&parentId=${value}`
+      );
+      const areaList = response.data?.data || [];
+
+      const newOptions = areaList.map((item) => ({
+        value: item.id ?? item.value,
+        label: item.name ?? item.label,
+      }));
+
+      // ✅ Update form
+      setFormSections((prevSections) => {
+        const newSections = [...prevSections];
+        const section = newSections[sectionIndex];
+        let updated = false;
+
+        section.fields = section.fields.map((f) => {
+          if (f.name === childFieldName) {
+            updated = true;
+            return { ...f, options: newOptions };
+          }
+
+          // Check in additionalFields[AddressType]
+          if (
+            f.additionalFields &&
+            typeof f.additionalFields === "object" &&
+            Array.isArray(f.additionalFields[AddressType])
+          ) {
+            f.additionalFields[AddressType] = f.additionalFields[
+              AddressType
+            ].map((af) => {
+              if (af.name === childFieldName) {
+                updated = true;
+                return { ...af, options: newOptions };
+              }
+              return af;
+            });
+          }
+
+          return f;
+        });
+
+        if (!updated) {
+          console.warn(`Child field "${childFieldName}" not found in section.`);
+        }
+
+        return newSections;
+      });
+    } catch (error) {
+      console.error("Error fetching child field options:", error);
+    }
+  };
+
   const onSubmit = async (data, operationType) => {
     const groupedFormData = {};
     setButtonLoading(true);
@@ -462,7 +588,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     if (mode === "edit" && returnFieldsArray.length > 0) {
       returnFieldsArray.forEach((fieldName) => {
         const fieldValue = data[fieldName];
-        console.log(fieldName, fieldValue);
         if (fieldValue !== undefined && fieldValue !== null) {
           formdata.append(fieldName, fieldValue);
         }
@@ -497,7 +622,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     if (additionalDetails != null && additionalDetails != "") {
       formdata.append("returnFields", JSON.stringify(returnFieldsArray)); // ✅ fix: send as string
       url = "/User/UpdateApplicationDetails";
-      console.log("Edit Mode", formdata);
     }
 
     try {
@@ -584,7 +708,18 @@ const DynamicStepForm = ({ mode = "new", data }) => {
         backgroundColor: "#9ca3af",
         color: "#d1d5db",
       },
-      marginBottom: 3,
+      marginBottom: 1,
+    };
+    const getLabelWithAsteriskJSX = (field) => {
+      const isRequired = field.validationFunctions?.includes("notEmpty");
+      return (
+        <>
+          {field.label}
+          {isRequired && (
+            <span style={{ color: "red", fontSize: "18px" }}> *</span>
+          )}
+        </>
+      );
     };
 
     switch (field.type) {
@@ -609,7 +744,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
               <TextField
                 type={field.type}
                 id={`field-${field.id}`}
-                label={field.label}
+                label={getLabelWithAsteriskJSX(field)}
                 value={value || ""}
                 onChange={(e) => {
                   let val = e.target.value;
@@ -654,7 +789,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
               <FormControl
                 fullWidth
                 margin="normal"
-                error={Boolean(errors[field.name])}
+                error={true}
                 sx={commonStyles}
               >
                 <Button
@@ -663,7 +798,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                   disabled={isFieldDisabled(field.name)}
                   sx={buttonStyles}
                 >
-                  {field.label}
+                  {getLabelWithAsteriskJSX(field)}
                   <input
                     type="file"
                     hidden
@@ -675,6 +810,9 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     accept={field.accept}
                   />
                 </Button>
+                <Typography sx={{ fontSize: "12px" }}>
+                  Accepted File Types:{field.accept} Size: 20kb-50kb
+                </Typography>
                 <FormHelperText sx={{ color: "error.main" }}>
                   {errors[field.name]?.message || ""}
                 </FormHelperText>
@@ -714,28 +852,12 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     select
                     fullWidth
                     variant="outlined"
-                    label={field.label}
+                    label={getLabelWithAsteriskJSX(field)}
                     value={value || ""}
                     id={`field-${field.id}`}
                     onChange={(e) => {
                       onChange(e);
-                      const districtFields = [
-                        "district",
-                        "presentdistrict",
-                        "permanentdistrict",
-                      ];
-                      const normalizedFieldName = field.name
-                        .toLowerCase()
-                        .replace(/\s/g, "");
-                      const isDistrict =
-                        districtFields.includes(normalizedFieldName);
-                      if (isDistrict) {
-                        handleDistrictChange(
-                          sectionIndex,
-                          field,
-                          e.target.value
-                        );
-                      }
+                      handleAreaChange(sectionIndex, field, e.target.value);
                     }}
                     onBlur={() => {
                       if (field.name === "BankName") {
@@ -803,19 +925,28 @@ const DynamicStepForm = ({ mode = "new", data }) => {
         ) {
           return null;
         }
+
+        const selectFieldName = `${field.name}_select`;
+        const fileFieldName = `${field.name}_file`;
+
         const selectValue =
-          getValues(`${field.name}_select`) ||
+          getValues(selectFieldName) ||
           initialData?.[field.name]?.selected ||
           "";
         const options = field.options || [];
+
         if (selectValue && !options.some((opt) => opt.value === selectValue)) {
           options.push({ value: selectValue, label: selectValue });
         }
 
+        const additionalFields =
+          field.additionalFields && field.additionalFields[selectValue];
+
         return (
           <>
+            {/* Select Field */}
             <Controller
-              name={`${field.name}_select`}
+              name={selectFieldName}
               control={control}
               defaultValue={selectValue}
               rules={{
@@ -826,18 +957,18 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                 <FormControl
                   fullWidth
                   margin="normal"
-                  error={Boolean(errors[`${field.name}_select`])}
+                  error={Boolean(errors[selectFieldName])}
                   sx={commonStyles}
                 >
                   <InputLabel id={`${field.id}_select-label`}>
-                    {field.label}
+                    {getLabelWithAsteriskJSX(field)}
                   </InputLabel>
                   <Select
                     labelId={`${field.id}_select-label`}
                     id={`${field.id}_select`}
                     value={value || ""}
-                    label={field.label}
-                    disabled={isFieldDisabled(`${field.name}_select`)}
+                    label={getLabelWithAsteriskJSX(field)}
+                    disabled={isFieldDisabled(selectFieldName)}
                     onChange={(e) => onChange(e.target.value)}
                     inputRef={ref}
                   >
@@ -859,13 +990,37 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     ))}
                   </Select>
                   <FormHelperText sx={{ color: "error.main" }}>
-                    {errors[`${field.name}_select`]?.message || ""}
+                    {errors[selectFieldName]?.message || ""}
                   </FormHelperText>
                 </FormControl>
               )}
             />
+
+            {/* Additional Fields ABOVE Upload */}
+            {additionalFields &&
+              additionalFields.map((additionalField) => {
+                const nestedFieldName =
+                  additionalField.name || `${field.name}_${additionalField.id}`;
+                return (
+                  <Col
+                    xs={12}
+                    lg={additionalField.span}
+                    key={additionalField.id}
+                  >
+                    {renderField(
+                      {
+                        ...additionalField,
+                        name: nestedFieldName,
+                      },
+                      sectionIndex
+                    )}
+                  </Col>
+                );
+              })}
+
+            {/* File Upload Controller */}
             <Controller
-              name={`${field.name}_file`}
+              name={fileFieldName}
               control={control}
               defaultValue={initialData?.[field.name]?.file || null}
               rules={{
@@ -873,48 +1028,30 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                   await runValidations(field, value, getValues()),
               }}
               render={({ field: { onChange, value } }) => (
-                <>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      width: "100%",
-                    }}
-                  >
-                    <Button
-                      variant="contained"
-                      component="label"
-                      sx={{
-                        ...buttonStyles,
-                        width: "100%",
-                        borderRadius: 15,
-                      }}
-                      disabled={
-                        isFieldDisabled(`${field.name}_file`) ||
-                        !watch(`${field.name}_select`)
-                      }
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "flex-start",
+                    alignItems: "flex-start",
+                    width: "100%",
+                    marginBottom: 8,
+                  }}
+                >
+                  {/* File name displayed ABOVE the upload button */}
+                  {value && (
+                    <Box
+                      display="flex"
+                      alignItems="center"
+                      gap={1}
+                      sx={{ mb: 1 }}
                     >
-                      Upload
-                      <input
-                        type="file"
-                        hidden
-                        onChange={(e) => {
-                          const file = e.target.files[0];
-                          onChange(file);
-                        }}
-                        accept={field.accept}
-                      />
-                    </Button>
-                    {value && (
                       <FormHelperText
                         sx={{
                           cursor: "pointer",
                           color: "primary.main",
                           textDecoration: "underline",
                           fontSize: 16,
-                          textAlign: "center",
                           "&:hover": { color: "primary.dark" },
                         }}
                         onClick={() => {
@@ -929,14 +1066,53 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                           ? "View file"
                           : value?.name || "View file"}
                       </FormHelperText>
-                    )}
-                  </div>
+                      <IconButton
+                        size="small"
+                        onClick={() => onChange(null)}
+                        sx={{
+                          color: "error.main",
+                          "&:hover": { color: "error.dark" },
+                          p: 0.5,
+                        }}
+                        aria-label="Remove file"
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  )}
+
+                  {/* Upload Button */}
+                  <Button
+                    variant="contained"
+                    component="label"
+                    sx={{
+                      ...buttonStyles,
+                      width: "100%",
+                      borderRadius: 15,
+                    }}
+                    disabled={
+                      isFieldDisabled(fileFieldName) || !watch(selectFieldName)
+                    }
+                  >
+                    Upload
+                    <input
+                      type="file"
+                      hidden
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        onChange(file);
+                      }}
+                      accept={field.accept}
+                    />
+                  </Button>
+
+                  {/* Error message */}
                   <Box>
                     <FormHelperText sx={{ color: "error.main" }}>
-                      {errors[`${field.name}_file`]?.message || ""}
+                      {errors[fileFieldName]?.message || ""}
                     </FormHelperText>
                   </Box>
-                </>
+                </div>
               )}
             />
           </>
@@ -1066,6 +1242,11 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                         margin: "0 auto",
                       }}
                     />
+                  )}
+                  {section.section == "Documents" && (
+                    <Typography sx={{ fontSize: "12px", textAlign: "center" }}>
+                      Accepted File Type: .pdf, Size:100Kb-200Kb
+                    </Typography>
                   )}
                   <Row>
                     {section.fields.map((field) => {

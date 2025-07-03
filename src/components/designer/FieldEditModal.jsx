@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -15,12 +15,13 @@ import {
   Box,
 } from "@mui/material";
 import { validationFunctionsList } from "../../assets/formvalidations";
+import axiosnInstance from "../../axiosConfig";
 
-// Async function to fetch districts from your API endpoint.
+// Async function to fetch districts from your API endpoint
 const fetchDistricts = async () => {
   try {
-    const response = await fetch("/Base/GetDistricts");
-    const data = await response.json();
+    const response = await axiosnInstance.get("/Base/GetDistricts");
+    const data = await response.data;
     if (data.status) {
       return data.districts;
     }
@@ -31,102 +32,131 @@ const fetchDistricts = async () => {
   }
 };
 
-// Utility function to collect all selectable fields
-const getSelectableFields = (sections) => {
+// Utility function to collect all selectable fields, including nested additional fields
+const getSelectableFields = (sections = [], actionForm = []) => {
   const selectableFields = [];
 
-  sections.forEach((section) => {
-    section.fields.forEach((field) => {
-      if (field.type === "select") {
-        selectableFields.push({
-          id: field.name,
-          label: field.label,
-          options: field.options || [],
-          isAdditional: false,
-        });
-      }
+  // Recursive function to process fields and their nested additional fields
+  const processFields = (fields, parentLabel = "", parentFieldName = "") => {
+    fields.forEach((field) => {
+      // Add the current field to selectableFields
+      selectableFields.push({
+        id: field.name, // Use name as ID for consistency
+        label: parentLabel ? `${parentLabel} > ${field.label}` : field.label,
+        options: field.options || [],
+        isAdditional: !!parentFieldName,
+        type: field.type,
+        parentFieldName: parentFieldName || undefined,
+      });
 
+      // Process additional fields recursively
       if (field.additionalFields) {
         Object.values(field.additionalFields).forEach(
           (additionalFieldArray) => {
-            additionalFieldArray.forEach((additionalField) => {
-              if (additionalField.type === "select") {
-                selectableFields.push({
-                  id: additionalField.name, // Use name directly (e.g., CivilCondition)
-                  label: `${field.label} > ${additionalField.label}`,
-                  options: additionalField.options || [],
-                  isAdditional: true,
-                  parentFieldName: field.name,
-                });
-              }
-            });
+            processFields(
+              additionalFieldArray,
+              parentLabel ? `${parentLabel} > ${field.label}` : field.label,
+              field.name
+            );
           }
         );
       }
     });
-  });
+  };
 
+  // Handle sections (CreateService context)
+  if (sections && sections.length > 0) {
+    sections.forEach((section) => {
+      processFields(section.fields || []);
+    });
+  }
+
+  // Handle actionForm (CreateWorkflow context)
+  if (actionForm && actionForm.length > 0) {
+    processFields(actionForm);
+  }
+
+  // Filter out fields with "District" in their ID
   return selectableFields.filter((field) => !field.id.includes("District"));
 };
 
-const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
+const FieldEditModal = ({
+  selectedField,
+  sections = [],
+  actionForm = [],
+  onClose,
+  updateField,
+}) => {
+  // Log props for debugging
+  console.log("FieldEditModal Props:", {
+    selectedField,
+    sections,
+    actionForm,
+    selectableFields: getSelectableFields(sections, actionForm),
+  });
+
   const [dependentOn, setDependentOn] = useState(
-    selectedField.dependentOn || ""
+    selectedField?.dependentOn || ""
   );
   const [formData, setFormData] = useState({
-    id: selectedField.id || `field-${Date.now()}`,
-    type: selectedField.type || "text",
-    label: selectedField.label || "New Field",
-    name: selectedField.name || `NewField_${Date.now()}`,
+    id: selectedField?.id || `field-${Date.now()}`,
+    type: selectedField?.type || "text",
+    label: selectedField?.label || "New Field",
+    name: selectedField?.name || `NewField_${Date.now()}`,
     minLength:
-      selectedField.minLength !== undefined ? selectedField.minLength : 5,
+      selectedField?.minLength !== undefined ? selectedField.minLength : 5,
     maxLength:
-      selectedField.maxLength !== undefined ? selectedField.maxLength : 50,
-    options: Array.isArray(selectedField.options) ? selectedField.options : [],
-    span: selectedField.span !== undefined ? selectedField.span : 12,
-    validationFunctions: Array.isArray(selectedField.validationFunctions)
+      selectedField?.maxLength !== undefined ? selectedField.maxLength : 50,
+    options: Array.isArray(selectedField?.options) ? selectedField.options : [],
+    span: selectedField?.span !== undefined ? selectedField.span : 12,
+    validationFunctions: Array.isArray(selectedField?.validationFunctions)
       ? selectedField.validationFunctions
       : [],
     transformationFunctions: Array.isArray(
-      selectedField.transformationFunctions
+      selectedField?.transformationFunctions
     )
       ? selectedField.transformationFunctions
       : [],
-    additionalFields: selectedField.additionalFields || {},
-    accept: selectedField.accept || "",
+    additionalFields: selectedField?.additionalFields || {},
+    accept: selectedField?.accept || "",
     editable:
-      selectedField.editable !== undefined ? selectedField.editable : true,
-    value: selectedField.value || undefined,
-    optionsType: selectedField.optionsType || "",
-    dependentOn: selectedField.dependentOn || "",
-    dependentOptions: selectedField.dependentOptions || {},
-    isDependentEnclosure: selectedField.isDependentEnclosure || false,
-    dependentField: selectedField.dependentField || "",
-    dependentValues: selectedField.dependentValues || [],
+      selectedField?.editable !== undefined ? selectedField.editable : true,
+    value: selectedField?.value || undefined,
+    optionsType:
+      selectedField?.optionsType ||
+      (selectedField?.type === "select" ? "independent" : ""),
+    dependentOn: selectedField?.dependentOn || "",
+    dependentOptions: selectedField?.dependentOptions || {},
+    isDependentEnclosure: selectedField?.isDependentEnclosure || false,
+    dependentField: selectedField?.dependentField || "",
+    dependentValues: selectedField?.dependentValues || [],
   });
 
   const [optionInputText, setOptionInputText] = useState(
-    formData.options.map((opt) => opt.label).join(", ")
+    formData.options.map((opt) => opt.label).join("; ")
   );
   const initialIsDependentMaxLength =
-    typeof selectedField.maxLength === "object" &&
-    selectedField.maxLength.dependentOn;
+    typeof selectedField?.maxLength === "object" &&
+    selectedField?.maxLength?.dependentOn;
   const [isDependentMaxLength, setIsDependentMaxLength] = useState(
     initialIsDependentMaxLength
   );
 
-  const saveChanges = () => {
-    updateField(formData);
-    onClose();
-  };
+  const isWorkflowContext = sections.length === 0 && actionForm.length > 0;
+  const selectableFields = getSelectableFields(sections, actionForm);
+
+  // Filter selectable fields, excluding the current field
+  const filteredSelectableFields = selectableFields.filter(
+    (field) => field.id !== selectedField?.name
+  );
 
   const handleDistrictCheckboxChange = async (e) => {
     const checked = e.target.checked;
     if (checked) {
       const districts = await fetchDistricts();
       const districtOptions = districts.map((d) => ({
-        value: d.districtId,
-        label: d.districtName,
+        value: d.districtId, // Use districtId as value
+        label: d.districtName, // Use districtName as label
       }));
       setFormData((prev) => ({
         ...prev,
@@ -134,13 +164,20 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
           { value: "Please Select", label: "Please Select" },
           ...districtOptions,
         ],
+        optionsType: "independent",
       }));
+      setOptionInputText(districtOptions.map((opt) => opt.label).join("; "));
     } else {
-      setFormData((prev) => ({ ...prev, options: [] }));
+      setFormData((prev) => ({ ...prev, options: [], optionsType: "" }));
+      setOptionInputText("");
     }
   };
 
-  const selectableFields = getSelectableFields(sections);
+  const saveChanges = () => {
+    console.log("Saved FormData:", formData);
+    updateField(formData);
+    onClose();
+  };
 
   return (
     <Dialog
@@ -151,6 +188,13 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
     >
       <DialogTitle id="form-dialog-title">Edit Field Properties</DialogTitle>
       <DialogContent>
+        {filteredSelectableFields.length === 0 &&
+          formData.type === "select" && (
+            <Typography color="error" sx={{ marginBottom: 2 }}>
+              No fields available for dependency. Please ensure the form
+              contains other fields.
+            </Typography>
+          )}
         <TextField
           fullWidth
           label="Field Label"
@@ -184,23 +228,25 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
         />
         <Box sx={{ marginTop: 2 }}>
           <Typography variant="body2">Maximum Length</Typography>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={isDependentMaxLength}
-                onChange={(e) => {
-                  const checked = e.target.checked;
-                  setIsDependentMaxLength(checked);
-                  setFormData((prev) => ({
-                    ...prev,
-                    maxLength: checked ? { dependentOn: "" } : 50,
-                  }));
-                }}
-              />
-            }
-            label="Dependent Maximum Length"
-          />
-          {isDependentMaxLength ? (
+          {!isWorkflowContext && (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={isDependentMaxLength}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setIsDependentMaxLength(checked);
+                    setFormData((prev) => ({
+                      ...prev,
+                      maxLength: checked ? { dependentOn: "" } : 50,
+                    }));
+                  }}
+                />
+              }
+              label="Dependent Maximum Length"
+            />
+          )}
+          {isDependentMaxLength && !isWorkflowContext ? (
             <>
               <FormControl fullWidth margin="dense">
                 <InputLabel id="maxLength-dependent-on-label">
@@ -220,9 +266,13 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                     }))
                   }
                 >
-                  {selectableFields.map((field) => (
+                  <MenuItem value="">
+                    <em>Select a field</em>
+                  </MenuItem>
+                  {filteredSelectableFields.map((field) => (
                     <MenuItem key={field.id} value={field.id}>
-                      {field.label}
+                      {field.label} ({field.type})
+                      {field.isAdditional && " [Additional]"}
                     </MenuItem>
                   ))}
                 </Select>
@@ -234,7 +284,7 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                     const selectedField = selectableFields.find(
                       (field) => field.id === dependentFieldId
                     );
-                    if (selectedField && selectedField.options) {
+                    if (selectedField && selectedField.options?.length > 0) {
                       return selectedField.options.map((option) => (
                         <TextField
                           key={option.value}
@@ -259,8 +309,26 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                           margin="dense"
                         />
                       ));
+                    } else {
+                      return (
+                        <TextField
+                          fullWidth
+                          label="Maximum Length Condition"
+                          value={formData.maxLength?.condition || ""}
+                          onChange={(e) => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              maxLength: {
+                                ...prev.maxLength,
+                                condition: e.target.value,
+                              },
+                            }));
+                          }}
+                          margin="dense"
+                          placeholder="e.g., 'Not empty' for text fields"
+                        />
+                      );
                     }
-                    return null;
                   })()}
                 </>
               )}
@@ -304,7 +372,15 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
             value={formData.type}
             label="Field Type"
             onChange={(e) =>
-              setFormData((prev) => ({ ...prev, type: e.target.value }))
+              setFormData((prev) => ({
+                ...prev,
+                type: e.target.value,
+                options:
+                  e.target.value === "select"
+                    ? [{ value: "Please Select", label: "Please Select" }]
+                    : [],
+                optionsType: e.target.value === "select" ? "independent" : "",
+              }))
             }
           >
             <MenuItem value="text">Text</MenuItem>
@@ -332,7 +408,9 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                     dependentOptions:
                       e.target.value === "dependent" ? {} : undefined,
                     options:
-                      e.target.value === "independent" ? [] : prev.options,
+                      e.target.value === "independent"
+                        ? [{ value: "Please Select", label: "Please Select" }]
+                        : prev.options,
                   }))
                 }
               >
@@ -344,32 +422,35 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
             {formData.optionsType === "independent" && (
               <TextField
                 fullWidth
-                label="Default Options (comma-separated)"
-                value={formData.options.map((opt) => opt.label).join(", ")}
-                onChange={(e) =>
+                label="Default Options (semicolon-separated)"
+                value={optionInputText}
+                onChange={(e) => setOptionInputText(e.target.value)}
+                onBlur={() => {
                   setFormData((prev) => ({
                     ...prev,
-                    options: e.target.value
-                      .split(",")
+                    options: optionInputText
+                      .split(";")
                       .map((optStr) => {
-                        const trimmed = optStr.trim();
-                        return trimmed
-                          ? { value: trimmed, label: trimmed }
+                        const cleaned = optStr.trim();
+                        return cleaned
+                          ? { value: cleaned, label: cleaned }
                           : null;
                       })
                       .filter((opt) => opt !== null),
-                  }))
-                }
+                  }));
+                }}
                 margin="dense"
+                placeholder="Type options separated by semicolons, e.g., Option 1;Option 2 with space, comma;Option 3"
+                helperText="Use semicolons (;) to separate options. Commas and spaces are allowed within each option."
               />
             )}
-            {formData.optionsType === "dependent" && (
+            {formData.optionsType === "dependent" && !isWorkflowContext && (
               <>
                 <FormControl fullWidth margin="dense">
                   <InputLabel id="dependent-on-label">Dependent On</InputLabel>
                   <Select
                     labelId="dependent-on-label"
-                    value={dependentOn}
+                    value={dependentOn || ""}
                     label="Dependent On"
                     onChange={(e) => {
                       const newDependentOn = e.target.value;
@@ -386,9 +467,10 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                     <MenuItem value="">
                       <em>Select a field</em>
                     </MenuItem>
-                    {selectableFields.map((field) => (
+                    {filteredSelectableFields.map((field) => (
                       <MenuItem key={field.id} value={field.id}>
-                        {field.label}
+                        {field.label} ({field.type})
+                        {field.isAdditional && " [Additional]"}
                       </MenuItem>
                     ))}
                   </Select>
@@ -399,26 +481,26 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                       const selectedField = selectableFields.find(
                         (field) => field.id === dependentOn
                       );
-                      if (selectedField && selectedField.options) {
+                      if (selectedField && selectedField.options?.length > 0) {
                         return selectedField.options.map((option) => (
                           <TextField
                             key={option.value}
                             fullWidth
-                            label={`Options for ${option.label} (comma-separated)`}
+                            label={`Options for ${option.label} (semicolon-separated)`}
                             value={
                               formData.dependentOptions?.[option.value]
                                 ? formData.dependentOptions[option.value]
                                     .map((opt) => opt.label)
-                                    .join(", ")
+                                    .join("; ")
                                 : ""
                             }
                             onChange={(e) => {
                               const newOptions = e.target.value
-                                .split(",")
+                                .split(";")
                                 .map((optStr) => {
-                                  const trimmed = optStr.trim();
-                                  return trimmed
-                                    ? { value: trimmed, label: trimmed }
+                                  const cleaned = optStr.trim();
+                                  return cleaned
+                                    ? { value: cleaned, label: cleaned }
                                     : null;
                                 })
                                 .filter((opt) => opt !== null);
@@ -431,10 +513,48 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                               }));
                             }}
                             margin="dense"
+                            placeholder="Type options separated by semicolons, e.g., Sub-option 1;Sub-option 2 with comma;Sub-option 3"
+                            helperText="Use semicolons (;) to separate options. Commas and spaces are allowed within each option."
                           />
                         ));
+                      } else {
+                        return (
+                          <TextField
+                            fullWidth
+                            label={`Dependent Options for ${
+                              selectedField?.label || "Selected Field"
+                            } (semicolon-separated)`}
+                            value={
+                              formData.dependentOptions?.["default"]
+                                ? formData.dependentOptions["default"]
+                                    .map((opt) => opt.label)
+                                    .join("; ")
+                                : ""
+                            }
+                            onChange={(e) => {
+                              const newOptions = e.target.value
+                                .split(";")
+                                .map((optStr) => {
+                                  const cleaned = optStr.trim();
+                                  return cleaned
+                                    ? { value: cleaned, label: cleaned }
+                                    : null;
+                                })
+                                .filter((opt) => opt !== null);
+                              setFormData((prev) => ({
+                                ...prev,
+                                dependentOptions: {
+                                  ...prev.dependentOptions,
+                                  default: newOptions,
+                                },
+                              }));
+                            }}
+                            margin="dense"
+                            placeholder="Type options separated by semicolons, e.g., Sub-option 1;Sub-option 2 with comma;Sub-option 3"
+                            helperText="Use semicolons (;) to separate options. Commas and spaces are allowed within each option."
+                          />
+                        );
                       }
-                      return null;
                     })()}
                   </>
                 )}
@@ -448,23 +568,25 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
         )}
         {formData.type === "enclosure" && (
           <>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={formData.isDependentEnclosure || false}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      isDependentEnclosure: e.target.checked,
-                      dependentField: e.target.checked ? "" : null,
-                      dependentValues: e.target.checked ? [] : null,
-                    }))
-                  }
-                />
-              }
-              label="Is Dependent on Another Field?"
-            />
-            {formData.isDependentEnclosure && (
+            {!isWorkflowContext && (
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={formData.isDependentEnclosure || false}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        isDependentEnclosure: e.target.checked,
+                        dependentField: e.target.checked ? "" : null,
+                        dependentValues: e.target.checked ? [] : null,
+                      }))
+                    }
+                  />
+                }
+                label="Is Dependent on Another Field?"
+              />
+            )}
+            {formData.isDependentEnclosure && !isWorkflowContext && (
               <>
                 <FormControl fullWidth margin="dense">
                   <InputLabel id="dependent-field-label">
@@ -484,9 +606,10 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                     <MenuItem value="">
                       <em>Select a field</em>
                     </MenuItem>
-                    {selectableFields.map((field) => (
+                    {filteredSelectableFields.map((field) => (
                       <MenuItem key={field.id} value={field.id}>
-                        {field.label}
+                        {field.label} ({field.type})
+                        {field.isAdditional && " [Additional]"}
                       </MenuItem>
                     ))}
                   </Select>
@@ -496,68 +619,84 @@ const FieldEditModal = ({ selectedField, sections, onClose, updateField }) => {
                     <InputLabel id="dependent-values-label">
                       Dependent Values (Select Multiple)
                     </InputLabel>
-                    <Select
-                      labelId="dependent-values-label"
-                      multiple
-                      value={formData.dependentValues || []}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          dependentValues: e.target.value,
-                        }))
-                      }
-                      renderValue={(selected) =>
-                        selected
-                          .map((val) => {
-                            const selectedField = selectableFields.find(
-                              (field) => field.id === formData.dependentField
-                            );
-                            return selectedField?.options.find(
-                              (opt) => opt.value === val
-                            )?.label;
-                          })
-                          .filter((label) => label)
-                          .join(", ")
-                      }
-                    >
-                      {(() => {
-                        const selectedField = selectableFields.find(
-                          (field) => field.id === formData.dependentField
-                        );
+                    {(() => {
+                      const selectedField = selectableFields.find(
+                        (field) => field.id === formData.dependentField
+                      );
+                      if (selectedField?.options?.length > 0) {
                         return (
-                          selectedField?.options?.map((option) => (
-                            <MenuItem key={option.value} value={option.value}>
-                              {option.label}
-                            </MenuItem>
-                          )) || []
+                          <Select
+                            labelId="dependent-values-label"
+                            multiple
+                            value={formData.dependentValues || []}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                dependentValues: e.target.value,
+                              }))
+                            }
+                            renderValue={(selected) =>
+                              selected
+                                .map((val) => {
+                                  return selectedField.options.find(
+                                    (opt) => opt.value === val
+                                  )?.label;
+                                })
+                                .filter((label) => label)
+                                .join("; ")
+                            }
+                          >
+                            {selectedField.options.map((option) => (
+                              <MenuItem key={option.value} value={option.value}>
+                                {option.label}
+                              </MenuItem>
+                            ))}
+                          </Select>
                         );
-                      })()}
-                    </Select>
+                      } else {
+                        return (
+                          <TextField
+                            fullWidth
+                            label="Condition for Dependent Field"
+                            value={formData.dependentValues?.[0] || ""}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                dependentValues: [e.target.value],
+                              }))
+                            }
+                            margin="dense"
+                            placeholder="e.g., 'Not empty' for text fields"
+                          />
+                        );
+                      }
+                    })()}
                   </FormControl>
                 )}
               </>
             )}
             <TextField
               fullWidth
-              label="Default Options (comma-separated)"
+              label="Default Options (semicolon-separated)"
               value={optionInputText}
               onChange={(e) => setOptionInputText(e.target.value)}
               onBlur={() =>
                 setFormData((prev) => ({
                   ...prev,
                   options: optionInputText
-                    .split(",")
+                    .split(";")
                     .map((optStr) => {
-                      const trimmed = optStr.trim();
-                      return trimmed
-                        ? { value: trimmed, label: trimmed }
+                      const cleaned = optStr.trim();
+                      return cleaned
+                        ? { value: cleaned, label: cleaned }
                         : null;
                     })
                     .filter((opt) => opt !== null),
                 }))
               }
               margin="dense"
-              placeholder="Type options separated by commas"
+              placeholder="Type options separated by semicolons, e.g., Option 1;Option 2 with space, comma;Option 3"
+              helperText="Use semicolons (;) to separate options. Commas and spaces are allowed within each option."
             />
           </>
         )}

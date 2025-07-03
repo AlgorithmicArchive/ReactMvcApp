@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { fetchCertificateDetails, fetchUserDetail } from "../../assets/fetch";
-import { Container, Row, Col } from "react-bootstrap";
+import { Container, Row } from "react-bootstrap";
 import {
   Box,
   Button,
@@ -27,53 +27,47 @@ import BasicModal from "../../components/BasicModal";
 import SectionSelectCheckboxes from "../../components/SectionSelectCheckboxes";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
-import { CollapsibleFormDetails } from "../../components/officer/CollapsibleFormDetails";
 import CollapsibleActionHistory from "../../components/officer/CollapsibleActionHistory";
+import CollapsibleFormDetails from "../../components/officer/CollapsibleFormDetails";
 
-// Common styles for form fields
 const commonStyles = {
   "& .MuiOutlinedInput-root": {
-    "& fieldset": { borderColor: "divider" },
-    "&:hover fieldset": { borderColor: "primary.main" },
-    "&.Mui-focused fieldset": {
-      borderColor: "primary.main",
-      borderWidth: "2px",
-    },
-    backgroundColor: "background.paper",
-    color: "text.primary",
-    borderRadius: 1,
+    borderColor: "#E0E0E0",
+    "&:hover fieldset": { borderColor: "#1976D2" },
+    "&.Mui-focused fieldset": { borderColor: "#1976D2", borderWidth: "2px" },
+    backgroundColor: "#FAFAFA",
+    borderRadius: "8px",
+    fontSize: "14px",
   },
   "& .MuiInputLabel-root": {
-    color: "text.secondary",
-    "&.Mui-focused": { color: "primary.main" },
+    color: "#757575",
+    "&.Mui-focused": { color: "#1976D2" },
   },
-  marginBottom: 2,
+  marginBottom: "16px",
 };
 
-// Button styles
 const buttonStyles = {
-  backgroundColor: "primary.main",
-  color: "background.paper",
+  backgroundColor: "#1976D2",
+  color: "#FFFFFF",
   textTransform: "none",
-  fontSize: 14,
-  borderRadius: 2,
+  fontSize: "14px",
+  fontWeight: 500,
+  padding: "8px 16px",
+  borderRadius: "8px",
   "&:hover": {
-    backgroundColor: "primary.dark",
-    transform: "scale(1.02)",
-    transition: "all 0.2s ease",
+    backgroundColor: "#1565C0",
+    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
   },
   "&:disabled": {
-    backgroundColor: "action.disabledBackground",
-    color: "action.disabled",
+    backgroundColor: "#B0BEC5",
+    color: "#FFFFFF",
   },
 };
 
 export default function UserDetails() {
   const location = useLocation();
-  const { applicationId } = location.state || {};
+  const { applicationId, notaction } = location.state || {};
   const [formDetails, setFormDetails] = useState({});
-  const [applicationHistory, setApplicationsHistory] = useState(null);
   const [actionForm, setActionForm] = useState([]);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -99,14 +93,12 @@ export default function UserDetails() {
     formState: { errors },
   } = useForm({ mode: "onChange" });
 
-  // Cleanup blob URLs to prevent memory leaks
   useEffect(() => {
     return () => {
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
     };
   }, [pdfUrl]);
 
-  // Fetch user details
   useEffect(() => {
     async function loadDetails() {
       setLoading(true);
@@ -126,14 +118,12 @@ export default function UserDetails() {
     if (applicationId) loadDetails();
   }, [applicationId]);
 
-  // Handle PDF view
   const handleViewPdf = (url) => {
     setPdfUrl(url);
     setIsSignedPdf(false);
     setPdfModalOpen(true);
   };
 
-  // Generate and download user details PDF
   const handleGenerateUserDetailsPdf = async () => {
     setButtonLoading(true);
     try {
@@ -145,12 +135,11 @@ export default function UserDetails() {
         }
       );
 
-      // Create a blob URL and trigger download
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${applicationId}_UserDetails.pdf`; // Match backend filename
+      link.download = `${applicationId}_UserDetails.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -173,7 +162,6 @@ export default function UserDetails() {
     }
   };
 
-  // Sign PDF
   async function signPdf(pdfBlob, pin) {
     const formData = new FormData();
     formData.append("pdf", pdfBlob, "document.pdf");
@@ -196,7 +184,7 @@ export default function UserDetails() {
       throw new Error(
         "Error signing PDF: " +
           error.message +
-          "Check If Desktop App is started."
+          " Check If Desktop App is started."
       );
     }
   }
@@ -237,7 +225,6 @@ export default function UserDetails() {
     return response.json();
   };
 
-  // Handle PIN submission and sign PDF
   const handlePinSubmit = async () => {
     if (!pin) {
       toast.error("Please enter the USB token PIN.", {
@@ -308,8 +295,8 @@ export default function UserDetails() {
       setPdfModalOpen(true);
 
       if (pendingFormData) {
-        await handleFinalSubmit(pendingFormData); // Submit form after sign
-        setPendingFormData(null); // Clear after submission
+        await handleFinalSubmit(pendingFormData);
+        setPendingFormData(null);
       }
     } catch (error) {
       console.error("Signing error:", error);
@@ -326,7 +313,7 @@ export default function UserDetails() {
 
   const sanctionAction = async () => {
     const response = await axiosInstance.get("/Officer/GetSanctionLetter", {
-      params: { applicationId: applicationId },
+      params: { applicationId },
     });
     const result = response.data;
     if (!result.status) {
@@ -389,7 +376,6 @@ export default function UserDetails() {
     }
   };
 
-  // Handle form submission
   const onSubmit = async (data) => {
     const defaultAction = data.defaultAction?.toLowerCase();
     setButtonLoading(true);
@@ -416,17 +402,15 @@ export default function UserDetails() {
       }
 
       setCertificateDetails(certDetails);
-      setPendingFormData(data); // Save form data for later
-      await sanctionAction(); // Fetch PDF and open modal
+      setPendingFormData(data);
+      await sanctionAction();
       setButtonLoading(false);
       return;
     }
 
-    // For other actions, proceed directly
     await handleFinalSubmit(data);
   };
 
-  // Handle modal close
   const handleModalClose = () => {
     setPdfModalOpen(false);
     if (pdfUrl) URL.revokeObjectURL(pdfUrl);
@@ -436,7 +420,6 @@ export default function UserDetails() {
     setIsSanctionLetter(false);
   };
 
-  // Render form fields
   const renderField = (field, sectionIndex) => {
     switch (field.type) {
       case "text":
@@ -552,7 +535,7 @@ export default function UserDetails() {
                       label={field.label}
                       onChange={onChange}
                       inputRef={ref}
-                      sx={{ color: "text.primary" }}
+                      sx={{ color: "#212121" }}
                       aria-describedby={`field-${field.id}-error`}
                     >
                       {options.map((option) => (
@@ -578,7 +561,7 @@ export default function UserDetails() {
                           <Box key={additionalField.id} sx={{ mb: 2 }}>
                             <InputLabel
                               htmlFor={additionalField.id}
-                              sx={{ color: "text.secondary", mb: 1 }}
+                              sx={{ color: "#757575", mb: 1 }}
                             >
                               {additionalField.label}
                             </InputLabel>
@@ -630,7 +613,7 @@ export default function UserDetails() {
                       onChange({ ...value, selected: e.target.value })
                     }
                     inputRef={ref}
-                    sx={{ color: "text.primary" }}
+                    sx={{ color: "#212121" }}
                     aria-describedby={`field-${field.id}-error`}
                   >
                     {field.options.map((option) => (
@@ -692,8 +675,7 @@ export default function UserDetails() {
           justifyContent: "center",
           alignItems: "center",
           minHeight: "100vh",
-          background:
-            "linear-gradient(135deg, rgb(252, 252, 252) 0%, rgb(240, 236, 236) 100%)",
+          backgroundColor: "#F5F5F5",
         }}
       >
         <CircularProgress color="primary" aria-label="Loading user details" />
@@ -704,25 +686,27 @@ export default function UserDetails() {
   return (
     <Container
       style={{
-        maxWidth: 1200,
-        padding: 0,
+        maxWidth: "80%",
+        padding: "0",
         minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        py: { xs: 3, md: 5 },
+        paddingTop: "24px",
+        paddingBottom: "24px",
       }}
     >
       <Box
         sx={{
           width: "100%",
-          bgcolor: "background.default",
-          borderRadius: 3,
-          boxShadow: "0 8px 3px rgba(0, 0, 0, 0.1)",
-          p: { xs: 3, md: 5 },
+          maxWidth: "100%",
+          bgcolor: "#FFFFFF",
+          borderRadius: "12px",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+          p: 4,
           transition: "transform 0.3s ease-in-out",
           "&:hover": {
-            transform: "translateY(-5px)",
+            transform: "translateY(-4px)",
           },
         }}
         role="main"
@@ -730,13 +714,32 @@ export default function UserDetails() {
       >
         <Typography
           variant="h4"
+          sx={{
+            fontWeight: 700,
+            color: "primary.main",
+            textAlign: "center",
+            mt: 4,
+            mb: 4,
+          }}
+        >
+          Citizen Applications Details
+        </Typography>
+        <CollapsibleFormDetails
+          formDetails={formDetails}
+          formatKey={formatKey}
+          detailsOpen={detailsOpen}
+          setDetailsOpen={setDetailsOpen}
+          onViewPdf={handleViewPdf}
+        />
+
+        <Typography
+          variant="h4"
           id="user-details-title"
           sx={{
-            fontFamily: "'Playfair Display', serif",
+            fontWeight: 700,
             color: "primary.main",
             textAlign: "center",
             mb: 4,
-            fontWeight: 700,
           }}
         >
           Application History
@@ -747,30 +750,6 @@ export default function UserDetails() {
           applicationId={applicationId}
         />
 
-        <Typography
-          variant="h4"
-          id="user-details-title"
-          sx={{
-            fontFamily: "'Playfair Display', serif",
-            color: "primary.main",
-            textAlign: "center",
-            mb: 4,
-            fontWeight: 700,
-          }}
-        >
-          User Details
-        </Typography>
-
-        {/* Collapsible Form Details */}
-        <CollapsibleFormDetails
-          formDetails={formDetails}
-          formatKey={formatKey}
-          detailsOpen={detailsOpen}
-          setDetailsOpen={setDetailsOpen}
-          onViewPdf={handleViewPdf}
-        />
-
-        {/* Generate PDF Button */}
         <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
           <CustomButton
             text="Generate User Details PDF"
@@ -784,112 +763,114 @@ export default function UserDetails() {
           />
         </Box>
 
-        {/* Action Form */}
-        <Typography
-          variant="h5"
-          sx={{
-            fontFamily: "'Playfair Display', serif",
-            color: "primary.main",
-            textAlign: "center",
-            mt: detailsOpen ? 6 : 4,
-            mb: 4,
-            fontWeight: 700,
-          }}
-        >
-          Action Form
-        </Typography>
-        <Box
-          sx={{
-            bgcolor: "background.paper",
-            borderRadius: 3,
-            boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
-            p: { xs: 3, md: 5 },
-            maxWidth: 600,
-            mx: "auto",
-          }}
-        >
-          <form onSubmit={handleSubmit(onSubmit)} autoComplete="off">
-            {actionForm.length > 0 ? (
-              actionForm.map((field, index) => {
-                const selectedValue =
-                  field.type === "select" ? watch(field.name) : null;
-                return (
-                  <Box key={index} sx={{ mb: 2 }}>
-                    {renderField(field, index)}
-                    {field.type === "select" &&
-                      selectedValue === "ReturnToCitizen" && (
-                        <Controller
-                          name="returnFields"
-                          control={control}
-                          defaultValue={[]}
-                          rules={{
-                            validate: (value) =>
-                              value.length > 0 ||
-                              "Select at least one user detail field.",
-                          }}
-                          render={({ field: { onChange, value } }) => (
-                            <Box
-                              sx={{
-                                border: "1px solid",
-                                borderColor: "divider",
-                                borderRadius: 2,
-                                maxHeight: 200,
-                                overflowY: "auto",
-                                p: 2,
-                                mt: 2,
+        {!notaction && (
+          <>
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: 600,
+                color: "primary.main",
+                textAlign: "center",
+                mt: detailsOpen ? 6 : 4,
+                mb: 4,
+              }}
+            >
+              Action Form
+            </Typography>
+            <Box
+              sx={{
+                bgcolor: "background.paper",
+                borderRadius: "12px",
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+                p: 3,
+                maxWidth: "600px",
+                mx: "auto",
+              }}
+            >
+              <form onSubmit={handleSubmit(onSubmit)} autoComplete="off">
+                {actionForm.length > 0 ? (
+                  actionForm.map((field, index) => {
+                    const selectedValue =
+                      field.type === "select" ? watch(field.name) : null;
+                    return (
+                      <Box key={index} sx={{ mb: 2 }}>
+                        {renderField(field, index)}
+                        {field.type === "select" &&
+                          selectedValue === "ReturnToCitizen" && (
+                            <Controller
+                              name="returnFields"
+                              control={control}
+                              defaultValue={[]}
+                              rules={{
+                                validate: (value) =>
+                                  value.length > 0 ||
+                                  "Select at least one user detail field.",
                               }}
-                            >
-                              <Typography
-                                variant="subtitle2"
-                                sx={{ color: "text.secondary", mb: 1 }}
-                              >
-                                Select Fields to Return
-                              </Typography>
-                              <SectionSelectCheckboxes
-                                formDetails={formDetails}
-                                control={control}
-                                name="returnFields"
-                                value={value}
-                                onChange={onChange}
-                                formatKey={formatKey}
-                              />
-                              {errors.returnFields && (
-                                <FormHelperText sx={{ color: "error.main" }}>
-                                  {errors.returnFields.message}
-                                </FormHelperText>
+                              render={({ field: { onChange, value } }) => (
+                                <Box
+                                  sx={{
+                                    border: "1px solid #E0E0E0",
+                                    borderRadius: "8px",
+                                    maxHeight: "200px",
+                                    overflowY: "auto",
+                                    p: 2,
+                                    mt: 2,
+                                  }}
+                                >
+                                  <Typography
+                                    variant="subtitle2"
+                                    sx={{ color: "#757575", mb: 1 }}
+                                  >
+                                    Select Fields to Return
+                                  </Typography>
+                                  <SectionSelectCheckboxes
+                                    formDetails={formDetails}
+                                    control={control}
+                                    name="returnFields"
+                                    value={value}
+                                    onChange={onChange}
+                                    formatKey={formatKey}
+                                  />
+                                  {errors.returnFields && (
+                                    <FormHelperText
+                                      sx={{ color: "error.main" }}
+                                    >
+                                      {errors.returnFields.message}
+                                    </FormHelperText>
+                                  )}
+                                </Box>
                               )}
-                            </Box>
+                            />
                           )}
-                        />
-                      )}
-                  </Box>
-                );
-              })
-            ) : (
-              <Typography
-                sx={{ textAlign: "center", color: "text.secondary", py: 4 }}
-              >
-                No action form fields available.
-              </Typography>
-            )}
-            <Box sx={{ display: "flex", justifyContent: "center" }}>
-              <CustomButton
-                text="Take Action"
-                sx={{ ...buttonStyles, width: "100%", mt: 3 }}
-                disabled={buttonLoading}
-                startIcon={
-                  buttonLoading && (
-                    <CircularProgress size={20} color="inherit" />
-                  )
-                }
-                type="submit"
-                aria-label="Submit action form"
-              />
+                      </Box>
+                    );
+                  })
+                ) : (
+                  <Typography
+                    sx={{ textAlign: "center", color: "#B0BEC5", py: 4 }}
+                  >
+                    No action form fields available.
+                  </Typography>
+                )}
+                <Box sx={{ display: "flex", justifyContent: "center" }}>
+                  <CustomButton
+                    text="Take Action"
+                    sx={{ ...buttonStyles, width: "100%", mt: 3 }}
+                    disabled={buttonLoading}
+                    startIcon={
+                      buttonLoading && (
+                        <CircularProgress size={20} color="inherit" />
+                      )
+                    }
+                    type="submit"
+                    aria-label="Submit action form"
+                  />
+                </Box>
+              </form>
             </Box>
-          </form>
-        </Box>
+          </>
+        )}
 
-        {/* Confirmation Dialog */}
         <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
           <DialogTitle>Enter USB Token PIN</DialogTitle>
           <DialogContent>
@@ -926,7 +907,6 @@ export default function UserDetails() {
           </DialogActions>
         </Dialog>
 
-        {/* PDF Modal */}
         <BasicModal
           open={pdfModalOpen}
           handleClose={handleModalClose}
@@ -939,9 +919,9 @@ export default function UserDetails() {
           sx={{
             "& .MuiDialog-paper": {
               width: { xs: "90%", md: "80%" },
-              maxWidth: 800,
+              maxWidth: "800px",
               height: "80vh",
-              borderRadius: 2,
+              borderRadius: "12px",
             },
           }}
         />

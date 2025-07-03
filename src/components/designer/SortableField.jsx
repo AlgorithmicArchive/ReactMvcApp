@@ -236,7 +236,7 @@ const SortableField = ({
                   <DeleteIcon />
                 </IconButton>
               </Tooltip>
-              {field.type === "select" && (
+              {(field.type === "select" || field.type === "enclosure") && (
                 <Tooltip title="Additional Settings">
                   <IconButton
                     onClick={(e) => {

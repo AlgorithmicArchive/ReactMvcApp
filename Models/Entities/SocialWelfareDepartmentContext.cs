@@ -19,11 +19,19 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     public virtual DbSet<ApplicationPerDistrict> ApplicationPerDistricts { get; set; }
 
+    public virtual DbSet<Block> Blocks { get; set; }
+
     public virtual DbSet<Certificate> Certificates { get; set; }
 
     public virtual DbSet<CitizenApplication> CitizenApplications { get; set; }
 
     public virtual DbSet<District> Districts { get; set; }
+
+    public virtual DbSet<HalqaPanchayat> HalqaPanchayats { get; set; }
+
+    public virtual DbSet<Muncipality> Muncipalities { get; set; }
+
+    public virtual DbSet<MuncipalityType> MuncipalityTypes { get; set; }
 
     public virtual DbSet<OfficerDetail> OfficerDetails { get; set; }
 
@@ -38,6 +46,10 @@ public partial class SocialWelfareDepartmentContext : DbContext
     public virtual DbSet<Tehsil> Tehsils { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
+
+    public virtual DbSet<Village> Villages { get; set; }
+
+    public virtual DbSet<Ward> Wards { get; set; }
 
     public virtual DbSet<WebService> WebServices { get; set; }
 
@@ -80,6 +92,16 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.Uuid).HasColumnName("UUID");
             entity.Property(e => e.FinancialYear)
                 .HasMaxLength(50)
+                .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<Block>(entity =>
+        {
+            entity.HasKey(e => e.Uuid);
+
+            entity.Property(e => e.Uuid).HasColumnName("UUID");
+            entity.Property(e => e.BlockName)
+                .HasMaxLength(255)
                 .IsUnicode(false);
         });
 
@@ -142,6 +164,40 @@ public partial class SocialWelfareDepartmentContext : DbContext
                 .HasMaxLength(50)
                 .IsUnicode(false);
             entity.Property(e => e.Uuid).HasColumnName("UUID");
+        });
+
+        modelBuilder.Entity<HalqaPanchayat>(entity =>
+        {
+            entity
+                .HasNoKey()
+                .ToTable("HalqaPanchayat");
+
+            entity.Property(e => e.HalqaPanchayatName)
+                .HasMaxLength(255)
+                .IsUnicode(false);
+            entity.Property(e => e.Uuid)
+                .ValueGeneratedOnAdd()
+                .HasColumnName("UUID");
+        });
+
+        modelBuilder.Entity<Muncipality>(entity =>
+        {
+            entity.HasKey(e => e.Uuid);
+
+            entity.Property(e => e.Uuid).HasColumnName("UUID");
+            entity.Property(e => e.MuncipalityName)
+                .HasMaxLength(255)
+                .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<MuncipalityType>(entity =>
+        {
+            entity.HasKey(e => e.Uuid);
+
+            entity.Property(e => e.Uuid).HasColumnName("UUID");
+            entity.Property(e => e.TypeName)
+                .HasMaxLength(255)
+                .IsUnicode(false);
         });
 
         modelBuilder.Entity<OfficerDetail>(entity =>
@@ -349,6 +405,23 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.Username)
                 .HasMaxLength(100)
                 .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<Village>(entity =>
+        {
+            entity.HasKey(e => e.Uuid);
+
+            entity.Property(e => e.Uuid).HasColumnName("UUID");
+            entity.Property(e => e.VillageName)
+                .HasMaxLength(255)
+                .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<Ward>(entity =>
+        {
+            entity.HasKey(e => e.Uuid);
+
+            entity.Property(e => e.Uuid).HasColumnName("UUID");
         });
 
         modelBuilder.Entity<WebService>(entity =>

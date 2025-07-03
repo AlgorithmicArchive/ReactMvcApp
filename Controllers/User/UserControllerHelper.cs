@@ -21,47 +21,7 @@ namespace SahayataNidhi.Controllers.User
 
             return Json(new { status = true, url = "/user/form" });
         }
-        [HttpGet]
-        public dynamic? GetUserDetails()
-        {
-            // Retrieve userId from JWT token
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            if (userId == null)
-            {
-                return null; // Handle case where userId is not available
-            }
-
-            int initiated = dbcontext.CitizenApplications
-                .Where(u => u.CitizenId.ToString() == userId && u.Status != "Incomplete")
-                .Count();
-            int incomplete = dbcontext.CitizenApplications
-                .Where(u => u.CitizenId.ToString() == userId && u.Status == "Incomplete")
-                .Count();
-            int sanctioned = dbcontext.CitizenApplications
-                .Where(u => u.CitizenId.ToString() == userId &&
-                           (u.Status == "Sanctioned" || u.Status == "Dispatched" || u.Status == "Deposited" || u.Status == "Disbursed" || u.Status == "Failure"))
-                .Count();
-            int paymentDisbursed = dbcontext.CitizenApplications.Where(u => u.CitizenId.ToString() == userId && u.Status == "Disbursed").Count();
-            int paymentFailed = dbcontext.CitizenApplications.Where(u => u.CitizenId.ToString() == userId && u.Status == "Failure").Count();
-
-            var userDetails = dbcontext.Users.FirstOrDefault(u => u.UserId.ToString() == userId);
-
-            var details = new
-            {
-                userDetails!.Name,
-                userDetails.Username,
-                userDetails.Profile,
-                userDetails.Email,
-                userDetails.MobileNumber,
-                userDetails.BackupCodes,
-                initiated,
-                incomplete,
-                sanctioned
-            };
-
-            return details;
-        }
+    
         public static string FormatKey(string input)
         {
             if (string.IsNullOrEmpty(input))

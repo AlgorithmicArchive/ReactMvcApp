@@ -78,7 +78,7 @@ export default function CreateWorkflow() {
     canForwardToPlayer: false,
     canReject: false,
     canPull: false,
-    canHavePool: false, // Added canHavePool
+    canHavePool: false,
     actionForm: [],
     prevPlayerId: null,
     nextPlayerId: null,
@@ -166,11 +166,19 @@ export default function CreateWorkflow() {
       prevPlayers.map((player) => {
         const defaultFields = getDefaultActionFields(player);
         const updatedActionForm = player.actionForm.map((field) => {
-          if (field.name === "defaultAction" || field.name === "Remarks") {
-            const newField = defaultFields.find((f) => f.name === field.name);
-            return newField ? newField : field;
+          if (field.name === "defaultAction") {
+            const newActionField = defaultFields.find(
+              (f) => f.name === "defaultAction"
+            );
+            if (newActionField) {
+              return {
+                ...field,
+                options: newActionField.options, // Only update options
+                label: newActionField.label, // Update label to reflect designation changes
+              };
+            }
           }
-          return field;
+          return field; // Preserve custom fields and Remarks
         });
         return { ...player, actionForm: updatedActionForm };
       })
@@ -193,9 +201,13 @@ export default function CreateWorkflow() {
 
   useEffect(() => {
     async function fetchData() {
-      const response = await axiosInstance.get("/Base/GetServices");
-      if (response.data.status && response.data.services) {
-        setServices(response.data.services);
+      try {
+        const response = await axiosInstance.get("/Base/GetServices");
+        if (response.data.status && response.data.services) {
+          setServices(response.data.services);
+        }
+      } catch (error) {
+        console.error("Error fetching services:", error);
       }
     }
     fetchData();
@@ -241,7 +253,7 @@ export default function CreateWorkflow() {
       canForwardToPlayer: false,
       canReject: false,
       canPull: false,
-      canHavePool: false, // Added canHavePool
+      canHavePool: false,
       actionForm: [],
       status: "",
       completedAt: null,
@@ -296,15 +308,6 @@ export default function CreateWorkflow() {
   };
 
   const updatePlayer = (updatedPlayer) => {
-    const defaultFields = getDefaultActionFields(updatedPlayer);
-    const updatedActionForm = updatedPlayer.actionForm.map((field) => {
-      if (field.name === "defaultAction" || field.name === "Remarks") {
-        const newField = defaultFields.find((f) => f.name === field.name);
-        return newField ? newField : field;
-      }
-      return field;
-    });
-    updatedPlayer.actionForm = updatedActionForm;
     setPlayers((prev) =>
       prev.map((p) =>
         p.playerId === updatedPlayer.playerId ? updatedPlayer : p
@@ -312,6 +315,7 @@ export default function CreateWorkflow() {
     );
     updateAllDefaultActionFields();
     setIsEditModalOpen(false);
+    setSelectedPlayer(null);
   };
 
   const sensors = useSensors(useSensor(PointerSensor));

@@ -260,7 +260,6 @@ export default function CreateService() {
     formdata.append("departmentName", departmentName);
     formdata.append("serviceId", selectedServiceId);
     formdata.append("formElement", JSON.stringify(sections));
-    console.log("Saving formElement:", JSON.stringify(sections, null, 2));
 
     try {
       const response = await axiosInstance.post("/Base/FormElement", formdata);
@@ -292,6 +291,7 @@ export default function CreateService() {
   };
 
   const updateField = (updatedField) => {
+    console.log("UPDATED Field", updatedField);
     setSections((prev) => {
       // If sectionId is present, update main field
       if (updatedField.sectionId) {
@@ -323,7 +323,6 @@ export default function CreateService() {
         );
       }
     });
-    console.log("Updated field in CreateService:", updatedField);
   };
 
   const handleRemoveField = (sectionId, fieldId) => {
@@ -616,6 +615,7 @@ export default function CreateService() {
       )}
       {isAdditionalModalOpen && selectedField && (
         <AdditionalFieldsModal
+          sections={sections}
           selectedField={selectedField}
           onClose={() => {
             setIsAdditionalModalOpen(false);

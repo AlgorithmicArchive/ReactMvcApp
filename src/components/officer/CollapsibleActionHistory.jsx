@@ -1,8 +1,25 @@
-import { Box, Button, Tooltip, Collapse } from "@mui/material";
 import React from "react";
+import { Box, Button, Tooltip, Collapse } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ServerSideTable from "../ServerSideTable";
+
+const buttonStyles = {
+  backgroundColor: "#FFFFFF",
+  color: "primary.main",
+  textTransform: "none",
+  fontSize: "14px",
+  fontWeight: 500,
+  padding: "8px 16px",
+  border: "1px solid",
+  borderColor: "primary.main",
+  borderRadius: "8px",
+  "&:hover": {
+    backgroundColor: "#E3F2FD",
+    borderColor: "#1565C0",
+    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+  },
+};
 
 const CollapsibleActionHistory = ({
   detailsOpen,
@@ -10,43 +27,37 @@ const CollapsibleActionHistory = ({
   applicationId,
 }) => {
   return (
-    <Box sx={{ width: "100%", maxWidth: 800, mx: "auto", mb: 4 }}>
+    <Box sx={{ width: "100%", mx: "auto", mb: 3 }}>
       <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
         <Tooltip
-          title={detailsOpen ? "Collapse details" : "Expand details"}
+          title={detailsOpen ? "Collapse history" : "Expand history"}
           arrow
         >
           <Button
-            onClick={() => setDetailsOpen((prev) => !prev)}
-            sx={{
-              backgroundColor: "primary.main",
-              color: "background.paper",
-              fontWeight: 600,
-              textTransform: "none",
-              py: 1,
-              px: 3,
-              borderRadius: 2,
-              "&:hover": {
-                backgroundColor: "primary.dark",
-                transform: "scale(1.02)",
-                transition: "all 0.2s ease",
-              },
-            }}
+            onClick={() => setDetailsOpen(!detailsOpen)}
+            sx={buttonStyles}
             startIcon={detailsOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
             aria-expanded={detailsOpen}
-            aria-label={detailsOpen ? "Collapse details" : "Expand details"}
+            aria-label={detailsOpen ? "Collapse history" : "Expand history"}
           >
-            {detailsOpen ? "Collapse" : "Expand"} Details
+            {detailsOpen ? "Hide History" : "Show History"}
           </Button>
         </Tooltip>
       </Box>
-
       <Collapse in={detailsOpen} timeout={500}>
-        <ServerSideTable
-          url={"/Officer/GetApplicationHistory"}
-          extraParams={{ applicationId: applicationId }}
-          actionFunctions={{}}
-        />
+        <Box
+          sx={{
+            borderRadius: "12px",
+            overflow: "hidden",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+          }}
+        >
+          <ServerSideTable
+            url={"/Officer/GetApplicationHistory"}
+            extraParams={{ applicationId }}
+            actionFunctions={{}}
+          />
+        </Box>
       </Collapse>
     </Box>
   );

@@ -14,6 +14,8 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SahayataNidhi.Models.Entities;
 using iText.IO.Image;
+using iText.Kernel.Colors;
+using iText.Layout.Borders;
 
 namespace SahayataNidhi.Controllers.Officer
 {
@@ -160,13 +162,13 @@ namespace SahayataNidhi.Controllers.Officer
                 });
             }
 
-            countList.Add(new
-            {
-                label = "Disbursed",
-                count = counts.DisbursedCount,
-                bgColor = "#ABCDEF",
-                textColor = "#123456"
-            });
+            // countList.Add(new
+            // {
+            //     label = "Disbursed",
+            //     count = counts.DisbursedCount,
+            //     bgColor = "#ABCDEF",
+            //     textColor = "#123456"
+            // });
 
             // Return the count list and whether the officer can sanction.
             return Json(new { countList, canSanction = (bool)authorities.canSanction, canHavePool = (bool)authorities.canHavePool });
@@ -320,8 +322,8 @@ namespace SahayataNidhi.Controllers.Officer
             var serviceId = new SqlParameter("@ServiceId", ServiceId);
 
             var response = dbcontext.CitizenApplications
-                .FromSqlRaw("EXEC GetApplicationsForReport  @AccessCode, @ApplicationStatus, @ServiceId",
-                   accessCode, applicationStatus, serviceId)
+                .FromSqlRaw("EXEC GetApplicationsForReport @AccessCode, @ApplicationStatus, @ServiceId",
+                    accessCode, applicationStatus, serviceId)
                 .ToList();
 
             _logger.LogInformation($"----------Type : {type}------------------");
@@ -357,6 +359,10 @@ namespace SahayataNidhi.Controllers.Officer
             {
                 columns.Insert(4, new { accessorKey = "sanctionedon", header = "Sanctioned Date" });
             }
+            else if (type == "returntoedit")
+            {
+                columns.Insert(4, new { accessorKey = "returnedOn", header = "Returned On" });
+            }
 
             List<dynamic> data = [];
 
@@ -376,7 +382,6 @@ namespace SahayataNidhi.Controllers.Officer
 
                 if (type == "pending")
                 {
-
                     string officerRole = workFlowSteps![currentPalyerIndex].designation;
                     item["currentlyWith"] = officerRole;
                 }
@@ -384,6 +389,11 @@ namespace SahayataNidhi.Controllers.Officer
                 {
                     string completedAt = workFlowSteps![currentPalyerIndex].completedAt;
                     item["sanctionedon"] = completedAt;
+                }
+                else if (type == "returntoedit")
+                {
+                    string returnedAt = workFlowSteps![currentPalyerIndex].completedAt;
+                    item["returnedOn"] = returnedAt;
                 }
 
                 data.Add(item);
@@ -414,6 +424,7 @@ namespace SahayataNidhi.Controllers.Officer
 
             // Deserialize form details
             JToken formDetailsToken = JToken.Parse(details.FormDetails!);
+            formDetailsToken = ReorderFormDetails(formDetailsToken);
 
             // Deserialize workflow
             var officerDetails = JsonConvert.DeserializeObject<dynamic>(details.WorkFlow!);
@@ -739,24 +750,39 @@ namespace SahayataNidhi.Controllers.Officer
                 var document = new Document(pdf, PageSize.A4);
                 document.SetMargins(20, 20, 20, 20);
 
-                // Add title
-                document.Add(new Paragraph("User Details")
-                    .SetFontSize(16)
+                // Add main title with styling similar to screen
+                document.Add(new Paragraph("Citizen Applications Details")
+                    .SetFontSize(18)
                     .SetBold()
-                    .SetTextAlignment(TextAlignment.CENTER));
+                    .SetTextAlignment(TextAlignment.CENTER)
+                    .SetMarginBottom(20)
+                    .SetFontColor(new DeviceRgb(25, 118, 210))); // Primary blue color
 
                 // Parse FormDetails JSON
                 var formDetails = JObject.Parse(application.FormDetails!);
 
-                // Iterate through each section except Documents
+                // Create a table for better structure (2 columns for label-value pairs)
+                var detailsTable = new Table(2);
+                detailsTable.SetWidth(UnitValue.CreatePercentValue(100));
+                detailsTable.SetMarginBottom(20);
+
+                // Add section headers and details
                 foreach (var section in formDetails)
                 {
-                    if (section.Key == "Documents") continue; // Skip Documents section for textual part
+                    if (section.Key == "Documents") continue; // Handle Documents separately
 
-                    document.Add(new Paragraph(section.Key)
-                        .SetFontSize(14)
-                        .SetBold()
-                        .SetMarginTop(10));
+                    // Add section header spanning both columns
+                    var sectionHeader = new Cell(1, 2)
+                        .Add(new Paragraph(FormatSectionKey(section.Key))
+                            .SetFontSize(14)
+                            .SetBold()
+                            .SetFontColor(new DeviceRgb(25, 118, 210))
+                            .SetMarginTop(10)
+                            .SetMarginBottom(5))
+                        .SetBorder(Border.NO_BORDER)
+                        .SetBackgroundColor(new DeviceRgb(245, 245, 245));
+
+                    detailsTable.AddCell(sectionHeader);
 
                     if (section.Value is JArray sectionArray)
                     {
@@ -768,69 +794,105 @@ namespace SahayataNidhi.Controllers.Officer
                             if (!string.IsNullOrEmpty(label) && !string.IsNullOrEmpty(value))
                             {
                                 // Convert integer values for District and Tehsil fields
-                                string displayValue = value;
-                                if (label.Contains("District", StringComparison.OrdinalIgnoreCase) && int.TryParse(value, out int districtId))
-                                {
-                                    displayValue = GetDistrictName(districtId);
-                                }
-                                else if (label.Contains("Tehsil", StringComparison.OrdinalIgnoreCase) && int.TryParse(value, out int tehsilId))
-                                {
-                                    displayValue = GetTehsilName(tehsilId);
-                                }
+                                string displayValue = ConvertValueForDisplay(label, value);
 
-                                document.Add(new Paragraph($"{label}: {displayValue}")
-                                    .SetFontSize(12)
-                                    .SetMarginLeft(10));
-                            }
+                                // Add label cell
+                                var labelCell = new Cell()
+                                    .Add(new Paragraph(FormatFieldLabel(label))
+                                        .SetFontSize(11)
+                                        .SetBold()
+                                        .SetFontColor(new DeviceRgb(117, 117, 117)))
+                                    .SetBorder(Border.NO_BORDER)
+                                    .SetPaddingLeft(10)
+                                    .SetPaddingRight(5)
+                                    .SetPaddingTop(3)
+                                    .SetPaddingBottom(3);
 
-                            // Handle additional fields (e.g., in Pension Type)
-                            if (item["additionalFields"] is JArray additionalFields)
-                            {
-                                foreach (var additionalField in additionalFields)
+                                // Add value cell
+                                var valueCell = new Cell()
+                                    .Add(new Paragraph(displayValue)
+                                        .SetFontSize(11)
+                                        .SetFontColor(new DeviceRgb(33, 33, 33)))
+                                    .SetBorder(Border.NO_BORDER)
+                                    .SetPaddingLeft(5)
+                                    .SetPaddingRight(10)
+                                    .SetPaddingTop(3)
+                                    .SetPaddingBottom(3);
+
+                                detailsTable.AddCell(labelCell);
+                                detailsTable.AddCell(valueCell);
+
+                                // Handle additional fields (e.g., in Pension Type)
+                                if (item["additionalFields"] is JArray additionalFields)
                                 {
-                                    var addLabel = additionalField["label"]?.ToString();
-                                    var addValue = additionalField["value"]?.ToString();
-                                    if (!string.IsNullOrEmpty(addLabel) && !string.IsNullOrEmpty(addValue))
+                                    foreach (var additionalField in additionalFields)
                                     {
-                                        // Convert integer values for District and Tehsil in additional fields
-                                        string addDisplayValue = addValue;
-                                        if (addLabel.Contains("District", StringComparison.OrdinalIgnoreCase) && int.TryParse(addValue, out int districtId))
+                                        var addLabel = additionalField["label"]?.ToString();
+                                        var addValue = additionalField["value"]?.ToString();
+                                        if (!string.IsNullOrEmpty(addLabel) && !string.IsNullOrEmpty(addValue))
                                         {
-                                            addDisplayValue = GetDistrictName(districtId);
-                                        }
-                                        else if (addLabel.Contains("Tehsil", StringComparison.OrdinalIgnoreCase) && int.TryParse(addValue, out int tehsilId))
-                                        {
-                                            addDisplayValue = GetTehsilName(tehsilId);
-                                        }
+                                            string addDisplayValue = ConvertValueForDisplay(addLabel, addValue);
 
-                                        document.Add(new Paragraph($"{addLabel}: {addDisplayValue}")
-                                            .SetFontSize(12)
-                                            .SetMarginLeft(20));
-                                    }
+                                            var addLabelCell = new Cell()
+                                                .Add(new Paragraph(FormatFieldLabel(addLabel))
+                                                    .SetFontSize(10)
+                                                    .SetBold()
+                                                    .SetFontColor(new DeviceRgb(117, 117, 117)))
+                                                .SetBorder(Border.NO_BORDER)
+                                                .SetPaddingLeft(20)
+                                                .SetPaddingRight(5)
+                                                .SetPaddingTop(2)
+                                                .SetPaddingBottom(2);
 
-                                    // Handle nested additional fields
-                                    if (additionalField["additionalFields"] is JArray nestedFields)
-                                    {
-                                        foreach (var nestedField in nestedFields)
-                                        {
-                                            var nestedLabel = nestedField["label"]?.ToString();
-                                            var nestedValue = nestedField["value"]?.ToString();
-                                            if (!string.IsNullOrEmpty(nestedLabel) && !string.IsNullOrEmpty(nestedValue))
+                                            var addValueCell = new Cell()
+                                                .Add(new Paragraph(addDisplayValue)
+                                                    .SetFontSize(10)
+                                                    .SetFontColor(new DeviceRgb(33, 33, 33)))
+                                                .SetBorder(Border.NO_BORDER)
+                                                .SetPaddingLeft(5)
+                                                .SetPaddingRight(10)
+                                                .SetPaddingTop(2)
+                                                .SetPaddingBottom(2);
+
+                                            detailsTable.AddCell(addLabelCell);
+                                            detailsTable.AddCell(addValueCell);
+
+                                            // Handle nested additional fields
+                                            if (additionalField["additionalFields"] is JArray nestedFields)
                                             {
-                                                // Convert integer values for District and Tehsil in nested fields
-                                                string nestedDisplayValue = nestedValue;
-                                                if (nestedLabel.Contains("District", StringComparison.OrdinalIgnoreCase) && int.TryParse(nestedValue, out int districtId))
+                                                foreach (var nestedField in nestedFields)
                                                 {
-                                                    nestedDisplayValue = GetDistrictName(districtId);
-                                                }
-                                                else if (nestedLabel.Contains("Tehsil", StringComparison.OrdinalIgnoreCase) && int.TryParse(nestedValue, out int tehsilId))
-                                                {
-                                                    nestedDisplayValue = GetTehsilName(tehsilId);
-                                                }
+                                                    var nestedLabel = nestedField["label"]?.ToString();
+                                                    var nestedValue = nestedField["value"]?.ToString();
+                                                    if (!string.IsNullOrEmpty(nestedLabel) && !string.IsNullOrEmpty(nestedValue))
+                                                    {
+                                                        string nestedDisplayValue = ConvertValueForDisplay(nestedLabel, nestedValue);
 
-                                                document.Add(new Paragraph($"{nestedLabel}: {nestedDisplayValue}")
-                                                    .SetFontSize(12)
-                                                    .SetMarginLeft(30));
+                                                        var nestedLabelCell = new Cell()
+                                                            .Add(new Paragraph(FormatFieldLabel(nestedLabel))
+                                                                .SetFontSize(10)
+                                                                .SetBold()
+                                                                .SetFontColor(new DeviceRgb(117, 117, 117)))
+                                                            .SetBorder(Border.NO_BORDER)
+                                                            .SetPaddingLeft(30)
+                                                            .SetPaddingRight(5)
+                                                            .SetPaddingTop(2)
+                                                            .SetPaddingBottom(2);
+
+                                                        var nestedValueCell = new Cell()
+                                                            .Add(new Paragraph(nestedDisplayValue)
+                                                                .SetFontSize(10)
+                                                                .SetFontColor(new DeviceRgb(33, 33, 33)))
+                                                            .SetBorder(Border.NO_BORDER)
+                                                            .SetPaddingLeft(5)
+                                                            .SetPaddingRight(10)
+                                                            .SetPaddingTop(2)
+                                                            .SetPaddingBottom(2);
+
+                                                        detailsTable.AddCell(nestedLabelCell);
+                                                        detailsTable.AddCell(nestedValueCell);
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -840,14 +902,18 @@ namespace SahayataNidhi.Controllers.Officer
                     }
                 }
 
+                document.Add(detailsTable);
+
                 // Add attached documents from Documents section
                 var documents = formDetails["Documents"] as JArray;
                 if (documents != null && documents.Any())
                 {
                     document.Add(new Paragraph("Attached Documents")
-                        .SetFontSize(14)
+                        .SetFontSize(16)
                         .SetBold()
-                        .SetMarginTop(20));
+                        .SetFontColor(new DeviceRgb(25, 118, 210))
+                        .SetMarginTop(20)
+                        .SetMarginBottom(10));
 
                     foreach (var doc in documents)
                     {
@@ -863,14 +929,20 @@ namespace SahayataNidhi.Controllers.Officer
                                 {
                                     document.Add(new Paragraph($"Document: {enclosure}")
                                         .SetFontSize(12)
-                                        .SetMarginTop(10));
+                                        .SetBold()
+                                        .SetMarginTop(10)
+                                        .SetMarginBottom(5));
 
                                     // Handle image attachments
                                     if (filePath.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
-                                        filePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                                        filePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
+                                        filePath.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase))
                                     {
                                         var imageData = ImageDataFactory.Create(System.IO.File.ReadAllBytes(fullPath));
-                                        var image = new Image(imageData).ScaleToFit(500, 700);
+                                        var image = new Image(imageData)
+                                            .ScaleToFit(500, 700)
+                                            .SetHorizontalAlignment(HorizontalAlignment.CENTER)
+                                            .SetMarginBottom(10);
                                         document.Add(image);
                                     }
                                     // Handle PDF attachments
@@ -887,14 +959,16 @@ namespace SahayataNidhi.Controllers.Officer
                                 {
                                     document.Add(new Paragraph($"Error loading document {enclosure}: {ex.Message}")
                                         .SetFontSize(12)
-                                        .SetFontColor(iText.Kernel.Colors.ColorConstants.RED));
+                                        .SetFontColor(iText.Kernel.Colors.ColorConstants.RED)
+                                        .SetMarginBottom(5));
                                 }
                             }
                             else
                             {
                                 document.Add(new Paragraph($"Document {enclosure}: File not found")
                                     .SetFontSize(12)
-                                    .SetFontColor(iText.Kernel.Colors.ColorConstants.RED));
+                                    .SetFontColor(iText.Kernel.Colors.ColorConstants.RED)
+                                    .SetMarginBottom(5));
                             }
                         }
                     }
