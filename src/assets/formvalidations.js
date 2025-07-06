@@ -223,3 +223,7 @@ export const validationFunctionsList = [
   { id: "duplicateAccountNumber", label: "Duplicate Account Number" },
   { id: "validateFile", label: "Validate File" },
 ];
+
+export const transformationFunctionsList = [
+  { id: "CaptilizeAlphabet", label: "Captital Alphabets" },
+];

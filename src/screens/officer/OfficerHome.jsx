@@ -11,11 +11,23 @@ import {
   FormHelperText,
   TextField,
   Typography,
+  CircularProgress,
+  Card,
+  CardContent,
 } from "@mui/material";
 import { useForm } from "react-hook-form";
 import axiosInstance from "../../axiosConfig";
 import { Container, Row, Col } from "react-bootstrap";
-import StatusCountCard from "../../components/StatusCountCard";
+import { Bar, Pie } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  ArcElement,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
+  Legend,
+} from "chart.js";
 import ServerSideTable from "../../components/ServerSideTable";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -23,13 +35,57 @@ import "react-toastify/dist/ReactToastify.css";
 import BasicModal from "../../components/BasicModal";
 import styled from "@emotion/styled";
 
-// Styled components for modern look
+// Register Chart.js components
+ChartJS.register(
+  ArcElement,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
+  Legend
+);
+
+// Styled components for Reports-like design
+const StyledCard = styled(Card)`
+  background: linear-gradient(135deg, #ffffff, #f8f9fa);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+  }
+`;
+
+const StatCard = styled(Card)`
+  border-radius: 12px;
+  color: white;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  &:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.1));
+    z-index: 0;
+  }
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  }
+`;
+
 const StyledButton = styled(Button)`
   background: linear-gradient(45deg, #1976d2, #2196f3);
   padding: 12px 24px;
   font-weight: 600;
   border-radius: 8px;
   text-transform: none;
+  color: #ffffff;
   &:hover {
     background: linear-gradient(45deg, #1565c0, #1976d2);
     transform: scale(1.05);
@@ -43,15 +99,24 @@ const StyledButton = styled(Button)`
 const StyledDialog = styled(Dialog)`
   & .MuiDialog-paper {
     border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    background: linear-gradient(135deg, #ffffff, #f8f9fa);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    background: #ffffff;
+    padding: 16px;
+    max-width: 500px;
   }
 `;
 
 export default function OfficerHome() {
   const [services, setServices] = useState([]);
-  const [serviceId, setServiceId] = useState();
+  const [serviceId, setServiceId] = useState("");
   const [countList, setCountList] = useState([]);
+  const [counts, setCounts] = useState({
+    total: 0,
+    pending: 0,
+    citizenPending: 0,
+    rejected: 0,
+    sanctioned: 0,
+  });
   const [canSanction, setCanSanction] = useState(false);
   const [canHavePool, setCanHavePool] = useState(false);
   const [type, setType] = useState("");
@@ -67,6 +132,10 @@ export default function OfficerHome() {
   const [currentApplicationId, setCurrentApplicationId] = useState("");
   const [pendingIds, setPendingIds] = useState([]);
   const [currentIdIndex, setCurrentIdIndex] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [officerRole, setOfficerRole] = useState("");
+  const [officerArea, setOfficerArea] = useState("");
 
   const tableRef = useRef(null);
 
@@ -80,6 +149,8 @@ export default function OfficerHome() {
 
   // Fetch application counts
   const handleRecords = async (serviceId) => {
+    setLoading(true);
+    setError(null);
     try {
       setServiceId(serviceId);
       const response = await axiosInstance.get(
@@ -91,20 +162,47 @@ export default function OfficerHome() {
       setCountList(response.data.countList);
       setCanSanction(response.data.canSanction);
       setCanHavePool(response.data.canHavePool);
+
+      // Map countList to counts object for charts
+      const newCounts = {
+        total:
+          response.data.countList.find(
+            (item) => item.label === "Total Applications"
+          )?.count || 0,
+        pending:
+          response.data.countList.find((item) => item.label === "Pending")
+            ?.count || 0,
+        citizenPending:
+          response.data.countList.find(
+            (item) => item.label === "Citizen Pending"
+          )?.count || 0,
+        rejected:
+          response.data.countList.find((item) => item.label === "Rejected")
+            ?.count || 0,
+        sanctioned:
+          response.data.countList.find((item) => item.label === "Sanctioned")
+            ?.count || 0,
+      };
+      setCounts(newCounts);
     } catch (error) {
-      console.error("Failed to fetch application counts:", error);
+      setError("Failed to fetch application counts.");
       toast.error("Failed to load application counts. Please try again.", {
-        position: "top-center",
+        position: "top-right",
         autoClose: 3000,
         theme: "colored",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   // Handle card click
   const handleCardClick = async (statusName) => {
-    console.log(statusName);
-    setType(statusName == "Citizen Pending" ? "returntoedit" : statusName);
+    setType(
+      statusName === "Citizen Pending"
+        ? "returntoedit"
+        : statusName.toLowerCase()
+    );
     setShowTable(true);
     setTimeout(() => {
       tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -114,12 +212,14 @@ export default function OfficerHome() {
   // Action functions for row actions
   const actionFunctions = {
     handleOpenApplication: (row) => {
+      console.log("OPEN APPLICATION");
       const userdata = row.original;
       navigate("/officer/userDetails", {
         state: { applicationId: userdata.referenceNumber, notaction: false },
       });
     },
     handleViewApplication: (row) => {
+      console.log("VIEW APPLICATIONS");
       const data = row.original;
       navigate("/officer/userDetails", {
         state: { applicationId: data.referenceNumber, notaction: true },
@@ -131,19 +231,17 @@ export default function OfficerHome() {
         const response = await axiosInstance.get("/Officer/PullApplication", {
           params: { applicationId: data.referenceNumber },
         });
-        const result = response.data;
-        if (result.status) {
+        if (response.data.status) {
           toast.success("Successfully pulled application!", {
-            position: "top-center",
+            position: "top-right",
             autoClose: 2000,
             theme: "colored",
           });
           window.location.reload();
         }
       } catch (error) {
-        console.error("Error pulling application:", error);
         toast.error("Failed to pull application. Please try again.", {
-          position: "top-center",
+          position: "top-right",
           autoClose: 3000,
           theme: "colored",
         });
@@ -155,7 +253,7 @@ export default function OfficerHome() {
   const handlePushToPool = async (selectedRows) => {
     if (selectedRows.length === 0) {
       toast.error("No applications selected.", {
-        position: "top-center",
+        position: "top-right",
         autoClose: 3000,
         theme: "colored",
       });
@@ -175,15 +273,14 @@ export default function OfficerHome() {
         },
       });
       toast.success("Successfully pushed to pool!", {
-        position: "top-center",
+        position: "top-right",
         autoClose: 2000,
         theme: "colored",
       });
       handleRecords(serviceId);
     } catch (error) {
-      console.error("Error pushing to pool:", error);
       toast.error("Failed to push to pool. Please try again.", {
-        position: "top-center",
+        position: "top-right",
         autoClose: 3000,
         theme: "colored",
       });
@@ -250,7 +347,6 @@ export default function OfficerHome() {
       }
 
       if (selectedAction === "Sanction") {
-        // Handle Sanction: Fetch PDF and open modal
         const pdfResponse = await fetch(result.path);
         if (!pdfResponse.ok) {
           throw new Error("Failed to fetch PDF from server");
@@ -265,7 +361,6 @@ export default function OfficerHome() {
         setIsSignedPdf(false);
         setPdfModalOpen(true);
       } else {
-        // Handle Reject: Remove from pool and proceed
         try {
           await axiosInstance.get("/Officer/RemoveFromPool", {
             params: {
@@ -274,20 +369,18 @@ export default function OfficerHome() {
             },
           });
           toast.success("Application rejected and removed from pool!", {
-            position: "top-center",
+            position: "top-right",
             autoClose: 2000,
             theme: "colored",
           });
         } catch (error) {
-          console.error("Error removing from pool:", error);
           toast.error("Failed to remove application from pool.", {
-            position: "top-center",
+            position: "top-right",
             autoClose: 3000,
             theme: "colored",
           });
         }
 
-        // Move to the next ID
         const nextIndex = currentIdIndex + 1;
         if (nextIndex < pendingIds.length) {
           setCurrentIdIndex(nextIndex);
@@ -300,13 +393,12 @@ export default function OfficerHome() {
         }
       }
     } catch (error) {
-      console.error("Submission error:", error);
       toast.error(
         `Error processing ${selectedAction.toLowerCase()} request: ${
           error.message
         }`,
         {
-          position: "top-center",
+          position: "top-right",
           autoClose: 3000,
           theme: "colored",
         }
@@ -332,7 +424,6 @@ export default function OfficerHome() {
         );
       }
 
-      // Remove the application from the pool
       try {
         await axiosInstance.get("/Officer/RemoveFromPool", {
           params: {
@@ -341,14 +432,13 @@ export default function OfficerHome() {
           },
         });
         toast.success("Application sanctioned and removed from pool!", {
-          position: "top-center",
+          position: "top-right",
           autoClose: 2000,
           theme: "colored",
         });
       } catch (error) {
-        console.error("Error removing from pool:", error);
         toast.error("Failed to remove application from pool.", {
-          position: "top-center",
+          position: "top-right",
           autoClose: 3000,
           theme: "colored",
         });
@@ -362,12 +452,11 @@ export default function OfficerHome() {
       setPdfBlob(null);
       setIsSignedPdf(true);
       toast.success("PDF signed successfully!", {
-        position: "top-center",
+        position: "top-right",
         autoClose: 2000,
         theme: "colored",
       });
 
-      // Move to the next ID
       const nextIndex = currentIdIndex + 1;
       if (nextIndex < pendingIds.length) {
         setCurrentIdIndex(nextIndex);
@@ -379,9 +468,8 @@ export default function OfficerHome() {
         handleRecords(serviceId);
       }
     } catch (error) {
-      console.error("Signing error:", error);
       toast.error("Error signing PDF: " + error.message, {
-        position: "top-center",
+        position: "top-right",
         autoClose: 3000,
         theme: "colored",
       });
@@ -393,7 +481,7 @@ export default function OfficerHome() {
   const handlePinSubmit = async () => {
     if (!pin) {
       toast.error("Please enter the USB token PIN.", {
-        position: "top-center",
+        position: "top-right",
         autoClose: 3000,
         theme: "colored",
       });
@@ -417,7 +505,7 @@ export default function OfficerHome() {
       } catch (error) {
         setStoredPin(null);
         toast.error("Signing failed with stored PIN. Please enter PIN again.", {
-          position: "top-center",
+          position: "top-right",
           autoClose: 3000,
           theme: "colored",
         });
@@ -432,7 +520,7 @@ export default function OfficerHome() {
   const handleExecuteAction = async (selectedRows) => {
     if (!selectedRows || selectedRows.length === 0) {
       toast.error("No applications selected.", {
-        position: "top-center",
+        position: "top-right",
         autoClose: 3000,
         theme: "colored",
       });
@@ -453,7 +541,66 @@ export default function OfficerHome() {
     return options;
   };
 
-  // extraParams for ServerSideTable
+  // Chart data
+  const barData = {
+    labels: ["Total", "Pending", "Citizen Pending", "Rejected", "Sanctioned"],
+    datasets: [
+      {
+        label: "Applications",
+        data: [
+          counts.total,
+          counts.pending,
+          counts.citizenPending,
+          counts.rejected,
+          counts.sanctioned,
+        ],
+        backgroundColor: [
+          "#1976d2",
+          "#ff9800",
+          "#9c27b0",
+          "#f44336",
+          "#4caf50",
+        ],
+        borderColor: ["#1565c0", "#f57c00", "#7b1fa2", "#d32f2f", "#388e3c"],
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const pieData = {
+    labels: ["Pending", "Citizen Pending", "Rejected", "Sanctioned"],
+    datasets: [
+      {
+        data: [
+          counts.pending,
+          counts.citizenPending,
+          counts.rejected,
+          counts.sanctioned,
+        ],
+        backgroundColor: ["#ff9800", "#9c27b0", "#f44336", "#4caf50"],
+        borderColor: ["#fff", "#fff", "#fff", "#fff"],
+        borderWidth: 2,
+      },
+    ],
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "top",
+        labels: {
+          font: {
+            size: 14,
+            family: "'Inter', sans-serif",
+          },
+        },
+      },
+    },
+  };
+
+  // Extra params for ServerSideTable
   const extraParams = {
     ServiceId: serviceId,
     type: type,
@@ -461,24 +608,81 @@ export default function OfficerHome() {
 
   useEffect(() => {
     const fetchServices = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        await fetchServiceList(setServices);
+        await fetchServiceList(setServices, setOfficerRole, setOfficerArea);
       } catch (error) {
-        console.error("Failed to fetch services:", error);
+        setError("Failed to load services.");
         toast.error("Failed to load services. Please try again.", {
-          position: "top-center",
+          position: "top-right",
           autoClose: 3000,
           theme: "colored",
         });
+      } finally {
+        setLoading(false);
       }
     };
     fetchServices();
   }, []);
 
+  // Color mapping for status cards
+  const statusColors = {
+    "Total Applications": "#1976d2",
+    Pending: "#ff9800",
+    "Citizen Pending": "#9c27b0",
+    Rejected: "#f44336",
+    Sanctioned: "#4caf50",
+  };
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          width: "100%",
+          height: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          bgcolor: "#f8f9fa",
+        }}
+      >
+        <CircularProgress size={60} />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box
+        sx={{
+          width: "100%",
+          height: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          bgcolor: "#f8f9fa",
+        }}
+      >
+        <Typography color="error" variant="h6" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+        <StyledButton
+          variant="contained"
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </StyledButton>
+      </Box>
+    );
+  }
+
   return (
     <Box
       sx={{
         width: "100%",
+        minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -495,77 +699,154 @@ export default function OfficerHome() {
           fontFamily: "'Inter', sans-serif",
         }}
       >
-        Officer Dashboard
+        {officerRole} {officerArea} Dashboard
       </Typography>
 
-      <Container fluid>
+      <Container>
         <Row className="mb-5 justify-content-center">
-          <Col
-            xs={12}
-            md={8}
-            lg={6}
-            style={{ display: "flex", justifyContent: "center" }}
-          >
-            <ServiceSelectionForm
-              services={services}
-              errors={errors}
-              onServiceSelect={handleRecords}
-              sx={{ bgcolor: "#fff", borderRadius: "8px" }}
-            />
+          <Col xs={12} md={8} lg={6}>
+            <StyledCard>
+              <CardContent>
+                <ServiceSelectionForm
+                  services={services}
+                  errors={errors}
+                  onServiceSelect={handleRecords}
+                  sx={{
+                    "& .MuiFormControl-root": {
+                      bgcolor: "#ffffff",
+                      borderRadius: "8px",
+                    },
+                  }}
+                />
+              </CardContent>
+            </StyledCard>
           </Col>
         </Row>
 
-        <Row className="mb-5 justify-content-center">
-          {countList.map((item, index) => (
-            <Col
-              key={index}
-              xs={12}
-              sm={6}
-              md={4}
-              lg={3}
-              className="mb-4 d-flex justify-content-center"
-            >
-              <StatusCountCard
-                statusName={item.label}
-                count={item.count}
-                bgColor={item.bgColor}
-                tooltipText={item.tooltipText}
-                textColor={item.textColor}
-                onClick={() => handleCardClick(item.label)}
-              />
+        {counts && (
+          <Row className="mb-5 justify-content-center">
+            {countList.map((item, index) => (
+              <Col key={index} xs={12} sm={6} md={4} lg={2} className="mb-4">
+                <StatCard
+                  sx={{ bgcolor: statusColors[item.label] || "#1976d2" }}
+                  onClick={() => handleCardClick(item.label)}
+                >
+                  <CardContent sx={{ position: "relative", zIndex: 1, p: 2 }}>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: 600,
+                        fontSize: { xs: "0.9rem", md: "1rem" },
+                      }}
+                    >
+                      {item.label}
+                    </Typography>
+                    <Typography
+                      variant="h3"
+                      sx={{
+                        fontWeight: 700,
+                        mt: 1,
+                        fontSize: { xs: "1.5rem", md: "2rem" },
+                      }}
+                    >
+                      {item.count}
+                    </Typography>
+                  </CardContent>
+                </StatCard>
+              </Col>
+            ))}
+            <Col xs={12} lg={6} className="mb-4">
+              <StyledCard>
+                <CardContent>
+                  <Typography
+                    variant="h6"
+                    sx={{ mb: 3, fontWeight: 600, color: "#2d3748" }}
+                  >
+                    Application Status Distribution
+                  </Typography>
+                  <Box sx={{ height: "350px" }}>
+                    <Pie data={pieData} options={chartOptions} />
+                  </Box>
+                </CardContent>
+              </StyledCard>
             </Col>
-          ))}
-        </Row>
+            <Col xs={12} lg={6} className="mb-4">
+              <StyledCard>
+                <CardContent>
+                  <Typography
+                    variant="h6"
+                    sx={{ mb: 3, fontWeight: 600, color: "#2d3748" }}
+                  >
+                    Application Counts
+                  </Typography>
+                  <Box sx={{ height: "350px" }}>
+                    <Bar data={barData} options={chartOptions} />
+                  </Box>
+                </CardContent>
+              </StyledCard>
+            </Col>
+          </Row>
+        )}
 
         {showTable && (
-          <Row ref={tableRef}>
+          <Row ref={tableRef} className="mt-5">
             <Col xs={12}>
-              <ServerSideTable
-                key={`${serviceId}-${type}`}
-                url="/Officer/GetApplications"
-                extraParams={extraParams}
-                actionFunctions={actionFunctions}
-                canSanction={canSanction}
-                canHavePool={canHavePool}
-                pendingApplications={type === "Pending"}
-                serviceId={serviceId}
-                onPushToPool={handlePushToPool}
-                onExecuteAction={handleExecuteAction}
-                actionOptions={getActionOptions()}
-                selectedAction={selectedAction}
-                setSelectedAction={setSelectedAction}
-              />
+              <StyledCard>
+                <CardContent>
+                  <Typography
+                    variant="h6"
+                    sx={{ mb: 3, fontWeight: 600, color: "#2d3748" }}
+                  >
+                    {type} Applications
+                  </Typography>
+                  <ServerSideTable
+                    key={`${serviceId}-${type}`}
+                    url="/Officer/GetApplications"
+                    extraParams={extraParams}
+                    actionFunctions={actionFunctions}
+                    canSanction={canSanction}
+                    canHavePool={canHavePool}
+                    pendingApplications={type === "pending"}
+                    serviceId={serviceId}
+                    onPushToPool={handlePushToPool}
+                    onExecuteAction={handleExecuteAction}
+                    actionOptions={getActionOptions()}
+                    selectedAction={selectedAction}
+                    setSelectedAction={setSelectedAction}
+                    sx={{
+                      "& .MuiTable-root": {
+                        background: "#ffffff",
+                      },
+                      "& .MuiTableCell-root": {
+                        color: "#2d3748",
+                        borderColor: "#e0e0e0",
+                      },
+                      "& .MuiButton-root": {
+                        color: "#1976d2",
+                      },
+                    }}
+                  />
+                </CardContent>
+              </StyledCard>
             </Col>
           </Row>
         )}
       </Container>
 
       <StyledDialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
-        <DialogTitle sx={{ fontWeight: 600, color: "#2d3748" }}>
+        <DialogTitle
+          sx={{
+            fontWeight: 600,
+            color: "#2d3748",
+            fontFamily: "'Inter', sans-serif",
+          }}
+        >
           Enter USB Token PIN
         </DialogTitle>
         <DialogContent>
-          <Typography sx={{ mb: 2, color: "#2d3748" }}>
+          <Typography
+            sx={{ mb: 2, color: "#2d3748", fontFamily: "'Inter', sans-serif" }}
+          >
             Please enter the PIN for your USB token to sign the document.
           </Typography>
           <TextField
@@ -577,7 +858,14 @@ export default function OfficerHome() {
             margin="normal"
             aria-label="USB Token PIN"
             inputProps={{ "aria-describedby": "pin-helper-text" }}
-            sx={{ bgcolor: "#fff", borderRadius: "8px" }}
+            sx={{
+              bgcolor: "#ffffff",
+              borderRadius: "8px",
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": { borderColor: "#e0e0e0" },
+                "&:hover fieldset": { borderColor: "#1976d2" },
+              },
+            }}
           />
           <FormHelperText id="pin-helper-text">
             Required to sign the document.
@@ -613,8 +901,8 @@ export default function OfficerHome() {
             maxWidth: 800,
             height: "80vh",
             borderRadius: 12,
-            background: "linear-gradient(135deg, #ffffff, #f8f9fa)",
-            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+            background: "#ffffff",
+            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.1)",
           },
         }}
       />

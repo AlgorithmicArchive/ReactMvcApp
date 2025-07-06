@@ -210,7 +210,7 @@ const MyNavbar = () => {
                   Reports
                 </Nav.Link>
 
-                {designation.toLowerCase().includes("director") && (
+                {/* {designation.toLowerCase().includes("director") && (
                   <div
                     onMouseEnter={() => handleMouseEnter("bank-file")}
                     onMouseLeave={handleMouseLeave}
@@ -238,7 +238,7 @@ const MyNavbar = () => {
                       </NavDropdown.Item>
                     </NavDropdown>
                   </div>
-                )}
+                )} */}
 
                 <div
                   onMouseEnter={() => handleMouseEnter("dsc-management")}

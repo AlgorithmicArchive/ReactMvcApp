@@ -127,7 +127,11 @@ export const fetchDistricts = async (setDistrictOptions) => {
   }
 };
 
-export const fetchServiceList = async (setServices) => {
+export const fetchServiceList = async (
+  setServices,
+  setOfficerRole,
+  setOfficerArea
+) => {
   try {
     const response = await axiosInstance.get("/Officer/GetServiceList");
     const serviceList = response.data.serviceList.map((item) => ({
@@ -135,6 +139,8 @@ export const fetchServiceList = async (setServices) => {
       value: item.serviceId,
     }));
     setServices(serviceList);
+    setOfficerRole(response.data.role);
+    setOfficerArea(response.data.area);
   } catch (error) {
     console.error("Failed to fetch service list:", error);
   }

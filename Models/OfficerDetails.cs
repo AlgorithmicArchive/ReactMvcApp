@@ -11,6 +11,7 @@ public class OfficerDetailsModal
     public string? RegisteredDate { get; set; }
     public int? DetailId { get; set; } // Nullable for users without officer details
     public string? Role { get; set; }
+    public string? RoleShort { get; set; }
     public string? AccessLevel { get; set; }
     public int? AccessCode { get; set; }
 }

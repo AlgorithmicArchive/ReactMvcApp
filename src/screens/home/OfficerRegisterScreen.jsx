@@ -400,7 +400,7 @@ export default function OfficerRegisterScreen() {
             <Col xs={6}>
               {accessLevelMap[selectedDesignation] === "Tehsil" && (
                 <CustomSelectField
-                  label="Tehsil"
+                  label="TSWO Office"
                   name="Tehsil"
                   control={control}
                   placeholder="Select Tehsil"

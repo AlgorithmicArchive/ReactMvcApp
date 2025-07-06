@@ -419,7 +419,7 @@ namespace SahayataNidhi.Controllers
             }
             if (officer!.AccessLevel == "Tehsil")
             {
-                var tehsils = dbcontext.Tehsils.Where(t => t.TehsilId == officer.AccessCode).ToList();
+                var tehsils = dbcontext.Tswotehsils.Where(t => t.TehsilId == officer.AccessCode).ToList();
                 return Json(new { status = true, tehsils });
             }
             var districts = dbcontext.Districts.Where(d => (officer.AccessLevel == "State") || (officer!.AccessLevel == "Division" && d.Division == officer.AccessCode) || (officer.AccessLevel == "District" && d.DistrictId == officer.AccessCode)).ToList();
@@ -438,7 +438,7 @@ namespace SahayataNidhi.Controllers
         public IActionResult GetTeshilForDistrict(string districtId)
         {
             int DistrictId = Convert.ToInt32(districtId);
-            var tehsils = dbcontext.Tehsils.Where(u => u.DistrictId == DistrictId).ToList();
+            var tehsils = dbcontext.Tswotehsils.Where(u => u.DistrictId == DistrictId).ToList();
             return Json(new { status = true, tehsils });
         }
 
@@ -993,13 +993,12 @@ namespace SahayataNidhi.Controllers
         [HttpGet]
         public IActionResult GetAreaList(string table, int parentId)
         {
-            _logger.LogInformation($"------------------TABLE: {table} Value: {parentId}--------------------");
             object? data = null;
 
             switch (table)
             {
                 case "Tehsil":
-                    data = dbcontext.Tehsils
+                    data = dbcontext.Tswotehsils
                         .Where(t => t.DistrictId == parentId)
                         .Select(t => new { value = t.TehsilId, label = t.TehsilName }) // Optional: project only needed fields
                         .ToList();
@@ -1018,9 +1017,16 @@ namespace SahayataNidhi.Controllers
                     break;
 
                 case "Ward":
-                    data = dbcontext.Wards.Where(m => m.MuncipalityId == parentId)
-                    .Select(m => new { value = m.WardCode, label = "Ward No " + m.WardNo })
+                    data = dbcontext.Wards
+                    .Where(m => m.MuncipalityId == parentId)
+                    .OrderBy(m => m.WardCode) // 👈 Sorts by WardCode
+                    .Select(m => new
+                    {
+                        value = m.WardCode,
+                        label = "Ward No " + m.WardNo
+                    })
                     .ToList();
+
                     break;
 
                 case "HalqaPanchayat":

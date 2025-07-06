@@ -234,7 +234,7 @@ namespace SahayataNidhi.Controllers.Officer
 
                 var customActions = new List<dynamic>();
 
-                if (pool!.Contains(details.ReferenceNumber) && type == "Pending")
+                if (pool!.Contains(details.ReferenceNumber) && type == "pending")
                 {
                     customActions.Add(new
                     {
@@ -254,7 +254,7 @@ namespace SahayataNidhi.Controllers.Officer
                 }
                 else
                 {
-                    if (type == "Pending")
+                    if (type == "pending")
                     {
                         customActions.Add(new
                         {
@@ -264,7 +264,7 @@ namespace SahayataNidhi.Controllers.Officer
                             actionFunction = "handleOpenApplication"
                         });
                     }
-                    else if (type == "Forwarded" || type == "Returned" || type == "Sanctioned")
+                    else if (type == "forwarded" || type == "returned" || type == "sanctioned")
                     {
                         var currentOfficer = officers!.FirstOrDefault(o => (string)o["designation"]! == officerDetails.Role);
                         _logger.LogInformation($"---------- CAN OFFICER PULL: {currentOfficer!["canPull"]}-------------");
@@ -278,6 +278,17 @@ namespace SahayataNidhi.Controllers.Officer
                                 actionFunction = "pullApplication"
                             });
                         }
+                        else
+                        {
+                            customActions.Add(new
+                            {
+                                type = "View",
+                                tooltip = "View",
+                                color = "#F0C38E",
+                                actionFunction = "handleViewApplication"
+                            });
+                        }
+
                     }
                     else
                     {
@@ -311,189 +322,121 @@ namespace SahayataNidhi.Controllers.Officer
             });
         }
         [HttpGet]
-        public IActionResult GetApplicationsForReports(int AccessCode, int ServiceId, string StatusType, int pageIndex = 0, int pageSize = 10)
+        [HttpGet]
+        public IActionResult GetApplicationsForReports(int AccessCode, int ServiceId, string? StatusType = null, int pageIndex = 0, int pageSize = 10)
         {
-            var officerDetails = GetOfficerDetails();
-            string type = StatusType;
-            var role = new SqlParameter("@Role", officerDetails!.Role);
-            var accessLevel = new SqlParameter("@AccessLevel", officerDetails.AccessLevel);
-            var accessCode = new SqlParameter("@AccessCode", AccessCode);
-            var applicationStatus = new SqlParameter("@ApplicationStatus", (object)type?.ToLower()! ?? DBNull.Value);
-            var serviceId = new SqlParameter("@ServiceId", ServiceId);
-
-            var response = dbcontext.CitizenApplications
-                .FromSqlRaw("EXEC GetApplicationsForReport @AccessCode, @ApplicationStatus, @ServiceId",
-                    accessCode, applicationStatus, serviceId)
-                .ToList();
-
-            _logger.LogInformation($"----------Type : {type}------------------");
-
-            // Sorting for consistent pagination based on ReferenceNumber
-            var sortedResponse = response.OrderBy(a =>
+            try
             {
-                var parts = a.ReferenceNumber.Split('/');
-                var numberPart = parts.Last();
-                return int.TryParse(numberPart, out int num) ? num : 0;
-            }).ToList();
-
-            var totalRecords = sortedResponse.Count;
-
-            var pagedResponse = sortedResponse
-                .Skip(pageIndex * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            List<dynamic> columns =
-            [
-                new { accessorKey = "referenceNumber", header = "Reference Number" },
-                new { accessorKey = "applicantName", header = "Applicant Name" },
-                new { accessorKey = "parentage", header = "Parentage" },
-                new { accessorKey = "submissionDate", header = "Submission Date" }
-            ];
-
-            if (type == "pending")
-            {
-                columns.Insert(3, new { accessorKey = "currentlyWith", header = "Currently With" });
-            }
-            else if (type == "sanctioned")
-            {
-                columns.Insert(4, new { accessorKey = "sanctionedon", header = "Sanctioned Date" });
-            }
-            else if (type == "returntoedit")
-            {
-                columns.Insert(4, new { accessorKey = "returnedOn", header = "Returned On" });
-            }
-
-            List<dynamic> data = [];
-
-            foreach (var details in pagedResponse)
-            {
-                var formDetails = JsonConvert.DeserializeObject<dynamic>(details.FormDetails!);
-                var currentPalyerIndex = details.CurrentPlayer;
-                var workFlowSteps = JsonConvert.DeserializeObject<List<dynamic>>(details.WorkFlow!);
-
-                var item = new Dictionary<string, object>
+                // Validate input parameters
+                if (pageIndex < 0 || pageSize <= 0)
                 {
-                    { "referenceNumber", details.ReferenceNumber },
-                    { "applicantName", GetFieldValue("ApplicantName", formDetails) },
-                    { "parentage", $"{GetFieldValue("RelationName", formDetails)}({GetFieldValue("Relation", formDetails)})" },
-                    { "submissionDate", details.CreatedAt! }
+                    _logger.LogWarning($"Invalid pagination parameters: pageIndex={pageIndex}, pageSize={pageSize}");
+                    return BadRequest(new { error = "Invalid pageIndex or pageSize" });
+                }
+
+                // Log officer details for debugging
+                var officerDetails = GetOfficerDetails();
+                _logger.LogInformation($"Officer Role: {officerDetails?.Role}, AccessLevel: {officerDetails?.AccessLevel}");
+
+                // Define SQL parameters for the stored procedure
+                var accessCode = new SqlParameter("@AccessCode", AccessCode);
+                var serviceId = new SqlParameter("@ServiceId", ServiceId);
+
+                // Execute the stored procedure
+                var response = dbcontext.Database
+                    .SqlQueryRaw<SummaryReports>("EXEC GetApplicationsForReport @AccessCode, @ServiceId", accessCode, serviceId)
+                    .ToList();
+
+                _logger.LogInformation($"Fetched {response.Count} records for AccessCode: {AccessCode}, ServiceId: {ServiceId}, Response: {JsonConvert.SerializeObject(response)}");
+
+                // Handle empty result set
+                if (!response.Any())
+                {
+                    _logger.LogWarning($"No data returned for AccessCode: {AccessCode}, ServiceId: {ServiceId}");
+                }
+
+                // Sorting by TehsilName (optional, as stored procedure already orders by TehsilName)
+                var sortedResponse = response.OrderBy(a => a.TehsilName).ToList();
+
+                // Pagination
+                var totalRecords = sortedResponse.Count;
+                var pagedResponse = sortedResponse
+                    .Skip(pageIndex * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                // Define columns for the frontend
+                List<dynamic> columns = new List<dynamic>
+                {
+                    new { accessorKey = "tehsilName", header = "Tehsil Name" },
+                    new { accessorKey = "totalApplicationsSubmitted", header = "Total Applications Submitted" },
+                    new { accessorKey = "totalApplicationsRejected", header = "Total Applications Rejected" },
+                    new { accessorKey = "totalApplicationsSanctioned", header = "Total Applications Sanctioned" }
                 };
 
-                if (type == "pending")
+                // Map the paged response to dynamic data for the frontend
+                List<dynamic> data = pagedResponse.Select(item => new
                 {
-                    string officerRole = workFlowSteps![currentPalyerIndex].designation;
-                    item["currentlyWith"] = officerRole;
-                }
-                else if (type == "sanctioned")
-                {
-                    string completedAt = workFlowSteps![currentPalyerIndex].completedAt;
-                    item["sanctionedon"] = completedAt;
-                }
-                else if (type == "returntoedit")
-                {
-                    string returnedAt = workFlowSteps![currentPalyerIndex].completedAt;
-                    item["returnedOn"] = returnedAt;
-                }
+                    tehsilName = item.TehsilName,
+                    totalApplicationsSubmitted = item.TotalApplicationsSubmitted,
+                    totalApplicationsRejected = item.TotalApplicationsRejected,
+                    totalApplicationsSanctioned = item.TotalApplicationsSanctioned
+                }).Cast<dynamic>().ToList();
 
-                data.Add(item);
+                // Return JSON response
+                return Json(new
+                {
+                    data,
+                    columns,
+                    totalRecords
+                });
             }
-
-            return Json(new
+            catch (Exception ex)
             {
-                data,
-                columns,
-                totalRecords
-            });
+                _logger.LogError(ex, $"Error executing GetApplicationsForReport for AccessCode: {AccessCode}, ServiceId: {ServiceId}");
+                return StatusCode(500, new { error = "An error occurred while fetching the report" });
+            }
         }
 
         [HttpGet]
         public IActionResult GetUserDetails(string applicationId)
         {
-            // Retrieve the application details.
-            var details = dbcontext.CitizenApplications
-                          .FirstOrDefault(ca => ca.ReferenceNumber == applicationId);
-
+            var details = dbcontext.CitizenApplications.FirstOrDefault(ca => ca.ReferenceNumber == applicationId);
             if (details == null)
-            {
                 return Json(new { error = "Application not found" });
-            }
 
-            var serviceDetails = dbcontext.Services
-                .FirstOrDefault(s => s.ServiceId == details.ServiceId);
+            var serviceDetails = dbcontext.Services.FirstOrDefault(s => s.ServiceId == details.ServiceId);
 
-            // Deserialize form details
-            JToken formDetailsToken = JToken.Parse(details.FormDetails!);
+            // Deserialize
+            var formDetailsToken = JToken.Parse(details.FormDetails!);
             formDetailsToken = ReorderFormDetails(formDetailsToken);
+            var formDetails = JsonConvert.DeserializeObject<dynamic>(details.FormDetails!);
 
-            // Deserialize workflow
-            var officerDetails = JsonConvert.DeserializeObject<dynamic>(details.WorkFlow!);
+            var officerArray = JsonConvert.DeserializeObject<JArray>(details.WorkFlow!);
             int currentPlayer = details.CurrentPlayer;
 
-            // Convert workflow to JArray
-            JArray? officerArray = officerDetails as JArray;
-            var currentOfficer = officerArray?.FirstOrDefault(o => (int)o["playerId"]! == currentPlayer);
-            var previousOfficer = officerArray?.FirstOrDefault(o => (int)o["playerId"]! == (currentPlayer - 1));
-            var nextOfficer = officerArray?.FirstOrDefault(o => (int)o["playerId"]! == (currentPlayer + 1));
-
-            if (previousOfficer != null) previousOfficer["canPull"] = false;
-            if (nextOfficer != null) nextOfficer["canPull"] = false;
-
-            // Save updated workflow (only canPull changes)
+            // Update workflow "canPull"
+            UpdateWorkflowFlags(officerArray!, currentPlayer);
             details.WorkFlow = JsonConvert.SerializeObject(officerArray);
             dbcontext.SaveChanges();
 
-            // Clone currentOfficer and inject actionForm (without modifying DB)
-            JObject currentOfficerClone = currentOfficer != null ? (JObject)currentOfficer.DeepClone() : new JObject();
+            // Clone current officer
+            var currentOfficer = officerArray!.FirstOrDefault(o => (int)o["playerId"]! == currentPlayer);
+            var currentOfficerClone = currentOfficer != null ? (JObject)currentOfficer.DeepClone() : new JObject();
 
-            if (!string.IsNullOrWhiteSpace(serviceDetails!.OfficerEditableField) && currentOfficerClone != null)
-            {
-                var editableFields = JsonConvert.DeserializeObject<List<JObject>>(serviceDetails.OfficerEditableField);
-                int playerId = (int)currentOfficerClone["playerId"]!;
+            InjectEditableActionForm(currentOfficerClone, serviceDetails, currentPlayer);
+            UpdateOfficerActionFormLabels(currentOfficerClone, formDetails);
 
-                var match = editableFields!.FirstOrDefault(f => (int)f["playerId"]! == playerId);
-                if (match != null && match["actionForm"] != null)
-                {
-                    currentOfficerClone["actionForm"] = match["actionForm"];
-                }
-            }
+            ReplaceCodeFieldsWithNames(formDetailsToken);
+            FormatDateFields(formDetailsToken);
 
-            // Replace district and tehsil codes with names
-            foreach (JProperty section in formDetailsToken.Children<JProperty>())
-            {
-                foreach (var fieldToken in section.Value.Children())
-                {
-                    if (fieldToken is not JObject field)
-                        continue;
-
-                    string fieldName = field["name"]?.ToString() ?? "";
-
-                    if (fieldName.Equals("District", StringComparison.OrdinalIgnoreCase) ||
-                        fieldName.EndsWith("District", StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (field["value"] != null && int.TryParse(field["value"]!.ToString(), out int districtCode))
-                        {
-                            field["value"] = GetDistrictName(districtCode);
-                        }
-                    }
-                    else if (fieldName.Equals("Tehsil", StringComparison.OrdinalIgnoreCase) ||
-                             fieldName.EndsWith("Tehsil", StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (field["value"] != null && int.TryParse(field["value"]!.ToString(), out int tehsilCode))
-                        {
-                            field["value"] = GetTehsilName(tehsilCode);
-                        }
-                    }
-                }
-            }
-
-            // Return the updated details
             return Json(new
             {
                 list = formDetailsToken,
                 currentOfficerDetails = currentOfficerClone
             });
         }
+
 
         [HttpGet]
         public IActionResult GetRecordsForBankFile(int AccessCode, int ServiceId, string type, int Month, int Year, int pageIndex = 0, int pageSize = 10)
@@ -750,13 +693,40 @@ namespace SahayataNidhi.Controllers.Officer
                 var document = new Document(pdf, PageSize.A4);
                 document.SetMargins(20, 20, 20, 20);
 
-                // Add main title with styling similar to screen
-                document.Add(new Paragraph("Citizen Applications Details")
-                    .SetFontSize(18)
-                    .SetBold()
-                    .SetTextAlignment(TextAlignment.CENTER)
-                    .SetMarginBottom(20)
-                    .SetFontColor(new DeviceRgb(25, 118, 210))); // Primary blue color
+                // Create a header table for title and avatar
+                var headerTable = new Table(UnitValue.CreatePercentArray(new float[] { 70, 30 })); // 70% for title, 30% for avatar
+                headerTable.SetWidth(UnitValue.CreatePercentValue(100));
+
+                // Title cell
+                var titleCell = new Cell(1, 1)
+                    .Add(new Paragraph("Citizen Applications Details")
+                        .SetFontSize(16)
+                        .SetBold()
+                        .SetTextAlignment(TextAlignment.CENTER)
+                        .SetFontColor(new DeviceRgb(25, 118, 210)) // Blue accent
+                        .SetMarginBottom(15))
+                    .SetBorder(Border.NO_BORDER);
+                headerTable.AddCell(titleCell);
+
+                // Avatar cell
+                var avatarInitial = applicationId.Length > 0 ? applicationId.Substring(0, 1).ToUpper() : "U"; // Use first letter of applicationId
+                var avatarCell = new Cell(1, 1)
+                    .Add(new Paragraph(avatarInitial)
+                        .SetFontSize(40)
+                        .SetBold()
+                        .SetTextAlignment(TextAlignment.CENTER)
+                        .SetFontColor(new DeviceRgb(255, 255, 255))) // White text
+                    .SetBackgroundColor(new DeviceRgb(25, 118, 210)) // Blue background
+                    .SetBorderRadius(new BorderRadius(60)) // Circular avatar
+                    .SetHeight(120)
+                    .SetWidth(120)
+                    .SetPadding(10)
+                    .SetHorizontalAlignment(HorizontalAlignment.RIGHT)
+                    .SetVerticalAlignment(VerticalAlignment.MIDDLE)
+                    .SetBorder(Border.NO_BORDER);
+                headerTable.AddCell(avatarCell);
+
+                document.Add(headerTable);
 
                 // Parse FormDetails JSON
                 var formDetails = JObject.Parse(application.FormDetails!);
@@ -776,12 +746,12 @@ namespace SahayataNidhi.Controllers.Officer
                         .Add(new Paragraph(FormatSectionKey(section.Key))
                             .SetFontSize(14)
                             .SetBold()
-                            .SetFontColor(new DeviceRgb(25, 118, 210))
-                            .SetMarginTop(10)
-                            .SetMarginBottom(5))
+                            .SetFontColor(new DeviceRgb(242, 140, 56)) // Orange from image
+                            .SetMarginTop(15)
+                            .SetMarginBottom(10))
                         .SetBorder(Border.NO_BORDER)
-                        .SetBackgroundColor(new DeviceRgb(245, 245, 245));
-
+                        .SetBackgroundColor(new DeviceRgb(245, 245, 245)) // Light gray background
+                        .SetBorderRadius(new BorderRadius(5));
                     detailsTable.AddCell(sectionHeader);
 
                     if (section.Value is JArray sectionArray)
@@ -796,30 +766,27 @@ namespace SahayataNidhi.Controllers.Officer
                                 // Convert integer values for District and Tehsil fields
                                 string displayValue = ConvertValueForDisplay(label, value);
 
-                                // Add label cell
+                                // Add label cell with input-like styling
                                 var labelCell = new Cell()
                                     .Add(new Paragraph(FormatFieldLabel(label))
                                         .SetFontSize(11)
                                         .SetBold()
-                                        .SetFontColor(new DeviceRgb(117, 117, 117)))
+                                        .SetFontColor(new DeviceRgb(51, 51, 51))) // Dark gray
                                     .SetBorder(Border.NO_BORDER)
-                                    .SetPaddingLeft(10)
-                                    .SetPaddingRight(5)
-                                    .SetPaddingTop(3)
-                                    .SetPaddingBottom(3);
+                                    .SetPadding(8)
+                                    .SetBackgroundColor(new DeviceRgb(245, 245, 245)) // Light gray
+                                    .SetBorderRadius(new BorderRadius(4));
+                                detailsTable.AddCell(labelCell);
 
-                                // Add value cell
+                                // Add value cell with input-like styling
                                 var valueCell = new Cell()
                                     .Add(new Paragraph(displayValue)
-                                        .SetFontSize(11)
-                                        .SetFontColor(new DeviceRgb(33, 33, 33)))
+                                        .SetFontSize(12)
+                                        .SetFontColor(new DeviceRgb(0, 0, 0))) // Black
                                     .SetBorder(Border.NO_BORDER)
-                                    .SetPaddingLeft(5)
-                                    .SetPaddingRight(10)
-                                    .SetPaddingTop(3)
-                                    .SetPaddingBottom(3);
-
-                                detailsTable.AddCell(labelCell);
+                                    .SetPadding(8)
+                                    .SetBackgroundColor(new DeviceRgb(245, 245, 245)) // Light gray
+                                    .SetBorderRadius(new BorderRadius(4));
                                 detailsTable.AddCell(valueCell);
 
                                 // Handle additional fields (e.g., in Pension Type)
@@ -837,24 +804,22 @@ namespace SahayataNidhi.Controllers.Officer
                                                 .Add(new Paragraph(FormatFieldLabel(addLabel))
                                                     .SetFontSize(10)
                                                     .SetBold()
-                                                    .SetFontColor(new DeviceRgb(117, 117, 117)))
+                                                    .SetFontColor(new DeviceRgb(51, 51, 51)))
                                                 .SetBorder(Border.NO_BORDER)
-                                                .SetPaddingLeft(20)
-                                                .SetPaddingRight(5)
-                                                .SetPaddingTop(2)
-                                                .SetPaddingBottom(2);
+                                                .SetPadding(6)
+                                                .SetBackgroundColor(new DeviceRgb(245, 245, 245))
+                                                .SetBorderRadius(new BorderRadius(4))
+                                                .SetPaddingLeft(20);
+                                            detailsTable.AddCell(addLabelCell);
 
                                             var addValueCell = new Cell()
                                                 .Add(new Paragraph(addDisplayValue)
                                                     .SetFontSize(10)
-                                                    .SetFontColor(new DeviceRgb(33, 33, 33)))
+                                                    .SetFontColor(new DeviceRgb(0, 0, 0)))
                                                 .SetBorder(Border.NO_BORDER)
-                                                .SetPaddingLeft(5)
-                                                .SetPaddingRight(10)
-                                                .SetPaddingTop(2)
-                                                .SetPaddingBottom(2);
-
-                                            detailsTable.AddCell(addLabelCell);
+                                                .SetPadding(6)
+                                                .SetBackgroundColor(new DeviceRgb(245, 245, 245))
+                                                .SetBorderRadius(new BorderRadius(4));
                                             detailsTable.AddCell(addValueCell);
 
                                             // Handle nested additional fields
@@ -872,24 +837,22 @@ namespace SahayataNidhi.Controllers.Officer
                                                             .Add(new Paragraph(FormatFieldLabel(nestedLabel))
                                                                 .SetFontSize(10)
                                                                 .SetBold()
-                                                                .SetFontColor(new DeviceRgb(117, 117, 117)))
+                                                                .SetFontColor(new DeviceRgb(51, 51, 51)))
                                                             .SetBorder(Border.NO_BORDER)
-                                                            .SetPaddingLeft(30)
-                                                            .SetPaddingRight(5)
-                                                            .SetPaddingTop(2)
-                                                            .SetPaddingBottom(2);
+                                                            .SetPadding(6)
+                                                            .SetBackgroundColor(new DeviceRgb(245, 245, 245))
+                                                            .SetBorderRadius(new BorderRadius(4))
+                                                            .SetPaddingLeft(30);
+                                                        detailsTable.AddCell(nestedLabelCell);
 
                                                         var nestedValueCell = new Cell()
                                                             .Add(new Paragraph(nestedDisplayValue)
                                                                 .SetFontSize(10)
-                                                                .SetFontColor(new DeviceRgb(33, 33, 33)))
+                                                                .SetFontColor(new DeviceRgb(0, 0, 0)))
                                                             .SetBorder(Border.NO_BORDER)
-                                                            .SetPaddingLeft(5)
-                                                            .SetPaddingRight(10)
-                                                            .SetPaddingTop(2)
-                                                            .SetPaddingBottom(2);
-
-                                                        detailsTable.AddCell(nestedLabelCell);
+                                                            .SetPadding(6)
+                                                            .SetBackgroundColor(new DeviceRgb(245, 245, 245))
+                                                            .SetBorderRadius(new BorderRadius(4));
                                                         detailsTable.AddCell(nestedValueCell);
                                                     }
                                                 }
@@ -909,12 +872,14 @@ namespace SahayataNidhi.Controllers.Officer
                 if (documents != null && documents.Any())
                 {
                     document.Add(new Paragraph("Attached Documents")
-                        .SetFontSize(16)
+                        .SetFontSize(14)
                         .SetBold()
-                        .SetFontColor(new DeviceRgb(25, 118, 210))
+                        .SetFontColor(new DeviceRgb(242, 140, 56)) // Orange
                         .SetMarginTop(20)
-                        .SetMarginBottom(10));
-
+                        .SetMarginBottom(10)
+                        .SetBackgroundColor(new DeviceRgb(245, 245, 245))
+                        .SetBorderRadius(new BorderRadius(5))
+                        .SetPadding(8));
                     foreach (var doc in documents)
                     {
                         var filePath = doc["File"]?.ToString();
@@ -931,7 +896,10 @@ namespace SahayataNidhi.Controllers.Officer
                                         .SetFontSize(12)
                                         .SetBold()
                                         .SetMarginTop(10)
-                                        .SetMarginBottom(5));
+                                        .SetMarginBottom(5)
+                                        .SetBackgroundColor(new DeviceRgb(245, 245, 245))
+                                        .SetBorderRadius(new BorderRadius(4))
+                                        .SetPadding(6));
 
                                     // Handle image attachments
                                     if (filePath.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||

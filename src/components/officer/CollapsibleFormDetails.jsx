@@ -28,6 +28,7 @@ export const CollapsibleFormDetails = ({
   detailsOpen,
   setDetailsOpen,
   onViewPdf,
+  applicationId,
 }) => {
   const sections = useMemo(() => {
     return Array.isArray(formDetails)
@@ -61,6 +62,31 @@ export const CollapsibleFormDetails = ({
             overflowY: "auto",
           }}
         >
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 600, color: "primary.main", mb: 2 }}
+            >
+              Reference Number
+            </Typography>
+            <Row className="g-3">
+              <Col xs={12} md={12}>
+                <Box sx={{ display: "flex", flexDirection: "column" }}>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      border: "1px solid #E0E0E0",
+                      borderRadius: "8px",
+                      p: 2,
+                      color: applicationId ? "#212121" : "#B0BEC5",
+                    }}
+                  >
+                    {applicationId}
+                  </Typography>
+                </Box>
+              </Col>
+            </Row>
+          </Box>
           {sections.length > 0 ? (
             sections.map((section, index) => (
               <Box key={index} sx={{ mb: 3 }}>

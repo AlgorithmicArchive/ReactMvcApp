@@ -14,7 +14,10 @@ import {
   InputLabel,
   Box,
 } from "@mui/material";
-import { validationFunctionsList } from "../../assets/formvalidations";
+import {
+  transformationFunctionsList,
+  validationFunctionsList,
+} from "../../assets/formvalidations";
 import axiosnInstance from "../../axiosConfig";
 
 // Async function to fetch districts from your API endpoint
@@ -87,14 +90,6 @@ const FieldEditModal = ({
   onClose,
   updateField,
 }) => {
-  // Log props for debugging
-  console.log("FieldEditModal Props:", {
-    selectedField,
-    sections,
-    actionForm,
-    selectableFields: getSelectableFields(sections, actionForm),
-  });
-
   const [dependentOn, setDependentOn] = useState(
     selectedField?.dependentOn || ""
   );
@@ -732,6 +727,33 @@ const FieldEditModal = ({
                   setFormData((prev) => ({
                     ...prev,
                     validationFunctions: updatedValidations,
+                  }));
+                }}
+              />
+            }
+            label={func.label}
+          />
+        ))}
+        {transformationFunctionsList.map((func) => (
+          <FormControlLabel
+            key={func.id}
+            control={
+              <Checkbox
+                checked={formData.transformationFunctions.includes(func.id)}
+                onChange={(e) => {
+                  let updatedValidations = [
+                    ...formData.transformationFunctions,
+                  ];
+                  if (e.target.checked) {
+                    updatedValidations.push(func.id);
+                  } else {
+                    updatedValidations = updatedValidations.filter(
+                      (id) => id !== func.id
+                    );
+                  }
+                  setFormData((prev) => ({
+                    ...prev,
+                    transformationFunctions: updatedValidations,
                   }));
                 }}
               />

@@ -166,25 +166,6 @@ public class UserHelperFunctions(IWebHostEnvironment webHostEnvironment, SocialW
         return officer; // Returns a User or null
     }
 
-    // public (CitizenApplication UserDetails, AddressJoin PreAddressDetails, AddressJoin PerAddressDetails, dynamic ServiceSpecific, dynamic BankDetails, dynamic Documents) GetUserDetailsAndRelatedData(string applicationId)
-    // {
-    //     var userDetails = dbcontext.CitizenApplications.FirstOrDefault(u => u.ReferenceNumber == applicationId);
-
-    //     var PreAddressId = new SqlParameter("@AddressId", userDetails!.PresentAddressId);
-    //     var preAddressDetails = dbcontext.Database.SqlQuery<AddressJoin>($"EXEC GetAddressDetails @AddressId = {PreAddressId}")
-    //         .AsEnumerable()
-    //         .FirstOrDefault();
-
-    //     var PerAddressId = new SqlParameter("@AddressId", userDetails.PermanentAddressId);
-    //     var perAddressDetails = dbcontext.Database.SqlQuery<AddressJoin>($"EXEC GetAddressDetails @AddressId = {PerAddressId}")
-    //         .AsEnumerable()
-    //         .FirstOrDefault();
-
-    //     var serviceSpecific = JsonConvert.DeserializeObject<Dictionary<string, string>>(userDetails.ServiceSpecific);
-    //     var bankDetails = JsonConvert.DeserializeObject<dynamic>(userDetails.BankDetails);
-    //     var documents = JsonConvert.DeserializeObject<dynamic>(userDetails.Documents);
-    //     return (userDetails, preAddressDetails, perAddressDetails, serviceSpecific, bankDetails, documents)!;
-    // }
 
     public string[] GenerateUniqueRandomCodes(int numberOfCodes, int codeLength)
     {

@@ -299,18 +299,23 @@ namespace SahayataNidhi.Controllers.Officer
 
                         if (formValues.TryGetValue(lookupKey, out var rawValue))
                         {
-                            if (lookupKey.Contains("District", StringComparison.OrdinalIgnoreCase) && int.TryParse(rawValue, out int districtId))
+                            if (lookupKey.Equals("District", StringComparison.OrdinalIgnoreCase) && int.TryParse(rawValue, out int districtId))
                             {
                                 actualValue = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == districtId)?.DistrictName;
                             }
-                            else if (lookupKey.Contains("Tehsil", StringComparison.OrdinalIgnoreCase) && int.TryParse(rawValue, out int tehsilId))
+                            else if (lookupKey.Equals("Tehsil", StringComparison.OrdinalIgnoreCase) && int.TryParse(rawValue, out int tehsilId))
                             {
-                                actualValue = dbcontext.Tehsils.FirstOrDefault(t => t.TehsilId == tehsilId)?.TehsilName;
+                                actualValue = dbcontext.Tswotehsils.FirstOrDefault(t => t.TehsilId == tehsilId)?.TehsilName;
+                            }
+                            else if (lookupKey.EndsWith("Tehsil", StringComparison.OrdinalIgnoreCase) && int.TryParse(rawValue, out int otherTehsilId))
+                            {
+                                actualValue = dbcontext.Tehsils.FirstOrDefault(t => t.TehsilId == otherTehsilId)?.TehsilName;
                             }
                             else
                             {
                                 actualValue = rawValue;
                             }
+
                         }
 
                         result[prop.Name] = actualValue ?? "";
@@ -376,17 +381,17 @@ namespace SahayataNidhi.Controllers.Officer
             return reordered;
         }
 
-        private string FormatSectionKey(string key)
+        private static string FormatSectionKey(string key)
         {
             if (string.IsNullOrEmpty(key)) return key;
 
             // Convert camelCase to Title Case with spaces
-            var result = System.Text.RegularExpressions.Regex.Replace(key, "([a-z])([A-Z])", "$1 $2");
+            var result = Regex.Replace(key, "([a-z])([A-Z])", "$1 $2");
             return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(result);
         }
 
         // Helper method to format field labels
-        private string FormatFieldLabel(string label)
+        private static string FormatFieldLabel(string label)
         {
             if (string.IsNullOrEmpty(label)) return label;
 
@@ -408,8 +413,195 @@ namespace SahayataNidhi.Controllers.Officer
             {
                 return GetTehsilName(tehsilId);
             }
+            else if (label.Contains("Muncipality", StringComparison.OrdinalIgnoreCase) && int.TryParse(value, out int muncipalityId))
+            {
+                return dbcontext.Muncipalities.FirstOrDefault(m => m.MuncipalityId == muncipalityId)!.MuncipalityName!;
+            }
+            else if (label.Contains("Block", StringComparison.OrdinalIgnoreCase) && int.TryParse(value, out int BlockId))
+            {
+                return dbcontext.Blocks.FirstOrDefault(m => m.BlockId == BlockId)!.BlockName!;
+            }
+            else if (label.Contains("Ward", StringComparison.OrdinalIgnoreCase) && int.TryParse(value, out int WardId))
+            {
+                return dbcontext.Wards.FirstOrDefault(m => m.WardCode == WardId)!.WardNo.ToString()!;
+            }
+            else if (label.Contains("Village", StringComparison.OrdinalIgnoreCase) && int.TryParse(value, out int VillageId))
+            {
+                return dbcontext.Villages.FirstOrDefault(m => m.VillageId == VillageId)!.VillageName!;
+            }
 
             return value;
         }
+
+        public string GetOfficerArea(string designation, dynamic formDetails)
+        {
+            var officerDesignation = dbcontext.OfficersDesignations
+                .FirstOrDefault(od => od.Designation == designation);
+
+            if (officerDesignation == null)
+                return string.Empty;
+
+            string accessLevel = officerDesignation.AccessLevel ?? string.Empty;
+            int accessCode;
+
+            switch (accessLevel)
+            {
+                case "Tehsil":
+                    accessCode = Convert.ToInt32(GetFieldValue("Tehsil", formDetails));
+                    var tehsil = dbcontext.Tswotehsils.FirstOrDefault(t => t.TehsilId == accessCode);
+                    return tehsil?.TehsilName ?? string.Empty;
+
+                case "District":
+                    accessCode = Convert.ToInt32(GetFieldValue("District", formDetails));
+                    var district = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == accessCode);
+                    return district?.DistrictName ?? string.Empty;
+
+                case "Division":
+                    accessCode = Convert.ToInt32(GetFieldValue("District", formDetails));
+                    var districtForDivision = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == accessCode);
+                    if (districtForDivision == null)
+                        return string.Empty;
+                    return districtForDivision.Division == 1 ? "Jammu" : "Kashmir";
+                case "State":
+                    return "J&K";
+                default:
+                    return string.Empty;
+            }
+        }
+
+
+        private void UpdateOfficerActionFormLabels(JObject officerClone, dynamic formDetails)
+        {
+            var officerRoles = dbcontext.OfficerDetails
+                .Select(od => od.Role)
+                .Where(r => r != null)
+                .Distinct()
+                .ToList();
+
+            if (officerClone.TryGetValue("actionForm", out var actionFormToken) && actionFormToken is JArray actionFormArray)
+            {
+                foreach (var field in actionFormArray.Children<JObject>())
+                {
+                    if (field.TryGetValue("options", out var optionsToken) && optionsToken is JArray optionsArray)
+                    {
+                        foreach (var option in optionsArray.Children<JObject>())
+                        {
+                            string? label = option["label"]?.ToString();
+                            if (string.IsNullOrWhiteSpace(label)) continue;
+
+                            foreach (var role in officerRoles)
+                            {
+                                if (label.Contains(role!, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    string area = GetOfficerArea(role, formDetails);
+                                    option["label"] = $"{label} {area}";
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private void ReplaceCodeFieldsWithNames(JToken formDetails)
+        {
+            var lookupMap = new Dictionary<string, Func<int, string>>
+            {
+                { "District", GetDistrictName },
+                { "Tehsil", GetTehsilName },
+                { "Muncipality", id => dbcontext.Muncipalities.FirstOrDefault(m => m.MuncipalityId == id)?.MuncipalityName ?? "" },
+                { "Block", id => dbcontext.Blocks.FirstOrDefault(m => m.BlockId == id)?.BlockName ?? "" },
+                { "HalqaPanchayat", id => dbcontext.HalqaPanchayats.FirstOrDefault(m => m.HalqaPanchayatId == id)?.HalqaPanchayatName ?? "" },
+                { "Village", id => dbcontext.Villages.FirstOrDefault(m => m.VillageId == id)?.VillageName ?? "" },
+                { "WardNo", id => dbcontext.Wards.FirstOrDefault(w => w.WardCode == id)?.WardNo.ToString() ?? "" }
+            };
+
+            foreach (var section in formDetails.Children<JProperty>())
+            {
+                foreach (var fieldToken in section.Value.Children<JObject>())
+                {
+                    ProcessField(fieldToken, lookupMap);
+
+                    if (fieldToken["additionalFields"] is JArray additionalFields)
+                    {
+                        foreach (var additional in additionalFields.OfType<JObject>())
+                            ProcessField(additional, lookupMap);
+                    }
+                }
+            }
+        }
+
+        private static void ProcessField(JObject field, Dictionary<string, Func<int, string>> lookupMap)
+        {
+            var name = field["name"]?.ToString() ?? "";
+            var valueStr = field["value"]?.ToString();
+
+            if (!int.TryParse(valueStr, out int code)) return;
+
+            foreach (var key in lookupMap.Keys)
+            {
+                if (name.EndsWith(key, StringComparison.OrdinalIgnoreCase))
+                {
+                    field["value"] = lookupMap[key](code);
+                    break;
+                }
+            }
+        }
+
+        private void FormatDateFields(JToken formDetails)
+        {
+            foreach (var section in formDetails.Children<JProperty>())
+            {
+                foreach (var field in section.Value.Children<JObject>())
+                {
+                    TryFormatDate(field);
+
+                    if (field["additionalFields"] is JArray additionalFields)
+                    {
+                        foreach (var additional in additionalFields.OfType<JObject>())
+                            TryFormatDate(additional);
+                    }
+                }
+            }
+        }
+
+        private static void TryFormatDate(JObject field)
+        {
+            if (DateTime.TryParse(field["value"]?.ToString(), out DateTime dt))
+            {
+                field["value"] = dt.ToString("dd MMM yyyy");
+            }
+        }
+
+        private static void UpdateWorkflowFlags(JArray officerArray, int currentPlayerId)
+        {
+            var previousOfficer = officerArray
+                .FirstOrDefault(o => (int)o["playerId"]! == (currentPlayerId - 1));
+
+            var nextOfficer = officerArray
+                .FirstOrDefault(o => (int)o["playerId"]! == (currentPlayerId + 1));
+
+            if (previousOfficer != null)
+                previousOfficer["canPull"] = false;
+
+            if (nextOfficer != null)
+                nextOfficer["canPull"] = false;
+        }
+        private void InjectEditableActionForm(JObject currentOfficerClone, Service? serviceDetails, int currentPlayer)
+        {
+            if (string.IsNullOrWhiteSpace(serviceDetails?.OfficerEditableField))
+                return;
+
+            var editableFields = JsonConvert.DeserializeObject<List<JObject>>(serviceDetails.OfficerEditableField);
+            int playerId = (int)currentOfficerClone["playerId"]!;
+
+            var match = editableFields?.FirstOrDefault(f => (int)f["playerId"]! == playerId);
+            if (match != null && match["actionForm"] != null)
+            {
+                currentOfficerClone["actionForm"] = match["actionForm"];
+            }
+        }
+
     }
 }

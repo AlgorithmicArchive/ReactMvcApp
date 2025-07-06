@@ -11,7 +11,11 @@ public partial class OfficerDetail
 
     public string? Role { get; set; }
 
+    public string? RoleShort { get; set; }
+
     public string? AccessLevel { get; set; }
 
     public int AccessCode { get; set; }
+
+    public bool? Validated { get; set; }
 }

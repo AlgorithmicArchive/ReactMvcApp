@@ -21,7 +21,7 @@ namespace SahayataNidhi.Controllers.User
 
             return Json(new { status = true, url = "/user/form" });
         }
-    
+
         public static string FormatKey(string input)
         {
             if (string.IsNullOrEmpty(input))
@@ -107,7 +107,7 @@ namespace SahayataNidhi.Controllers.User
             {
                 case "Tehsil":
                     accessCode = Convert.ToInt32(GetFieldValue("Tehsil", formDetails));
-                    var tehsil = dbcontext.Tehsils.FirstOrDefault(t => t.TehsilId == accessCode);
+                    var tehsil = dbcontext.Tswotehsils.FirstOrDefault(t => t.TehsilId == accessCode);
                     return tehsil?.TehsilName ?? string.Empty;
 
                 case "District":
@@ -307,7 +307,21 @@ namespace SahayataNidhi.Controllers.User
                     return $"Unknown Tehsil ({tid})";
                 }
             }
-
+            if (fieldName.Contains("Muncipality", StringComparison.OrdinalIgnoreCase)
+             && int.TryParse(s, out int muncipalityId))
+                return dbcontext.Muncipalities.FirstOrDefault(m => m.MuncipalityId == muncipalityId)!.MuncipalityName!;
+            if (fieldName.Contains("Ward", StringComparison.OrdinalIgnoreCase)
+            && int.TryParse(s, out int WardId))
+                return dbcontext.Wards.FirstOrDefault(m => m.WardCode == WardId)!.WardNo.ToString()!;
+            if (fieldName.Contains("Block", StringComparison.OrdinalIgnoreCase)
+           && int.TryParse(s, out int BlockId))
+                return dbcontext.Blocks.FirstOrDefault(m => m.BlockId == BlockId)!.BlockName!;
+            if (fieldName.Contains("HalqaPanchayat", StringComparison.OrdinalIgnoreCase)
+                 && int.TryParse(s, out int HalqaPanchayatId))
+                return dbcontext.HalqaPanchayats.FirstOrDefault(m => m.HalqaPanchayatId == HalqaPanchayatId)!.HalqaPanchayatName!;
+            if (fieldName.Contains("Village", StringComparison.OrdinalIgnoreCase)
+                 && int.TryParse(s, out int VillageId))
+                return dbcontext.Villages.FirstOrDefault(m => m.VillageId == VillageId)!.VillageName!;
 
             return s;
         }
@@ -323,11 +337,15 @@ namespace SahayataNidhi.Controllers.User
                         {
                             int value = Convert.ToInt32(field["value"]);
 
-                            if (fieldName.Contains("District"))
+                            if (fieldName == "Tehsil")
+                                return dbcontext.Tswotehsils.FirstOrDefault(t => t.TehsilId == value)?.TehsilName ?? "Unknown Tehsil";
+
+                            else if (fieldName == "District")
                                 return dbcontext.Districts.FirstOrDefault(d => d.DistrictId == value)?.DistrictName ?? "Unknown District";
 
-                            else if (fieldName.Contains("Tehsil"))
+                            else if (fieldName.EndsWith("Tehsil"))
                                 return dbcontext.Tehsils.FirstOrDefault(t => t.TehsilId == value)?.TehsilName ?? "Unknown Tehsil";
+
 
                             else
                                 return "Unknown Value";
@@ -463,18 +481,23 @@ namespace SahayataNidhi.Controllers.User
 
                         if (formValues.TryGetValue(lookupKey, out var rawValue))
                         {
-                            if (lookupKey.Contains("District", StringComparison.OrdinalIgnoreCase) && int.TryParse(rawValue, out int districtId))
+                            if (lookupKey.Equals("District", StringComparison.OrdinalIgnoreCase) && int.TryParse(rawValue, out int districtId))
                             {
                                 actualValue = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == districtId)?.DistrictName;
                             }
-                            else if (lookupKey.Contains("Tehsil", StringComparison.OrdinalIgnoreCase) && int.TryParse(rawValue, out int tehsilId))
+                            else if (lookupKey.Equals("Tehsil", StringComparison.OrdinalIgnoreCase) && int.TryParse(rawValue, out int tehsilId))
                             {
-                                actualValue = dbcontext.Tehsils.FirstOrDefault(t => t.TehsilId == tehsilId)?.TehsilName;
+                                actualValue = dbcontext.Tswotehsils.FirstOrDefault(t => t.TehsilId == tehsilId)?.TehsilName;
+                            }
+                            else if (lookupKey.EndsWith("Tehsil", StringComparison.OrdinalIgnoreCase) && int.TryParse(rawValue, out int otherTehsilId))
+                            {
+                                actualValue = dbcontext.Tehsils.FirstOrDefault(t => t.TehsilId == otherTehsilId)?.TehsilName;
                             }
                             else
                             {
                                 actualValue = rawValue;
                             }
+
                         }
 
                         result[prop.Name] = actualValue ?? "";

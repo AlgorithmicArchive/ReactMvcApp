@@ -349,7 +349,14 @@ namespace SahayataNidhi.Controllers
                 // Include designation if applicable
                 if (user.UserType == "Officer")
                 {
-                    designation = _dbContext.OfficerDetails.FirstOrDefault(o => o.OfficerId == user.UserId)?.Role!;
+                    var officerDetails = _dbContext.OfficerDetails.FirstOrDefault(o => o.OfficerId == user.UserId)!;
+                    bool? isValidated = officerDetails.Validated;
+                    if ((bool)!isValidated!)
+                    {
+                        return Json(new { status = false, response = "You are not yet validated by an Admin. Please wait till validation is complete." });
+                    }
+
+                    designation = officerDetails.Role!;
                     if (!string.IsNullOrEmpty(designation))
                     {
                         claims.Add(new Claim("Designation", designation));
@@ -612,25 +619,6 @@ namespace SahayataNidhi.Controllers
             return Json(new { isUnique });
         }
 
-
-        // [HttpPost]
-        // public IActionResult Contact([FromForm] IFormCollection form)
-        // {
-        //     var fullName = form["fullName"].ToString();
-        //     var email = form["email"].ToString();
-        //     var message = form["message"].ToString();
-
-        //     _dbContext.Contacts.Add(new Contact
-        //     {
-        //         FullName = fullName,
-        //         Email = email,
-        //         Message = message,
-        //         SubmissionDate = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")
-        //     });
-        //     _dbContext.SaveChanges();
-
-        //     return Json(new { status = true, message = "Submitted successfully." });
-        // }
 
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

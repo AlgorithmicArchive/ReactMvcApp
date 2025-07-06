@@ -62,11 +62,31 @@ namespace SahayataNidhi.Controllers.Officer
 
             return officer!;
         }
+
+        public string GetAccessArea(string AccessLevel, int? AccessCode)
+        {
+            if (AccessLevel == "Tehsil")
+            {
+                var tehsil = dbcontext.Tswotehsils.Where(t => t.TehsilId == AccessCode).FirstOrDefault();
+                return tehsil!.TehsilName!;
+            }
+            else if (AccessLevel == "District")
+            {
+                var district = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == AccessCode);
+                return district!.DistrictName!;
+            }
+            else if (AccessLevel == "Division")
+            {
+                return AccessCode == 1 ? "Jammu" : "Kashmir";
+            }
+            else return "Jammu and Kashmir";
+        }
+
+
         [HttpGet]
         public IActionResult GetServiceList()
         {
             var officer = GetOfficerDetails();
-            _logger.LogInformation($"------- Role: {officer.Role}----------------------");
             // Fetch the service list for the given role
             var roleParameter = new SqlParameter("@Role", officer.Role);
             var serviceList = dbcontext.Database
@@ -74,7 +94,8 @@ namespace SahayataNidhi.Controllers.Officer
                                        .AsEnumerable() // To avoid composability errors
                                        .ToList();
 
-            return Json(new { serviceList });
+            string officerArea = GetAccessArea(officer.AccessLevel!, officer.AccessCode);
+            return Json(new { serviceList, role = officer.RoleShort, area = officerArea });
         }
         [HttpGet]
         public async Task<IActionResult> PullApplication(string applicationId)
@@ -240,7 +261,7 @@ namespace SahayataNidhi.Controllers.Officer
                 string? tehsilName = null;
                 if (!string.IsNullOrWhiteSpace(appliedTehsilId) && int.TryParse(appliedTehsilId, out int tehsilId))
                 {
-                    tehsilName = dbcontext.Tehsils
+                    tehsilName = dbcontext.Tswotehsils
                         .FirstOrDefault(t => t.TehsilId == tehsilId)?.TehsilName;
                 }
 
@@ -295,11 +316,27 @@ namespace SahayataNidhi.Controllers.Officer
                     string path = $"files/{fileName}";
                     string fullPath = Path.Combine(_webHostEnvironment.ContentRootPath, "wwwroot", path);
                     var attachments = new List<string> { fullPath };
-                    await emailSender.SendEmailWithAttachments(userEmail!, "Form Submission", htmlMessage, attachments);
+                    try
+                    {
+                        await emailSender.SendEmailWithAttachments(userEmail!, "Form Submission", htmlMessage, attachments);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log the email sending error but continue execution
+                        _logger.LogError(ex, $"Failed to send email with attachments for Application ID: {applicationId}, Email: {userEmail}");
+                    }
                 }
                 else if (action != "Forward" && action != "Returned")
                 {
-                    await emailSender.SendEmail(userEmail, "Application Status Update", htmlMessage);
+                    try
+                    {
+                        await emailSender.SendEmail(userEmail, "Application Status Update", htmlMessage);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log the email sending error but continue execution
+                        _logger.LogError(ex, $"Failed to send email for Application ID: {applicationId}, Email: {userEmail}");
+                    }
                 }
 
 

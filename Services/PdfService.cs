@@ -1,9 +1,13 @@
 using System.Collections;
 using System.Collections.Specialized;
 using System.Reflection;
+using iText.Barcodes;
 using iText.IO.Image;
 using iText.Kernel.Colors;
+using iText.Kernel.Geom;
 using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Canvas;
+using iText.Kernel.Pdf.Xobject;
 using iText.Layout;
 using iText.Layout.Borders;
 using iText.Layout.Element;
@@ -24,7 +28,7 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
 
         if (accessLevel == "Tehsil")
         {
-            areaName = dbcontext.Tehsils.FirstOrDefault(t => t.TehsilId == accessCode)!.TehsilName!;
+            areaName = dbcontext.Tswotehsils.FirstOrDefault(t => t.TehsilId == accessCode)!.TehsilName!;
         }
         else if (accessLevel == "District")
         {
@@ -92,19 +96,19 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
 
     public void CreateSanctionPdf(Dictionary<string, string> details, string sanctionLetterFor, string information, OfficerDetailsModal Officer, string ApplicationId)
     {
-        string path = Path.Combine(_webHostEnvironment.WebRootPath, "files", ApplicationId.Replace("/", "_") + "SanctionLetter.pdf");
-        Directory.CreateDirectory(Path.GetDirectoryName(path) ?? string.Empty);
+        string path = System.IO.Path.Combine(_webHostEnvironment.WebRootPath, "files", ApplicationId.Replace("/", "_") + "SanctionLetter.pdf");
+        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path) ?? string.Empty);
 
-        string emblem = Path.Combine(_webHostEnvironment.WebRootPath, "assets", "images", "emblem.png");
+        string emblem = System.IO.Path.Combine(_webHostEnvironment.WebRootPath, "assets", "images", "emblem.png");
         Image image = new Image(ImageDataFactory.Create(emblem))
-                        .ScaleToFit(50, 50)        // Resize the image (optional)
-                        .SetHorizontalAlignment(HorizontalAlignment.CENTER);  // Center align the image
+                        .ScaleToFit(50, 50)
+                        .SetHorizontalAlignment(HorizontalAlignment.CENTER);
         string? sanctionedFromWhere = Officer.AccessLevel != "State" ? $"Office of The {Officer.Role}, {GetArreaName(Officer.AccessLevel, Officer.AccessCode)}" : "SOCIAL WELFARE DEPARTMENT\nCIVIL SECRETARIAT, JAMMU / SRINAGAR";
         string? branchOffice = GetBranchOffice(ApplicationId);
 
-
         using PdfWriter writer = new(path);
         using PdfDocument pdf = new(writer);
+        pdf.SetDefaultPageSize(PageSize.A4); // Explicitly set A4 size
         using Document document = new(pdf);
         document.Add(image);
         document.Add(new Paragraph("Union Territory of Jammu and Kashmir")
@@ -122,7 +126,6 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
         document.Add(new Paragraph("\nPlease Find the Particulars of Beneficiary given below:")
             .SetFontSize(12));
 
-
         Table table = new Table(UnitValue.CreatePercentArray(2)).UseAllAvailableWidth();
         foreach (var item in details)
         {
@@ -133,10 +136,10 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
 
         document.Add(new Paragraph($"{information}")
             .SetFontSize(10));
-        // 1) “NO: …” on the left, “ISSUING AUTHORITY” on the right
+
+        // Create table for NO and ISSUING AUTHORITY
         Table idTable = new Table(UnitValue.CreatePercentArray([50, 50]))
             .UseAllAvailableWidth();
-
         idTable.AddCell(new Cell()
             .Add(new Paragraph($"NO: {ApplicationId}")
                 .SetFontSize(8)
@@ -144,20 +147,38 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
                 .SetBold())
             .SetBorder(Border.NO_BORDER)
             .SetTextAlignment(TextAlignment.LEFT));
-
         idTable.AddCell(new Cell()
             .Add(new Paragraph("ISSUING AUTHORITY")
                 .SetFontSize(10)
                 .SetBold())
             .SetBorder(Border.NO_BORDER)
             .SetTextAlignment(TextAlignment.RIGHT));
-
         document.Add(idTable);
 
-        // 2) Your Date / Officer line (you already have this)
+        // Create QR code with general details
+        Console.WriteLine("Details Keys: " + string.Join(", ", details.Keys)); // Debug: Log all keys in details
+        string qrContent = string.Join("\n", details
+            .Where(kv => new[] { "NAME OF APPLICANT", "FATHER / HUSBAND / GUARDIAN", "ApplicationId" }.Contains(kv.Key))
+            .Select(kv => $"{kv.Key}: {kv.Value}"));
+        if (string.IsNullOrEmpty(qrContent))
+        {
+            Console.WriteLine("Warning: No matching details for QR code; using ApplicationId only");
+            qrContent = $"ApplicationId: {ApplicationId}";
+        }
+        else
+        {
+            qrContent += $"\nApplicationId: {ApplicationId}"; // Append ApplicationId if other details exist
+        }
+        Console.WriteLine("QR Content: " + qrContent); // Debug: Log final QR content
+        BarcodeQRCode qrCode = new BarcodeQRCode(qrContent);
+        PdfFormXObject qrXObject = qrCode.CreateFormXObject(ColorConstants.BLACK, pdf);
+        Image qrImage = new Image(qrXObject)
+            .ScaleToFit(150, 150); // Adjust size as needed
+
+
+        // Create footer table for Date and Officer
         Table footerTable = new Table(UnitValue.CreatePercentArray([50, 50]))
             .UseAllAvailableWidth();
-
         footerTable.AddCell(new Cell()
             .Add(new Paragraph($"Date: {DateTime.Today:dd/MM/yyyy}")
                 .SetFontSize(8)
@@ -165,7 +186,6 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
                 .SetBold())
             .SetBorder(Border.NO_BORDER)
             .SetTextAlignment(TextAlignment.LEFT));
-
         footerTable.AddCell(new Cell()
             .Add(new Paragraph($"{Officer.Role}, {GetArreaName(Officer.AccessLevel, Officer.AccessCode)}")
                 .SetFontSize(10)
@@ -173,16 +193,20 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
             .SetBorder(Border.NO_BORDER)
             .SetTextAlignment(TextAlignment.RIGHT));
 
-        document.Add(footerTable);
+        // Add QR code to the page using PdfCanvas
+        PdfCanvas canvas = new(pdf.GetFirstPage());
+        canvas.AddXObjectAt(qrXObject, 30, 30); // Bottom-left corner (x=30, y=30)
 
+        // Add footer table after QR code
+        document.Add(footerTable);
     }
 
     public void CreateAcknowledgement(OrderedDictionary details, string applicationId)
     {
-        string path = Path.Combine(_webHostEnvironment.WebRootPath, "files", applicationId.Replace("/", "_") + "Acknowledgement.pdf");
-        Directory.CreateDirectory(Path.GetDirectoryName(path) ?? string.Empty);
+        string path = System.IO.Path.Combine(_webHostEnvironment.WebRootPath, "files", applicationId.Replace("/", "_") + "Acknowledgement.pdf");
+        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path) ?? string.Empty);
 
-        string emblem = Path.Combine(_webHostEnvironment.WebRootPath, "assets", "images", "emblem.png");
+        string emblem = System.IO.Path.Combine(_webHostEnvironment.WebRootPath, "assets", "images", "emblem.png");
         Image image = new Image(ImageDataFactory.Create(emblem))
                         .ScaleToFit(50, 50)        // Resize the image (optional)
                         .SetHorizontalAlignment(HorizontalAlignment.CENTER);  // Center align the image

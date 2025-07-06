@@ -39,14 +39,15 @@ const getStatusIcon = (statusName, textColor) => {
   }
 };
 
+// Updated color palette for a sleeker look
 const statusColorMap = {
-  "total applications": "#e0e0e0",
-  pending: "#ffe082",
-  forwarded: "#bbdefb",
-  returned: "#ffccbc",
-  rejected: "#ef9a9a",
-  "pending with citizen": "#d1c4e9",
-  sanctioned: "#a5d6a7",
+  "total applications": "#e5e7eb",
+  pending: "#fef3c7",
+  forwarded: "#bfdbfe",
+  returned: "#fed7aa",
+  rejected: "#f87171",
+  "pending with citizen": "#d8b4fe",
+  sanctioned: "#86efac",
 };
 
 const StatusCountCard = ({
@@ -55,11 +56,11 @@ const StatusCountCard = ({
   onClick,
   tooltipText,
   bgColor,
-  textColor,
+  textColor = "#1f2937",
   sx = {},
 }) => {
   const colorKey = statusName.toLowerCase();
-  const chipColor = statusColorMap[colorKey] || "#e0e0e0";
+  const chipColor = bgColor || statusColorMap[colorKey] || "#e5e7eb";
 
   return (
     <Tooltip
@@ -68,17 +69,17 @@ const StatusCountCard = ({
       slotProps={{
         tooltip: {
           sx: {
-            backgroundColor: "#ffffff",
-            color: "#000",
-            fontSize: "14px",
-            padding: "10px",
+            backgroundColor: "#1f2937",
+            color: "#ffffff",
+            fontSize: "0.875rem",
+            padding: "8px 12px",
             borderRadius: "8px",
-            boxShadow: 3,
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
           },
         },
         arrow: {
           sx: {
-            color: "#ffffff",
+            color: "#1f2937",
           },
         },
       }}
@@ -86,36 +87,40 @@ const StatusCountCard = ({
       <Card
         onClick={onClick}
         sx={{
-          borderRadius: 2,
-          boxShadow: 3,
-          p: 2,
-          transition: "transform 0.2s",
+          borderRadius: 3,
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+          p: 1.5,
+          transition: "all 0.3s ease",
           cursor: onClick ? "pointer" : "default",
           "&:hover": {
-            transform: "scale(1.02)",
+            transform: "translateY(-4px)",
+            boxShadow: "0 6px 16px rgba(0, 0, 0, 0.12)",
           },
           width: {
-            xs: "100%", // full width on mobile
-            sm: "48%", // nearly half on small screens
-            md: "32%", // one-third on medium screens
-            lg: "90%", // one-fourth on large screens
+            xs: "100%",
+            sm: "48%",
+            md: "32%",
+            lg: "90%",
           },
+          bgcolor: "#ffffff",
           ...sx,
         }}
       >
-        <CardContent sx={{ paddingBottom: "16px !important" }}>
+        <CardContent sx={{ paddingBottom: "12px !important" }}>
           <Box
             display="flex"
             justifyContent="space-between"
             alignItems="center"
-            mb={{ xs: 1.5, sm: 2 }}
+            mb={1.5}
             flexWrap="wrap"
           >
             <Typography
               variant="subtitle1"
-              fontWeight={600}
+              fontWeight={500}
               sx={{
-                fontSize: { xs: "0.9rem", sm: "1rem" },
+                fontSize: { xs: "0.875rem", sm: "1rem" },
+                color: textColor,
+                fontFamily: "'Inter', sans-serif",
               }}
             >
               {statusName}
@@ -125,10 +130,13 @@ const StatusCountCard = ({
               label={getStatusIcon(statusName, textColor)}
               size="small"
               sx={{
-                backgroundColor: bgColor || chipColor,
-                color: "#000",
-                fontWeight: 600,
-                px: 1.5,
+                backgroundColor: chipColor,
+                color: textColor,
+                borderRadius: "8px",
+                height: "28px",
+                "& .MuiChip-label": {
+                  padding: "0 8px",
+                },
               }}
             />
           </Box>
@@ -136,10 +144,11 @@ const StatusCountCard = ({
           <Typography
             variant="h4"
             sx={{
-              color: "#7B61FF",
+              color: "#3b82f6",
               fontWeight: 600,
-              fontSize: { xs: "2rem", sm: "2.5rem", md: "3rem" },
-              mb: 0.5,
+              fontSize: { xs: "1.75rem", sm: "2.25rem", md: "2.5rem" },
+              mb: 1,
+              fontFamily: "'Inter', sans-serif",
             }}
           >
             {count}
@@ -150,11 +159,15 @@ const StatusCountCard = ({
               size="small"
               endIcon={<ArrowForwardIcon />}
               sx={{
-                color: "#7B61FF",
-                fontWeight: 600,
+                color: "#3b82f6",
+                fontWeight: 500,
                 textTransform: "none",
-                padding: 0,
-                minWidth: "unset",
+                padding: "4px 8px",
+                fontSize: "0.875rem",
+                fontFamily: "'Inter', sans-serif",
+                "&:hover": {
+                  backgroundColor: "rgba(59, 130, 246, 0.1)",
+                },
               }}
             >
               View

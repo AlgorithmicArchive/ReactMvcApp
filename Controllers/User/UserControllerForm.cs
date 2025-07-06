@@ -14,7 +14,6 @@ namespace SahayataNidhi.Controllers.User
         [HttpPost]
         public async Task<IActionResult> InsertFormDetails([FromForm] IFormCollection form)
         {
-
             // Retrieve userId from JWT token
             int userId = Convert.ToInt32(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
             int serviceId = Convert.ToInt32(form["serviceId"].ToString());
@@ -42,16 +41,15 @@ namespace SahayataNidhi.Controllers.User
                 }
             }
 
-
             // Here we look for any key that contains "District" (case-insensitive) and try to parse its value as an integer.
             int districtId = 0;
             districtId = formDetailsObj.Properties()
-            .SelectMany(section => section.Value is JArray fields
-                ? fields.OfType<JObject>()
-                : [])
-            .Where(field => field["name"]?.ToString() == "District")
-            .Select(field => Convert.ToInt32(field["value"]))
-            .FirstOrDefault();
+                .SelectMany(section => section.Value is JArray fields
+                    ? fields.OfType<JObject>()
+                    : [])
+                .Where(field => field["name"]?.ToString() == "District")
+                .Select(field => Convert.ToInt32(field["value"]))
+                .FirstOrDefault();
 
             if (string.IsNullOrEmpty(referenceNumber))
             {
@@ -164,27 +162,39 @@ namespace SahayataNidhi.Controllers.User
                 string? serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId)!.ServiceName;
                 string? email = GetFormFieldValue(formDetailsObj, "Email");
                 string htmlMessage = $@"
-                    <div style='font-family: Arial, sans-serif;'>
-                        <h2 style='color: #2e6c80;'>Application Submission</h2>
-                        <p>{fullName},</p>
-                        <p>Your Application has been sent succesfully in the Office of {startingPlayer} {districtName}. Below are the details:</p>
-                        <ul style='line-height: 1.6;'>
-                            <li><strong>Service:</strong> {serviceName}</li>
-                            <li><strong>Submission Date:</strong> {DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")}</li>
-                            <li><strong>Reference ID:</strong> {referenceNumber}</li>
-                        </ul>
-                        <p>Please find the acknowledgment of your submission attached below. Kindly review it for your records.</p>
-                        <p>If you have any questions or did not submit this form, please contact our support team immediately.</p>
-                        <br />
-                        <p style='font-size: 12px; color: #888;'>Thank you,<br />Your Application Team</p>
-                    </div>";
+            <div style='font-family: Arial, sans-serif;'>
+                <h2 style='color: #2e6c80;'>Application Submission</h2>
+                <p>{fullName},</p>
+                <p>Your Application has been sent succesfully in the Office of {startingPlayer} {districtName}. Below are the details:</p>
+                <ul style='line-height: 1.6;'>
+                    <li><strong>Service:</strong> {serviceName}</li>
+                    <li><strong>Submission Date:</strong> {DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")}</li>
+                    <li><strong>Reference ID:</strong> {referenceNumber}</li>
+                </ul>
+                <p>Please find the acknowledgment of your submission attached below. Kindly review it for your records.</p>
+                <p>If you have any questions or did not submit this form, please contact our support team immediately.</p>
+                <br />
+                <p style='font-size: 12px; color: #888;'>Thank you,<br />Your Application Team</p>
+            </div>";
                 var attachments = new List<string> { fullPath };
-                await emailSender.SendEmailWithAttachments(email!, "Form Submission", htmlMessage, attachments);
+
+                try
+                {
+                    await emailSender.SendEmailWithAttachments(email!, "Form Submission", htmlMessage, attachments);
+                }
+                catch (Exception ex)
+                {
+                    // Log the email sending error but continue execution
+                    _logger.LogError(ex, $"Failed to send email for Reference: {referenceNumber}, Email: {email}");
+                }
+
                 helper.InsertHistory(referenceNumber, "Application Submission", "Citizen", "Submitted");
                 return Json(new { status = true, referenceNumber, type = "Submit" });
             }
             else
+            {
                 return Json(new { status = true, referenceNumber, type = "Save" });
+            }
         }
 
         [HttpPost]

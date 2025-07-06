@@ -19,6 +19,8 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     public virtual DbSet<ApplicationPerDistrict> ApplicationPerDistricts { get; set; }
 
+    public virtual DbSet<BankDetail> BankDetails { get; set; }
+
     public virtual DbSet<Block> Blocks { get; set; }
 
     public virtual DbSet<Certificate> Certificates { get; set; }
@@ -44,6 +46,8 @@ public partial class SocialWelfareDepartmentContext : DbContext
     public virtual DbSet<Service> Services { get; set; }
 
     public virtual DbSet<Tehsil> Tehsils { get; set; }
+
+    public virtual DbSet<Tswotehsil> Tswotehsils { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
 
@@ -93,6 +97,48 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.FinancialYear)
                 .HasMaxLength(50)
                 .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<BankDetail>(entity =>
+        {
+            entity.HasNoKey();
+
+            entity.Property(e => e.Address)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("ADDRESS");
+            entity.Property(e => e.Bank)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("BANK");
+            entity.Property(e => e.Branch)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("BRANCH");
+            entity.Property(e => e.City1)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("CITY1");
+            entity.Property(e => e.City2)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("CITY2");
+            entity.Property(e => e.Ifsc)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("IFSC");
+            entity.Property(e => e.Phone)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("PHONE");
+            entity.Property(e => e.State)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("STATE");
+            entity.Property(e => e.StdCode)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("STD CODE");
         });
 
         modelBuilder.Entity<Block>(entity =>
@@ -204,13 +250,18 @@ public partial class SocialWelfareDepartmentContext : DbContext
         {
             entity.HasKey(e => e.DetailId);
 
-            entity.Property(e => e.DetailId).ValueGeneratedNever();
             entity.Property(e => e.AccessLevel)
                 .HasMaxLength(20)
                 .IsUnicode(false);
             entity.Property(e => e.Role)
                 .HasMaxLength(50)
                 .IsUnicode(false);
+            entity.Property(e => e.RoleShort)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+            entity.Property(e => e.Validated)
+                .HasDefaultValue(false)
+                .HasColumnName("validated");
         });
 
         modelBuilder.Entity<OfficersDesignation>(entity =>
@@ -370,16 +421,35 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
         modelBuilder.Entity<Tehsil>(entity =>
         {
-            entity.HasKey(e => e.TehsilId).HasName("Tehsil_PK");
+            entity.HasKey(e => new { e.TehsilId, e.Uuid }).HasName("Tehsil_PK");
 
             entity.ToTable("Tehsil");
 
-            entity.Property(e => e.TehsilId).ValueGeneratedNever();
+            entity.Property(e => e.Uuid)
+                .ValueGeneratedOnAdd()
+                .HasColumnName("UUID");
             entity.Property(e => e.DistrictId).HasColumnName("DistrictID");
+            entity.Property(e => e.IsTswo).HasDefaultValue(false);
             entity.Property(e => e.TehsilName)
                 .HasMaxLength(255)
                 .IsUnicode(false);
-            entity.Property(e => e.Uuid).HasColumnName("UUID");
+        });
+
+        modelBuilder.Entity<Tswotehsil>(entity =>
+        {
+            entity
+                .HasNoKey()
+                .ToTable("TSWOTehsil");
+
+            entity.Property(e => e.DistrictId).HasColumnName("DistrictID");
+            entity.Property(e => e.DivisionCode).HasColumnName("divisionCode");
+            entity.Property(e => e.TehsilName)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+            entity.Property(e => e.TswoOfficeName)
+                .HasMaxLength(50)
+                .IsUnicode(false)
+                .HasColumnName("tswoOfficeName");
         });
 
         modelBuilder.Entity<User>(entity =>

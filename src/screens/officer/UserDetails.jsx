@@ -730,6 +730,7 @@ export default function UserDetails() {
           detailsOpen={detailsOpen}
           setDetailsOpen={setDetailsOpen}
           onViewPdf={handleViewPdf}
+          applicationId={applicationId}
         />
 
         <Typography
@@ -742,7 +743,7 @@ export default function UserDetails() {
             mb: 4,
           }}
         >
-          Application History
+          Movement History
         </Typography>
         <CollapsibleActionHistory
           detailsOpen={historyOpen}

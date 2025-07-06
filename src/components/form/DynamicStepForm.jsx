@@ -13,10 +13,7 @@ import {
   FormHelperText,
   Button,
   Typography,
-  Stepper,
-  Step,
-  StepLabel,
-  StepIcon,
+  Divider,
   IconButton,
 } from "@mui/material";
 import { Col, Row } from "react-bootstrap";
@@ -32,12 +29,18 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import CloseIcon from "@mui/icons-material/CloseOutlined";
 
 const sectionIconMap = {
-  Location: <LocationOnIcon sx={{ fontSize: 36 }} />,
-  "Applicant Details": <PersonIcon sx={{ fontSize: 36 }} />,
-  "Present Address Details": <HomeIcon sx={{ fontSize: 36 }} />,
-  "Permanent Address Details": <HomeIcon sx={{ fontSize: 36 }} />,
-  "Bank Details": <AccountBalanceIcon sx={{ fontSize: 36 }} />,
-  Documents: <InsertDriveFileIcon sx={{ fontSize: 36 }} />,
+  Location: <LocationOnIcon sx={{ fontSize: 36, color: "#14B8A6" }} />, // Teal
+  "Applicant Details": <PersonIcon sx={{ fontSize: 36, color: "#EC4899" }} />, // Pink
+  "Present Address Details": (
+    <HomeIcon sx={{ fontSize: 36, color: "#8B5CF6" }} />
+  ), // Indigo
+  "Permanent Address Details": (
+    <HomeIcon sx={{ fontSize: 36, color: "#8B5CF6" }} />
+  ), // Indigo
+  "Bank Details": (
+    <AccountBalanceIcon sx={{ fontSize: 36, color: "#F59E0B" }} />
+  ), // Amber
+  Documents: <InsertDriveFileIcon sx={{ fontSize: 36, color: "#10B981" }} />, // Green
 };
 
 // Helper function to flatten the nested formDetails structure
@@ -74,7 +77,7 @@ const flattenFormDetails = (nestedDetails) => {
   return flat;
 };
 
-const DynamicStepForm = ({ mode = "new", data }) => {
+const DynamicScrollableForm = ({ mode = "new", data }) => {
   const {
     control,
     handleSubmit,
@@ -95,7 +98,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
   const [buttonLoading, setButtonLoading] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState("");
   const [selectedServiceId, setSelectedServiceId] = useState("");
-  const [currentStep, setCurrentStep] = useState(3);
   const [initialData, setInitialData] = useState(null);
   const [additionalDetails, setAdditionalDetails] = useState(null);
   const [isCopyAddressChecked, setIsCopyAddressChecked] = useState(false);
@@ -105,11 +107,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
   );
   const navigate = useNavigate();
   const location = useLocation();
-
-  const bankName = watch("BankName");
-  const branchName = watch("BranchName");
-  const [bankNameBlurred, setBankNameBlured] = useState(false);
-  const [branchNameBlurred, setBranchNameBlured] = useState(false);
 
   const hasRunRef = useRef(false);
 
@@ -198,7 +195,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
       }
     }
     loadForm();
-  }, [location.state, mode, reset, data, getValues]);
+  }, [location.state, mode, reset, data, setValue]);
 
   const setDefaultFile = async (path) => {
     try {
@@ -219,13 +216,22 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     if (hasRunRef.current) return;
     hasRunRef.current = true;
 
-    function recurseAndSet(fields, sectionIndex) {
+    function recurseAndSet(fields, sectionIndex, sectionName) {
       fields.forEach((field) => {
         const name = field.name;
-        const value = initialData[name];
+        // Find the corresponding section in initialData
+        const sectionData = initialData[sectionName] || [];
+        // Find the field in initialData by name
+        const fieldData = sectionData.find((f) => f.name === name);
+        const value = fieldData ? fieldData.value : undefined;
 
-        if (name.toLowerCase().includes("district") && value) {
-          handleDistrictChange(sectionIndex, { ...field, name }, value);
+        if (
+          (name.toLowerCase().includes("district") ||
+            name.toLowerCase().includes("muncipality") ||
+            name.toLowerCase().includes("municipality")) &&
+          value !== undefined
+        ) {
+          handleAreaChange(sectionIndex, { ...field, name }, value);
         }
 
         if (name.toLowerCase().includes("applicantimage") && value) {
@@ -241,6 +247,12 @@ const DynamicStepForm = ({ mode = "new", data }) => {
             shouldValidate: true,
           });
         }
+        console.log(name, value);
+
+        // Set the field value if it exists
+        if (value !== undefined) {
+          setValue(name, value, { shouldValidate: true });
+        }
 
         if (field.additionalFields) {
           const branches = Array.isArray(field.additionalFields)
@@ -252,48 +264,183 @@ const DynamicStepForm = ({ mode = "new", data }) => {
               ...af,
               name: af.name || `${name}_${af.id}`,
             })),
-            sectionIndex
+            sectionIndex,
+            sectionName
           );
         }
       });
     }
 
-    formSections.forEach((section, idx) => recurseAndSet(section.fields, idx));
-  }, [formSections, initialData, setValue]);
+    formSections.forEach((section, idx) => {
+      // Map section.section to initialData keys (e.g., "Present Address Details")
+      const sectionName = section.section;
+      recurseAndSet(section.fields, idx, sectionName);
+    });
+  }, [
+    formSections,
+    initialData,
+    setValue,
+    handleAreaChange,
+    setApplicantImagePreview,
+    setDefaultFile,
+  ]);
 
-  const handleCopyAddress = (checked, sectionIndex) => {
-    if (checked) {
-      const presentSection = formSections.find(
-        (sec) => sec.section === "Present Address Details"
+  const handleCopyAddress = async (checked, sectionIndex) => {
+    if (!checked) {
+      setValue("PermanentAddressType", "Please Select");
+      return;
+    }
+
+    const presentSection = formSections.find(
+      (sec) => sec.section === "Present Address Details"
+    );
+    const permanentSection = formSections.find(
+      (sec) => sec.section === "Permanent Address Details"
+    );
+
+    if (!presentSection || !permanentSection) {
+      console.warn("Present or Permanent Address section not found");
+      return;
+    }
+
+    // Step 1: Get AddressType field
+    const presentTypeField = presentSection.fields[0]; // Assuming first field is AddressType
+    const permanentTypeField = permanentSection.fields[0]; // Assuming first field is AddressType
+
+    if (
+      presentTypeField.name !== "PresentAddressType" ||
+      permanentTypeField.name !== "PermanentAddressType"
+    ) {
+      console.warn("Address type fields not found in sections");
+      return;
+    }
+
+    // Step 2: Get actual values ("Urban"/"Rural")
+    const presentAddressType = getValues(presentTypeField.name);
+    let permanentAddressType = getValues(permanentTypeField.name);
+
+    // Step 3: Sync PermanentAddressType with PresentAddressType
+    if (
+      permanentAddressType === "Please Select" ||
+      !["Urban", "Rural"].includes(permanentAddressType)
+    ) {
+      permanentAddressType = presentAddressType;
+      setValue(permanentTypeField.name, presentAddressType, {
+        shouldValidate: true,
+      });
+    }
+
+    // Step 4: Debug additionalFields and AddressType
+    console.log("Present Address Type:", presentAddressType);
+    console.log("Permanent Address Type (after sync):", permanentAddressType);
+    console.log(
+      "Present Additional Fields:",
+      presentSection.fields[0].additionalFields?.[presentAddressType]?.map(
+        (f) => f.name
+      )
+    );
+    console.log(
+      "Permanent Additional Fields:",
+      permanentSection.fields[0].additionalFields?.[permanentAddressType]?.map(
+        (f) => f.name
+      )
+    );
+
+    // Step 5: Copy top-level AddressType field
+    setValue(permanentTypeField.name, presentAddressType, {
+      shouldValidate: true,
+    });
+
+    // Step 6: Copy additional fields based on AddressType
+    const presentAdditionalFields =
+      presentSection.fields[0].additionalFields?.[presentAddressType] || [];
+    const permanentAdditionalFields =
+      permanentSection.fields[0].additionalFields?.[permanentAddressType] || [];
+
+    if (!permanentSection.fields[0].additionalFields) {
+      console.warn("Permanent section additionalFields is missing");
+      return;
+    }
+
+    if (!permanentAdditionalFields.length) {
+      console.warn(
+        `No permanent additional fields found for AddressType: ${permanentAddressType}`
       );
-      const permanentSection = formSections.find(
-        (sec) => sec.section === "Permanent Address Details"
+      return;
+    }
+
+    // Register all permanent fields to avoid "not found in fieldNames" errors
+    permanentAdditionalFields.forEach((field) => {
+      setValue(field.name, "", { shouldValidate: false });
+    });
+
+    // Map fields explicitly to handle naming inconsistencies
+    const fieldNameMap = {
+      PresentDistrict: "PermanentDistrict",
+      PresentMuncipality: "PermanentMuncipality", // Match typo
+      PresentMunicipality: "PermanentMuncipality", // Handle correct spelling
+      PresentWardNo: "PermanentWardNo",
+      PresentBlock: "PermanentBlock",
+      PresentHalqaPanchayat: "PermanentHalqaPanchayat",
+      PresentVillage: "PermanentVillage",
+    };
+
+    // Process fields sequentially to respect dependencies
+    for (const presentField of presentAdditionalFields) {
+      let permanentFieldName = fieldNameMap[presentField.name];
+
+      if (!permanentFieldName) {
+        // Fallback: Try replacing "Present" with "Permanent"
+        permanentFieldName = presentField.name.replace("Present", "Permanent");
+      }
+
+      const permanentField = permanentAdditionalFields.find(
+        (f) => f.name.toLowerCase() === permanentFieldName.toLowerCase()
       );
-      const permanentDistrictField = permanentSection?.fields.find((field) =>
-        field.name.includes("District")
-      );
-      if (presentSection) {
-        presentSection.fields.forEach((field) => {
-          const presentFieldName = field.name;
-          const permanentFieldName = presentFieldName.replace(
-            "Present",
-            "Permanent"
-          );
-          const presentValue = getValues(presentFieldName);
-          setValue(permanentFieldName, presentValue);
-          if (
-            permanentFieldName.includes("District") &&
-            permanentDistrictField
-          ) {
-            handleDistrictChange(
-              sectionIndex,
-              permanentDistrictField,
-              presentValue
-            );
-          }
-        });
+
+      if (!permanentField) {
+        console.warn(
+          `Permanent field not found for ${presentField.name}. Expected: ${permanentFieldName}`
+        );
+        continue;
+      }
+
+      const fieldValue = getValues(presentField.name);
+      setValue(permanentField.name, fieldValue, { shouldValidate: true });
+
+      // Handle dependent fields
+      if (
+        presentField.name.includes("District") ||
+        presentField.name.includes("Muncipality") ||
+        presentField.name.includes("Municipality") ||
+        presentField.name.includes("Block") ||
+        presentField.name.includes("HalqaPanchayat") ||
+        presentField.name.includes("Ward") ||
+        presentField.name.includes("Village")
+      ) {
+        console.log(
+          "Calling handleAreaChange for:",
+          permanentField.name,
+          fieldValue
+        );
+        await handleAreaChange(sectionIndex, permanentField, fieldValue);
       }
     }
+
+    // Step 7: Trigger validation for all copied fields
+    const validateFields = async () => {
+      await trigger(permanentTypeField.name);
+
+      for (const field of permanentAdditionalFields) {
+        try {
+          await trigger(field.name);
+        } catch (error) {
+          console.warn(`Validation failed for ${field.name}:`, error.message);
+        }
+      }
+    };
+
+    await validateFields();
   };
 
   const collectNestedFields = (field, formData) => {
@@ -324,36 +471,26 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     return fields;
   };
 
-  const handleNext = async () => {
+  const handleValidateAll = async () => {
     const formData = getValues();
-    const stepFields = formSections[currentStep].fields.flatMap((field) =>
-      collectNestedFields(field, formData)
+    const allFields = formSections.flatMap((section, index) =>
+      section.fields.flatMap((field) => collectNestedFields(field, formData))
     );
 
-    const enabledFields = stepFields.filter((name) => !isFieldDisabled(name));
+    const enabledFields = allFields.filter((name) => !isFieldDisabled(name));
 
     if (mode === "edit") {
       const allUpdated = enabledFields.every((name) => dirtyFields[name]);
       if (!allUpdated) {
         alert("Please modify all correction fields before proceeding.");
-        return;
+        return false;
       }
     }
 
-    // Explicitly trigger validation for each field
     const validationResults = await Promise.all(
-      stepFields.map((fieldName) => trigger(fieldName))
+      allFields.map((fieldName) => trigger(fieldName))
     );
-    const valid = validationResults.every((result) => result);
-    if (valid) {
-      setCurrentStep((prev) => Math.min(prev + 1, formSections.length - 1));
-    } else {
-      console.log("Validation failed for step:", currentStep);
-    }
-  };
-
-  const handlePrev = () => {
-    setCurrentStep((prev) => Math.max(prev - 1, 0));
+    return validationResults.every((result) => result);
   };
 
   const handleDistrictChange = async (sectionIndex, districtField, value) => {
@@ -392,9 +529,18 @@ const DynamicStepForm = ({ mode = "new", data }) => {
 
   const handleAreaChange = async (sectionIndex, field, value) => {
     try {
-      const AddressType = getValues("AddressType"); // 'Urban' or 'Rural'
+      // 🧠 Determine which AddressType to use based on field name
+      let addressTypeKey = "";
+      if (field.name.startsWith("Present")) {
+        addressTypeKey = "PresentAddressType";
+      } else if (field.name.startsWith("Permanent")) {
+        addressTypeKey = "PermanentAddressType";
+      }
+
+      const AddressType = getValues(addressTypeKey); // 'Urban' or 'Rural'
 
       const fieldNames = [
+        { name: "District", childname: "Tehsil", respectiveTable: "Tehsil" },
         {
           name: "PresentDistrict",
           childname: { Urban: "PresentMuncipality", Rural: "PresentBlock" },
@@ -455,23 +601,24 @@ const DynamicStepForm = ({ mode = "new", data }) => {
 
       if (!childFieldName || !tableName) {
         console.warn(
-          `Invalid child field or table for AddressType: ${AddressType}`
+          `Invalid child field or table for ${addressTypeKey}: ${AddressType}`
         );
         return;
       }
 
-      // ✅ Fetch data
       const response = await axiosInstance.get(
         `/Base/GetAreaList?table=${tableName}&parentId=${value}`
       );
       const areaList = response.data?.data || [];
 
-      const newOptions = areaList.map((item) => ({
-        value: item.id ?? item.value,
-        label: item.name ?? item.label,
-      }));
+      const newOptions = [
+        { label: "Please Select", value: "Please Select" },
+        ...areaList.map((item) => ({
+          value: item.id ?? item.value,
+          label: item.name ?? item.label,
+        })),
+      ];
 
-      // ✅ Update form
       setFormSections((prevSections) => {
         const newSections = [...prevSections];
         const section = newSections[sectionIndex];
@@ -483,7 +630,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
             return { ...f, options: newOptions };
           }
 
-          // Check in additionalFields[AddressType]
           if (
             f.additionalFields &&
             typeof f.additionalFields === "object" &&
@@ -518,11 +664,10 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     const groupedFormData = {};
     setButtonLoading(true);
 
-    // Move this here so it's defined before usage
     let returnFieldsArray = [];
     if (additionalDetails != null && additionalDetails != "") {
       const returnFields = additionalDetails?.returnFields || "";
-      returnFieldsArray = JSON.parse(additionalDetails.returnFields);
+      returnFieldsArray = JSON.parse(returnFields);
     }
 
     const processField = (field, data) => {
@@ -620,7 +765,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
 
     let url = "/User/InsertFormDetails";
     if (additionalDetails != null && additionalDetails != "") {
-      formdata.append("returnFields", JSON.stringify(returnFieldsArray)); // ✅ fix: send as string
+      formdata.append("returnFields", JSON.stringify(returnFieldsArray));
       url = "/User/UpdateApplicationDetails";
     }
 
@@ -648,75 +793,82 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     }
   };
 
+  const handleChekcBankIfsc = async (fieldName) => {
+    const bankName = getValues("BankName");
+    const IfscCode = getValues("IfscCode");
+    console.log(bankName, IfscCode);
+  };
+
   const renderField = (field, sectionIndex) => {
     const commonStyles = {
       "& .MuiOutlinedInput-root": {
-        backgroundColor: "#ffffff",
-        borderRadius: "8px",
-        transition: "all 0.3s ease-in-out",
+        backgroundColor: "#FFFFFF",
+        borderRadius: "12px",
+        transition: "all 0.3s ease",
         "& fieldset": {
-          borderColor: "#d1d5db",
+          borderColor: "#A5B4FC", // Indigo-200
         },
         "&:hover fieldset": {
-          borderColor: "#D2946A",
+          borderColor: "#6366F1", // Indigo-500
         },
         "&.Mui-focused fieldset": {
-          borderColor: "#D2946A",
-          boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.1)",
+          borderColor: "#6366F1", // Indigo-500
+          boxShadow: "0 0 0 3px rgba(99, 102, 241, 0.2)",
         },
         "&.Mui-error fieldset": {
-          borderColor: "#ef4444",
+          borderColor: "#F43F5E", // Rose-500
         },
         "&.Mui-disabled": {
-          backgroundColor: "#f3f4f6",
+          backgroundColor: "#EDE9FE", // Indigo-50
         },
       },
       "& .MuiInputLabel-root": {
-        color: "#6b7280",
+        color: "#6B7280", // Gray-500
         fontWeight: "500",
-        fontSize: "0.875rem",
+        fontSize: "0.9rem",
         "&.Mui-focused": {
-          color: "#D2946A",
+          color: "#6366F1", // Indigo-500
         },
         "&.Mui-error": {
-          color: "#ef4444",
+          color: "#F43F5E", // Rose-500
         },
       },
       "& .MuiInputBase-input": {
         fontSize: "1rem",
-        color: "#1f2937",
-        padding: "12px 14px",
+        color: "#1F2937", // Gray-900
+        padding: "14px 16px",
       },
       "& .MuiFormHelperText-root": {
-        color: "#ef4444",
-        fontSize: "0.75rem",
+        color: "#F43F5E", // Rose-500
+        fontSize: "0.85rem",
       },
-      marginBottom: 3,
+      marginBottom: "1.5rem",
     };
 
     const buttonStyles = {
-      backgroundColor: "primary.main",
-      color: "background.paper",
-      fontWeight: "bold",
+      background: "linear-gradient(to right, #10B981, #059669)", // Green-500 to Green-600
+      color: "#FFFFFF",
+      fontWeight: "600",
       textTransform: "none",
-      borderRadius: "8px",
-      padding: "8px 16px",
+      borderRadius: "10px",
+      padding: "10px 20px",
       "&:hover": {
-        backgroundColor: "#1d4ed8",
+        background: "linear-gradient(to right, #059669, #047857)", // Green-600 to Green-700
       },
       "&.Mui-disabled": {
-        backgroundColor: "#9ca3af",
-        color: "#d1d5db",
+        background: "#D1D5DB", // Gray-300
+        color: "#9CA3AF", // Gray-400
       },
-      marginBottom: 1,
+      marginBottom: "0.5rem",
     };
+
     const getLabelWithAsteriskJSX = (field) => {
       const isRequired = field.validationFunctions?.includes("notEmpty");
       return (
         <>
           {field.label}
           {isRequired && (
-            <span style={{ color: "red", fontSize: "18px" }}> *</span>
+            <span style={{ color: "#F43F5E", fontSize: "1rem" }}> *</span> // Rose-500
           )}
         </>
       );
@@ -756,8 +908,8 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                   onChange(val);
                 }}
                 onBlur={() => {
-                  if (field.name === "BranchName") {
-                    setBranchNameBlured(true);
+                  if (field.name === "IfscCode") {
+                    handleChekcBankIfsc(field.name);
                   }
                 }}
                 inputRef={ref}
@@ -789,7 +941,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
               <FormControl
                 fullWidth
                 margin="normal"
-                error={true}
+                error={Boolean(errors[field.name])}
                 sx={commonStyles}
               >
                 <Button
@@ -810,10 +962,10 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     accept={field.accept}
                   />
                 </Button>
-                <Typography sx={{ fontSize: "12px" }}>
-                  Accepted File Types:{field.accept} Size: 20kb-50kb
+                <Typography sx={{ fontSize: "0.85rem", color: "#6B7280" }}>
+                  Accepted File Types: {field.accept} Size: 20kb-50kb
                 </Typography>
-                <FormHelperText sx={{ color: "error.main" }}>
+                <FormHelperText sx={{ color: "#F43F5E" }}>
                   {errors[field.name]?.message || ""}
                 </FormHelperText>
               </FormControl>
@@ -833,12 +985,12 @@ const DynamicStepForm = ({ mode = "new", data }) => {
             }}
             render={({ field: { onChange, value, ref } }) => {
               let options = [];
-              if (field.optionsType === "dependent" && field.dependentOn) {
+              if (field.dependentOn && field.dependentOn != "") {
                 const parentValue = watch(field.dependentOn);
                 options =
                   field.dependentOptions && field.dependentOptions[parentValue]
                     ? field.dependentOptions[parentValue]
-                    : [];
+                    : field.options || [];
               } else {
                 options = field.options || [];
               }
@@ -861,7 +1013,7 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     }}
                     onBlur={() => {
                       if (field.name === "BankName") {
-                        setBankNameBlured(true);
+                        handleChekcBankIfsc(field.name);
                       }
                     }}
                     error={Boolean(errors[field.name])}
@@ -876,11 +1028,11 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                         key={option.value}
                         value={option.value}
                         sx={{
-                          color: "text.primary",
-                          "&:hover": { backgroundColor: "primary.light" },
+                          color: "#1F2937", // Gray-900
+                          "&:hover": { backgroundColor: "#DBEAFE" }, // Blue-100
                           "&.Mui-selected": {
-                            backgroundColor: "primary.main",
-                            color: "background.paper",
+                            backgroundColor: "#6366F1", // Indigo-500
+                            color: "#FFFFFF",
                           },
                         }}
                       >
@@ -944,7 +1096,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
 
         return (
           <>
-            {/* Select Field */}
             <Controller
               name={selectFieldName}
               control={control}
@@ -977,11 +1128,11 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                         key={option.value}
                         value={option.value}
                         sx={{
-                          color: "text.primary",
-                          "&:hover": { backgroundColor: "primary.light" },
+                          color: "#1F2937", // Gray-900
+                          "&:hover": { backgroundColor: "#DBEAFE" }, // Blue-100
                           "&.Mui-selected": {
-                            backgroundColor: "primary.main",
-                            color: "background.paper",
+                            backgroundColor: "#6366F1", // Indigo-500
+                            color: "#FFFFFF",
                           },
                         }}
                       >
@@ -989,14 +1140,13 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                       </MenuItem>
                     ))}
                   </Select>
-                  <FormHelperText sx={{ color: "error.main" }}>
+                  <FormHelperText sx={{ color: "#F43F5E" }}>
                     {errors[selectFieldName]?.message || ""}
                   </FormHelperText>
                 </FormControl>
               )}
             />
 
-            {/* Additional Fields ABOVE Upload */}
             {additionalFields &&
               additionalFields.map((additionalField) => {
                 const nestedFieldName =
@@ -1018,7 +1168,6 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                 );
               })}
 
-            {/* File Upload Controller */}
             <Controller
               name={fileFieldName}
               control={control}
@@ -1035,10 +1184,9 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     justifyContent: "flex-start",
                     alignItems: "flex-start",
                     width: "100%",
-                    marginBottom: 8,
+                    marginBottom: "0.5rem",
                   }}
                 >
-                  {/* File name displayed ABOVE the upload button */}
                   {value && (
                     <Box
                       display="flex"
@@ -1049,10 +1197,10 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                       <FormHelperText
                         sx={{
                           cursor: "pointer",
-                          color: "primary.main",
+                          color: "#6366F1", // Indigo-500
                           textDecoration: "underline",
-                          fontSize: 16,
-                          "&:hover": { color: "primary.dark" },
+                          fontSize: "0.9rem",
+                          "&:hover": { color: "#4F46E5" }, // Indigo-600
                         }}
                         onClick={() => {
                           const fileURL =
@@ -1070,8 +1218,8 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                         size="small"
                         onClick={() => onChange(null)}
                         sx={{
-                          color: "error.main",
-                          "&:hover": { color: "error.dark" },
+                          color: "#F43F5E", // Rose-500
+                          "&:hover": { color: "#E11D48" }, // Rose-600
                           p: 0.5,
                         }}
                         aria-label="Remove file"
@@ -1081,14 +1229,13 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     </Box>
                   )}
 
-                  {/* Upload Button */}
                   <Button
                     variant="contained"
                     component="label"
                     sx={{
                       ...buttonStyles,
                       width: "100%",
-                      borderRadius: 15,
+                      borderRadius: "12px",
                     }}
                     disabled={
                       isFieldDisabled(fileFieldName) || !watch(selectFieldName)
@@ -1106,9 +1253,8 @@ const DynamicStepForm = ({ mode = "new", data }) => {
                     />
                   </Button>
 
-                  {/* Error message */}
                   <Box>
-                    <FormHelperText sx={{ color: "error.main" }}>
+                    <FormHelperText sx={{ color: "#F43F5E" }}>
                       {errors[fileFieldName]?.message || ""}
                     </FormHelperText>
                   </Box>
@@ -1123,226 +1269,234 @@ const DynamicStepForm = ({ mode = "new", data }) => {
     }
   };
 
-  const CustomStepIcon = (props) => {
-    const { active, completed, icon } = props;
+  if (loading)
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "36px",
-          height: "36px",
-          borderRadius: "50%",
-          backgroundColor: completed
-            ? "#04918aff"
-            : active
-            ? "#dbeafe"
-            : "#f3f4f6",
-          boxShadow: active ? "0 0 0 3px rgba(59, 130, 246, 0.1)" : "none",
-          transition: "all 0.3s ease-in-out",
-        }}
+      <Typography
+        sx={{ textAlign: "center", color: "#6B7280", fontSize: "1.2rem" }}
       >
-        {React.cloneElement(icon, {
-          sx: {
-            fontSize: "24px",
-            color: active || completed ? "#D2946A" : "#6b7280",
-          },
-        })}
-      </div>
+        Loading form...
+      </Typography>
     );
-  };
-
-  if (loading) return <div>Loading form...</div>;
 
   return (
     <Box
       sx={{
-        width: { xs: "80vw", lg: "50vw" },
-        margin: "0 auto",
-        backgroundColor: "#FFFFFF",
-        borderRadius: 2,
-        color: "primary.main",
-        padding: { xs: 3, lg: 10 },
-        boxShadow: 20,
+        maxWidth: "900px",
+        margin: "2rem auto",
+        background: "linear-gradient(to bottom, #E0F2FE, #BAE6FD)", // Sky-100 to Sky-200
+        borderRadius: "16px",
+        padding: { xs: "1.5rem", md: "3rem" },
+        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+        minHeight: "100vh",
+        overflowY: "auto",
+        "&::-webkit-scrollbar": {
+          width: "8px",
+          backgroundColor: "#E0F2FE", // Sky-100
+          borderRadius: "4px",
+        },
+        "&::-webkit-scrollbar-thumb": {
+          backgroundColor: "#38BDF8", // Sky-400
+          borderRadius: "4px",
+        },
       }}
     >
       <form onSubmit={handleSubmit((data) => onSubmit(data, "submit"))}>
-        {formSections.length > 0 && (
-          <Stepper
-            activeStep={currentStep}
-            alternativeLabel
-            sx={{
-              mb: { xs: 2, sm: 3, md: 4 },
-              flexWrap: "wrap",
-              gap: { xs: 1, md: 2 },
-              "& .MuiStepLabel-label": {
-                fontSize: { xs: "0.7rem", sm: "0.85rem", md: "1rem" },
-                textAlign: "center",
-                wordBreak: "break-word",
-                maxWidth: { xs: "70px", sm: "100px", md: "none" },
-              },
-              "& .MuiStepIcon-root": {
-                fontSize: { xs: "1.5rem", sm: "2rem", md: "2.5rem" },
-              },
-            }}
-          >
-            {formSections.map((section) => (
-              <Step key={section.id}>
-                <StepLabel
-                  slots={{ stepIcon: CustomStepIcon }}
-                  slotProps={{
-                    stepIcon: {
-                      icon: sectionIconMap[section.section] || (
-                        <HelpOutlineIcon />
-                      ),
-                    },
-                  }}
-                >
-                  {section.section}
-                </StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-        )}
         {formSections.length > 0 ? (
           <>
-            {formSections.map((section, index) => {
-              if (index !== currentStep) return null;
-              return (
-                <div
-                  key={section.id}
-                  style={{ display: "flex", flexDirection: "column" }}
+            {formSections.map((section, index) => (
+              <Box
+                key={section.id}
+                sx={{
+                  marginBottom: "3rem",
+                  padding: "2rem",
+                  borderRadius: "12px",
+                  background: "linear-gradient(to bottom, #FFFFFF, #F0FDFA)", // White to Teal-50
+                  boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    boxShadow: "0 4px 15px rgba(20, 184, 166, 0.3)", // Teal-500 shadow
+                  },
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                    marginBottom: "1.5rem",
+                  }}
                 >
-                  {section.section === "Permanent Address Details" && (
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={isCopyAddressChecked}
-                          onChange={(e) => {
-                            setIsCopyAddressChecked(e.target.checked);
-                            handleCopyAddress(e.target.checked, index);
-                          }}
-                        />
-                      }
-                      label="Same As Present Address"
-                    />
+                  {sectionIconMap[section.section] || (
+                    <HelpOutlineIcon sx={{ fontSize: 36, color: "#14B8A6" }} /> // Teal-500
                   )}
-                  {section.section === "Applicant Details" && (
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: "600",
+                      color: "#1F2937", // Gray-900
+                      fontSize: "1.5rem",
+                    }}
+                  >
+                    {section.section}
+                  </Typography>
+                </Box>
+                <Divider
+                  sx={{ marginBottom: "1.5rem", borderColor: "#A5B4FC" }} // Indigo-200
+                />
+                {section.section === "Permanent Address Details" && (
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={isCopyAddressChecked}
+                        onChange={(e) => {
+                          setIsCopyAddressChecked(e.target.checked);
+                          handleCopyAddress(e.target.checked, index);
+                        }}
+                        sx={{
+                          color: "#EC4899", // Pink-500
+                          "&.Mui-checked": { color: "#EC4899" }, // Pink-500
+                        }}
+                      />
+                    }
+                    label="Same As Present Address"
+                    sx={{ marginBottom: "1rem", color: "#4B5563" }} // Gray-600
+                  />
+                )}
+                {section.section === "Applicant Details" && (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      marginBottom: "1.5rem",
+                    }}
+                  >
                     <Box
                       component="img"
                       src={applicantImagePreview}
                       alt="Applicant Image"
                       sx={{
-                        width: 150,
-                        height: 150,
-                        borderRadius: "8px",
+                        width: 180,
+                        height: 180,
+                        borderRadius: "50%",
                         objectFit: "cover",
-                        boxShadow: 2,
-                        margin: "0 auto",
+                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                        border: "3px solid #A5B4FC", // Indigo-200
                       }}
                     />
-                  )}
-                  {section.section == "Documents" && (
-                    <Typography sx={{ fontSize: "12px", textAlign: "center" }}>
-                      Accepted File Type: .pdf, Size:100Kb-200Kb
-                    </Typography>
-                  )}
-                  <Row>
-                    {section.fields.map((field) => {
-                      const element = renderField(field, index);
-                      if (element != null) {
-                        return (
-                          <Col xs={12} lg={field.span} key={field.id}>
-                            {element}
-                          </Col>
-                        );
-                      }
-                      return null; // Explicitly return null for non-rendered fields
-                    })}
-                  </Row>
-                </div>
-              );
-            })}
-
-            <Box sx={{ display: "flex", justifyContent: "center", gap: 3 }}>
-              {currentStep > 0 && (
-                <Button
-                  sx={{
-                    backgroundColor: "primary.main",
-                    borderRadius: 5,
-                    color: "#FFFFFF",
-                    fontSize: { xs: 18, lg: 16 },
-                    width: { xs: "50%", lg: "20%" },
-                    fontWeight: "bold",
+                  </Box>
+                )}
+                {section.section === "Documents" && (
+                  <Typography
+                    sx={{
+                      fontSize: "0.875rem",
+                      textAlign: "center",
+                      color: "#4B5563", // Gray-600
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    Accepted File Type: .pdf, Size: 100Kb-200Kb
+                  </Typography>
+                )}
+                <Row
+                  style={{
+                    dispaly: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
                   }}
-                  disabled={buttonLoading || loading}
-                  onClick={handlePrev}
                 >
-                  Previous
-                </Button>
-              )}
-              {currentStep < formSections.length - 1 && (
-                <Button
-                  sx={{
-                    backgroundColor: "primary.main",
-                    borderRadius: 5,
-                    color: "#FFFFFF",
-                    fontSize: { xs: 18, lg: 16 },
-                    width: { xs: "50%", lg: "20%" },
-                    fontWeight: "bold",
-                  }}
-                  disabled={buttonLoading || loading}
-                  onClick={handleNext}
-                >
-                  Next
-                </Button>
-              )}
-              {currentStep === formSections.length - 1 && (
-                <Button
-                  sx={{
-                    backgroundColor: "primary.main",
-                    borderRadius: 5,
-                    color: "#FFFFFF",
-                    fontSize: { xs: 18, lg: 16 },
-                    width: { xs: "50%", lg: "20%" },
-                    fontWeight: "bold",
-                  }}
-                  disabled={buttonLoading || loading}
-                  onClick={handleSubmit((data) => onSubmit(data, "submit"))}
-                >
-                  Submit{buttonLoading ? "..." : ""}
-                </Button>
-              )}
-            </Box>
-
+                  {section.fields.map((field) => {
+                    const element = renderField(field, index);
+                    if (element != null) {
+                      return (
+                        <Col xs={12} lg={field.span} key={field.id}>
+                          {element}
+                        </Col>
+                      );
+                    }
+                    return null;
+                  })}
+                </Row>
+              </Box>
+            ))}
             <Box
-              sx={{ display: "flex", justifyContent: "center", marginTop: 5 }}
+              sx={{
+                position: "sticky",
+                bottom: 0,
+                background: "linear-gradient(to top, #E0F2FE, #BAE6FD)", // Sky-100 to Sky-200
+                padding: "1.5rem",
+                borderTop: "1px solid #A5B4FC", // Indigo-200
+                boxShadow: "0 -4px 12px rgba(0, 0, 0, 0.1)",
+                display: "flex",
+                justifyContent: "center",
+                gap: 3,
+                zIndex: 1000,
+              }}
             >
-              {currentStep !== formSections.length - 1 && (
-                <Button
-                  sx={{
-                    backgroundColor: "primary.main",
-                    borderRadius: 5,
-                    color: "#FFFFFF",
-                    fontSize: { xs: 18, lg: 16 },
-                    width: { xs: "50%", lg: "20%" },
-                    fontWeight: "bold",
-                  }}
-                  disabled={buttonLoading || loading}
-                  onClick={handleSubmit((data) => onSubmit(data, "save"))}
-                >
-                  Save
-                </Button>
-              )}
+              <Button
+                sx={{
+                  background: "linear-gradient(to right, #F59E0B, #D97706)", // Amber-500 to Amber-600
+                  color: "#FFFFFF",
+                  fontSize: { xs: "0.9rem", md: "1rem" },
+                  fontWeight: "600",
+                  padding: "0.75rem 2.5rem",
+                  borderRadius: "10px",
+                  textTransform: "none",
+                  "&:hover": {
+                    background: "linear-gradient(to right, #D97706, #B45309)", // Amber-600 to Amber-700
+                  },
+                  "&.Mui-disabled": {
+                    background: "#D1D5DB", // Gray-300
+                    color: "#9CA3AF", // Gray-400
+                  },
+                }}
+                disabled={buttonLoading || loading}
+                onClick={handleSubmit((data) => onSubmit(data, "save"))}
+              >
+                Save{buttonLoading ? "..." : ""}
+              </Button>
+              <Button
+                sx={{
+                  background: "linear-gradient(to right, #10B981, #059669)", // Green-500 to Green-600
+                  color: "#FFFFFF",
+                  fontSize: { xs: "0.9rem", md: "1rem" },
+                  fontWeight: "600",
+                  padding: "0.75rem 2.5rem",
+                  borderRadius: "10px",
+                  textTransform: "none",
+                  "&:hover": {
+                    background: "linear-gradient(to right, #059669, #047857)", // Green-600 to Green-700
+                  },
+                  "&.Mui-disabled": {
+                    background: "#D1D5DB", // Gray-300
+                    color: "#9CA3AF", // Gray-400
+                  },
+                }}
+                disabled={buttonLoading || loading}
+                onClick={async () => {
+                  const valid = await handleValidateAll();
+                  if (valid) {
+                    handleSubmit((data) => onSubmit(data, "submit"))();
+                  } else {
+                    console.log("Validation failed for form submission");
+                  }
+                }}
+              >
+                Submit{buttonLoading ? "..." : ""}
+              </Button>
             </Box>
           </>
         ) : (
-          !loading && <div>No form configuration available.</div>
+          !loading && (
+            <Typography
+              sx={{ textAlign: "center", color: "#4B5563", fontSize: "1.2rem" }}
+            >
+              No form configuration available.
+            </Typography>
+          )
         )}
       </form>
     </Box>
   );
 };
 
-export default DynamicStepForm;
+export default DynamicScrollableForm;

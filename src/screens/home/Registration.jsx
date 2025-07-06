@@ -304,6 +304,21 @@ export default function RegisterScreen() {
             </Link>
           </Typography>
         </Box>
+        <Box textAlign="center" mt={2}>
+          <Typography variant="body2">
+            An Officer?{" "}
+            <Link
+              href="/officerRegistration"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate("/officerRegistration");
+              }}
+              sx={{ fontWeight: 600 }}
+            >
+              Sign Up
+            </Link>
+          </Typography>
+        </Box>
       </Container>
 
       {/* OTP Modal */}
