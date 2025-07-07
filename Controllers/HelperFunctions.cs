@@ -148,24 +148,6 @@ public class UserHelperFunctions(IWebHostEnvironment webHostEnvironment, SocialW
     // }
 
 
-    public User? GetOfficerDetails(string designation, string accessLevel, int accessCode)
-    {
-        var officer = dbcontext.Users
-            .Join(
-                dbcontext.OfficerDetails,
-                u => u.UserId,
-                o => o.OfficerId,
-                (u, o) => new { User = u, OfficerDetail = o }
-            )
-            .Where(joined => joined.OfficerDetail.Role == designation
-                          && joined.OfficerDetail.AccessLevel == accessLevel
-                          && joined.OfficerDetail.AccessCode == accessCode)
-            .Select(joined => joined.User) // Select only the User
-            .FirstOrDefault(); // Get the first match or null if none found
-
-        return officer; // Returns a User or null
-    }
-
 
     public string[] GenerateUniqueRandomCodes(int numberOfCodes, int codeLength)
     {

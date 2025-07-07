@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using SahayataNidhi.Models.Entities;
 
 namespace SahayataNidhi.Controllers.Admin
@@ -21,24 +22,32 @@ namespace SahayataNidhi.Controllers.Admin
             base.OnActionExecuted(context);
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var Admin = dbcontext.Users.FirstOrDefault(u => u.UserId.ToString() == userId);
-            string AdminDesignation = dbcontext.OfficerDetails.FirstOrDefault(od => od.OfficerId.ToString() == userId)!.Role!;
+            var additionalDetails = JsonConvert.DeserializeObject<Dictionary<string, object>>(Admin?.AdditionalDetails ?? "{}");
+            string AdminDesignation = additionalDetails!.TryGetValue("Role", out var roleObj) ? roleObj?.ToString() ?? "Unknown" : "Unknown";
             string Profile = Admin!.Profile!;
             ViewData["AdminType"] = AdminDesignation;
             ViewData["UserName"] = Admin!.Username;
             ViewData["Profile"] = Profile == "" ? "/assets/dummyDocs/formImage.jpg" : Profile;
         }
 
-        public OfficerDetailsModal GetOfficerDetails()
+        public OfficerDetailsModal? GetOfficerDetails()
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            // Fetch the officer details
+            if (string.IsNullOrEmpty(userId))
+            {
+                // Log the issue for debugging
+                _logger.LogWarning("GetOfficerDetails: UserId is null. User is not authenticated or NameIdentifier claim is missing.");
+                return null;
+            }
+
+
             var parameter = new SqlParameter("@UserId", userId);
             var officer = dbcontext.Database
-                                    .SqlQuery<OfficerDetailsModal>($"EXEC GetOfficerDetails @UserId = {parameter}")
-                                    .AsEnumerable()
-                                    .FirstOrDefault();
+                .SqlQuery<OfficerDetailsModal>($"EXEC GetOfficerDetails @UserId = {parameter}")
+                .AsEnumerable()
+                .FirstOrDefault();
 
-            return officer!;
+            return officer;
         }
 
         [HttpGet]
@@ -47,7 +56,7 @@ namespace SahayataNidhi.Controllers.Admin
             var officer = GetOfficerDetails();
 
             // Fetch the service list for the given role
-            var roleParameter = new SqlParameter("@Role", officer.Role);
+            var roleParameter = new SqlParameter("@Role", officer!.Role);
             var serviceList = dbcontext.Database
                                        .SqlQuery<OfficerServiceListModal>($"EXEC GetServicesByRole @Role = {roleParameter}")
                                        .AsEnumerable() // To avoid composability errors

@@ -91,8 +91,6 @@ export async function duplicateAccountNumber(
   referenceNumber
 ) {
   try {
-    console.log(formData);
-
     const bankName =
       formData["BankDetail"] != null
         ? formData["Bank Details"][0].value
@@ -114,6 +112,32 @@ export async function duplicateAccountNumber(
     console.error("Error in duplicateAccountNumber:", error);
     return "Validation failed due to a server error.";
   }
+}
+
+export async function validateIfscCode(
+  field,
+  value,
+  formData,
+  referenceNumber
+) {
+  const bankName =
+    formData["BankDetail"] != null
+      ? formData["Bank Details"][0].value
+      : formData.BankName;
+  const ifscCode =
+    formData["BankDetail"] != null
+      ? formData["Bank Details"][2].value
+      : formData.IfscCode;
+
+  const res = await fetch(
+    `/Base/ValidateIfscCode?bankName=${bankName}&ifscCode=${ifscCode}`
+  );
+
+  const data = await res.json();
+  if (data.status) {
+    return "IFSC Code is incorrect or doesn't belong to the selected Bank.";
+  }
+  return true;
 }
 
 export async function validateFile(field, value) {
@@ -210,6 +234,7 @@ const ValidationFunctionsList = {
   isDateWithinRange,
   duplicateAccountNumber,
   validateFile,
+  validateIfscCode,
 };
 
 export const validationFunctionsList = [
@@ -222,6 +247,7 @@ export const validationFunctionsList = [
   { id: "isDateWithinRange", label: "Date Range" },
   { id: "duplicateAccountNumber", label: "Duplicate Account Number" },
   { id: "validateFile", label: "Validate File" },
+  { id: "validateIfscCode", label: "Validate IFSC" },
 ];
 
 export const transformationFunctionsList = [

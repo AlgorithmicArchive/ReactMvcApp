@@ -23,6 +23,8 @@ public partial class User
 
     public string? BackupCodes { get; set; }
 
+    public string? AdditionalDetails { get; set; }
+
     public bool IsEmailValid { get; set; }
 
     public string? RegisteredDate { get; set; }

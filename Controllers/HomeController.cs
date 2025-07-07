@@ -62,6 +62,16 @@ namespace SahayataNidhi.Controllers
             return View();
         }
 
+        static string GetShortTitleFromRole(string role)
+        {
+            if (string.IsNullOrWhiteSpace(role))
+                return "Unknown";
+
+            var words = role.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            return string.Concat(words.Select(w => char.ToUpper(w[0])));
+        }
+
+
 
         [HttpPost]
         public async Task<IActionResult> OfficerRegistration([FromForm] IFormCollection form)
@@ -83,20 +93,29 @@ namespace SahayataNidhi.Controllers
                 unused = _helper.GenerateUniqueRandomCodes(10, 8),
                 used = Array.Empty<string>(),
             };
+            var addtionalDetails = new
+            {
+                Role = form["designation"].ToString(),
+                RoleShort = GetShortTitleFromRole(form["designation"].ToString()),
+                AccessLevel = form["accessLevel"].ToString(),
+                AccessCode = Convert.ToInt32(form["accessCode"].ToString()),
+                Validate = false
+            };
+            var AddtionalDetails = new SqlParameter("@AdditionalDetails", JsonConvert.SerializeObject(addtionalDetails));
+
             var backupCodesParam = new SqlParameter("@BackupCodes", JsonConvert.SerializeObject(backupCodes));
 
             var registeredDate = new SqlParameter("@RegisteredDate", DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"));
 
             var result = _dbContext.Users.FromSqlRaw(
-                "EXEC RegisterUser @Name, @Username, @Password, @Email, @MobileNumber,@Profile, @UserType, @BackupCodes, @RegisteredDate",
-                fullName, username, password, email, mobileNumber, profile, UserType, backupCodesParam, registeredDate
+                "EXEC RegisterUser @Name, @Username, @Password, @Email, @MobileNumber,@Profile, @UserType, @BackupCodes,@AdditionalDetails, @RegisteredDate",
+                fullName, username, password, email, mobileNumber, profile, UserType, backupCodesParam, AddtionalDetails, registeredDate
             ).ToList();
 
             if (result.Count > 0)
             {
                 var userId = new SqlParameter("@OfficerId", result[0].UserId);
-                await _dbContext.Database.ExecuteSqlRawAsync("EXEC InsertOfficerDetail @OfficerId,@Role,@AccessLevel,@AccessCode", userId, designation, accessLevel, accessCode);
-                await _dbContext.Database.ExecuteSqlRawAsync("EXEC UpdateNullOfficer @NewOfficerId, @AccessLevel, @AccessCode, @Role", new SqlParameter("@NewOfficerId", result[0].UserId), designation, accessLevel, accessCode);
+                // await _dbContext.Database.ExecuteSqlRawAsync("EXEC UpdateNullOfficer @NewOfficerId, @AccessLevel, @AccessCode, @Role", new SqlParameter("@NewOfficerId", result[0].UserId), designation, accessLevel, accessCode);
                 string otp = GenerateOTP(6);
                 _otpStore.StoreOtp("registration", otp);
                 await _emailSender.SendEmail(form["Email"].ToString(), "OTP For Registration.", otp);
@@ -347,21 +366,45 @@ namespace SahayataNidhi.Controllers
                 };
 
                 // Include designation if applicable
-                if (user.UserType == "Officer")
+                if (user.UserType == "Officer" && !string.IsNullOrWhiteSpace(user.AdditionalDetails))
                 {
-                    var officerDetails = _dbContext.OfficerDetails.FirstOrDefault(o => o.OfficerId == user.UserId)!;
-                    bool? isValidated = officerDetails.Validated;
-                    if ((bool)!isValidated!)
+                    try
                     {
-                        return Json(new { status = false, response = "You are not yet validated by an Admin. Please wait till validation is complete." });
-                    }
+                        var officerDetails = JsonConvert.DeserializeObject<Dictionary<string, string>>(user.AdditionalDetails!);
+                        if (officerDetails != null)
+                        {
+                            if (officerDetails.TryGetValue("Validate", out var validatedStr) && bool.TryParse(validatedStr, out bool isValidated))
+                            {
+                                if (!isValidated)
+                                {
+                                    return Json(new
+                                    {
+                                        status = false,
+                                        response = "You are not yet validated by an Admin. Please wait till validation is complete."
+                                    });
+                                }
+                            }
 
-                    designation = officerDetails.Role!;
-                    if (!string.IsNullOrEmpty(designation))
+                            if (officerDetails.TryGetValue("Role", out var role))
+                            {
+                                designation = role;
+                                if (!string.IsNullOrEmpty(designation))
+                                {
+                                    claims.Add(new Claim("Designation", designation));
+                                }
+                            }
+                        }
+                    }
+                    catch
                     {
-                        claims.Add(new Claim("Designation", designation));
+                        return Json(new
+                        {
+                            status = false,
+                            response = "Error parsing AdditionalDetails for Officer."
+                        });
                     }
                 }
+
 
                 // Generate JWT token
                 var jwtSecretKey = _configuration["JWT:Secret"];
@@ -397,7 +440,14 @@ namespace SahayataNidhi.Controllers
             var password = new SqlParameter("@Password", form["Password"].ToString());
             var email = new SqlParameter("@Email", form["Email"].ToString());
             var mobileNumber = new SqlParameter("@MobileNumber", form["MobileNumber"].ToString());
+            var district = Convert.ToInt32(form["District"].ToString());
+            var tehsil = Convert.ToInt32(form["Tehsil"].ToString());
 
+            var addtionalDetails = new
+            {
+                District = district,
+                Tehsil = tehsil
+            };
             var unused = _helper.GenerateUniqueRandomCodes(10, 8);
             var backupCodes = new
             {
@@ -408,12 +458,13 @@ namespace SahayataNidhi.Controllers
             var Profile = new SqlParameter("@Profile", "");
             var UserType = new SqlParameter("@UserType", "Citizen");
             var backupCodesParam = new SqlParameter("@BackupCodes", JsonConvert.SerializeObject(backupCodes));
+            var AddtionalDetails = new SqlParameter("@AdditionalDetails", JsonConvert.SerializeObject(addtionalDetails));
             var registeredDate = new SqlParameter("@RegisteredDate", DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"));
 
-            _logger.LogInformation($"------------ Registered Date: {DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")}");
+
             var result = _dbContext.Users.FromSqlRaw(
-                "EXEC RegisterUser @Name, @Username, @Password, @Email, @MobileNumber, @Profile, @UserType, @BackupCodes, @RegisteredDate",
-                fullName, username, password, email, mobileNumber, Profile, UserType, backupCodesParam, registeredDate
+                "EXEC RegisterUser @Name, @Username, @Password, @Email, @MobileNumber, @Profile, @UserType, @BackupCodes, @AdditionalDetails, @RegisteredDate",
+                fullName, username, password, email, mobileNumber, Profile, UserType, AddtionalDetails, backupCodesParam, registeredDate
             ).ToList();
 
             if (result.Count != 0)

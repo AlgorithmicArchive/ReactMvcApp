@@ -36,6 +36,9 @@ import CreateLetterPdf from "../screens/designer/CreateLetterPdf";
 import RegisterDSC from "../screens/officer/RegisterDSC";
 import CreateWebService from "../screens/designer/CreateWebService";
 import ForgotPassword from "../screens/home/ForgotPassword";
+import ReportsAdmin from "../screens/admin/Reports";
+import AddAdmin from "../screens/admin/AddAdmin";
+import ValidateOfficer from "../screens/admin/ValidateOfficer";
 
 const RoutesComponent = () => {
   return (
@@ -78,6 +81,9 @@ const RoutesComponent = () => {
       <Route element={<ProtectedRoute requiredRoles={["Admin"]} />}>
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="home" element={<AdminHome />} />
+          <Route path="reports" element={<ReportsAdmin />} />
+          <Route path="addadmin" element={<AddAdmin />} />
+          <Route path="validateofficer" element={<ValidateOfficer />} />
         </Route>
       </Route>
       <Route element={<ProtectedRoute requiredRoles={["Designer"]} />}>

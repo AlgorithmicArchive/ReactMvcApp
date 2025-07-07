@@ -353,11 +353,8 @@ const ServerSideTable = ({
                             fontWeight: 600,
                             fontSize: { xs: 12, md: 13 },
                             py: 0.5,
-                            backgroundColor: action.color || "primary.main",
+                            backgroundColor: "primary.main",
                             "&:hover": {
-                              backgroundColor: action.color
-                                ? darken(action.color, 0.1)
-                                : "primary.dark",
                               transform: "scale(1.02)",
                               transition: "all 0.2s ease",
                             },

@@ -278,9 +278,8 @@ namespace SahayataNidhi.Controllers
         public IActionResult GetServices()
         {
             var officer = GetOfficerDetails();
-            _logger.LogInformation($"----- Officer ROLE: {officer!.Role} -------------------");
 
-            if (officer!.Role == "Designer")
+            if (officer!.Role == "Designer" || officer.UserType == "Admin")
             {
                 var Services = dbcontext.Services.ToList();
                 return Json(new { status = true, services = Services });
@@ -467,6 +466,8 @@ namespace SahayataNidhi.Controllers
             if (applications.Count == 0)
                 return Json(new { status = false });
             else if (applications.Any(app => app.ReferenceNumber == applicationId))
+                return Json(new { status = false });
+            else if (applications.Any(app => app.Status == "Rejected"))
                 return Json(new { status = false });
             else
                 return Json(new { status = true });
@@ -1046,6 +1047,25 @@ namespace SahayataNidhi.Controllers
             }
 
             return Json(new { data });
+        }
+
+
+        [HttpGet]
+        public IActionResult ValidateIfscCode(string bankName, string ifscCode)
+        {
+            var result = dbcontext.BankDetails
+                .FromSqlRaw("EXEC ValidateIFSC @bankName, @ifscCode",
+                    new SqlParameter("@bankName", bankName),
+                    new SqlParameter("@ifscCode", ifscCode))
+                .AsEnumerable()
+                .ToList();
+
+            if (result.Count == 0)
+            {
+                return Json(new { status = true });
+            }
+
+            return Json(new { status = false });
         }
 
 

@@ -472,9 +472,12 @@ namespace SahayataNidhi.Controllers.Officer
 
         private void UpdateOfficerActionFormLabels(JObject officerClone, dynamic formDetails)
         {
-            var officerRoles = dbcontext.OfficerDetails
-                .Select(od => od.Role)
-                .Where(r => r != null)
+            // Extract officer roles (from Users table's JSON AdditionalDetails field)
+            var officerRoles = dbcontext.Users
+                .Where(u => u.UserType == "Officer" && u.AdditionalDetails != null)
+                .Select(u => JsonConvert.DeserializeObject<Dictionary<string, string>>(u.AdditionalDetails!))
+                .Where(details => details != null && details.ContainsKey("Role"))
+                .Select(details => details!["Role"])
                 .Distinct()
                 .ToList();
 

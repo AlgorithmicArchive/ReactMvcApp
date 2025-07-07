@@ -51,7 +51,7 @@ const Header = () => {
   };
 
   return (
-    <Box sx={{ width: "100%", height: "30vh" }}>
+    <Box sx={{ width: "100%" }}>
       {/* Top Row */}
       <Box sx={{ borderBottom: "2px solid #333333" }}>
         <Container>

@@ -15,6 +15,7 @@ import {
   Typography,
   Divider,
   IconButton,
+  Alert,
 } from "@mui/material";
 import { Col, Row } from "react-bootstrap";
 import { fetchFormDetails, GetServiceContent } from "../../assets/fetch";
@@ -27,6 +28,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import CloseIcon from "@mui/icons-material/CloseOutlined";
+import MessageModal from "../MessageModal";
 
 const sectionIconMap = {
   Location: <LocationOnIcon sx={{ fontSize: 36, color: "#14B8A6" }} />, // Teal
@@ -101,6 +103,7 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
   const [initialData, setInitialData] = useState(null);
   const [additionalDetails, setAdditionalDetails] = useState(null);
   const [isCopyAddressChecked, setIsCopyAddressChecked] = useState(false);
+  const [messageModalOpen, setMessageModalOpen] = useState(false);
   const applicantImageFile = watch("ApplicantImage");
   const [applicantImagePreview, setApplicantImagePreview] = useState(
     "/assets/images/profile.jpg"
@@ -247,8 +250,6 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
             shouldValidate: true,
           });
         }
-        console.log(name, value);
-
         // Set the field value if it exists
         if (value !== undefined) {
           setValue(name, value, { shouldValidate: true });
@@ -330,22 +331,6 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
       });
     }
 
-    // Step 4: Debug additionalFields and AddressType
-    console.log("Present Address Type:", presentAddressType);
-    console.log("Permanent Address Type (after sync):", permanentAddressType);
-    console.log(
-      "Present Additional Fields:",
-      presentSection.fields[0].additionalFields?.[presentAddressType]?.map(
-        (f) => f.name
-      )
-    );
-    console.log(
-      "Permanent Additional Fields:",
-      permanentSection.fields[0].additionalFields?.[permanentAddressType]?.map(
-        (f) => f.name
-      )
-    );
-
     // Step 5: Copy top-level AddressType field
     setValue(permanentTypeField.name, presentAddressType, {
       shouldValidate: true,
@@ -418,11 +403,6 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
         presentField.name.includes("Ward") ||
         presentField.name.includes("Village")
       ) {
-        console.log(
-          "Calling handleAreaChange for:",
-          permanentField.name,
-          fieldValue
-        );
         await handleAreaChange(sectionIndex, permanentField, fieldValue);
       }
     }
@@ -1477,7 +1457,7 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
                   if (valid) {
                     handleSubmit((data) => onSubmit(data, "submit"))();
                   } else {
-                    console.log("Validation failed for form submission");
+                    setMessageModalOpen(true);
                   }
                 }}
               >
@@ -1495,6 +1475,14 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
           )
         )}
       </form>
+
+      <MessageModal
+        open={messageModalOpen}
+        onClose={() => setMessageModalOpen(false)}
+        title="Error"
+        message="Some fields are not filled or are incorrectly filed. Please correctly fill all fields."
+        type="error" // can be: "error", "success", "warning", "info"
+      />
     </Box>
   );
 };

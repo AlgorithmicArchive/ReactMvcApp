@@ -41,15 +41,32 @@ namespace SahayataNidhi.Controllers.User
         [HttpGet]
         public IActionResult GetDistrictsForService()
         {
+            // Fetch only required fields from Users table
+            var officerDetailsJsons = dbcontext.Users
+                .Where(u => u.UserType == "Officer" && u.AdditionalDetails != null)
+                .Select(u => u.AdditionalDetails)
+                .ToList(); // Materialize data first
+
+            // Now parse JSON and filter in-memory
+            var districtIds = officerDetailsJsons
+                .Select(json => JsonConvert.DeserializeObject<Dictionary<string, object>>(json!))
+                .Where(details =>
+                    details!.ContainsKey("AccessLevel") &&
+                    details["AccessLevel"]?.ToString() == "District" &&
+                    details.ContainsKey("AccessCode"))
+                .Select(details => Convert.ToInt32(details!["AccessCode"]))
+                .Distinct()
+                .ToList();
+
+            // Fetch matched districts
             var districts = dbcontext.Districts
-            .Where(district =>
-                dbcontext.OfficerDetails.Any(officer =>
-                    officer.AccessLevel == "District" &&
-                    officer.AccessCode == district.DistrictId)) // Subquery condition
-            .ToList();
+                .Where(d => districtIds.Contains(d.DistrictId))
+                .ToList();
 
             return Json(new { status = true, districts });
         }
+
+
         [HttpGet]
         public IActionResult GetTehsils(string districtId)
         {

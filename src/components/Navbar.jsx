@@ -73,7 +73,7 @@ const MyNavbar = () => {
       expanded={expanded}
       onToggle={(isExpanded) => setExpanded(isExpanded)}
       expand="lg"
-      style={{ backgroundColor: "#FFFFFF", zIndex: 1000 }}
+      style={{ backgroundColor: "#ffffffff", zIndex: 1000 }}
     >
       <Container>
         {/* Logo Section */}
@@ -82,9 +82,15 @@ const MyNavbar = () => {
             <img
               src="/assets/images/logo.png"
               alt="Website Logo"
-              height="40"
+              style={{
+                height: "50px",
+                width: "50px",
+                borderRadius: "50%",
+                objectFit: "cover",
+              }}
               className="d-inline-block align-top"
             />
+
             <span className="ms-2 fw-bold" style={{ color: "#333333" }}>
               ISSS Pension
             </span>
@@ -280,35 +286,39 @@ const MyNavbar = () => {
                   Dashboard
                 </Nav.Link>
 
-                <div
+                <Nav.Link
+                  as={Link}
+                  to="/admin/reports"
+                  style={getNavItemStyle("admin-reports", "/admin/reports")}
+                  onClick={() => setExpanded(false)}
                   onMouseEnter={() => handleMouseEnter("admin-reports")}
                   onMouseLeave={handleMouseLeave}
                 >
-                  <NavDropdown
-                    title={
-                      <span style={getNavItemStyle("admin-reports")}>
-                        Reports
-                      </span>
-                    }
-                    id="admin-reports"
-                    show={
-                      isSmallScreen
-                        ? undefined
-                        : hoveredItem === "admin-reports"
-                    }
-                  >
-                    <NavDropdown.Item
-                      onClick={() => handleNavigate("/admin/individual")}
-                    >
-                      Individual Report
-                    </NavDropdown.Item>
-                    <NavDropdown.Item
-                      onClick={() => handleNavigate("/admin/history")}
-                    >
-                      History
-                    </NavDropdown.Item>
-                  </NavDropdown>
-                </div>
+                  Reports
+                </Nav.Link>
+                <Nav.Link
+                  as={Link}
+                  to="/admin/addadmin"
+                  style={getNavItemStyle("admin-addadmin", "/admin/addadmin")}
+                  onClick={() => setExpanded(false)}
+                  onMouseEnter={() => handleMouseEnter("admin-addadmin")}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  Add Admin
+                </Nav.Link>
+                <Nav.Link
+                  as={Link}
+                  to="/admin/validateofficer"
+                  style={getNavItemStyle(
+                    "admin-validateofficer",
+                    "/admin/validateofficer"
+                  )}
+                  onClick={() => setExpanded(false)}
+                  onMouseEnter={() => handleMouseEnter("admin-validateofficer")}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  Validate Officers
+                </Nav.Link>
               </>
             )}
 

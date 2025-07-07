@@ -322,11 +322,11 @@ namespace SahayataNidhi.Controllers.Officer
             });
         }
         [HttpGet]
-        [HttpGet]
         public IActionResult GetApplicationsForReports(int AccessCode, int ServiceId, string? StatusType = null, int pageIndex = 0, int pageSize = 10)
         {
             try
             {
+                var officer = GetOfficerDetails();
                 // Validate input parameters
                 if (pageIndex < 0 || pageSize <= 0)
                 {
@@ -341,10 +341,11 @@ namespace SahayataNidhi.Controllers.Officer
                 // Define SQL parameters for the stored procedure
                 var accessCode = new SqlParameter("@AccessCode", AccessCode);
                 var serviceId = new SqlParameter("@ServiceId", ServiceId);
+                var accessLevel = new SqlParameter("@AccessLevel", officer.AccessLevel == "Tehsil" ? "Tehsil" : "District");
 
                 // Execute the stored procedure
                 var response = dbcontext.Database
-                    .SqlQueryRaw<SummaryReports>("EXEC GetApplicationsForReport @AccessCode, @ServiceId", accessCode, serviceId)
+                    .SqlQueryRaw<SummaryReports>("EXEC GetApplicationsForReport @AccessCode, @ServiceId, @AccessLevel", accessCode, serviceId, accessLevel)
                     .ToList();
 
                 _logger.LogInformation($"Fetched {response.Count} records for AccessCode: {AccessCode}, ServiceId: {ServiceId}, Response: {JsonConvert.SerializeObject(response)}");

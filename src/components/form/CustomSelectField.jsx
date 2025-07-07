@@ -62,7 +62,6 @@ const CustomSelectField = forwardRef(
                 }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
-                    padding: "10px",
                     fontSize: "16px",
                     border: error
                       ? `2px solid ${theme.palette.error.main}`

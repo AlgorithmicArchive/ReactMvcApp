@@ -59,6 +59,19 @@ export default function OfficerRegisterScreen() {
     }
   };
 
+  const validateMobileNumber = async (value) => {
+    if (!value) return "Mobile Number is required";
+    try {
+      const res = await axios.get("/Home/CheckMobileNumber", {
+        params: { number: value },
+      });
+      return res.data?.isUnique ? true : "Mobile Number already exists";
+    } catch (error) {
+      console.error("Mobile Number validation error:", error);
+      return "Server error while checking email";
+    }
+  };
+
   // Fetch designations and districts on mount
   useEffect(() => {
     fetchDesignation(setDesignations, setAccessLevelMap);
@@ -299,6 +312,7 @@ export default function OfficerRegisterScreen() {
                     value: /^[0-9]{10}$/,
                     message: "Mobile number must be exactly 10 digits",
                   },
+                  validate: validateMobileNumber,
                 }}
                 label="Mobile Number"
                 name="mobileNumber"

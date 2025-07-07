@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -15,19 +15,64 @@ import { useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Col, Row } from "react-bootstrap";
+import CustomSelectField from "../../components/form/CustomSelectField";
+import { fetchDistricts } from "../../assets/fetch";
 
 export default function RegisterScreen() {
   const {
     handleSubmit,
     control,
     getValues,
+    watch,
     formState: { errors },
   } = useForm();
 
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   const [userId, setUserId] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [districtOptions, setDistrictOptions] = useState([]);
+  const [tehsilOptions, setTehsilOptions] = useState([]);
+  const selectedDistrict = watch("District");
+
   const navigate = useNavigate();
+
+  // Fetch designations and districts on mount
+  useEffect(() => {
+    fetchDistricts(setDistrictOptions);
+  }, []);
+
+  // Fetch tehsils when district changes
+  useEffect(() => {
+    if (selectedDistrict) {
+      axios
+        .get(`/Base/GetTeshilForDistrict?districtId=${selectedDistrict}`)
+        .then((response) => {
+          if (response.data.status) {
+            const tehsilOptionsFormatted = response.data.tehsils.map(
+              (tehsil) => ({
+                label: tehsil.tehsilName,
+                value: tehsil.tehsilId,
+              })
+            );
+            setTehsilOptions(tehsilOptionsFormatted);
+          } else {
+            toast.error("Failed to fetch tehsils", {
+              position: "top-center",
+              autoClose: 3000,
+              theme: "colored",
+            });
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching tehsils", error);
+          toast.error("Error fetching tehsils", {
+            position: "top-center",
+            autoClose: 3000,
+            theme: "colored",
+          });
+        });
+    }
+  }, [selectedDistrict]);
 
   // ✅ Async username validation
   const validateUsername = async (value) => {
@@ -267,6 +312,32 @@ export default function RegisterScreen() {
                       value === getValues("password") ||
                       "Passwords do not match",
                   }}
+                  disabled={loading}
+                />
+              </Col>
+              <Col xs={6}>
+                <CustomSelectField
+                  label="District"
+                  name="District"
+                  control={control}
+                  placeholder="Select District"
+                  options={districtOptions}
+                  rules={{ required: "District is required" }}
+                  errors={errors}
+                  aria-describedby="district-error"
+                  disabled={loading}
+                />
+              </Col>
+              <Col xs={6}>
+                <CustomSelectField
+                  label="TSWO Office"
+                  name="Tehsil"
+                  control={control}
+                  placeholder="Select Tehsil"
+                  options={tehsilOptions}
+                  rules={{ required: "Tehsil is required" }}
+                  errors={errors}
+                  aria-describedby="tehsil-error"
                   disabled={loading}
                 />
               </Col>

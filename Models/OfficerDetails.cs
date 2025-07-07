@@ -9,7 +9,6 @@ public class OfficerDetailsModal
     public string? UserType { get; set; }
     public bool IsEmailValid { get; set; }
     public string? RegisteredDate { get; set; }
-    public int? DetailId { get; set; } // Nullable for users without officer details
     public string? Role { get; set; }
     public string? RoleShort { get; set; }
     public string? AccessLevel { get; set; }
