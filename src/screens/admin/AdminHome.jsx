@@ -14,6 +14,8 @@ import MiscellaneousServicesIcon from "@mui/icons-material/MiscellaneousServices
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axiosInstance from "../../axiosConfig";
+import ServerSideTable from "../../components/ServerSideTable";
+import { set } from "react-hook-form";
 
 export default function AdminHome() {
   // State for dashboard data, loading, and error
@@ -25,6 +27,34 @@ export default function AdminHome() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showTable, setShowTable] = useState(false);
+  const [url, setUrl] = useState("");
+  const [listType, setListType] = useState("");
+
+  const actionFunctions = {
+    ValidateOfficer: async (row) => {
+      const userdata = row.original;
+      console.log("Validating officer:", userdata.username);
+      const formdata = new FormData();
+      formdata.append("username", userdata.username);
+      try {
+        const response = await axiosInstance.post(
+          "/Admin/ValidateOfficer",
+          formdata
+        );
+
+        if (response.data.status) {
+          setModalOpen(true);
+          // Optionally reload table
+        } else {
+          alert("Validation failed.");
+        }
+      } catch (error) {
+        console.error("Error validating officer:", error);
+        alert("An error occurred while validating officer.");
+      }
+    },
+  };
 
   // Fetch dashboard data on component mount
   useEffect(() => {
@@ -52,6 +82,21 @@ export default function AdminHome() {
     fetchDashboardData();
   }, []);
 
+  const handleCardClick = async (type) => {
+    console.log(type);
+    if (type == "Officer") {
+      setUrl("/Admin/GetOfficersList");
+    } else if (type == "Citizen") {
+      setUrl("/Admin/GetUsersList");
+    } else if (type == "Applications") {
+      setUrl("/Admin/GetApplicationsList");
+    } else if (type == "Services") {
+      setUrl("/Admin/GetServices");
+    }
+    setListType(type);
+    setShowTable(true);
+  };
+
   const cardStyles = {
     height: "100%",
     display: "flex",
@@ -60,6 +105,7 @@ export default function AdminHome() {
     textAlign: "center",
     boxShadow: 3,
     borderRadius: 2,
+    cursor: "pointer",
   };
 
   const iconStyles = {
@@ -93,7 +139,7 @@ export default function AdminHome() {
         ) : (
           <Row xs={1} md={2} lg={4} className="g-4">
             <Col>
-              <Card sx={cardStyles}>
+              <Card sx={cardStyles} onClick={() => handleCardClick("Officer")}>
                 <CardContent>
                   <PeopleIcon sx={iconStyles} />
                   <Typography variant="h6" color="text.secondary">
@@ -106,7 +152,7 @@ export default function AdminHome() {
               </Card>
             </Col>
             <Col>
-              <Card sx={cardStyles}>
+              <Card sx={cardStyles} onClick={() => handleCardClick("Citizen")}>
                 <CardContent>
                   <PersonAddIcon sx={iconStyles} />
                   <Typography variant="h6" color="text.secondary">
@@ -119,7 +165,10 @@ export default function AdminHome() {
               </Card>
             </Col>
             <Col>
-              <Card sx={cardStyles}>
+              <Card
+                sx={cardStyles}
+                onClick={() => handleCardClick("Applications")}
+              >
                 <CardContent>
                   <AssignmentIcon sx={iconStyles} />
                   <Typography variant="h6" color="text.secondary">
@@ -132,7 +181,7 @@ export default function AdminHome() {
               </Card>
             </Col>
             <Col>
-              <Card sx={cardStyles}>
+              <Card sx={cardStyles} onClick={() => handleCardClick("Services")}>
                 <CardContent>
                   <MiscellaneousServicesIcon sx={iconStyles} />
                   <Typography variant="h6" color="text.secondary">
@@ -147,6 +196,17 @@ export default function AdminHome() {
           </Row>
         )}
       </Container>
+
+      {showTable && (
+        <Box sx={{ padding: 5, marginTop: 5 }}>
+          <ServerSideTable
+            key={listType}
+            url={url}
+            extraParams={{}}
+            actionFunctions={{}}
+          />
+        </Box>
+      )}
 
       {/* Toast Container for Error Notifications */}
       <ToastContainer />

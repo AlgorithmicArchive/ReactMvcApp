@@ -340,35 +340,43 @@ const ServerSideTable = ({
             renderRowActions: ({ row }) => {
               return (
                 <Box sx={{ display: "flex", gap: 1 }}>
-                  {(row.original.customActions || []).map((action, index) => {
-                    const onClickHandler =
-                      actionFunctions[action.actionFunction];
-                    return (
-                      <Tooltip key={index} title={action.tooltip} arrow>
-                        <Button
-                          variant="contained"
-                          size="small"
-                          sx={{
-                            textTransform: "none",
-                            fontWeight: 600,
-                            fontSize: { xs: 12, md: 13 },
-                            py: 0.5,
-                            backgroundColor: "primary.main",
-                            "&:hover": {
-                              transform: "scale(1.02)",
-                              transition: "all 0.2s ease",
-                            },
-                          }}
-                          onClick={() => onClickHandler && onClickHandler(row)}
-                          aria-label={`${
-                            action.name || action.tooltip
-                          } for row ${row.original.sno}`}
-                        >
-                          {action.name || action.tooltip}
-                        </Button>
-                      </Tooltip>
-                    );
-                  })}
+                  {Array.isArray(row.original.customActions) ? (
+                    (row.original.customActions || []).map((action, index) => {
+                      const onClickHandler =
+                        actionFunctions[action.actionFunction];
+                      return (
+                        <Tooltip key={index} title={action.tooltip} arrow>
+                          <Button
+                            variant="contained"
+                            size="small"
+                            sx={{
+                              textTransform: "none",
+                              fontWeight: 600,
+                              fontSize: { xs: 12, md: 13 },
+                              py: 0.5,
+                              backgroundColor: "primary.main",
+                              "&:hover": {
+                                transform: "scale(1.02)",
+                                transition: "all 0.2s ease",
+                              },
+                            }}
+                            onClick={() =>
+                              onClickHandler && onClickHandler(row)
+                            }
+                            aria-label={`${
+                              action.name || action.tooltip
+                            } for row ${row.original.sno}`}
+                          >
+                            {action.name || action.tooltip}
+                          </Button>
+                        </Tooltip>
+                      );
+                    })
+                  ) : (
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {row.original.customActions}
+                    </Typography>
+                  )}
                 </Box>
               );
             },

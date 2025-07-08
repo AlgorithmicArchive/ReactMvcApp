@@ -81,9 +81,6 @@ namespace SahayataNidhi.Controllers
             var password = new SqlParameter("@Password", form["Password"].ToString());
             var email = new SqlParameter("@Email", form["Email"].ToString());
             var mobileNumber = new SqlParameter("@MobileNumber", form["MobileNumber"].ToString());
-            var designation = new SqlParameter("@Role", form["designation"].ToString());
-            var accessLevel = new SqlParameter("@AccessLevel", form["accessLevel"].ToString());
-            var accessCode = new SqlParameter("@AccessCode", Convert.ToInt32(form["accessCode"].ToString()));
             var profile = new SqlParameter("@Profile", "/assets/images/profile.jpg");
 
             var UserType = new SqlParameter("@UserType", form["designation"].ToString().Contains("Admin") ? "Admin" : "Officer");
