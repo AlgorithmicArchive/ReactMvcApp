@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, get, useWatch } from "react-hook-form";
 import { runValidations } from "../../assets/formvalidations";
 import {
   Box,
@@ -16,6 +16,8 @@ import {
   Divider,
   IconButton,
   Alert,
+  FormLabel,
+  FormGroup,
 } from "@mui/material";
 import { Col, Row } from "react-bootstrap";
 import { fetchFormDetails, GetServiceContent } from "../../assets/fetch";
@@ -29,6 +31,7 @@ import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import CloseIcon from "@mui/icons-material/CloseOutlined";
 import MessageModal from "../MessageModal";
+import LoadingSpinner from "../LoadingSpinner";
 
 const sectionIconMap = {
   Location: <LocationOnIcon sx={{ fontSize: 36, color: "#14B8A6" }} />, // Teal
@@ -43,6 +46,57 @@ const sectionIconMap = {
     <AccountBalanceIcon sx={{ fontSize: 36, color: "#F59E0B" }} />
   ), // Amber
   Documents: <InsertDriveFileIcon sx={{ fontSize: 36, color: "#10B981" }} />, // Green
+};
+
+// Helper function to collect currently rendered fields
+const collectRenderedFields = (formSections, formData) => {
+  const renderedFields = new Set();
+
+  formSections.forEach((section) => {
+    section.fields.forEach((field) => {
+      if (field.type === "enclosure") {
+        if (
+          !field.isDependentEnclosure ||
+          (field.isDependentEnclosure &&
+            field.dependentValues.includes(formData[field.dependentField]))
+        ) {
+          renderedFields.add(`${field.name}_select`);
+          renderedFields.add(`${field.name}_file`);
+        }
+      } else {
+        renderedFields.add(field.name);
+      }
+
+      if (field.additionalFields) {
+        const selectedValue = formData[field.name] || "";
+        const additionalFields = field.additionalFields[selectedValue] || [];
+        additionalFields.forEach((af) => {
+          const nestedFieldName = af.name || `${field.name}_${af.id}`;
+          renderedFields.add(nestedFieldName);
+          if (af.type === "enclosure") {
+            renderedFields.add(`${nestedFieldName}_select`);
+            renderedFields.add(`${nestedFieldName}_file`);
+          }
+          if (af.additionalFields) {
+            const nestedSelectedValue = formData[nestedFieldName] || "";
+            const nestedAdditionalFields =
+              af.additionalFields[nestedSelectedValue] || [];
+            nestedAdditionalFields.forEach((nestedAf) => {
+              const nestedNestedFieldName =
+                nestedAf.name || `${nestedFieldName}_${nestedAf.id}`;
+              renderedFields.add(nestedNestedFieldName);
+              if (nestedAf.type === "enclosure") {
+                renderedFields.add(`${nestedNestedFieldName}_select`);
+                renderedFields.add(`${nestedNestedFieldName}_file`);
+              }
+            });
+          }
+        });
+      }
+    });
+  });
+
+  return Array.from(renderedFields);
 };
 
 // Helper function to flatten the nested formDetails structure
@@ -88,6 +142,7 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
     getValues,
     setValue,
     reset,
+    unregister,
     formState: { errors, dirtyFields },
   } = useForm({
     mode: "onChange",
@@ -108,34 +163,248 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
   const [applicantImagePreview, setApplicantImagePreview] = useState(
     "/assets/images/profile.jpg"
   );
+  const [DependableFields, setDependableFields] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
 
   const hasRunRef = useRef(false);
+  const watchedDependableValues = useWatch({ control, name: DependableFields });
 
-  const isFieldDisabled = (fieldName) => {
+  // Effect to manage non-rendered fields
+  useEffect(() => {
+    if (!formSections.length) return;
+
+    const formData = getValues();
+    const renderedFields = collectRenderedFields(formSections, formData);
+    const allPossibleFields = new Set();
+
+    // Collect all possible fields to identify non-rendered ones
+    formSections.forEach((section) => {
+      section.fields.forEach((field) => {
+        allPossibleFields.add(field.name);
+        if (field.type === "enclosure") {
+          allPossibleFields.add(`${field.name}_select`);
+          allPossibleFields.add(`${field.name}_file`);
+        }
+        if (field.additionalFields) {
+          Object.values(field.additionalFields)
+            .flat()
+            .forEach((af) => {
+              const nestedFieldName = af.name || `${field.name}_${af.id}`;
+              allPossibleFields.add(nestedFieldName);
+              if (af.type === "enclosure") {
+                allPossibleFields.add(`${nestedFieldName}_select`);
+                allPossibleFields.add(`${nestedFieldName}_file`);
+              }
+              if (af.additionalFields) {
+                Object.values(af.additionalFields)
+                  .flat()
+                  .forEach((nestedAf) => {
+                    const nestedNestedFieldName =
+                      nestedAf.name || `${nestedFieldName}_${nestedAf.id}`;
+                    allPossibleFields.add(nestedNestedFieldName);
+                    if (nestedAf.type === "enclosure") {
+                      allPossibleFields.add(`${nestedNestedFieldName}_select`);
+                      allPossibleFields.add(`${nestedNestedFieldName}_file`);
+                    }
+                  });
+              }
+            });
+        }
+      });
+    });
+
+    // Clear non-rendered fields
+    Array.from(allPossibleFields).forEach((fieldName) => {
+      if (!renderedFields.includes(fieldName)) {
+        setValue(fieldName, null, { shouldValidate: false });
+        unregister(fieldName, { keepValue: false });
+      }
+    });
+  }, [
+    formSections,
+    watch,
+    getValues,
+    setValue,
+    unregister,
+    JSON.stringify(watchedDependableValues),
+  ]);
+
+  // Watch for changes in dependent fields and update dependent selects and dependent enclosures accordingly
+  useEffect(() => {
+    if (!formSections.length) return;
+
+    formSections.forEach((section) => {
+      section.fields.forEach((field) => {
+        // Handle dependent selects
+        if (
+          field.type === "select" &&
+          field.dependentOn &&
+          field.dependentOptions
+        ) {
+          const parentValue = watch(field.dependentOn);
+          const options = field.dependentOptions[parentValue] || [];
+          const currentValue = getValues(field.name);
+
+          if (options.length > 0) {
+            // If current value is not in options, reset to first available
+            setValue(field.name, options[1]?.value || "", {
+              shouldValidate: true,
+            });
+          } else if (currentValue) {
+            // If no options and value is set, clear it
+            setValue(field.name, "", { shouldValidate: true });
+          }
+        }
+
+        // Handle additionalFields recursively if needed
+        if (field.additionalFields) {
+          const selectedValue = watch(field.name);
+          const additionalFields = field.additionalFields[selectedValue] || [];
+
+          additionalFields.forEach((af) => {
+            if (af.type === "select" && af.dependentOn && af.dependentOptions) {
+              const parentValue = watch(af.dependentOn);
+              const options = af.dependentOptions[parentValue] || [];
+              const currentValue = getValues(af.name);
+
+              if (options.length > 0) {
+                setValue(af.name, options[1]?.value || "", {
+                  shouldValidate: true,
+                });
+              } else if (currentValue) {
+                setValue(af.name, "", { shouldValidate: true });
+              }
+            }
+          });
+        }
+
+        // Handle dependent enclosures
+        if (
+          field.type === "enclosure" &&
+          field.isDependentEnclosure &&
+          field.dependentField &&
+          field.dependentValues?.length > 0
+        ) {
+          const watchedValue = getValues(field.dependentField);
+          const shouldShow = field.dependentValues.includes(watchedValue);
+          const selectFieldName = `${field.name}_select`;
+          const fileFieldName = `${field.name}_file`;
+
+          if (!shouldShow) {
+            setValue(selectFieldName, "", { shouldValidate: true });
+            setValue(fileFieldName, null, { shouldValidate: true });
+            return;
+          } else if (
+            initialData[field.name] &&
+            (getValues(selectFieldName) == null ||
+              getValues(fileFieldName) == null)
+          ) {
+            setValue(selectFieldName, initialData[field.name].selected || "", {
+              shouldValidate: true,
+            });
+            setValue(fileFieldName, initialData[field.name].file || null, {
+              shouldValidate: true,
+            });
+          }
+        }
+      });
+    });
+  }, [
+    formSections,
+    getValues,
+    setValue,
+    JSON.stringify(watchedDependableValues),
+  ]);
+
+  function isDocumentInData(fieldName, flatDetails) {
+    return Object.keys(flatDetails).includes(fieldName);
+  }
+
+  // Only includes fields if their name is in returnFields (and their additionalFields)
+  const getDependableFields = (formSections, returnFields, flatDetails) => {
+    const dependencies = [];
+    formSections.forEach((section) => {
+      section.fields.forEach((field) => {
+        if (
+          returnFields.includes(field.name) ||
+          returnFields.includes(field.dependentOn)
+        ) {
+          dependencies.push(field.name);
+          if (field.additionalFields) {
+            const additionalFields = Array.isArray(field.additionalFields)
+              ? field.additionalFields
+              : Object.values(field.additionalFields).flat();
+            additionalFields.forEach((af) => {
+              dependencies.push(af.name);
+              if (af.additionalFields) {
+                const nestedFields = Array.isArray(af.additionalFields)
+                  ? af.additionalFields
+                  : Object.values(af.additionalFields).flat();
+                nestedFields.forEach((nestedAf) => {
+                  dependencies.push(nestedAf.name);
+                });
+              }
+            });
+          }
+        } else if (field.type === "enclosure" && field.isDependentEnclosure) {
+          if (!isDocumentInData(field.name, flatDetails)) {
+            dependencies.push(field.name);
+          }
+        }
+      });
+    });
+    return dependencies;
+  };
+
+  const isFieldDisabled = (fieldName, fieldType = null) => {
     if (
       mode === "edit" &&
       additionalDetails &&
       additionalDetails.returnFields
     ) {
-      return !additionalDetails.returnFields.includes(fieldName);
+      // setDependableFields(dependableFields);
+      return !DependableFields.includes(fieldName);
     }
     return false;
+  };
+
+  const setDefaultFile = async (path) => {
+    try {
+      const response = await fetch(path);
+      if (!response.ok) throw new Error("Failed to fetch file");
+      const blob = await response.blob();
+      const fileName = path.split("/").pop();
+      const file = new File([blob], fileName, { type: blob.type });
+      setValue("ApplicantImage", file, { shouldValidate: true });
+      setApplicantImagePreview(URL.createObjectURL(file));
+    } catch (error) {
+      console.error("Error setting default file:", error);
+      setApplicantImagePreview("/assets/images/profile.jpg"); // Fallback to default
+    }
   };
 
   useEffect(() => {
     if (applicantImageFile && applicantImageFile instanceof File) {
       const objectUrl = URL.createObjectURL(applicantImageFile);
+      setValue("ApplicantImage", applicantImageFile, { shouldValidate: true });
       setApplicantImagePreview(objectUrl);
       return () => URL.revokeObjectURL(objectUrl);
+    } else if (
+      mode === "edit" &&
+      initialData?.ApplicantImage &&
+      typeof initialData.ApplicantImage === "string"
+    ) {
+      // Fetch the image from the URL and convert it to a File object
+      setDefaultFile(initialData.ApplicantImage);
     }
-  }, [applicantImageFile]);
+  }, [applicantImageFile, initialData, mode, setValue]);
 
   useEffect(() => {
     async function loadForm() {
       try {
         const { ServiceId, referenceNumber } = location.state || {};
+        let config;
         setSelectedServiceId(ServiceId);
         if (referenceNumber) {
           setReferenceNumber(referenceNumber);
@@ -143,7 +412,7 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
         const result = await GetServiceContent(ServiceId);
         if (result && result.status) {
           try {
-            const config = JSON.parse(result.formElement);
+            config = JSON.parse(result.formElement);
             setFormSections(config);
           } catch (err) {
             console.error("Error parsing formElements:", err);
@@ -170,6 +439,15 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
               return acc;
             }, {}),
           };
+          const returnFields = JSON.parse(
+            additionalDetails?.returnFields || "[]"
+          );
+          const dependableFields = getDependableFields(
+            config,
+            returnFields,
+            flatDetails
+          );
+          setDependableFields(dependableFields);
           reset(resetData);
           setAdditionalDetails(additionalDetails);
         } else if (data !== null && data !== undefined) {
@@ -200,22 +478,9 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
     loadForm();
   }, [location.state, mode, reset, data, setValue]);
 
-  const setDefaultFile = async (path) => {
-    try {
-      const response = await fetch(path);
-      if (!response.ok) throw new Error("Failed to fetch file");
-      const blob = await response.blob();
-      const file = new File([blob], path.split("/").pop(), { type: blob.type });
-      const dataTransfer = new DataTransfer();
-      dataTransfer.items.add(file);
-      setValue("ApplicantImage", dataTransfer.files[0]);
-    } catch (error) {
-      console.error("Error setting default file:", error);
-    }
-  };
-
   useEffect(() => {
     if (!formSections.length || !initialData) return;
+
     if (hasRunRef.current) return;
     hasRunRef.current = true;
 
@@ -286,9 +551,105 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
     setDefaultFile,
   ]);
 
-  const handleCopyAddress = async (checked, sectionIndex) => {
+  const enclosureDependentFields = formSections
+    .flatMap((section) => section.fields)
+    .filter((field) => field.type === "enclosure" && field.isDependentEnclosure)
+    .map((field) => ({
+      fieldName: field.name,
+      dependentField: field.dependentField,
+    }));
+
+  // Watch dependent field values and log changes
+  useEffect(() => {
+    if (!formSections.length) return;
+
+    formSections.forEach((section) => {
+      section.fields.forEach((field) => {
+        // Handle dependent selects
+        if (
+          field.type === "select" &&
+          field.dependentOn &&
+          field.dependentOptions
+        ) {
+          const parentValue = watch(field.dependentOn);
+          const options = field.dependentOptions[parentValue] || [];
+          const currentValue = getValues(field.name);
+
+          if (options.length > 0) {
+            // If current value is not in options, reset to first available
+            setValue(field.name, options[1]?.value || "", {
+              shouldValidate: true,
+            });
+          } else if (currentValue) {
+            // If no options and value is set, clear it
+            setValue(field.name, "", { shouldValidate: true });
+          }
+        }
+
+        // Handle additionalFields recursively if needed
+        if (field.additionalFields) {
+          const selectedValue = watch(field.name);
+          const additionalFields = field.additionalFields[selectedValue] || [];
+
+          additionalFields.forEach((af) => {
+            if (af.type === "select" && af.dependentOn && af.dependentOptions) {
+              const parentValue = watch(af.dependentOn);
+              const options = af.dependentOptions[parentValue] || [];
+              const currentValue = getValues(af.name);
+
+              if (options.length > 0) {
+                setValue(af.name, options[1]?.value || "", {
+                  shouldValidate: true,
+                });
+              } else if (currentValue) {
+                setValue(af.name, "", { shouldValidate: true });
+              }
+            }
+          });
+        }
+
+        // Handle dependent enclosures
+        if (
+          field.type === "enclosure" &&
+          field.isDependentEnclosure &&
+          field.dependentField &&
+          field.dependentValues?.length > 0
+        ) {
+          const watchedValue = getValues(field.dependentField);
+          const shouldShow = field.dependentValues.includes(watchedValue);
+          const selectFieldName = `${field.name}_select`;
+          const fileFieldName = `${field.name}_file`;
+
+          if (!shouldShow) {
+            setValue(selectFieldName, "", { shouldValidate: true });
+            setValue(fileFieldName, null, { shouldValidate: true });
+            return;
+          }
+        }
+      });
+    });
+  }, [
+    watch,
+    ...enclosureDependentFields.map(({ dependentField }) =>
+      watch(dependentField)
+    ),
+  ]);
+
+  const handleCopyAddress = async (checked) => {
     if (!checked) {
-      setValue("PermanentAddressType", "Please Select");
+      const permanentSection = formSections.find(
+        (sec) => sec.section === "Permanent Address Details"
+      );
+      if (!permanentSection) {
+        console.warn("Permanent Address section not found");
+        return;
+      }
+      // Clear all fields in Permanent Address section
+      permanentSection.fields.forEach((field) => {
+        setValue(field.name, field.type === "select" ? "Please Select" : "", {
+          shouldValidate: false,
+        });
+      });
       return;
     }
 
@@ -304,26 +665,32 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
       return;
     }
 
-    // Step 1: Get AddressType field
-    const presentTypeField = presentSection.fields[0]; // Assuming first field is AddressType
-    const permanentTypeField = permanentSection.fields[0]; // Assuming first field is AddressType
+    const permanentSectionIndex = formSections.findIndex(
+      (sec) => sec.section === "Permanent Address Details"
+    );
 
-    if (
-      presentTypeField.name !== "PresentAddressType" ||
-      permanentTypeField.name !== "PermanentAddressType"
-    ) {
+    // Find address type fields dynamically
+    const presentTypeField = presentSection.fields.find((field) =>
+      field.name.toLowerCase().includes("addresstype")
+    );
+    const permanentTypeField = permanentSection.fields.find((field) =>
+      field.name.toLowerCase().includes("addresstype")
+    );
+
+    if (!presentTypeField || !permanentTypeField) {
       console.warn("Address type fields not found in sections");
       return;
     }
 
-    // Step 2: Get actual values ("Urban"/"Rural")
+    // Copy address type
     const presentAddressType = getValues(presentTypeField.name);
     let permanentAddressType = getValues(permanentTypeField.name);
 
-    // Step 3: Sync PermanentAddressType with PresentAddressType
     if (
       permanentAddressType === "Please Select" ||
-      !["Urban", "Rural"].includes(permanentAddressType)
+      !presentTypeField.options.some(
+        (opt) => opt.value === permanentAddressType
+      )
     ) {
       permanentAddressType = presentAddressType;
       setValue(permanentTypeField.name, presentAddressType, {
@@ -331,57 +698,31 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
       });
     }
 
-    // Step 5: Copy top-level AddressType field
-    setValue(permanentTypeField.name, presentAddressType, {
-      shouldValidate: true,
-    });
-
-    // Step 6: Copy additional fields based on AddressType
+    // Get additional fields for the selected address type
     const presentAdditionalFields =
-      presentSection.fields[0].additionalFields?.[presentAddressType] || [];
+      presentTypeField.additionalFields?.[presentAddressType] || [];
     const permanentAdditionalFields =
-      permanentSection.fields[0].additionalFields?.[permanentAddressType] || [];
+      permanentTypeField.additionalFields?.[permanentAddressType] || [];
 
-    if (!permanentSection.fields[0].additionalFields) {
-      console.warn("Permanent section additionalFields is missing");
-      return;
-    }
-
-    if (!permanentAdditionalFields.length) {
-      console.warn(
-        `No permanent additional fields found for AddressType: ${permanentAddressType}`
-      );
-      return;
-    }
-
-    // Register all permanent fields to avoid "not found in fieldNames" errors
+    // Clear permanent additional fields
     permanentAdditionalFields.forEach((field) => {
       setValue(field.name, "", { shouldValidate: false });
     });
 
-    // Map fields explicitly to handle naming inconsistencies
-    const fieldNameMap = {
-      PresentDistrict: "PermanentDistrict",
-      PresentMuncipality: "PermanentMuncipality", // Match typo
-      PresentMunicipality: "PermanentMuncipality", // Handle correct spelling
-      PresentWardNo: "PermanentWardNo",
-      PresentBlock: "PermanentBlock",
-      PresentHalqaPanchayat: "PermanentHalqaPanchayat",
-      PresentVillage: "PermanentVillage",
-    };
-
-    // Process fields sequentially to respect dependencies
-    for (const presentField of presentAdditionalFields) {
-      let permanentFieldName = fieldNameMap[presentField.name];
-
-      if (!permanentFieldName) {
-        // Fallback: Try replacing "Present" with "Permanent"
-        permanentFieldName = presentField.name.replace("Present", "Permanent");
-      }
-
-      const permanentField = permanentAdditionalFields.find(
-        (f) => f.name.toLowerCase() === permanentFieldName.toLowerCase()
+    // Map and copy fields dynamically
+    for (const presentField of [
+      ...presentSection.fields.filter((f) => f.name !== presentTypeField.name), // Non-type fields
+      ...presentAdditionalFields, // Additional fields for address type
+    ]) {
+      const fieldValue = getValues(presentField.name);
+      const permanentFieldName = presentField.name.replace(
+        "Present",
+        "Permanent"
       );
+      const permanentField = [
+        ...permanentSection.fields,
+        ...permanentAdditionalFields,
+      ].find((f) => f.name.toLowerCase() === permanentFieldName.toLowerCase());
 
       if (!permanentField) {
         console.warn(
@@ -390,32 +731,33 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
         continue;
       }
 
-      const fieldValue = getValues(presentField.name);
       setValue(permanentField.name, fieldValue, { shouldValidate: true });
 
-      // Handle dependent fields
+      // Trigger area change for relevant fields (e.g., District, Municipality, etc.)
       if (
-        presentField.name.includes("District") ||
-        presentField.name.includes("Muncipality") ||
-        presentField.name.includes("Municipality") ||
-        presentField.name.includes("Block") ||
-        presentField.name.includes("HalqaPanchayat") ||
-        presentField.name.includes("Ward") ||
-        presentField.name.includes("Village")
+        /district|municipality|ward|block|halqapanchayat|village/i.test(
+          presentField.name
+        )
       ) {
-        await handleAreaChange(sectionIndex, permanentField, fieldValue);
+        await handleAreaChange(
+          permanentSectionIndex,
+          permanentField,
+          fieldValue
+        );
       }
     }
 
-    // Step 7: Trigger validation for all copied fields
+    // Validate all fields
     const validateFields = async () => {
       await trigger(permanentTypeField.name);
-
-      for (const field of permanentAdditionalFields) {
+      for (const field of [
+        ...permanentSection.fields,
+        ...permanentAdditionalFields,
+      ]) {
         try {
           await trigger(field.name);
         } catch (error) {
-          console.warn(`Validation failed for ${field.name}:`, error.message);
+          console.warn(`Validation failed for ${field.name}: ${error.message}`);
         }
       }
     };
@@ -467,10 +809,16 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
       }
     }
 
-    const validationResults = await Promise.all(
-      allFields.map((fieldName) => trigger(fieldName))
-    );
-    return validationResults.every((result) => result);
+    const hasEmptyField = enabledFields.some((name) => {
+      const value = formData[name];
+      return value === "" || value === null || value === undefined;
+    });
+
+    if (hasEmptyField) {
+      return false;
+    }
+
+    return true;
   };
 
   const handleDistrictChange = async (sectionIndex, districtField, value) => {
@@ -642,30 +990,41 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
 
   const onSubmit = async (data, operationType) => {
     const groupedFormData = {};
-    setButtonLoading(true);
+    setLoading(true);
 
     let returnFieldsArray = [];
-    if (additionalDetails != null && additionalDetails != "") {
+    if (additionalDetails != null && additionalDetails !== "") {
       const returnFields = additionalDetails?.returnFields || "";
       returnFieldsArray = JSON.parse(returnFields);
     }
 
-    const processField = (field, data) => {
+    const processField = (field, formData, initialData) => {
       if (field.type === "enclosure" && field.isDependentEnclosure) {
-        const parentValue = data[field.dependentField];
+        const parentValue =
+          formData[field.dependentField] || initialData[field.dependentField];
         if (!parentValue || !field.dependentValues.includes(parentValue)) {
           return null;
         }
       }
 
       const sectionFormData = {};
-      const fieldValue = data[field.name] || "";
+      // Use formData if available, otherwise fall back to initialData
+      const fieldValue =
+        formData[field.name] !== undefined
+          ? formData[field.name]
+          : initialData[field.name] || "";
       sectionFormData["label"] = field.label;
       sectionFormData["name"] = field.name;
 
       if (field.type === "enclosure") {
-        sectionFormData["Enclosure"] = data[`${field.name}_select`] || "";
-        sectionFormData["File"] = data[`${field.name}_file`] || "";
+        sectionFormData["Enclosure"] =
+          formData[`${field.name}_select`] !== undefined
+            ? formData[`${field.name}_select`]
+            : initialData[field.name]?.selected || "";
+        sectionFormData["File"] =
+          formData[`${field.name}_file`] !== undefined
+            ? formData[`${field.name}_file`]
+            : initialData[field.name]?.file || "";
       } else if (field.name === "ApplicantImage") {
         sectionFormData["File"] = fieldValue;
       } else {
@@ -673,7 +1032,7 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
       }
 
       if (field.additionalFields) {
-        const selectedValue = data[field.name] || "";
+        const selectedValue = fieldValue || "";
         const additionalFields = field.additionalFields[selectedValue];
         if (additionalFields) {
           sectionFormData.additionalFields = additionalFields
@@ -682,7 +1041,8 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
                 additionalField.name || `${field.name}_${additionalField.id}`;
               return processField(
                 { ...additionalField, name: nestedFieldName },
-                data
+                formData,
+                initialData
               );
             })
             .filter((nestedField) => nestedField !== null);
@@ -695,12 +1055,8 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
     formSections.forEach((section) => {
       groupedFormData[section.section] = [];
       section.fields.forEach((field) => {
-        const sectionData = processField(field, data);
-        if (
-          sectionData !== null &&
-          (returnFieldsArray.length === 0 ||
-            returnFieldsArray.includes(sectionData.name))
-        ) {
+        const sectionData = processField(field, data, initialData || {});
+        if (sectionData !== null) {
           groupedFormData[section.section].push(sectionData);
         }
       });
@@ -709,15 +1065,6 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
     const formdata = new FormData();
     formdata.append("serviceId", selectedServiceId);
     formdata.append("formDetails", JSON.stringify(groupedFormData));
-
-    if (mode === "edit" && returnFieldsArray.length > 0) {
-      returnFieldsArray.forEach((fieldName) => {
-        const fieldValue = data[fieldName];
-        if (fieldValue !== undefined && fieldValue !== null) {
-          formdata.append(fieldName, fieldValue);
-        }
-      });
-    }
 
     for (const section in groupedFormData) {
       groupedFormData[section].forEach((field) => {
@@ -744,7 +1091,7 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
     formdata.append("referenceNumber", referenceNumber);
 
     let url = "/User/InsertFormDetails";
-    if (additionalDetails != null && additionalDetails != "") {
+    if (additionalDetails != null && additionalDetails !== "") {
       formdata.append("returnFields", JSON.stringify(returnFieldsArray));
       url = "/User/UpdateApplicationDetails";
     }
@@ -752,13 +1099,13 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
     try {
       const response = await axiosInstance.post(url, formdata);
       const result = response.data;
-      setButtonLoading(false);
+      setLoading(false);
       if (result.status) {
         if (result.type === "Submit") {
           navigate("/user/acknowledge", {
             state: { applicationId: result.referenceNumber },
           });
-        } else if (result.type == "Edit") {
+        } else if (result.type === "Edit") {
           setReferenceNumber(result.referenceNumber);
           navigate("/user/initiated");
         } else {
@@ -769,14 +1116,8 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
       }
     } catch (error) {
       console.error("Error submitting form:", error);
-      setButtonLoading(false);
+      setLoading(false);
     }
-  };
-
-  const handleChekcBankIfsc = async (fieldName) => {
-    const bankName = getValues("BankName");
-    const IfscCode = getValues("IfscCode");
-    console.log(bankName, IfscCode);
   };
 
   const renderField = (field, sectionIndex) => {
@@ -898,12 +1239,135 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
                 helperText={errors[field.name]?.message || ""}
                 fullWidth
                 margin="normal"
-                InputLabelProps={{ shrink: true }}
+                InputLabelProps={{
+                  shrink: true,
+                  style: { fontSize: "1rem", color: "#000000" },
+                }}
                 inputProps={{
                   maxLength: field.maxLength,
                 }}
                 sx={commonStyles}
               />
+            )}
+          />
+        );
+
+      case "checkbox":
+        return (
+          <Controller
+            name={field.name}
+            control={control}
+            defaultValue={
+              field.isConsentCheckbox
+                ? false
+                : field.options?.length > 0
+                ? []
+                : ""
+            }
+            rules={{
+              validate: async (value) => {
+                // For required checkbox fields
+                if (field.required) {
+                  if (field.isConsentCheckbox) {
+                    // Consent checkboxes don’t require validation unless specified
+                    return true;
+                  } else if (Array.isArray(value)) {
+                    if (!value || value.length === 0) {
+                      return "At least one option must be selected";
+                    }
+                  } else if (!value) {
+                    return "This field is required";
+                  }
+                }
+
+                // Run additional validations
+                return await runValidations(
+                  field,
+                  value,
+                  getValues(),
+                  referenceNumber
+                );
+              },
+            }}
+            render={({ field: { onChange, value, ref } }) => (
+              <FormControl
+                component="fieldset"
+                fullWidth
+                margin="normal"
+                error={Boolean(errors[field.name])}
+                disabled={isFieldDisabled(field.name)}
+              >
+                <FormLabel
+                  component="legend"
+                  sx={{
+                    fontSize: "1rem",
+                    color: "#000000",
+                    "&.Mui-focused": { color: "#000000" },
+                  }}
+                >
+                  {getLabelWithAsteriskJSX(field)}
+                </FormLabel>
+                {field.isConsentCheckbox ? (
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={!!value}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          onChange(checked);
+                          if (
+                            field.transformationFunctions?.includes(
+                              "handleCopyAddress"
+                            )
+                          ) {
+                            handleCopyAddress(checked, sectionIndex);
+                          }
+                        }}
+                        inputRef={ref}
+                        disabled={isFieldDisabled(field.name)}
+                      />
+                    }
+                    label={field.label}
+                  />
+                ) : (
+                  <FormGroup
+                    row={field.checkboxLayout === "horizontal"}
+                    sx={commonStyles}
+                  >
+                    {field.options?.map((option) => (
+                      <FormControlLabel
+                        key={option.value}
+                        control={
+                          <Checkbox
+                            checked={
+                              Array.isArray(value)
+                                ? value.includes(option.value)
+                                : value === option.value
+                            }
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              if (Array.isArray(value)) {
+                                const newValue = checked
+                                  ? [...value, option.value]
+                                  : value.filter((val) => val !== option.value);
+                                onChange(newValue);
+                              } else {
+                                onChange(checked ? option.value : "");
+                              }
+                            }}
+                            inputRef={ref}
+                            disabled={isFieldDisabled(field.name)}
+                          />
+                        }
+                        label={option.label}
+                      />
+                    ))}
+                  </FormGroup>
+                )}
+                {errors[field.name] && (
+                  <FormHelperText>{errors[field.name]?.message}</FormHelperText>
+                )}
+              </FormControl>
             )}
           />
         );
@@ -989,16 +1453,32 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
                     id={`field-${field.id}`}
                     onChange={(e) => {
                       onChange(e);
-                      handleAreaChange(sectionIndex, field, e.target.value);
-                    }}
-                    onBlur={() => {
-                      if (field.name === "BankName") {
-                        handleChekcBankIfsc(field.name);
+                      const newValue = e.target.value;
+                      handleAreaChange(sectionIndex, field, newValue);
+                      // Unregister additional fields that do not belong to the current value
+                      if (field.additionalFields) {
+                        Object.entries(field.additionalFields).forEach(
+                          ([key, additionalFields]) => {
+                            if (key !== newValue) {
+                              additionalFields.forEach((additionalField) => {
+                                const nestedFieldName =
+                                  additionalField.name ||
+                                  `${field.name}_${additionalField.id}`;
+                                unregister(nestedFieldName, {
+                                  keepValue: false,
+                                });
+                              });
+                            }
+                          }
+                        );
                       }
                     }}
                     error={Boolean(errors[field.name])}
                     helperText={errors[field.name]?.message || ""}
-                    InputLabelProps={{ shrink: true }}
+                    InputLabelProps={{
+                      shrink: true,
+                      style: { fontSize: "1.2rem", color: "#000000" },
+                    }}
                     inputRef={ref}
                     sx={commonStyles}
                     disabled={isFieldDisabled(field.name)}
@@ -1084,70 +1564,74 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
                 validate: async (value) =>
                   await runValidations(field, value, getValues()),
               }}
-              render={({ field: { onChange, value, ref } }) => (
-                <FormControl
-                  fullWidth
-                  margin="normal"
-                  error={Boolean(errors[selectFieldName])}
-                  sx={commonStyles}
-                >
-                  <InputLabel id={`${field.id}_select-label`}>
-                    {getLabelWithAsteriskJSX(field)}
-                  </InputLabel>
-                  <Select
-                    labelId={`${field.id}_select-label`}
-                    id={`${field.id}_select`}
-                    value={value || ""}
-                    label={getLabelWithAsteriskJSX(field)}
-                    disabled={isFieldDisabled(selectFieldName)}
-                    onChange={(e) => onChange(e.target.value)}
-                    inputRef={ref}
-                  >
-                    {options.map((option) => (
-                      <MenuItem
-                        key={option.value}
-                        value={option.value}
-                        sx={{
-                          color: "#1F2937", // Gray-900
-                          "&:hover": { backgroundColor: "#DBEAFE" }, // Blue-100
-                          "&.Mui-selected": {
-                            backgroundColor: "#6366F1", // Indigo-500
-                            color: "#FFFFFF",
-                          },
-                        }}
-                      >
-                        {option.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  <FormHelperText sx={{ color: "#F43F5E" }}>
-                    {errors[selectFieldName]?.message || ""}
-                  </FormHelperText>
-                </FormControl>
-              )}
-            />
-
-            {additionalFields &&
-              additionalFields.map((additionalField) => {
-                const nestedFieldName =
-                  additionalField.name || `${field.name}_${additionalField.id}`;
+              render={({ field: { onChange, value, ref } }) => {
                 return (
-                  <Col
-                    xs={12}
-                    lg={additionalField.span}
-                    key={additionalField.id}
-                  >
-                    {renderField(
-                      {
-                        ...additionalField,
-                        name: nestedFieldName,
-                      },
-                      sectionIndex
-                    )}
-                  </Col>
-                );
-              })}
+                  <>
+                    <TextField
+                      select
+                      fullWidth
+                      variant="outlined"
+                      label={getLabelWithAsteriskJSX(field)}
+                      value={value || ""}
+                      id={`field-${field.id}`}
+                      onChange={(e) => {
+                        onChange(e);
+                        handleAreaChange(sectionIndex, field, e.target.value);
+                      }}
+                      error={Boolean(errors[field.name])}
+                      helperText={errors[field.name]?.message || ""}
+                      InputLabelProps={{
+                        shrink: true,
+                        style: { fontSize: "1.2rem", color: "#000000" },
+                      }}
+                      inputRef={ref}
+                      sx={commonStyles}
+                      disabled={isFieldDisabled(field.name)}
+                    >
+                      {options.map((option) => (
+                        <MenuItem
+                          key={option.value}
+                          value={option.value}
+                          sx={{
+                            color: "#1F2937", // Gray-900
+                            "&:hover": { backgroundColor: "#DBEAFE" }, // Blue-100
+                            "&.Mui-selected": {
+                              backgroundColor: "#6366F1", // Indigo-500
+                              color: "#FFFFFF",
+                            },
+                          }}
+                        >
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </TextField>
 
+                    {field.additionalFields &&
+                      field.additionalFields[value] &&
+                      field.additionalFields[value].map((additionalField) => {
+                        const nestedFieldName =
+                          additionalField.name ||
+                          `${field.name}_${additionalField.id}`;
+                        return (
+                          <Col
+                            xs={12}
+                            lg={additionalField.span}
+                            key={additionalField.id}
+                          >
+                            {renderField(
+                              {
+                                ...additionalField,
+                                name: nestedFieldName,
+                              },
+                              sectionIndex
+                            )}
+                          </Col>
+                        );
+                      })}
+                  </>
+                );
+              }}
+            />
             <Controller
               name={fileFieldName}
               control={control}
@@ -1196,6 +1680,7 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
                       </FormHelperText>
                       <IconButton
                         size="small"
+                        disabled={isFieldDisabled(field.name)}
                         onClick={() => onChange(null)}
                         sx={{
                           color: "#F43F5E", // Rose-500
@@ -1217,9 +1702,7 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
                       width: "100%",
                       borderRadius: "12px",
                     }}
-                    disabled={
-                      isFieldDisabled(fileFieldName) || !watch(selectFieldName)
-                    }
+                    disabled={isFieldDisabled(field.name)}
                   >
                     Upload
                     <input
@@ -1249,14 +1732,7 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
     }
   };
 
-  if (loading)
-    return (
-      <Typography
-        sx={{ textAlign: "center", color: "#6B7280", fontSize: "1.2rem" }}
-      >
-        Loading form...
-      </Typography>
-    );
+  if (loading) return <LoadingSpinner />;
 
   return (
     <Box
@@ -1323,25 +1799,6 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
                 <Divider
                   sx={{ marginBottom: "1.5rem", borderColor: "#A5B4FC" }} // Indigo-200
                 />
-                {section.section === "Permanent Address Details" && (
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={isCopyAddressChecked}
-                        onChange={(e) => {
-                          setIsCopyAddressChecked(e.target.checked);
-                          handleCopyAddress(e.target.checked, index);
-                        }}
-                        sx={{
-                          color: "#EC4899", // Pink-500
-                          "&.Mui-checked": { color: "#EC4899" }, // Pink-500
-                        }}
-                      />
-                    }
-                    label="Same As Present Address"
-                    sx={{ marginBottom: "1rem", color: "#4B5563" }} // Gray-600
-                  />
-                )}
                 {section.section === "Applicant Details" && (
                   <Box
                     sx={{
@@ -1412,28 +1869,30 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
                 zIndex: 1000,
               }}
             >
-              <Button
-                sx={{
-                  background: "linear-gradient(to right, #F59E0B, #D97706)", // Amber-500 to Amber-600
-                  color: "#FFFFFF",
-                  fontSize: { xs: "0.9rem", md: "1rem" },
-                  fontWeight: "600",
-                  padding: "0.75rem 2.5rem",
-                  borderRadius: "10px",
-                  textTransform: "none",
-                  "&:hover": {
-                    background: "linear-gradient(to right, #D97706, #B45309)", // Amber-600 to Amber-700
-                  },
-                  "&.Mui-disabled": {
-                    background: "#D1D5DB", // Gray-300
-                    color: "#9CA3AF", // Gray-400
-                  },
-                }}
-                disabled={buttonLoading || loading}
-                onClick={handleSubmit((data) => onSubmit(data, "save"))}
-              >
-                Save{buttonLoading ? "..." : ""}
-              </Button>
+              {mode != "edit" && (
+                <Button
+                  sx={{
+                    background: "linear-gradient(to right, #F59E0B, #D97706)", // Amber-500 to Amber-600
+                    color: "#FFFFFF",
+                    fontSize: { xs: "0.9rem", md: "1rem" },
+                    fontWeight: "600",
+                    padding: "0.75rem 2.5rem",
+                    borderRadius: "10px",
+                    textTransform: "none",
+                    "&:hover": {
+                      background: "linear-gradient(to right, #D97706, #B45309)", // Amber-600 to Amber-700
+                    },
+                    "&.Mui-disabled": {
+                      background: "#D1D5DB", // Gray-300
+                      color: "#9CA3AF", // Gray-400
+                    },
+                  }}
+                  disabled={buttonLoading || loading}
+                  onClick={handleSubmit((data) => onSubmit(data, "save"))}
+                >
+                  Save{buttonLoading ? "..." : ""}
+                </Button>
+              )}
               <Button
                 sx={{
                   background: "linear-gradient(to right, #10B981, #059669)", // Green-500 to Green-600
@@ -1452,14 +1911,7 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
                   },
                 }}
                 disabled={buttonLoading || loading}
-                onClick={async () => {
-                  const valid = await handleValidateAll();
-                  if (valid) {
-                    handleSubmit((data) => onSubmit(data, "submit"))();
-                  } else {
-                    setMessageModalOpen(true);
-                  }
-                }}
+                onClick={handleSubmit((data) => onSubmit(data, "submit"))}
               >
                 Submit{buttonLoading ? "..." : ""}
               </Button>

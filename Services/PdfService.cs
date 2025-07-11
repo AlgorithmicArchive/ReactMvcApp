@@ -173,7 +173,7 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
         BarcodeQRCode qrCode = new BarcodeQRCode(qrContent);
         PdfFormXObject qrXObject = qrCode.CreateFormXObject(ColorConstants.BLACK, pdf);
         Image qrImage = new Image(qrXObject)
-            .ScaleToFit(150, 150); // Adjust size as needed
+            .ScaleToFit(600, 600); // Adjust size as needed
 
 
         // Create footer table for Date and Officer
@@ -201,7 +201,7 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
         document.Add(footerTable);
     }
 
-    public void CreateAcknowledgement(OrderedDictionary details, string applicationId)
+    public void CreateAcknowledgement(OrderedDictionary details, string applicationId, string serviceName)
     {
         string path = System.IO.Path.Combine(_webHostEnvironment.WebRootPath, "files", applicationId.Replace("/", "_") + "Acknowledgement.pdf");
         Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path) ?? string.Empty);
@@ -219,6 +219,11 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
             .SetBold()
             .SetTextAlignment(TextAlignment.CENTER)
             .SetFontSize(20));
+
+        document.Add(new Paragraph(serviceName)
+           .SetBold()
+           .SetTextAlignment(TextAlignment.CENTER)
+           .SetFontSize(16));
 
         document.Add(new Paragraph("Acknowledgement")
             .SetBold()

@@ -722,7 +722,7 @@ export default function UserDetails() {
             mb: 4,
           }}
         >
-          Citizen Applications Details
+          Citizen Application Details
         </Typography>
         <CollapsibleFormDetails
           formDetails={formDetails}

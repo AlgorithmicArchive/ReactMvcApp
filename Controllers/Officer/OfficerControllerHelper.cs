@@ -473,13 +473,16 @@ namespace SahayataNidhi.Controllers.Officer
         private void UpdateOfficerActionFormLabels(JObject officerClone, dynamic formDetails)
         {
             // Extract officer roles (from Users table's JSON AdditionalDetails field)
+            // Step 1: Pull data to memory (client-side)
             var officerRoles = dbcontext.Users
                 .Where(u => u.UserType == "Officer" && u.AdditionalDetails != null)
+                .AsEnumerable() // Forces evaluation on the client side
                 .Select(u => JsonConvert.DeserializeObject<Dictionary<string, string>>(u.AdditionalDetails!))
                 .Where(details => details != null && details.ContainsKey("Role"))
                 .Select(details => details!["Role"])
                 .Distinct()
                 .ToList();
+
 
             if (officerClone.TryGetValue("actionForm", out var actionFormToken) && actionFormToken is JArray actionFormArray)
             {
@@ -512,7 +515,9 @@ namespace SahayataNidhi.Controllers.Officer
             var lookupMap = new Dictionary<string, Func<int, string>>
             {
                 { "District", GetDistrictName },
-                { "Tehsil", GetTehsilName },
+                { "Tehsil", id=>dbcontext.Tswotehsils.FirstOrDefault(t => t.TehsilId == id)?.TehsilName ?? "" },
+                { "PresentTehsil", id => dbcontext.Tehsils.FirstOrDefault(t => t.TehsilId == id)?.TehsilName ?? "" },
+                { "PermanentTehsil", id => dbcontext.Tehsils.FirstOrDefault(t => t.TehsilId == id)?.TehsilName ?? "" },
                 { "Muncipality", id => dbcontext.Muncipalities.FirstOrDefault(m => m.MuncipalityId == id)?.MuncipalityName ?? "" },
                 { "Block", id => dbcontext.Blocks.FirstOrDefault(m => m.BlockId == id)?.BlockName ?? "" },
                 { "HalqaPanchayat", id => dbcontext.HalqaPanchayats.FirstOrDefault(m => m.HalqaPanchayatId == id)?.HalqaPanchayatName ?? "" },

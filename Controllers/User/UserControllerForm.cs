@@ -202,10 +202,13 @@ namespace SahayataNidhi.Controllers.User
         {
             string referenceNumber = form["referenceNumber"].ToString();
             string returnFieldsJson = form["returnFields"].ToString();
+            string formDetailsJson = form["formDetails"].ToString();
 
-            _logger.LogInformation($"----------Return Fields:{returnFieldsJson}--------------");
+            _logger.LogInformation($"----------Return Fields: {returnFieldsJson}--------------");
+            _logger.LogInformation($"----------Form Details: {formDetailsJson}--------------");
 
-            var returnFields = JsonConvert.DeserializeObject<List<string>>(returnFieldsJson);
+            var returnFields = JsonConvert.DeserializeObject<List<string>>(returnFieldsJson) ?? new List<string>();
+            var submittedFormDetails = JObject.Parse(formDetailsJson);
 
             // Fetch existing application
             var application = dbcontext.CitizenApplications.FirstOrDefault(a => a.ReferenceNumber == referenceNumber);
@@ -214,73 +217,127 @@ namespace SahayataNidhi.Controllers.User
                 return Json(new { status = false, message = "Application not found" });
             }
 
-            var formDetailsObj = JObject.Parse(application.FormDetails!);
+            var existingFormDetails = JObject.Parse(application.FormDetails ?? "{}");
 
-            // Iterate over sections
-            foreach (var section in formDetailsObj.Properties())
+            // Helper function to get all file fields from a JObject (including nested additionalFields)
+            static HashSet<string> GetFileFields(JObject formDetails)
+            {
+                var fileFields = new HashSet<string>();
+                foreach (var section in formDetails.Properties())
+                {
+                    if (section.Value is JArray fields)
+                    {
+                        foreach (var field in fields.OfType<JObject>())
+                        {
+                            if (field.ContainsKey("File") && !string.IsNullOrEmpty(field["File"]?.ToString()))
+                            {
+                                fileFields.Add(field["name"]?.ToString() ?? "");
+                            }
+                            if (field["additionalFields"] is JArray additionalFields)
+                            {
+                                foreach (var nestedField in additionalFields.OfType<JObject>())
+                                {
+                                    if (nestedField.ContainsKey("File") && !string.IsNullOrEmpty(nestedField["File"]?.ToString()))
+                                    {
+                                        fileFields.Add(nestedField["name"]?.ToString() ?? "");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                return fileFields;
+            }
+
+            // Get file fields from existing and submitted formDetails
+            var existingFileFields = GetFileFields(existingFormDetails);
+            var submittedFileFields = GetFileFields(submittedFormDetails);
+
+            // Delete files present in existingFormDetails but not in submittedFormDetails
+            foreach (var fieldName in existingFileFields.Except(submittedFileFields))
+            {
+                var section = existingFormDetails.Properties()
+                    .Select(p => new { Name = p.Name, Fields = p.Value as JArray })
+                    .FirstOrDefault(s => s.Fields?.OfType<JObject>().Any(f => f["name"]?.ToString() == fieldName) == true);
+                if (section != null)
+                {
+                    var field = section.Fields?.OfType<JObject>().FirstOrDefault(f => f["name"]?.ToString() == fieldName);
+                    var filePath = field?["File"]?.ToString();
+                    if (!string.IsNullOrEmpty(filePath))
+                    {
+                        _logger.LogInformation($"Deleting file for removed field {fieldName}: {filePath}");
+                        helper.DeleteFile(filePath);
+                    }
+                }
+            }
+
+            // Process new files in form.Files and update submittedFormDetails
+            foreach (var section in submittedFormDetails.Properties())
             {
                 if (section.Value is not JArray fields) continue;
-
                 foreach (var field in fields.OfType<JObject>())
                 {
                     string fieldName = field["name"]?.ToString() ?? "";
-                    _logger.LogInformation($"--------- Field Name: {fieldName}  IS IN ReturnFields: {returnFields!.Contains(fieldName)}---------------");
+                    if (string.IsNullOrEmpty(fieldName)) continue;
 
-                    if (returnFields != null && returnFields!.Contains(fieldName)) // Only update if present in returnFields
+                    if (field.ContainsKey("File") || field.ContainsKey("Enclosure"))
                     {
-                        // Check for file fields
-                        if (field.ContainsKey("File"))
+                        var file = form.Files.FirstOrDefault(f => f.Name == fieldName);
+                        if (file != null)
                         {
-                            // Delete old file if exists
-                            var oldFilePath = field["File"]?.ToString();
-                            if (!string.IsNullOrEmpty(oldFilePath))
-                            {
-                                helper.DeleteFile(oldFilePath);
-                            }
-
-                            // Add new file if uploaded
-                            var file = form.Files.FirstOrDefault(f => f.Name == fieldName);
-                            if (file != null)
-                            {
-                                string filePath = await helper.GetFilePath(file)!;
-                                field["File"] = filePath;
-                            }
-                            else
-                            {
-                                field["File"] = ""; // No new file
-                            }
+                            string filePath = await helper.GetFilePath(file);
+                            field["File"] = filePath;
+                            _logger.LogInformation($"Updated file path for {fieldName}: {filePath}");
                         }
-                        else
+                        else if (field["File"]?.Type == JTokenType.Object)
                         {
-                            // Non-file fields: update "value"
-                            string newValue = form[fieldName].ToString();
-                            _logger.LogInformation($"------- NEW VALUE: {newValue}----------------------");
-                            if (field.ContainsKey("value"))
+                            // If File is an empty object or invalid, set to empty string
+                            field["File"] = "";
+                        }
+                    }
+
+                    // Process additionalFields for nested files
+                    if (field["additionalFields"] is JArray additionalFields)
+                    {
+                        foreach (var nestedField in additionalFields.OfType<JObject>())
+                        {
+                            string nestedFieldName = nestedField["name"]?.ToString() ?? "";
+                            if (string.IsNullOrEmpty(nestedFieldName)) continue;
+
+                            if (nestedField.ContainsKey("File") || nestedField.ContainsKey("Enclosure"))
                             {
-                                field["value"] = newValue;
-                            }
-                            if (field.ContainsKey("Enclosure"))
-                            {
-                                field["Enclosure"] = form[$"{fieldName}_Enclosure"].ToString(); // Assuming enclosure field naming
+                                var file = form.Files.FirstOrDefault(f => f.Name == nestedFieldName);
+                                if (file != null)
+                                {
+                                    string filePath = await helper.GetFilePath(file);
+                                    nestedField["File"] = filePath;
+                                    _logger.LogInformation($"Updated file path for nested field {nestedFieldName}: {filePath}");
+                                }
+                                else if (nestedField["File"]?.Type == JTokenType.Object)
+                                {
+                                    nestedField["File"] = "";
+                                }
                             }
                         }
                     }
                 }
             }
 
-            // Save updated formDetails
-            application.FormDetails = formDetailsObj.ToString();
-            var workFlow = JsonConvert.DeserializeObject<dynamic>(application.WorkFlow!) as JArray;
+            // Update application.FormDetails with the new formDetails
+            application.FormDetails = submittedFormDetails.ToString();
+            var workFlow = JsonConvert.DeserializeObject<JArray>(application.WorkFlow ?? "[]");
             var currentOfficer = workFlow!.FirstOrDefault(o => (int)o["playerId"]! == application.CurrentPlayer);
-            currentOfficer!["status"] = "pending";
+            if (currentOfficer != null)
+            {
+                currentOfficer["status"] = "pending";
+            }
             application.WorkFlow = JsonConvert.SerializeObject(workFlow);
             application.CreatedAt = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
 
             dbcontext.SaveChanges();
+            helper.InsertHistory(referenceNumber, "Corrected and Sent Back to Officer", "Citizen", "Corrected");
 
-            return Json(new { status = true, message = "Application updated successfully", type = "Edit" });
+            return Json(new { status = true, message = "Application updated successfully", type = "Edit", referenceNumber });
         }
-
-
     }
 }

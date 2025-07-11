@@ -1,6 +1,6 @@
 import { Box } from "@mui/material";
 import React from "react";
-import DynamicStepForm from "../../components/form/DynamicStepForm";
+import DynamicScrollableForm from "../../components/form/DynamicStepForm";
 
 export default function Form() {
   const dummyDataList = [
@@ -35,12 +35,26 @@ export default function Form() {
         { label: "Mobile Number", name: "MobileNumber", value: "9999911111" },
         { label: "Email", name: "Email", value: "randomizerweb129@gmail.com" },
         { label: "Category", name: "Category", value: "AYY" },
+        {
+          label: "Ration Card Number",
+          name: "RationCardNumber",
+          value: "1111111111",
+        },
         { label: "Relation", name: "Relation", value: "Father" },
         { label: "Relation Name", name: "RelationName", value: "RAM SHARMA" },
         { label: "Gender", name: "Gender", value: "Male" },
-        { label: "Aadhaar Number", name: "AadharNumber", value: 690317886782 },
+        {
+          label: "Aadhaar Number",
+          name: "AadharNumber",
+          value: "690317886783",
+        },
       ],
       "Present Address Details": [
+        {
+          label: "Present Address",
+          name: "PresentAddress",
+          value: "123, Main Street, Jammu",
+        },
         {
           label: "Present Address Type",
           name: "PresentAddressType",
@@ -53,21 +67,32 @@ export default function Form() {
           value: 248194,
         },
         { label: "Present Ward No", name: "PresentWardNo", value: 11158 },
+        { label: "Present Pincode", name: "PresentPincode", value: "180001" },
       ],
-      "Permanent Address Details": [
-        {
-          label: "Permanent Address Type",
-          name: "PermanentAddressType",
-          value: "Urban",
-        },
-        { label: "Permanent District", name: "PermanentDistrict", value: 5 },
-        {
-          label: "Permanent Muncipality",
-          name: "PermanentMuncipality",
-          value: 248194,
-        },
-        { label: "Permanent Ward No", name: "PermanentWardNo", value: 11158 },
-      ],
+      // "Permanent Address Details": [
+      //   {
+      //     label: "Permanent Address",
+      //     name: "PermanentAddress",
+      //     value: "456, Another Street, Jammu",
+      //   },
+      //   {
+      //     label: "Permanent Address Type",
+      //     name: "PermanentAddressType",
+      //     value: "Urban",
+      //   },
+      //   { label: "Permanent District", name: "PermanentDistrict", value: 5 },
+      //   {
+      //     label: "Permanent Muncipality",
+      //     name: "PermanentMuncipality",
+      //     value: 248194,
+      //   },
+      //   { label: "Permanent Ward No", name: "PermanentWardNo", value: 11158 },
+      //   {
+      //     label: "Permanent Pincode",
+      //     name: "PermanentPincode",
+      //     value: "180001",
+      //   },
+      // ],
       "Bank Details": [
         {
           label: "Select Bank",
@@ -110,7 +135,7 @@ export default function Form() {
         boxSizing: "border-box",
       }}
     >
-      <DynamicStepForm data={dummyData} />
+      <DynamicScrollableForm data={dummyData} />
     </Box>
   );
 }

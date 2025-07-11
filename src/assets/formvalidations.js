@@ -99,7 +99,6 @@ export async function duplicateAccountNumber(
       formData["BankDetail"] != null
         ? formData["Bank Details"][2].value
         : formData.IfscCode;
-    console.log(formData);
     const res = await fetch(
       `/Base/IsDuplicateAccNo?bankName=${bankName}&ifscCode=${ifscCode}accNo=${value}&applicationId=${referenceNumber}`
     );
@@ -143,7 +142,6 @@ export async function validateIfscCode(
 export async function validateFile(field, value) {
   try {
     const formData = new FormData();
-    console.log(field.accept);
     if (field.accept.includes(".jpg")) formData.append("fileType", "image");
     else if (field.accept.includes(".pdf")) formData.append("fileType", "pdf");
     else return;
@@ -252,4 +250,5 @@ export const validationFunctionsList = [
 
 export const transformationFunctionsList = [
   { id: "CaptilizeAlphabet", label: "Captital Alphabets" },
+  { id: "handleCopyAddress", label: "Copy Address" },
 ];

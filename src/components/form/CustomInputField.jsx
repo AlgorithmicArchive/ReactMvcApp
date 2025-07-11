@@ -12,6 +12,7 @@ export default function CustomInputField({
   rules = {},
   onChange,
   maxLength,
+  minLength,
 }) {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", mb: 2 }}>

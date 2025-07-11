@@ -25,7 +25,7 @@ export default function RegisterScreen() {
     getValues,
     watch,
     formState: { errors },
-  } = useForm();
+  } = useForm({ mode: "onChange", reValidateMode: "onChange" });
 
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   const [userId, setUserId] = useState(0);
@@ -227,8 +227,16 @@ export default function RegisterScreen() {
                   label="Full Name"
                   control={control}
                   errors={errors}
-                  rules={{ required: "Full name is required" }}
+                  rules={{
+                    required: "Full name is required",
+                    minLength: {
+                      value: 5,
+                      message: "Full Name must be at least 5 characters",
+                    },
+                  }}
                   disabled={loading}
+                  minLength={5}
+                  maxLength={50}
                 />
               </Col>
               <Col xs={6}>
@@ -237,8 +245,17 @@ export default function RegisterScreen() {
                   label="Username"
                   control={control}
                   errors={errors}
-                  rules={{ required: true, validate: validateUsername }}
+                  rules={{
+                    required: true,
+                    minLength: {
+                      value: 5,
+                      message: "Username must be at least 5 characters",
+                    },
+                    validate: validateUsername,
+                  }}
                   disabled={loading}
+                  minLength={5}
+                  maxLength={12}
                 />
               </Col>
             </Row>
@@ -276,6 +293,7 @@ export default function RegisterScreen() {
                     },
                     validate: validateMobileNumber,
                   }}
+                  maxLength={10}
                   disabled={loading}
                 />
               </Col>
@@ -289,14 +307,24 @@ export default function RegisterScreen() {
                   type="password"
                   control={control}
                   errors={errors}
+                  disabled={loading}
                   rules={{
-                    required: true,
+                    required: "Password is required",
                     minLength: {
                       value: 6,
-                      message: "At least 6 characters",
+                      message: "Password must be at least 6 characters",
+                    },
+                    maxLength: {
+                      value: 12,
+                      message: "Password must be at most 12 characters",
+                    },
+                    pattern: {
+                      value:
+                        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,12}$/,
+                      message:
+                        "Password must include uppercase, lowercase, number, and special character",
                     },
                   }}
-                  disabled={loading}
                 />
               </Col>
               <Col xs={6}>
@@ -377,7 +405,7 @@ export default function RegisterScreen() {
         </Box>
         <Box textAlign="center" mt={2}>
           <Typography variant="body2">
-            An Officer?{" "}
+            Department Officer?{" "}
             <Link
               href="/officerRegistration"
               onClick={(e) => {

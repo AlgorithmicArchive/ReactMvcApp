@@ -410,6 +410,7 @@ namespace SahayataNidhi.Controllers.User
                 .FirstOrDefault(ca => ca.ReferenceNumber == applicationId)
                 ?? throw new InvalidOperationException("Application not found.");
 
+            string serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == details.ServiceId)?.ServiceName!;
             // 2) Load and parse the Letters JSON from the related service
             var lettersJson = (dbcontext.Services
                 .FirstOrDefault(s => s.ServiceId == Convert.ToInt32(details.ServiceId))?.Letters) ?? throw new InvalidOperationException("No letters JSON configured for this service.");
@@ -445,7 +446,7 @@ namespace SahayataNidhi.Controllers.User
             acknowledgementDetails["DATE OF SUBMISSION"] = details.CreatedAt?.ToString() ?? string.Empty;
 
             // 6) Generate the PDF
-            _pdfService.CreateAcknowledgement(acknowledgementDetails, applicationId);
+            _pdfService.CreateAcknowledgement(acknowledgementDetails, applicationId, serviceName);
 
             // 7) Return the file path
             string fileName = applicationId.Replace("/", "_") + "Acknowledgement.pdf";

@@ -285,7 +285,7 @@ namespace SahayataNidhi.Controllers.Officer
 
 
                 string userEmail = GetFieldValue("Email", formDetailsObj);
-                string Action = action == "ReturnedToCitzen" ? "Returned for rivision" : action + "ed";
+                string Action = action == "ReturnToCitizen" ? "Returned for correction" : action + "ed";
                 string rejectionNote = Action == "Rejected"
                 ? "<p>Kindly check the rejection reason by logging into your account.</p>"
                 : "";

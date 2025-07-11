@@ -94,7 +94,7 @@ namespace SahayataNidhi.Controllers.User
                 {"sanctioned", "Sanctioned"},
                 {"returned", "Returned"},
                 {"rejected", "Rejected"},
-                {"returntoedit", "Returned to citizen for edition"},
+                {"returntoedit", "Returned to citizen for correction"},
                 {"Deposited", "Inserted to Bank File"},
                 {"Dispatched", "Payment Under Process"},
                 {"Disbursed", "Payment Disbursed"},
@@ -229,7 +229,7 @@ namespace SahayataNidhi.Controllers.User
                 {
                     sno = index,
                     actionTaker = item.ActionTaker + " " + officerArea,
-                    actionTaken = item.ActionTaken! == "ReturnToCitizen" ? "Returned for correction" : item.ActionTaken,
+                    actionTaken = item.ActionTaken! == "ReturnToCitizen" ? "Returned to citizen for correction" : item.ActionTaken,
                     actionTakenOn = item.ActionTakenDate,
                 });
                 index++;

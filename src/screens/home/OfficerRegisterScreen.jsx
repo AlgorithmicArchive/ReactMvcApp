@@ -17,10 +17,11 @@ import { Col, Row } from "react-bootstrap";
 export default function OfficerRegisterScreen() {
   const {
     handleSubmit,
+    getValues,
     control,
     formState: { errors },
     watch,
-  } = useForm();
+  } = useForm({ mode: "onChange", reValidateMode: "onChange" });
 
   const [designations, setDesignations] = useState([]);
   const [districtOptions, setDistrictOptions] = useState([]);
@@ -257,71 +258,77 @@ export default function OfficerRegisterScreen() {
           <Row>
             <Col xs={6}>
               <CustomInputField
-                rules={{ required: "Full Name is required" }}
-                label="Full Name"
                 name="fullName"
+                label="Full Name"
                 control={control}
-                placeholder="Enter your full name"
                 errors={errors}
-                aria-describedby="fullName-error"
+                rules={{
+                  required: "Full name is required",
+                  minLength: {
+                    value: 5,
+                    message: "Full Name must be at least 5 characters",
+                  },
+                }}
                 disabled={loading}
+                minLength={5}
+                maxLength={50}
               />
             </Col>
             <Col xs={6}>
               <CustomInputField
+                name="username"
+                label="Username"
+                control={control}
+                errors={errors}
                 rules={{
-                  required: "Username is required",
+                  required: true,
+                  minLength: {
+                    value: 5,
+                    message: "Username must be at least 5 characters",
+                  },
                   validate: validateUsername,
                 }}
-                label="Username"
-                name="username"
-                control={control}
-                placeholder="Choose a username"
-                errors={errors}
-                aria-describedby="username-error"
                 disabled={loading}
+                minLength={5}
+                maxLength={12}
               />
             </Col>
           </Row>
           <Row>
             <Col xs={6}>
               <CustomInputField
+                name="email"
+                label="Email"
+                type="email"
+                control={control}
+                errors={errors}
                 rules={{
-                  required: "Email is required",
+                  required: true,
                   pattern: {
                     value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                    message: "Invalid email address",
+                    message: "Invalid email format",
                   },
                   validate: validateEmail,
                 }}
-                label="Email"
-                name="email"
-                control={control}
-                placeholder="Enter your email"
-                type="email"
-                errors={errors}
-                aria-describedby="email-error"
                 disabled={loading}
               />
             </Col>
             <Col xs={6}>
               <CustomInputField
+                name="mobileNumber"
+                label="Mobile Number"
+                type="tel"
+                control={control}
+                errors={errors}
                 rules={{
-                  required: "Mobile number is required",
+                  required: true,
                   pattern: {
                     value: /^[0-9]{10}$/,
-                    message: "Mobile number must be exactly 10 digits",
+                    message: "Enter 10 digit number",
                   },
                   validate: validateMobileNumber,
                 }}
-                label="Mobile Number"
-                name="mobileNumber"
-                control={control}
-                placeholder="Enter your mobile number"
-                errors={errors}
                 maxLength={10}
-                type="tel"
-                aria-describedby="mobileNumber-error"
                 disabled={loading}
               />
             </Col>
@@ -329,37 +336,42 @@ export default function OfficerRegisterScreen() {
           <Row>
             <Col xs={6}>
               <CustomInputField
+                name="password"
+                label="Password"
+                type="password"
+                control={control}
+                errors={errors}
+                disabled={loading}
                 rules={{
                   required: "Password is required",
                   minLength: {
                     value: 6,
                     message: "Password must be at least 6 characters",
                   },
+                  maxLength: {
+                    value: 12,
+                    message: "Password must be at most 12 characters",
+                  },
+                  pattern: {
+                    value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,12}$/,
+                    message:
+                      "Password must include uppercase, lowercase, number, and special character",
+                  },
                 }}
-                label="Password"
-                name="password"
-                control={control}
-                placeholder="Create a password"
-                type="password"
-                errors={errors}
-                aria-describedby="password-error"
-                disabled={loading}
               />
             </Col>
             <Col xs={6}>
               <CustomInputField
-                rules={{
-                  required: "Please confirm your password",
-                  validate: (value, formValues) =>
-                    value === formValues.password || "Passwords do not match",
-                }}
-                label="Confirm Password"
                 name="confirmPassword"
-                control={control}
-                placeholder="Confirm your password"
+                label="Confirm Password"
                 type="password"
+                control={control}
                 errors={errors}
-                aria-describedby="confirmPassword-error"
+                rules={{
+                  required: "Confirm your password",
+                  validate: (value) =>
+                    value === getValues("password") || "Passwords do not match",
+                }}
                 disabled={loading}
               />
             </Col>

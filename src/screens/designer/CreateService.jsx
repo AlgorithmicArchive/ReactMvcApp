@@ -63,6 +63,8 @@ const normalizeField = (field, timestamp = Date.now()) => ({
   dependentValues: Array.isArray(field.dependentValues)
     ? field.dependentValues
     : [],
+  isConsentCheckbox: field.isConsentCheckbox ?? false, // Add isConsentCheckbox
+  checkboxLayout: field.checkboxLayout || "vertical",
 });
 
 // Function to recursively normalize additionalFields
@@ -255,6 +257,7 @@ export default function CreateService() {
       );
       return;
     }
+    console.log("Sections", sections);
     formdata.append("serviceName", serviceName);
     formdata.append("serviceNameShort", serviceNameShort);
     formdata.append("departmentName", departmentName);

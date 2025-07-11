@@ -113,6 +113,7 @@ export default function OfficerHome() {
   const [counts, setCounts] = useState({
     total: 0,
     pending: 0,
+    forwarded: 0,
     citizenPending: 0,
     rejected: 0,
     sanctioned: 0,
@@ -171,6 +172,9 @@ export default function OfficerHome() {
           )?.count || 0,
         pending:
           response.data.countList.find((item) => item.label === "Pending")
+            ?.count || 0,
+        forwarded:
+          response.data.countList.find((item) => item.label === "Forwarded")
             ?.count || 0,
         citizenPending:
           response.data.countList.find(
@@ -543,13 +547,21 @@ export default function OfficerHome() {
 
   // Chart data
   const barData = {
-    labels: ["Total", "Pending", "Citizen Pending", "Rejected", "Sanctioned"],
+    labels: [
+      "Total",
+      "Pending",
+      "Forwarded",
+      "Citizen Pending",
+      "Rejected",
+      "Sanctioned",
+    ],
     datasets: [
       {
         label: "Applications",
         data: [
           counts.total,
           counts.pending,
+          counts.forwarded,
           counts.citizenPending,
           counts.rejected,
           counts.sanctioned,
@@ -557,29 +569,43 @@ export default function OfficerHome() {
         backgroundColor: [
           "#1976d2",
           "#ff9800",
+          "#1976d2",
           "#9c27b0",
           "#f44336",
           "#4caf50",
         ],
         borderColor: ["#1565c0", "#f57c00", "#7b1fa2", "#d32f2f", "#388e3c"],
-        borderWidth: 1,
+        borderWidth: 0,
       },
     ],
   };
 
   const pieData = {
-    labels: ["Pending", "Citizen Pending", "Rejected", "Sanctioned"],
+    labels: [
+      "Pending",
+      "Forwarded",
+      "Citizen Pending",
+      "Rejected",
+      "Sanctioned",
+    ],
     datasets: [
       {
         data: [
           counts.pending,
+          counts.forwarded,
           counts.citizenPending,
           counts.rejected,
           counts.sanctioned,
         ],
-        backgroundColor: ["#ff9800", "#9c27b0", "#f44336", "#4caf50"],
-        borderColor: ["#fff", "#fff", "#fff", "#fff"],
-        borderWidth: 2,
+        backgroundColor: [
+          "#ff9800",
+          "#1976d2",
+          "#9c27b0",
+          "#f44336",
+          "#4caf50",
+        ],
+        borderColor: ["#fff", "#fff", "#fff", "#fff", "#fff"],
+        borderWidth: 0,
       },
     ],
   };
@@ -699,7 +725,7 @@ export default function OfficerHome() {
           fontFamily: "'Inter', sans-serif",
         }}
       >
-        {officerRole} {officerArea} Dashboard
+        {officerRole} {officerArea}
       </Typography>
 
       <Container>

@@ -16,6 +16,7 @@ using SahayataNidhi.Models.Entities;
 using iText.IO.Image;
 using iText.Kernel.Colors;
 using iText.Layout.Borders;
+using iText.Kernel.Pdf.Canvas;
 
 namespace SahayataNidhi.Controllers.Officer
 {
@@ -438,7 +439,6 @@ namespace SahayataNidhi.Controllers.Officer
             });
         }
 
-
         [HttpGet]
         public IActionResult GetRecordsForBankFile(int AccessCode, int ServiceId, string type, int Month, int Year, int pageIndex = 0, int pageSize = 10)
         {
@@ -572,7 +572,6 @@ namespace SahayataNidhi.Controllers.Officer
             return PhysicalFile(filePath, mimeType, fileName);
         }
 
-
         private static string EscapeCsv(string? input)
         {
             if (string.IsNullOrEmpty(input))
@@ -581,7 +580,6 @@ namespace SahayataNidhi.Controllers.Officer
                 return $"\"{input.Replace("\"", "\"\"")}\"";
             return input;
         }
-
 
         [HttpGet]
         public IActionResult GetSanctionLetter(string applicationId)
@@ -658,7 +656,7 @@ namespace SahayataNidhi.Controllers.Officer
                 {
                     sno = index,
                     actionTaker = item.ActionTaker,
-                    actionTaken = item.ActionTaken! == "ReturnToCitizen" ? "Returned for correction" : item.ActionTaken,
+                    actionTaken = item.ActionTaken! == "ReturnToCitizen" ? "Returned to citizen for correction" : item.ActionTaken,
                     remarks = item.Remarks,
                     actionTakenOn = item.ActionTakenDate,
                 });
@@ -710,22 +708,6 @@ namespace SahayataNidhi.Controllers.Officer
                 headerTable.AddCell(titleCell);
 
                 // Avatar cell
-                var avatarInitial = applicationId.Length > 0 ? applicationId.Substring(0, 1).ToUpper() : "U"; // Use first letter of applicationId
-                var avatarCell = new Cell(1, 1)
-                    .Add(new Paragraph(avatarInitial)
-                        .SetFontSize(40)
-                        .SetBold()
-                        .SetTextAlignment(TextAlignment.CENTER)
-                        .SetFontColor(new DeviceRgb(255, 255, 255))) // White text
-                    .SetBackgroundColor(new DeviceRgb(25, 118, 210)) // Blue background
-                    .SetBorderRadius(new BorderRadius(60)) // Circular avatar
-                    .SetHeight(120)
-                    .SetWidth(120)
-                    .SetPadding(10)
-                    .SetHorizontalAlignment(HorizontalAlignment.RIGHT)
-                    .SetVerticalAlignment(VerticalAlignment.MIDDLE)
-                    .SetBorder(Border.NO_BORDER);
-                headerTable.AddCell(avatarCell);
 
                 document.Add(headerTable);
 
@@ -872,63 +854,79 @@ namespace SahayataNidhi.Controllers.Officer
                 var documents = formDetails["Documents"] as JArray;
                 if (documents != null && documents.Any())
                 {
-                    document.Add(new Paragraph("Attached Documents")
-                        .SetFontSize(14)
-                        .SetBold()
-                        .SetFontColor(new DeviceRgb(242, 140, 56)) // Orange
-                        .SetMarginTop(20)
-                        .SetMarginBottom(10)
-                        .SetBackgroundColor(new DeviceRgb(245, 245, 245))
-                        .SetBorderRadius(new BorderRadius(5))
-                        .SetPadding(8));
+                    // Start a new page and add the header ("Attached Documents") centered on the page
+                    document.Add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+
+                    // Vertically and horizontally center the header using manual positioning
+                    float pageWidth = pdf.GetDefaultPageSize().GetWidth();
+                    float pageHeight = pdf.GetDefaultPageSize().GetHeight();
+                    float headerWidth = 400;
+                    float headerHeight = 40;
+
+                    float left = (pageWidth - headerWidth) / 2;
+                    float bottom = (pageHeight - headerHeight) / 2;
+
+                    Div div = new Div()
+                        .Add(new Paragraph("Attached Documents")
+                            .SetFontSize(14)
+                            .SetBold()
+                            .SetFontColor(new DeviceRgb(242, 140, 56))
+                            .SetBackgroundColor(new DeviceRgb(245, 245, 245))
+                            .SetPadding(8)
+                            .SetTextAlignment(TextAlignment.CENTER))
+                        .SetFixedPosition(left, bottom, headerWidth);
+
+                    document.Add(div);
+
+
                     foreach (var doc in documents)
                     {
                         var filePath = doc["File"]?.ToString();
-                        var enclosure = doc["Enclosure"]?.ToString();
+                        var enclosure = doc["label"]?.ToString();
+
                         if (!string.IsNullOrEmpty(filePath) && !string.IsNullOrEmpty(enclosure))
                         {
-                            // Convert relative path to absolute path
                             var fullPath = System.IO.Path.Combine(_webHostEnvironment.WebRootPath, filePath.TrimStart('/'));
+
                             if (System.IO.File.Exists(fullPath))
                             {
                                 try
                                 {
-                                    document.Add(new Paragraph($"Document: {enclosure}")
-                                        .SetFontSize(12)
-                                        .SetBold()
-                                        .SetMarginTop(10)
-                                        .SetMarginBottom(5)
-                                        .SetBackgroundColor(new DeviceRgb(245, 245, 245))
-                                        .SetBorderRadius(new BorderRadius(4))
-                                        .SetPadding(6));
+                                    using var reader = new PdfReader(fullPath);
+                                    using var tempMs = new MemoryStream(); // temporary in-memory stream
 
-                                    // Handle image attachments
-                                    if (filePath.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
-                                        filePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
-                                        filePath.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        var imageData = ImageDataFactory.Create(System.IO.File.ReadAllBytes(fullPath));
-                                        var image = new Image(imageData)
-                                            .ScaleToFit(500, 700)
-                                            .SetHorizontalAlignment(HorizontalAlignment.CENTER)
-                                            .SetMarginBottom(10);
-                                        document.Add(image);
-                                    }
-                                    // Handle PDF attachments
-                                    else if (filePath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        using (var reader = new PdfReader(fullPath))
-                                        {
-                                            var srcPdf = new PdfDocument(reader);
-                                            srcPdf.CopyPagesTo(1, srcPdf.GetNumberOfPages(), pdf);
-                                        }
-                                    }
+                                    // Load the source PDF
+                                    var srcPdf = new PdfDocument(reader, new PdfWriter(tempMs));
+                                    var firstPage = srcPdf.GetPage(1);
+
+                                    // Get canvas of the first page to draw the header
+                                    var canvas = new PdfCanvas(firstPage.NewContentStreamBefore(), firstPage.GetResources(), srcPdf);
+
+                                    // Add header (manually draw text)
+                                    var canvasDoc = new Document(srcPdf);
+                                    canvasDoc.ShowTextAligned(
+                                        new Paragraph($"Document: {enclosure}")
+                                            .SetFontSize(14)
+                                            .SetBold()
+                                            .SetFontColor(new DeviceRgb(242, 140, 56))
+                                            .SetBackgroundColor(new DeviceRgb(245, 245, 245))
+                                            .SetPadding(5),
+                                        x: 36, y: firstPage.GetPageSize().GetTop() - 50, // position near top
+                                        TextAlignment.LEFT
+                                    );
+                                    canvasDoc.Close(); // flush all content
+
+                                    // Reopen temp PDF with stamped header to copy pages
+                                    srcPdf = new PdfDocument(new PdfReader(new MemoryStream(tempMs.ToArray())));
+                                    srcPdf.CopyPagesTo(1, srcPdf.GetNumberOfPages(), pdf);
+                                    srcPdf.Close();
+
                                 }
                                 catch (Exception ex)
                                 {
                                     document.Add(new Paragraph($"Error loading document {enclosure}: {ex.Message}")
                                         .SetFontSize(12)
-                                        .SetFontColor(iText.Kernel.Colors.ColorConstants.RED)
+                                        .SetFontColor(ColorConstants.RED)
                                         .SetMarginBottom(5));
                                 }
                             }
@@ -936,7 +934,7 @@ namespace SahayataNidhi.Controllers.Officer
                             {
                                 document.Add(new Paragraph($"Document {enclosure}: File not found")
                                     .SetFontSize(12)
-                                    .SetFontColor(iText.Kernel.Colors.ColorConstants.RED)
+                                    .SetFontColor(ColorConstants.RED)
                                     .SetMarginBottom(5));
                             }
                         }
@@ -950,5 +948,6 @@ namespace SahayataNidhi.Controllers.Officer
                 return File(pdfBytes, "application/pdf", $"{applicationId}_UserDetails.pdf");
             }
         }
+
     }
 }

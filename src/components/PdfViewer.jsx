@@ -4,7 +4,7 @@ import "@react-pdf-viewer/core/lib/styles/index.css";
 import CustomButton from "./CustomButton";
 import { downloadFile } from "../assets/downloadFile";
 
-const PdfViewer = ({ pdfUrl, path, exportButton = null }) => {
+const PdfViewer = ({ pdfUrl, path, exportButton = null, width }) => {
   return (
     <div
       style={{
@@ -21,7 +21,7 @@ const PdfViewer = ({ pdfUrl, path, exportButton = null }) => {
       {/* The Worker component provides the PDF.js worker.
           Here we use a CDN URL; ensure the version here is in sync with the library version. */}
       <Worker workerUrl="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js">
-        <div style={{ height: "750px", width: "600px" }}>
+        <div style={{ height: "750px", width: width || "600px" }}>
           <Viewer fileUrl={pdfUrl} />
         </div>
       </Worker>

@@ -57,6 +57,7 @@ export default function Acknowledgement() {
         flexDirection: "column",
         padding: 3,
         marginTop: "100px",
+        width: "100%",
       }}
     >
       {loading ? (
@@ -67,7 +68,14 @@ export default function Acknowledgement() {
             Acknowledgement
           </Typography>
           {pdfBlobUrl ? (
-            <PdfViewer pdfUrl={pdfBlobUrl} path={path} exportButton={true} />
+            <Box sx={{ width: "80%" }}>
+              <PdfViewer
+                pdfUrl={pdfBlobUrl}
+                path={path}
+                exportButton={true}
+                width={"80%"}
+              />
+            </Box>
           ) : (
             <Typography variant="body1">Unable to load PDF.</Typography>
           )}
