@@ -13,6 +13,10 @@ public partial class ActionHistory
 
     public string ActionTaken { get; set; } = null!;
 
+    public string? LocationLevel { get; set; }
+
+    public int? LocationValue { get; set; }
+
     public string? Remarks { get; set; }
 
     public string ActionTakenDate { get; set; } = null!;

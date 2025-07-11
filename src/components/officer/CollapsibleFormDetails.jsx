@@ -97,112 +97,104 @@ export const CollapsibleFormDetails = ({
                   {Object.keys(section)[0]}
                 </Typography>
                 <Row className="g-3">
-                  {Object.entries(section).map(([sectionName, fields]) =>
-                    fields.map((field, fieldIndex) => (
-                      <Col xs={12} md={6} key={fieldIndex}>
-                        <Box sx={{ display: "flex", flexDirection: "column" }}>
-                          <Typography
-                            variant="subtitle2"
-                            sx={{ fontWeight: 500, color: "#616161", mb: 1 }}
+                  {Object.entries(section).map(([sectionName, fields]) => {
+                    // Flatten fields and additionalFields into a single array
+                    const allFields = fields.reduce((acc, field) => {
+                      acc.push(field); // Add the parent field
+                      if (
+                        field.additionalFields &&
+                        Array.isArray(field.additionalFields)
+                      ) {
+                        acc.push(...field.additionalFields); // Add additionalFields as independent fields
+                      }
+                      return acc;
+                    }, []);
+
+                    return allFields.map(
+                      (field, fieldIndex) =>
+                        field.name !== "SameAsPresent" ? (
+                          <Col
+                            xs={12}
+                            md={6}
+                            key={`${sectionName}-${field.name}-${fieldIndex}`}
                           >
-                            {field.label || field.name}
-                          </Typography>
-                          {field.File && field.File !== "" ? (
-                            /\.(jpg|jpeg|png|gif)$/i.test(field.File) ? (
-                              <Box
-                                component="img"
-                                src={field.File}
-                                alt={field.label}
-                                sx={{
-                                  width: "100%",
-                                  maxHeight: 200,
-                                  objectFit: "contain",
-                                  borderRadius: "8px",
-                                  border: "1px solid #E0E0E0",
-                                  transition: "transform 0.3s ease",
-                                  "&:hover": { transform: "scale(1.02)" },
-                                }}
-                              />
-                            ) : (
-                              <Box sx={{ mt: 1 }}>
-                                <Button
-                                  variant="outlined"
-                                  onClick={() => onViewPdf(field.File)}
-                                  startIcon={<PictureAsPdfIcon />}
-                                  sx={{
-                                    textTransform: "none",
-                                    borderColor: "#1976D2",
-                                    color: "#1976D2",
-                                    "&:hover": {
-                                      backgroundColor: "#E3F2FD",
-                                      borderColor: "#1565C0",
-                                    },
-                                  }}
-                                  aria-label={`View ${field.label} document`}
-                                >
-                                  View Document
-                                </Button>
-                                {field.Enclosure && (
-                                  <Typography
-                                    variant="caption"
-                                    sx={{ mt: 1, color: "#757575" }}
-                                  >
-                                    Enclosure: {field.Enclosure}
-                                  </Typography>
-                                )}
-                              </Box>
-                            )
-                          ) : (
-                            <Typography
-                              variant="body1"
-                              sx={{
-                                border: "1px solid #E0E0E0",
-                                borderRadius: "8px",
-                                p: 2,
-                                color: field.value ? "#212121" : "#B0BEC5",
-                              }}
+                            <Box
+                              sx={{ display: "flex", flexDirection: "column" }}
                             >
-                              {field.value ?? "--"}
-                            </Typography>
-                          )}
-                          {field.additionalFields &&
-                            Array.isArray(field.additionalFields) && (
-                              <Box sx={{ ml: 2, mt: 2 }}>
-                                {field.additionalFields.map(
-                                  (nestedField, nestedIndex) => (
-                                    <Box key={nestedIndex} sx={{ mb: 2 }}>
+                              <Typography
+                                variant="subtitle2"
+                                sx={{
+                                  fontWeight: 500,
+                                  color: "#616161",
+                                  mb: 1,
+                                }}
+                              >
+                                {field.label || field.name}
+                              </Typography>
+
+                              {field.File && field.File !== "" ? (
+                                /\.(jpg|jpeg|png|gif)$/i.test(field.File) ? (
+                                  <Box
+                                    component="img"
+                                    src={field.File}
+                                    alt={field.label}
+                                    sx={{
+                                      width: "100%",
+                                      maxHeight: 200,
+                                      objectFit: "contain",
+                                      borderRadius: "8px",
+                                      border: "1px solid #E0E0E0",
+                                      transition: "transform 0.3s ease",
+                                      "&:hover": { transform: "scale(1.02)" },
+                                    }}
+                                  />
+                                ) : (
+                                  <Box sx={{ mt: 1 }}>
+                                    <Button
+                                      variant="outlined"
+                                      onClick={() => onViewPdf(field.File)}
+                                      startIcon={<PictureAsPdfIcon />}
+                                      sx={{
+                                        textTransform: "none",
+                                        borderColor: "#1976D2",
+                                        color: "#1976D2",
+                                        "&:hover": {
+                                          backgroundColor: "#E3F2FD",
+                                          borderColor: "#1565C0",
+                                        },
+                                      }}
+                                      aria-label={`View ${field.label} document`}
+                                    >
+                                      View Document
+                                    </Button>
+                                    {field.Enclosure && (
                                       <Typography
-                                        variant="subtitle2"
-                                        sx={{
-                                          fontWeight: 500,
-                                          color: "#616161",
-                                          mb: 1,
-                                        }}
+                                        variant="caption"
+                                        sx={{ mt: 1, color: "#757575" }}
                                       >
-                                        {nestedField.label || nestedField.name}
+                                        Enclosure: {field.Enclosure}
                                       </Typography>
-                                      <Typography
-                                        variant="body1"
-                                        sx={{
-                                          border: "1px solid #E0E0E0",
-                                          borderRadius: "8px",
-                                          p: 2,
-                                          color: nestedField.value
-                                            ? "#212121"
-                                            : "#B0BEC5",
-                                        }}
-                                      >
-                                        {nestedField.value ?? "--"}
-                                      </Typography>
-                                    </Box>
-                                  )
-                                )}
-                              </Box>
-                            )}
-                        </Box>
-                      </Col>
-                    ))
-                  )}
+                                    )}
+                                  </Box>
+                                )
+                              ) : (
+                                <Typography
+                                  variant="body1"
+                                  sx={{
+                                    border: "1px solid #E0E0E0",
+                                    borderRadius: "8px",
+                                    p: 2,
+                                    color: field.value ? "#212121" : "#B0BEC5",
+                                  }}
+                                >
+                                  {field.value ?? "--"}
+                                </Typography>
+                              )}
+                            </Box>
+                          </Col>
+                        ) : null // Skip rendering if name is SameAsPresent
+                    );
+                  })}
                 </Row>
                 {index < sections.length - 1 && (
                   <Divider sx={{ my: 3, borderColor: "#E0E0E0" }} />

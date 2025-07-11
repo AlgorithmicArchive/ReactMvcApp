@@ -8,6 +8,7 @@ import {
   Alert,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { useNavigate, useNavigation } from "react-router-dom";
 
 const StyledBox = styled(Box)(({ theme }) => ({
   display: "flex",
@@ -42,6 +43,7 @@ export default function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const navigate = useNavigate();
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
@@ -102,6 +104,7 @@ export default function ForgotPassword() {
         setOtp("");
         setNewPassword("");
         setStep(1);
+        navigate("/login");
       } else {
         setError(
           data.message || "Invalid OTP or reset failed. Please try again."

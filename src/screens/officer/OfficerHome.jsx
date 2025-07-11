@@ -205,6 +205,8 @@ export default function OfficerHome() {
     setType(
       statusName === "Citizen Pending"
         ? "returntoedit"
+        : statusName == "Shifted To Another Location"
+        ? "shifted"
         : statusName.toLowerCase()
     );
     setShowTable(true);

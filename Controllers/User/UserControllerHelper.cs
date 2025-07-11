@@ -145,6 +145,31 @@ namespace SahayataNidhi.Controllers.User
             }
         }
 
+        public string GetOfficerAreaForHistory(string accessLevel, int? accessCode)
+        {
+
+
+            switch (accessLevel)
+            {
+                case "Tehsil":
+                    var tehsil = dbcontext.Tswotehsils.FirstOrDefault(t => t.TehsilId == accessCode);
+                    return tehsil?.TehsilName ?? string.Empty;
+
+                case "District":
+                    var district = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == accessCode);
+                    return district?.DistrictName ?? string.Empty;
+
+                case "Division":
+                    var districtForDivision = dbcontext.Districts.FirstOrDefault(d => d.DistrictId == accessCode);
+                    if (districtForDivision == null)
+                        return string.Empty;
+                    return districtForDivision.Division == 1 ? "Jammu" : "Kashmir";
+                case "State":
+                    return "J&K";
+                default:
+                    return string.Empty;
+            }
+        }
 
         private static string SaveFile(IFormFile file)
         {

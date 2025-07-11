@@ -197,6 +197,43 @@ namespace SahayataNidhi.Controllers.User
             }
         }
 
+        public int GetShiftedFromTo(string location)
+        {
+            try
+            {
+                var locationList = JsonConvert.DeserializeObject<List<JObject>>(location);
+
+                int? districtValue = null;
+
+                foreach (var item in locationList!)
+                {
+                    var name = item["name"]?.ToString();
+                    var valueStr = item["value"]?.ToString();
+
+                    if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(valueStr))
+                        continue;
+
+                    if (name == "Tehsil" && int.TryParse(valueStr, out int tehsil))
+                    {
+                        return tehsil; // Return immediately if Tehsil found
+                    }
+
+                    if (name == "District" && int.TryParse(valueStr, out int district))
+                    {
+                        districtValue = district; // Store District in case Tehsil not found
+                    }
+                }
+
+                return districtValue ?? 0; // Return District if Tehsil wasn't found
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Failed to deserialize location JSON.");
+                return -1;
+            }
+        }
+
+
         [HttpPost]
         public async Task<IActionResult> UpdateApplicationDetails([FromForm] IFormCollection form)
         {
@@ -204,8 +241,6 @@ namespace SahayataNidhi.Controllers.User
             string returnFieldsJson = form["returnFields"].ToString();
             string formDetailsJson = form["formDetails"].ToString();
 
-            _logger.LogInformation($"----------Return Fields: {returnFieldsJson}--------------");
-            _logger.LogInformation($"----------Form Details: {formDetailsJson}--------------");
 
             var returnFields = JsonConvert.DeserializeObject<List<string>>(returnFieldsJson) ?? new List<string>();
             var submittedFormDetails = JObject.Parse(formDetailsJson);
@@ -218,6 +253,14 @@ namespace SahayataNidhi.Controllers.User
             }
 
             var existingFormDetails = JObject.Parse(application.FormDetails ?? "{}");
+
+            var existingLocation = existingFormDetails["Location"];
+            var submittedLocation = submittedFormDetails["Location"];
+
+            int shiftedFrom = GetShiftedFromTo(JsonConvert.SerializeObject(existingLocation!));
+            int shiftedTo = GetShiftedFromTo(JsonConvert.SerializeObject(submittedLocation!));
+
+            _logger.LogInformation($"------------ Shifted From: {shiftedFrom}  Shifted To: {shiftedTo} --------------------------");
 
             // Helper function to get all file fields from a JObject (including nested additionalFields)
             static HashSet<string> GetFileFields(JObject formDetails)
@@ -323,13 +366,17 @@ namespace SahayataNidhi.Controllers.User
                 }
             }
 
-            // Update application.FormDetails with the new formDetails
+            // // Update application.FormDetails with the new formDetails
             application.FormDetails = submittedFormDetails.ToString();
+            application.AdditionalDetails = null;
             var workFlow = JsonConvert.DeserializeObject<JArray>(application.WorkFlow ?? "[]");
             var currentOfficer = workFlow!.FirstOrDefault(o => (int)o["playerId"]! == application.CurrentPlayer);
             if (currentOfficer != null)
             {
                 currentOfficer["status"] = "pending";
+                currentOfficer["shifted"] = true;
+                currentOfficer["shiftedFrom"] = shiftedFrom;
+                currentOfficer["shiftedTo"] = shiftedTo;
             }
             application.WorkFlow = JsonConvert.SerializeObject(workFlow);
             application.CreatedAt = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");

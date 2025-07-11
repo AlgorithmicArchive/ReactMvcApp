@@ -35,8 +35,6 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     public virtual DbSet<MuncipalityType> MuncipalityTypes { get; set; }
 
-    public virtual DbSet<OfficerDetail> OfficerDetails { get; set; }
-
     public virtual DbSet<OfficersDesignation> OfficersDesignations { get; set; }
 
     public virtual DbSet<PensionPayment> PensionPayments { get; set; }
@@ -50,6 +48,8 @@ public partial class SocialWelfareDepartmentContext : DbContext
     public virtual DbSet<Tswotehsil> Tswotehsils { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
+
+    public virtual DbSet<UserDocument> UserDocuments { get; set; }
 
     public virtual DbSet<Village> Villages { get; set; }
 
@@ -77,6 +77,9 @@ public partial class SocialWelfareDepartmentContext : DbContext
                 .IsUnicode(false);
             entity.Property(e => e.ActionTaker)
                 .HasMaxLength(255)
+                .IsUnicode(false);
+            entity.Property(e => e.LocationLevel)
+                .HasMaxLength(100)
                 .IsUnicode(false);
             entity.Property(e => e.ReferenceNumber)
                 .HasMaxLength(30)
@@ -244,24 +247,6 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.TypeName)
                 .HasMaxLength(255)
                 .IsUnicode(false);
-        });
-
-        modelBuilder.Entity<OfficerDetail>(entity =>
-        {
-            entity.HasKey(e => e.DetailId);
-
-            entity.Property(e => e.AccessLevel)
-                .HasMaxLength(20)
-                .IsUnicode(false);
-            entity.Property(e => e.Role)
-                .HasMaxLength(50)
-                .IsUnicode(false);
-            entity.Property(e => e.RoleShort)
-                .HasMaxLength(50)
-                .IsUnicode(false);
-            entity.Property(e => e.Validated)
-                .HasDefaultValue(false)
-                .HasColumnName("validated");
         });
 
         modelBuilder.Entity<OfficersDesignation>(entity =>
@@ -475,6 +460,19 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.Username)
                 .HasMaxLength(100)
                 .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<UserDocument>(entity =>
+        {
+            entity.HasKey(e => e.FileId);
+
+            entity.Property(e => e.FileId).HasColumnName("fileId");
+            entity.Property(e => e.FileName).HasMaxLength(255);
+            entity.Property(e => e.FileType).HasMaxLength(50);
+            entity.Property(e => e.ReferenceNumber).HasMaxLength(50);
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
         });
 
         modelBuilder.Entity<Village>(entity =>

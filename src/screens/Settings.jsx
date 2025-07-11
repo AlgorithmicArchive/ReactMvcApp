@@ -149,7 +149,7 @@ export default function Settings() {
           mobileNumber: response.data.mobileNumber || "",
           profile: response.data.profile || "",
         });
-        setLocalProfile({ file: "", url: response.data.Profile || "" });
+        setLocalProfile({ file: "", url: response.data.profile || "" });
         const backupCodes = JSON.parse(
           response.data.backupCodes || '{"used":[],"unused":[]}'
         );
@@ -297,6 +297,7 @@ export default function Settings() {
               fullWidth
               variant="outlined"
               aria-label="Username"
+              InputProps={{ readOnly: true }}
               sx={{
                 "& .MuiOutlinedInput-root": {
                   "& fieldset": { borderColor: "#90CAF9" },

@@ -1,6 +1,6 @@
 import { Box } from "@mui/material";
 import React from "react";
-import DynamicStepForm from "../../components/form/DynamicStepForm";
+import DynamicScrollableForm from "../../components/form/DynamicScrollableForm";
 
 export default function IncompleteForm() {
   return (
@@ -14,7 +14,7 @@ export default function IncompleteForm() {
         paddingBottom: 5,
       }}
     >
-      <DynamicStepForm mode="incomplete" />
+      <DynamicScrollableForm mode="incomplete" />
     </Box>
   );
 }

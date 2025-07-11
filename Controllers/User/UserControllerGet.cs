@@ -107,6 +107,7 @@ namespace SahayataNidhi.Controllers.User
                 var officers = JsonConvert.DeserializeObject<JArray>(application.WorkFlow!);
                 var currentPlayer = application.CurrentPlayer;
                 string officerDesignation = (string)officers![currentPlayer]["designation"]!;
+
                 string officerArea = GetOfficerArea(officerDesignation, formDetails);
 
                 // Define actions for this row
@@ -195,7 +196,6 @@ namespace SahayataNidhi.Controllers.User
             // Ensure size is positive for pagination
             return Json(new { data, columns, totalRecords });
         }
-
         [HttpGet]
         public async Task<IActionResult> GetApplicationHistory(string ApplicationId, int page, int size)
         {
@@ -223,12 +223,12 @@ namespace SahayataNidhi.Controllers.User
             List<dynamic> data = [];
             foreach (var item in history)
             {
-                string officerArea = GetOfficerArea(item.ActionTaker, formDetails);
+                string officerArea = GetOfficerAreaForHistory(item.LocationLevel!, item.LocationValue);
 
                 data.Add(new
                 {
                     sno = index,
-                    actionTaker = item.ActionTaker + " " + officerArea,
+                    actionTaker = item.ActionTaker + " " + item.ActionTaker != "Citizen" ? officerArea : "",
                     actionTaken = item.ActionTaken! == "ReturnToCitizen" ? "Returned to citizen for correction" : item.ActionTaken,
                     actionTakenOn = item.ActionTakenDate,
                 });
@@ -250,8 +250,6 @@ namespace SahayataNidhi.Controllers.User
 
             return Json(new { data, columns, customActions = new { } });
         }
-
-
         public IActionResult GetServices(int pageIndex = 0, int pageSize = 10)
         {
             // Fetch and materialize all active services
@@ -315,7 +313,6 @@ namespace SahayataNidhi.Controllers.User
                 totalCount
             });
         }
-
         [HttpGet]
         public dynamic? GetUserDetails()
         {

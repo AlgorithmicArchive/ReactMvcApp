@@ -73,6 +73,7 @@ namespace SahayataNidhi.Controllers.Officer
                 sqlParams.Add(new SqlParameter("@DivisionCode", DBNull.Value));
             }
 
+
             var counts = dbcontext.Database
                 .SqlQueryRaw<StatusCounts>(
                     "EXEC GetStatusCount @AccessLevel, @AccessCode, @ServiceId, @TakenBy, @DivisionCode",
@@ -80,6 +81,13 @@ namespace SahayataNidhi.Controllers.Officer
                 )
                 .AsEnumerable()
                 .FirstOrDefault() ?? new StatusCounts();
+
+            var shiftedCount = dbcontext.Database.SqlQueryRaw<ShiftedCountModal>(
+                        "EXEC GetShiftedCount @AccessLevel, @AccessCode, @ServiceId, @TakenBy, @DivisionCode",
+                        sqlParams.ToArray()
+                    )
+                    .AsEnumerable()
+                    .FirstOrDefault() ?? new ShiftedCountModal();
 
             // Build the count list based on the available authority permissions.
             var countList = new List<dynamic>
@@ -163,6 +171,17 @@ namespace SahayataNidhi.Controllers.Officer
                 });
             }
 
+            if (shiftedCount != null && shiftedCount.ShiftedCount != 0)
+            {
+                countList.Add(new
+                {
+                    label = "Shifted To Another Location",
+                    count = shiftedCount.ShiftedCount,
+                    bgColor = "#ABCDEF",
+                    textColor = "#123456"
+                });
+            }
+
             // countList.Add(new
             // {
             //     label = "Disbursed",
@@ -183,13 +202,29 @@ namespace SahayataNidhi.Controllers.Officer
             var accessCode = new SqlParameter("@AccessCode", officerDetails.AccessCode);
             var applicationStatus = new SqlParameter("@ApplicationStatus", (object)type?.ToLower()! ?? DBNull.Value);
             var serviceId = new SqlParameter("@ServiceId", ServiceId);
+            List<CitizenApplication> response;
 
-            var response = dbcontext.CitizenApplications
+            if (type == "shifted")
+            {
+
+                response = dbcontext.CitizenApplications
+                   .FromSqlRaw("EXEC GetShiftedApplications @Role, @AccessLevel, @AccessCode, @ServiceId",
+                       role, accessLevel, accessCode, serviceId)
+                   .ToList();
+            }
+            else
+            {
+                response = dbcontext.CitizenApplications
                 .FromSqlRaw("EXEC GetApplicationsForOfficer @Role, @AccessLevel, @AccessCode, @ApplicationStatus, @ServiceId",
                     role, accessLevel, accessCode, applicationStatus, serviceId)
                 .ToList();
+            }
+
 
             _logger.LogInformation($"----------Type : {type}------------------");
+
+
+
 
             // Sorting for consistent pagination based on ReferenceNumber
             var sortedResponse = response.OrderBy(a =>
@@ -235,17 +270,17 @@ namespace SahayataNidhi.Controllers.Officer
 
                 var customActions = new List<dynamic>();
 
-                if (pool!.Contains(details.ReferenceNumber) && type == "pending")
+                if (type == "shifted")
                 {
                     customActions.Add(new
                     {
                         type = "View",
                         tooltip = "View",
                         color = "#F0C38E",
-                        actionFunction = "handleOpenApplication"
+                        actionFunction = "handleViewApplication"
                     });
 
-                    poolData.Add(new
+                    data.Add(new
                     {
                         referenceNumber = details.ReferenceNumber,
                         applicantName = GetFieldValue("ApplicantName", formDetails),
@@ -255,29 +290,61 @@ namespace SahayataNidhi.Controllers.Officer
                 }
                 else
                 {
-                    if (type == "pending")
+                    if (pool!.Contains(details.ReferenceNumber) && type == "pending")
                     {
                         customActions.Add(new
                         {
-                            type = "Open",
+                            type = "View",
                             tooltip = "View",
                             color = "#F0C38E",
                             actionFunction = "handleOpenApplication"
                         });
+
+                        poolData.Add(new
+                        {
+                            referenceNumber = details.ReferenceNumber,
+                            applicantName = GetFieldValue("ApplicantName", formDetails),
+                            submissionDate = details.CreatedAt,
+                            customActions
+                        });
                     }
-                    else if (type == "forwarded" || type == "returned" || type == "sanctioned")
+                    else
                     {
-                        var currentOfficer = officers!.FirstOrDefault(o => (string)o["designation"]! == officerDetails.Role);
-                        _logger.LogInformation($"---------- CAN OFFICER PULL: {currentOfficer!["canPull"]}-------------");
-                        if (currentOfficer != null && (bool)currentOfficer["canPull"]!)
+                        if (type == "pending")
                         {
                             customActions.Add(new
                             {
-                                type = "Pull",
-                                tooltip = "Pull",
+                                type = "Open",
+                                tooltip = "View",
                                 color = "#F0C38E",
-                                actionFunction = "pullApplication"
+                                actionFunction = "handleOpenApplication"
                             });
+                        }
+                        else if (type == "forwarded" || type == "returned" || type == "sanctioned")
+                        {
+                            var currentOfficer = officers!.FirstOrDefault(o => (string)o["designation"]! == officerDetails.Role);
+                            _logger.LogInformation($"---------- CAN OFFICER PULL: {currentOfficer!["canPull"]}-------------");
+                            if (currentOfficer != null && (bool)currentOfficer["canPull"]!)
+                            {
+                                customActions.Add(new
+                                {
+                                    type = "Pull",
+                                    tooltip = "Pull",
+                                    color = "#F0C38E",
+                                    actionFunction = "pullApplication"
+                                });
+                            }
+                            else
+                            {
+                                customActions.Add(new
+                                {
+                                    type = "View",
+                                    tooltip = "View",
+                                    color = "#F0C38E",
+                                    actionFunction = "handleViewApplication"
+                                });
+                            }
+
                         }
                         else
                         {
@@ -290,29 +357,18 @@ namespace SahayataNidhi.Controllers.Officer
                             });
                         }
 
-                    }
-                    else
-                    {
-                        customActions.Add(new
+                        data.Add(new
                         {
-                            type = "View",
-                            tooltip = "View",
-                            color = "#F0C38E",
-                            actionFunction = "handleViewApplication"
+                            referenceNumber = details.ReferenceNumber,
+                            applicantName = GetFieldValue("ApplicantName", formDetails),
+                            submissionDate = details.CreatedAt,
+                            customActions
                         });
                     }
-
-                    data.Add(new
-                    {
-                        referenceNumber = details.ReferenceNumber,
-                        applicantName = GetFieldValue("ApplicantName", formDetails),
-                        submissionDate = details.CreatedAt,
-                        customActions
-                    });
                 }
-
                 index++;
             }
+
 
             return Json(new
             {
@@ -639,6 +695,8 @@ namespace SahayataNidhi.Controllers.Officer
             int currentPlayerIndex = application.CurrentPlayer;
             var currentPlayer = players!.FirstOrDefault(o => (int)o["playerId"]! == currentPlayerIndex);
             var history = await dbcontext.ActionHistories.Where(ah => ah.ReferenceNumber == ApplicationId).ToListAsync();
+            var formDetails = JsonConvert.DeserializeObject<dynamic>(application.FormDetails!);
+
 
             var columns = new List<dynamic>
             {
@@ -652,15 +710,28 @@ namespace SahayataNidhi.Controllers.Officer
             List<dynamic> data = [];
             foreach (var item in history)
             {
+                string officerArea = GetOfficerAreaForHistory(item.LocationLevel!, item.LocationValue);
                 data.Add(new
                 {
                     sno = index,
-                    actionTaker = item.ActionTaker,
+                    actionTaker = item.ActionTaker != "Citizen" ? item.ActionTaker + " " + officerArea : item.ActionTaker,
                     actionTaken = item.ActionTaken! == "ReturnToCitizen" ? "Returned to citizen for correction" : item.ActionTaken,
                     remarks = item.Remarks,
                     actionTakenOn = item.ActionTakenDate,
                 });
                 index++;
+            }
+            if ((string)currentPlayer!["status"]! == "pending")
+            {
+                string designation = (string)currentPlayer["designation"]!;
+                string officerArea = GetOfficerArea(designation, formDetails);
+                data.Add(new
+                {
+                    sno = index,
+                    actionTaker = currentPlayer["designation"] + " " + officerArea,
+                    actionTaken = currentPlayer["status"],
+                    actionTakenOn = "",
+                });
             }
 
             return Json(new { data, columns, customActions = new { } });

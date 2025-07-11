@@ -26,7 +26,7 @@ const commonStyles = {
   color: "#312C51",
 };
 
-const DynamicStepForm = () => {
+const DynamicScrollableForm = () => {
   const {
     control,
     handleSubmit,
@@ -588,4 +588,4 @@ const DynamicStepForm = () => {
   );
 };
 
-export default DynamicStepForm;
+export default DynamicScrollableForm;

@@ -8,7 +8,6 @@ export default function SectionSelectCheckboxes({
   name,
   formatKey,
 }) {
-  // Use react-hook-form's useController hook to manage the value
   const {
     field: { value = [], onChange },
   } = useController({ control, name });
@@ -16,9 +15,7 @@ export default function SectionSelectCheckboxes({
   return (
     <Box>
       {Object.entries(formDetails).map(([sectionKey, fields]) => {
-        // Array of field names for this section
         const sectionFieldNames = fields.map((f) => f.name);
-        // Check if all fields in this section are selected
         const isSectionChecked = sectionFieldNames.every((fieldName) =>
           value.includes(fieldName)
         );
@@ -28,20 +25,17 @@ export default function SectionSelectCheckboxes({
             key={sectionKey}
             sx={{ mb: 2, border: "1px solid #ccc", p: 1, borderRadius: 1 }}
           >
-            {/* Section-level checkbox */}
             <FormControlLabel
               control={
                 <Checkbox
                   checked={isSectionChecked}
                   onChange={(e) => {
                     if (e.target.checked) {
-                      // Add all field names from this section (avoid duplicates)
                       const newVal = [
                         ...new Set([...value, ...sectionFieldNames]),
                       ];
                       onChange(newVal);
                     } else {
-                      // Remove all field names belonging to this section
                       const newVal = value.filter(
                         (v) => !sectionFieldNames.includes(v)
                       );
@@ -60,7 +54,6 @@ export default function SectionSelectCheckboxes({
                 </Typography>
               }
             />
-            {/* Nested individual field checkboxes */}
             <Box sx={{ ml: 4 }}>
               {fields.map((field) => {
                 const isChecked = value.includes(field.name);
@@ -72,9 +65,25 @@ export default function SectionSelectCheckboxes({
                         checked={isChecked}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            onChange([...value, field.name]);
+                            // If section is Location, select all fields in Location
+                            if (sectionKey === "Location") {
+                              const newVal = [
+                                ...new Set([...value, ...sectionFieldNames]),
+                              ];
+                              onChange(newVal);
+                            } else {
+                              onChange([...value, field.name]);
+                            }
                           } else {
-                            onChange(value.filter((v) => v !== field.name));
+                            // If section is Location, deselect all fields in Location
+                            if (sectionKey === "Location") {
+                              const newVal = value.filter(
+                                (v) => !sectionFieldNames.includes(v)
+                              );
+                              onChange(newVal);
+                            } else {
+                              onChange(value.filter((v) => v !== field.name));
+                            }
                           }
                         }}
                         sx={{

@@ -28,7 +28,7 @@ import BankFile from "../screens/officer/BankFile";
 import ResponseFile from "../screens/officer/ResponseFile";
 import Settings from "../screens/Settings";
 import CreateService from "../screens/designer/CreateService";
-import DynamicStepForm from "../screens/designer/Form";
+import DynamicScrollableForm from "../screens/designer/Form";
 import CreateWorkflow from "../screens/designer/CreateWorkFlow";
 import ViewUserDetails from "../screens/officer/ViewUserDetails";
 import IncompleteForm from "../screens/user/IncompleteForm";
@@ -93,7 +93,7 @@ const RoutesComponent = () => {
           <Route path="createworkflow" element={<CreateWorkflow />} />
           <Route path="createletterpdf" element={<CreateLetterPdf />} />
           <Route path="createwebservice" element={<CreateWebService />} />
-          <Route path="dynamicform" element={<DynamicStepForm />} />
+          <Route path="dynamicform" element={<DynamicScrollableForm />} />
         </Route>
       </Route>
       <Route
