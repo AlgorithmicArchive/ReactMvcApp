@@ -5,8 +5,12 @@ import {
   Container,
   Link,
   CircularProgress,
+  IconButton,
 } from "@mui/material";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import CustomInputField from "../../components/form/CustomInputField";
 import CustomButton from "../../components/CustomButton";
 import OtpModal from "../../components/OtpModal";
@@ -18,6 +22,91 @@ import { Col, Row } from "react-bootstrap";
 import CustomSelectField from "../../components/form/CustomSelectField";
 import { fetchDistricts } from "../../assets/fetch";
 
+// Function to generate a random CAPTCHA (6 alphanumeric characters)
+const generateCaptcha = () => {
+  const characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let captcha = "";
+  for (let i = 0; i < 6; i++) {
+    captcha += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return captcha;
+};
+
+// Validation schema with CAPTCHA
+const schema = yup.object().shape({
+  fullName: yup
+    .string()
+    .required("Full name is required")
+    .min(5, "Full Name must be at least 5 characters"),
+  username: yup
+    .string()
+    .required("Username is required")
+    .min(5, "Username must be at least 5 characters")
+    .test("username-unique", "Username already exists", async (value) => {
+      if (!value) return false;
+      try {
+        const res = await axios.get("/Home/CheckUsername", {
+          params: { username: value },
+        });
+        return res.data?.isUnique;
+      } catch {
+        return false;
+      }
+    }),
+  email: yup
+    .string()
+    .required("Email is required")
+    .matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email format")
+    .test("email-unique", "Email already exists", async (value) => {
+      if (!value) return false;
+      try {
+        const res = await axios.get("/Home/CheckEmail", {
+          params: { email: value, UserType: "Citizen" },
+        });
+        return res.data?.isUnique;
+      } catch {
+        return false;
+      }
+    }),
+  mobileNumber: yup
+    .string()
+    .required("Mobile Number is required")
+    .matches(/^[0-9]{10}$/, "Enter 10 digit number")
+    .test("mobile-unique", "Mobile Number already exists", async (value) => {
+      if (!value) return false;
+      try {
+        const res = await axios.get("/Home/CheckMobileNumber", {
+          params: { number: value, UserType: "Citizen" },
+        });
+        return res.data?.isUnique;
+      } catch {
+        return false;
+      }
+    }),
+  password: yup
+    .string()
+    .required("Password is required")
+    .min(6, "Password must be at least 6 characters")
+    .max(12, "Password must be at most 12 characters")
+    .matches(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,12}$/,
+      "Password must include uppercase, lowercase, number, and special character"
+    ),
+  confirmPassword: yup
+    .string()
+    .required("Confirm your password")
+    .test("passwords-match", "Passwords do not match", function (value) {
+      return value === this.parent.password;
+    }),
+  captcha: yup
+    .string()
+    .required("CAPTCHA is required")
+    .test("captcha-match", "CAPTCHA is incorrect", function (value) {
+      return value === this.options.context.captcha;
+    }),
+});
+
 export default function RegisterScreen() {
   const {
     handleSubmit,
@@ -25,8 +114,12 @@ export default function RegisterScreen() {
     getValues,
     watch,
     formState: { errors },
-  } = useForm({ mode: "onChange", reValidateMode: "onChange" });
-
+  } = useForm({
+    mode: "onChange",
+    reValidateMode: "onChange",
+    resolver: yupResolver(schema),
+  });
+  const [captcha, setCaptcha] = useState(generateCaptcha());
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   const [userId, setUserId] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -36,9 +129,10 @@ export default function RegisterScreen() {
 
   const navigate = useNavigate();
 
-  // Fetch designations and districts on mount
+  // Fetch districts on mount
   useEffect(() => {
     fetchDistricts(setDistrictOptions);
+    setCaptcha(generateCaptcha());
   }, []);
 
   // Fetch tehsils when district changes
@@ -74,57 +168,11 @@ export default function RegisterScreen() {
     }
   }, [selectedDistrict]);
 
-  // ✅ Async username validation
-  const validateUsername = async (value) => {
-    if (!value) return "Username is required";
-    try {
-      const res = await axios.get("/Home/CheckUsername", {
-        params: { username: value },
-      });
-      return res.data?.isUnique ? true : "Username already exists";
-    } catch (error) {
-      console.error("Username validation error:", error);
-      return "Server error while checking username";
-    }
-  };
-
-  // ✅ Async email validation
-  const validateEmail = async (value) => {
-    if (!value) return "Email is required";
-    try {
-      const res = await axios.get("/Home/CheckEmail", {
-        params: { email: value, UserType: "Citizen" },
-      });
-      return res.data?.isUnique ? true : "Email already exists";
-    } catch (error) {
-      console.error("Email validation error:", error);
-      return "Server error while checking email";
-    }
-  };
-
-  const validateMobileNumber = async (value) => {
-    if (!value) return "Mobile Number is required";
-    try {
-      const res = await axios.get("/Home/CheckMobileNumber", {
-        params: { number: value, UserType: "Citizen" },
-      });
-      return res.data?.isUnique ? true : "Mobile Number already exists";
-    } catch (error) {
-      console.error("Mobile Number validation error:", error);
-      return "Server error while checking email";
-    }
+  const handleRefreshCaptcha = () => {
+    setCaptcha(generateCaptcha());
   };
 
   const onSubmit = async (data) => {
-    if (data.password !== data.confirmPassword) {
-      toast.error("Passwords do not match", {
-        position: "top-center",
-        autoClose: 3000,
-        theme: "colored",
-      });
-      return;
-    }
-
     setLoading(true);
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => formData.append(key, value));
@@ -149,6 +197,7 @@ export default function RegisterScreen() {
       });
     } finally {
       setLoading(false);
+      setCaptcha(generateCaptcha());
     }
   };
 
@@ -227,16 +276,7 @@ export default function RegisterScreen() {
                   label="Full Name"
                   control={control}
                   errors={errors}
-                  rules={{
-                    required: "Full name is required",
-                    minLength: {
-                      value: 5,
-                      message: "Full Name must be at least 5 characters",
-                    },
-                  }}
                   disabled={loading}
-                  minLength={5}
-                  maxLength={50}
                 />
               </Col>
               <Col xs={6}>
@@ -245,17 +285,7 @@ export default function RegisterScreen() {
                   label="Username"
                   control={control}
                   errors={errors}
-                  rules={{
-                    required: true,
-                    minLength: {
-                      value: 5,
-                      message: "Username must be at least 5 characters",
-                    },
-                    validate: validateUsername,
-                  }}
                   disabled={loading}
-                  minLength={5}
-                  maxLength={12}
                 />
               </Col>
             </Row>
@@ -267,14 +297,6 @@ export default function RegisterScreen() {
                   type="email"
                   control={control}
                   errors={errors}
-                  rules={{
-                    required: true,
-                    pattern: {
-                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                      message: "Invalid email format",
-                    },
-                    validate: validateEmail,
-                  }}
                   disabled={loading}
                 />
               </Col>
@@ -285,20 +307,11 @@ export default function RegisterScreen() {
                   type="tel"
                   control={control}
                   errors={errors}
-                  rules={{
-                    required: true,
-                    pattern: {
-                      value: /^[0-9]{10}$/,
-                      message: "Enter 10 digit number",
-                    },
-                    validate: validateMobileNumber,
-                  }}
                   maxLength={10}
                   disabled={loading}
                 />
               </Col>
             </Row>
-
             <Row>
               <Col xs={6}>
                 <CustomInputField
@@ -308,23 +321,6 @@ export default function RegisterScreen() {
                   control={control}
                   errors={errors}
                   disabled={loading}
-                  rules={{
-                    required: "Password is required",
-                    minLength: {
-                      value: 6,
-                      message: "Password must be at least 6 characters",
-                    },
-                    maxLength: {
-                      value: 12,
-                      message: "Password must be at most 12 characters",
-                    },
-                    pattern: {
-                      value:
-                        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,12}$/,
-                      message:
-                        "Password must include uppercase, lowercase, number, and special character",
-                    },
-                  }}
                 />
               </Col>
               <Col xs={6}>
@@ -334,41 +330,106 @@ export default function RegisterScreen() {
                   type="password"
                   control={control}
                   errors={errors}
-                  rules={{
-                    required: "Confirm your password",
-                    validate: (value) =>
-                      value === getValues("password") ||
-                      "Passwords do not match",
+                  disabled={loading}
+                />
+              </Col>
+            </Row>
+            {/* CAPTCHA Display and Input */}
+            <Row>
+              <Col xs={12}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                    mt: 2,
+                    flexDirection: { xs: "column", sm: "row" },
+                    justifyContent: "center",
                   }}
+                >
+                  <Box
+                    sx={{
+                      background: "linear-gradient(45deg, #f3f4f6, #e5e7eb)",
+                      border: "2px solid",
+                      borderColor: "primary.main",
+                      borderRadius: 2,
+                      padding: 1.5,
+                      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      minWidth: 140,
+                      position: "relative",
+                      overflow: "hidden",
+                      width: "95%",
+                      marginBottom: 2,
+                      "&:before": {
+                        content: '""',
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background:
+                          "repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0, 0, 0, 0.05) 10px, rgba(0, 0, 0, 0.05) 12px)",
+                        opacity: 0.2,
+                      },
+                    }}
+                    aria-label={`CAPTCHA code: ${captcha}`}
+                  >
+                    {captcha.split("").map((char, index) => (
+                      <Box
+                        key={index}
+                        component="span"
+                        sx={{
+                          fontFamily: "monospace",
+                          fontSize: { xs: 16, sm: 18 },
+                          fontWeight: Math.random() > 0.5 ? 700 : 400,
+                          color:
+                            Math.random() > 0.5 ? "primary.main" : "#2d3748",
+                          transform: `rotate(${Math.floor(
+                            Math.random() * 31 - 15
+                          )}deg) translateY(${Math.floor(
+                            Math.random() * 6 - 3
+                          )}px)`,
+                          margin: "0 2px",
+                          userSelect: "none",
+                        }}
+                      >
+                        {char}
+                      </Box>
+                    ))}
+                  </Box>
+                  <IconButton
+                    onClick={handleRefreshCaptcha}
+                    disabled={loading}
+                    sx={{
+                      color: "primary.main",
+                      border: "1px solid",
+                      borderColor: "primary.main",
+                      borderRadius: 2,
+                      p: 1,
+                      "&:hover": {
+                        backgroundColor: "primary.light",
+                        borderColor: "primary.dark",
+                        transform: "scale(1.05)",
+                      },
+                    }}
+                    aria-label="Refresh CAPTCHA"
+                  >
+                    <RefreshIcon />
+                  </IconButton>
+                </Box>
+                <CustomInputField
+                  label="Enter CAPTCHA"
+                  name="captcha"
+                  control={control}
+                  placeholder="Enter the CAPTCHA code"
+                  errors={errors}
+                  aria-describedby="captcha-error"
                   disabled={loading}
                 />
               </Col>
-              {/* <Col xs={6}>
-                <CustomSelectField
-                  label="District"
-                  name="District"
-                  control={control}
-                  placeholder="Select District"
-                  options={districtOptions}
-                  rules={{ required: "District is required" }}
-                  errors={errors}
-                  aria-describedby="district-error"
-                  disabled={loading}
-                />
-              </Col>
-              <Col xs={6}>
-                <CustomSelectField
-                  label="TSWO Office"
-                  name="Tehsil"
-                  control={control}
-                  placeholder="Select Tehsil"
-                  options={tehsilOptions}
-                  rules={{ required: "Tehsil is required" }}
-                  errors={errors}
-                  aria-describedby="tehsil-error"
-                  disabled={loading}
-                />
-              </Col> */}
             </Row>
           </Box>
 

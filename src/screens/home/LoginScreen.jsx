@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -9,7 +9,9 @@ import {
   DialogActions,
   TextField,
   Button,
+  IconButton,
 } from "@mui/material";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -22,19 +24,41 @@ import { ToastContainer, toast } from "react-toastify";
 import CircularProgress from "@mui/material/CircularProgress";
 import "react-toastify/dist/ReactToastify.css";
 
-// Validation schema
+// Function to generate a random CAPTCHA (6 alphanumeric characters)
+const generateCaptcha = () => {
+  const characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let captcha = "";
+  for (let i = 0; i < 6; i++) {
+    captcha += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return captcha;
+};
+
+// Validation schema with CAPTCHA
 const schema = yup.object().shape({
   username: yup.string().required("Username is required"),
-  password: yup.string().min(6).required("Password is required"),
+  password: yup
+    .string()
+    .min(6, "Password must be at least 6 characters")
+    .required("Password is required"),
+  captcha: yup
+    .string()
+    .required("CAPTCHA is required")
+    .test("captcha-match", "CAPTCHA is incorrect", function (value) {
+      return value === this.options.context.captcha;
+    }),
 });
 
 export default function LoginScreen() {
+  const [captcha, setCaptcha] = useState(generateCaptcha());
   const {
     handleSubmit,
     control,
     formState: { errors },
   } = useForm({
     resolver: yupResolver(schema),
+    context: { captcha },
   });
 
   const {
@@ -52,6 +76,15 @@ export default function LoginScreen() {
   const [otpModalOpen, setOtpModalOpen] = useState(false);
   const [otp, setOtp] = useState("");
   const [email, setEmail] = useState("");
+
+  // Regenerate CAPTCHA on mount
+  useEffect(() => {
+    setCaptcha(generateCaptcha());
+  }, []);
+
+  const handleRefreshCaptcha = () => {
+    setCaptcha(generateCaptcha());
+  };
 
   const onSubmit = async (data) => {
     const formData = new FormData();
@@ -96,6 +129,7 @@ export default function LoginScreen() {
       toast.error("An error occurred. Please try again.");
     } finally {
       setLoading(false);
+      setCaptcha(generateCaptcha());
     }
   };
 
@@ -187,9 +221,6 @@ export default function LoginScreen() {
           >
             Login
           </Typography>
-          {/* <Typography variant="body2" color="text.secondary">
-            Sign in to continue
-          </Typography> */}
         </Box>
 
         <Box
@@ -217,6 +248,95 @@ export default function LoginScreen() {
             placeholder="Enter your password"
             errors={errors}
             aria-describedby="password-error"
+            disabled={loading}
+          />
+
+          {/* CAPTCHA Display and Input */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              mt: 2,
+              flexDirection: { xs: "column", sm: "row" },
+            }}
+          >
+            <Box
+              sx={{
+                background: "linear-gradient(45deg, #f3f4f6, #e5e7eb)",
+                border: "2px solid",
+                borderColor: "primary.main",
+                borderRadius: 2,
+                padding: 1.5,
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                minWidth: 140,
+                position: "relative",
+                overflow: "hidden",
+                width: "90%",
+                "&:before": {
+                  content: '""',
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background:
+                    "repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0, 0, 0, 0.05) 10px, rgba(0, 0, 0, 0.05) 12px)",
+                  opacity: 0.2,
+                },
+              }}
+              aria-label={`CAPTCHA code: ${captcha}`}
+            >
+              {captcha.split("").map((char, index) => (
+                <Box
+                  key={index}
+                  component="span"
+                  sx={{
+                    fontFamily: "monospace",
+                    fontSize: { xs: 16, sm: 18 },
+                    fontWeight: Math.random() > 0.5 ? 700 : 400,
+                    color: Math.random() > 0.5 ? "primary.main" : "#2d3748",
+                    transform: `rotate(${Math.floor(
+                      Math.random() * 31 - 15
+                    )}deg) translateY(${Math.floor(Math.random() * 6 - 3)}px)`,
+                    margin: "0 2px",
+                    userSelect: "none",
+                  }}
+                >
+                  {char}
+                </Box>
+              ))}
+            </Box>
+            <IconButton
+              onClick={handleRefreshCaptcha}
+              disabled={loading}
+              sx={{
+                color: "primary.main",
+                border: "1px solid",
+                borderColor: "primary.main",
+                borderRadius: 2,
+                p: 1,
+                "&:hover": {
+                  backgroundColor: "primary.light",
+                  borderColor: "primary.dark",
+                  transform: "scale(1.05)",
+                },
+              }}
+              aria-label="Refresh CAPTCHA"
+            >
+              <RefreshIcon />
+            </IconButton>
+          </Box>
+          <CustomInputField
+            label="Enter CAPTCHA"
+            name="captcha"
+            control={control}
+            placeholder="Enter the CAPTCHA code"
+            errors={errors}
+            aria-describedby="captcha-error"
             disabled={loading}
           />
 
@@ -286,8 +406,9 @@ export default function LoginScreen() {
             variant="outlined"
             value={otp}
             onChange={(e) => setOtp(e.target.value)}
-            slotProps={{ maxLength: 6 }}
+            inputProps={{ maxLength: 6 }}
             disabled={loading}
+            aria-label="OTP input"
           />
           <Box mt={1}>
             <Link
@@ -295,6 +416,7 @@ export default function LoginScreen() {
               variant="body2"
               onClick={handleResendOtp}
               disabled={loading}
+              aria-label="Resend OTP"
             >
               Resend OTP
             </Link>
@@ -308,6 +430,7 @@ export default function LoginScreen() {
             variant="contained"
             onClick={handleOtpVerify}
             disabled={loading}
+            aria-label="Verify OTP"
           >
             Verify
           </Button>
