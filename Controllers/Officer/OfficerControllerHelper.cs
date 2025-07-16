@@ -30,6 +30,30 @@ namespace SahayataNidhi.Controllers.Officer
         {
             return dbcontext.Tehsils.FirstOrDefault(d => d.TehsilId == tehsilId)!.TehsilName!;
         }
+
+        private static string? GetFormFieldValue(JObject formDetailsObj, string fieldName)
+        {
+            foreach (var section in formDetailsObj.Properties())
+            {
+                if (section.Value is JArray fieldsArray)
+                {
+                    foreach (JObject field in fieldsArray)
+                    {
+                        var name = field["name"]?.ToString();
+                        if (name == fieldName)
+                        {
+                            // Prefer value, then File, then Enclosure
+                            return field["value"]?.ToString()
+                                ?? field["File"]?.ToString()
+                                ?? field["Enclosure"]?.ToString();
+                        }
+                    }
+                }
+            }
+
+            return null; // not found
+        }
+
         public string GetFieldValue(string fieldName, dynamic data)
         {
             foreach (var section in data)
