@@ -19,9 +19,11 @@ namespace SahayataNidhi.Controllers.User
             int serviceId = Convert.ToInt32(form["serviceId"].ToString());
             string formDetailsJson = form["formDetails"].ToString();
             string status = form["status"].ToString();
-            string referenceNumber = form["referenceNumber"].ToString();
-            string startingPlayer = "";
-            string districtName = "";
+            string ReferenceNumber = form["referenceNumber"].ToString();
+            string OfficerRole = "";
+            string OfficerArea = "";
+
+            _logger.LogInformation($"------------------Reference Number: {ReferenceNumber}------------------");
 
             var formDetailsObj = JObject.Parse(formDetailsJson);
 
@@ -51,14 +53,14 @@ namespace SahayataNidhi.Controllers.User
                 .Select(field => Convert.ToInt32(field["value"]))
                 .FirstOrDefault();
 
-            if (string.IsNullOrEmpty(referenceNumber))
+            if (string.IsNullOrEmpty(ReferenceNumber))
             {
                 int count = GetCountPerDistrict(districtId, serviceId);
                 string bankUid = count.ToString("D6");
                 var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
                 var districtDetails = dbcontext.Districts.FirstOrDefault(s => s.DistrictId == districtId);
                 string districtShort = districtDetails!.DistrictShort!;
-                districtName = districtDetails.DistrictName!;
+                OfficerArea = districtDetails.DistrictName!;
                 var officerEditableField = service!.OfficerEditableField;
 
                 if (string.IsNullOrEmpty(officerEditableField))
@@ -98,18 +100,18 @@ namespace SahayataNidhi.Controllers.User
                 if (filteredWorkflow.Count > 0)
                 {
                     filteredWorkflow[0]["status"] = "pending";
-                    startingPlayer = filteredWorkflow[0]["designation"]?.ToString() ?? string.Empty;
+                    OfficerRole = filteredWorkflow[0]["designation"]?.ToString() ?? string.Empty;
                 }
 
                 var workFlow = filteredWorkflow.ToString(Formatting.None);
                 var finYear = helper.GetCurrentFinancialYear();
-                referenceNumber = "JK-" + service.NameShort + "-" + districtShort + "/" + finYear + "/" + count;
+                ReferenceNumber = "JK-" + service.NameShort + "-" + districtShort + "/" + finYear + "/" + count;
                 var createdAt = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
 
                 // Store the updated JSON (with file paths) in the database.
                 var newFormDetails = new CitizenApplication
                 {
-                    ReferenceNumber = referenceNumber,
+                    ReferenceNumber = ReferenceNumber,
                     CitizenId = userId,
                     ServiceId = serviceId,
                     DistrictUidForBank = bankUid,
@@ -123,7 +125,7 @@ namespace SahayataNidhi.Controllers.User
             }
             else
             {
-                var application = dbcontext.CitizenApplications.FirstOrDefault(a => a.ReferenceNumber == referenceNumber);
+                var application = dbcontext.CitizenApplications.FirstOrDefault(a => a.ReferenceNumber == ReferenceNumber);
                 application!.FormDetails = formDetailsObj.ToString();
 
                 if (application.Status != status)
@@ -152,30 +154,38 @@ namespace SahayataNidhi.Controllers.User
                         catch (Exception ex)
                         {
                             // Log the error but continue execution
-                            _logger.LogError(ex, $"Failed to send API request to {getServices.ApiEndPoint} for Reference: {referenceNumber}");
+                            _logger.LogError(ex, $"Failed to send API request to {getServices.ApiEndPoint} for Reference: {ReferenceNumber}");
                         }
                     }
                 }
 
-                string fullPath = FetchAcknowledgementDetails(referenceNumber);
+                string fullPath = FetchAcknowledgementDetails(ReferenceNumber);
                 string? fullName = GetFormFieldValue(formDetailsObj, "ApplicantName");
-                string? serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId)!.ServiceName;
+                string? ServiceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId)!.ServiceName;
                 string? email = GetFormFieldValue(formDetailsObj, "Email");
-                string htmlMessage = $@"
-            <div style='font-family: Arial, sans-serif;'>
-                <h2 style='color: #2e6c80;'>Application Submission</h2>
-                <p>{fullName},</p>
-                <p>Your Application has been sent succesfully in the Office of {startingPlayer} {districtName}. Below are the details:</p>
-                <ul style='line-height: 1.6;'>
-                    <li><strong>Service:</strong> {serviceName}</li>
-                    <li><strong>Submission Date:</strong> {DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")}</li>
-                    <li><strong>Reference ID:</strong> {referenceNumber}</li>
-                </ul>
-                <p>Please find the acknowledgment of your submission attached below. Kindly review it for your records.</p>
-                <p>If you have any questions or did not submit this form, please contact our support team immediately.</p>
-                <br />
-                <p style='font-size: 12px; color: #888;'>Thank you,<br />Your Application Team</p>
-            </div>";
+
+                var emailtemplate = JObject.Parse(dbcontext.EmailSettings.FirstOrDefault()!.Templates!);
+                string template = emailtemplate["Submission"]!.ToString();
+
+                var placeholders = new Dictionary<string, string>
+                {
+                    { "ApplicantName", GetFormFieldValue(formDetailsObj, "ApplicantName") ?? "" },
+                    { "ServiceName", ServiceName!},
+                    { "ReferenceNumber", ReferenceNumber },
+                    { "OfficerRole", OfficerRole },
+                    { "OfficerArea", OfficerArea }
+                };
+
+                foreach (var pair in placeholders)
+                {
+                    template = template.Replace($"{{{pair.Key}}}", pair.Value);
+                }
+
+                string htmlMessage = template;
+
+
+                _logger.LogInformation($"------ HTML MESSAGE: {htmlMessage} --------------");
+
                 var attachments = new List<string> { fullPath };
 
                 try
@@ -185,15 +195,21 @@ namespace SahayataNidhi.Controllers.User
                 catch (Exception ex)
                 {
                     // Log the email sending error but continue execution
-                    _logger.LogError(ex, $"Failed to send email for Reference: {referenceNumber}, Email: {email}");
+                    _logger.LogError(ex, $"Failed to send email for Reference: {ReferenceNumber}, Email: {email}");
                 }
 
-                helper.InsertHistory(referenceNumber, "Application Submission", "Citizen", "Submitted");
-                return Json(new { status = true, referenceNumber, type = "Submit" });
+                string field = GetFormFieldValue(formDetailsObj, "Tehsil") != null ? "Tehsil" : "District";
+                string? value = GetFormFieldValue(formDetailsObj, field);
+
+                string? locationLevel = field;
+                int locationValue = Convert.ToInt32(value);
+
+                helper.InsertHistory(ReferenceNumber, "Application Submission", "Citizen", "Submitted", locationLevel, locationValue);
+                return Json(new { status = true, ReferenceNumber, type = "Submit" });
             }
             else
             {
-                return Json(new { status = true, referenceNumber, type = "Save" });
+                return Json(new { status = true, ReferenceNumber, type = "Save" });
             }
         }
 
@@ -381,8 +397,13 @@ namespace SahayataNidhi.Controllers.User
             application.WorkFlow = JsonConvert.SerializeObject(workFlow);
             application.CreatedAt = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
 
+
+            string? locationLevel = GetFormFieldValue(submittedFormDetails, "Tehsil") != null ? "Tehsil" : "District";
+            int locationValue = Convert.ToInt32(GetFormFieldValue(submittedFormDetails, locationLevel));
+
+
             dbcontext.SaveChanges();
-            helper.InsertHistory(referenceNumber, "Corrected and Sent Back to Officer", "Citizen", "Corrected");
+            helper.InsertHistory(referenceNumber, "Corrected and Sent Back to Officer", "Citizen", "Corrected", locationLevel, locationValue);
 
             return Json(new { status = true, message = "Application updated successfully", type = "Edit", referenceNumber });
         }

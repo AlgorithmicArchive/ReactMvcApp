@@ -13,7 +13,11 @@ import {
   FormControl,
   InputLabel,
   Box,
+  IconButton,
 } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import {
   transformationFunctionsList,
   validationFunctionsList,
@@ -39,7 +43,6 @@ const fetchDistricts = async () => {
 const getSelectableFields = (sections = [], actionForm = []) => {
   const selectableFields = [];
 
-  // Recursive function to process fields and their nested additional fields
   const processFields = (fields, parentLabel = "", parentFieldName = "") => {
     fields.forEach((field) => {
       selectableFields.push({
@@ -52,15 +55,13 @@ const getSelectableFields = (sections = [], actionForm = []) => {
       });
 
       if (field.additionalFields) {
-        Object.values(field.additionalFields).forEach(
-          (additionalFieldArray) => {
-            processFields(
-              additionalFieldArray,
-              parentLabel ? `${parentLabel} > ${field.label}` : field.label,
-              field.name
-            );
-          }
-        );
+        Object.values(field.additionalFields).forEach((additionalFieldArray) => {
+          processFields(
+            additionalFieldArray,
+            parentLabel ? `${parentLabel} > ${field.label}` : field.label,
+            field.name
+          );
+        });
       }
     });
   };
@@ -103,7 +104,7 @@ const FieldEditModal = ({
     )
       ? selectedField.transformationFunctions
       : [],
-    additionalFields: selectedField?.additionalFields || {},
+    additionalFields: selectedField?.additionalFields || {}, // Maps option values to arrays of additional fields
     accept: selectedField?.accept || "",
     editable: selectedField?.editable ?? true,
     value: selectedField?.value ?? undefined,
@@ -145,7 +146,7 @@ const FieldEditModal = ({
         optionsType: "",
         dependentOn: "",
         dependentOptions: {},
-        additionalFields: {}, // Explicitly clear additional fields
+        additionalFields: {}, // Clear additional fields for consent
       }));
       setOptionInputText("");
       setDependentOn("");
@@ -175,16 +176,72 @@ const FieldEditModal = ({
     }
   };
 
+  const addAdditionalFieldForOption = (optionValue) => {
+    setFormData((prev) => {
+      const newAdditionalFields = {
+        ...prev.additionalFields,
+        [optionValue]: [...(prev.additionalFields[optionValue] || []), { name: "", label: "", type: "text" }],
+      };
+      return { ...prev, additionalFields: newAdditionalFields };
+    });
+  };
+
+  const removeAdditionalFieldForOption = (optionValue, index) => {
+    setFormData((prev) => {
+      const newAdditionalFields = { ...prev.additionalFields };
+      if (newAdditionalFields[optionValue]) {
+        newAdditionalFields[optionValue].splice(index, 1);
+        if (newAdditionalFields[optionValue].length === 0) {
+          delete newAdditionalFields[optionValue];
+        }
+      }
+      return { ...prev, additionalFields: newAdditionalFields };
+    });
+  };
+
+  const updateAdditionalField = (optionValue, index, fieldData) => {
+    setFormData((prev) => {
+      const newAdditionalFields = { ...prev.additionalFields };
+      if (!newAdditionalFields[optionValue]) {
+        newAdditionalFields[optionValue] = [];
+      }
+      newAdditionalFields[optionValue][index] = fieldData;
+      return { ...prev, additionalFields: newAdditionalFields };
+    });
+  };
+
+  const onDragEnd = (result) => {
+    const { source, destination, draggableId } = result;
+
+    if (!destination) return;
+
+    const optionValue = Object.keys(formData.additionalFields).find(key =>
+      formData.additionalFields[key].some(field => field.id === draggableId)
+    );
+
+    if (!optionValue) return;
+
+    const fields = [...formData.additionalFields[optionValue]];
+    const [removed] = fields.splice(source.index, 1);
+    fields.splice(destination.index, 0, removed);
+
+    setFormData((prev) => ({
+      ...prev,
+      additionalFields: {
+        ...prev.additionalFields,
+        [optionValue]: fields,
+      },
+    }));
+  };
+
   const saveChanges = () => {
-    // Debug: Log the final formData before saving
-    console.log("Saving FormData for checkbox:", {
+    console.log("Saving FormData:", {
       ...formData,
       isConsentCheckbox: formData.isConsentCheckbox,
       additionalFields: formData.additionalFields,
       options: formData.options,
     });
 
-    // Ensure additionalFields is empty for consent checkboxes
     const finalFormData = {
       ...formData,
       additionalFields: formData.isConsentCheckbox
@@ -420,7 +477,7 @@ const FieldEditModal = ({
         </FormControl>
 
         {/* Checkbox-specific configuration */}
-        {formData.type === "checkbox" && (
+        {(formData.type === "checkbox" || formData.type === "select") && (
           <>
             <FormControlLabel
               control={
@@ -448,25 +505,6 @@ const FieldEditModal = ({
             />
             {!formData.isConsentCheckbox && (
               <>
-                <FormControl fullWidth margin="dense">
-                  <InputLabel id="checkbox-layout-label">
-                    Checkbox Layout
-                  </InputLabel>
-                  <Select
-                    labelId="checkbox-layout-label"
-                    value={formData.checkboxLayout}
-                    label="Checkbox Layout"
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        checkboxLayout: e.target.value,
-                      }))
-                    }
-                  >
-                    <MenuItem value="vertical">Vertical</MenuItem>
-                    <MenuItem value="horizontal">Horizontal</MenuItem>
-                  </Select>
-                </FormControl>
                 <FormControl fullWidth margin="dense">
                   <InputLabel id="options-type-label">Options Type</InputLabel>
                   <Select
@@ -496,7 +534,7 @@ const FieldEditModal = ({
                 {formData.optionsType === "independent" && (
                   <TextField
                     fullWidth
-                    label="Checkbox Options (semicolon-separated)"
+                    label="Options (semicolon-separated)"
                     value={optionInputText}
                     onChange={(e) => setOptionInputText(e.target.value)}
                     onBlur={() => {
@@ -633,6 +671,115 @@ const FieldEditModal = ({
                     )}
                   </>
                 )}
+                <Typography variant="body2" sx={{ marginTop: 2 }}>
+                  Link Additional Fields to Options
+                </Typography>
+                {formData.options.map((option) => (
+                  <Box key={option.value} sx={{ marginBottom: 2 }}>
+                    <Typography variant="subtitle1">
+                      Options: {option.label} ({option.value})
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      startIcon={<AddIcon />}
+                      onClick={() => addAdditionalFieldForOption(option.value)}
+                      sx={{ marginRight: 1 }}
+                    >
+                      Add Additional Field
+                    </Button>
+                    <DragDropContext onDragEnd={onDragEnd}>
+                      <Droppable droppableId={option.value}>
+                        {(provided) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                          >
+                            {formData.additionalFields[option.value]?.map(
+                              (field, index) => (
+                                <Draggable
+                                  key={`${option.value}-${index}`}
+                                  draggableId={`${option.value}-${index}`}
+                                  index={index}
+                                >
+                                  {(provided) => (
+                                    <Box
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      {...provided.dragHandleProps}
+                                      sx={{
+                                        marginTop: 1,
+                                        padding: 1,
+                                        border: "1px solid #ccc",
+                                        backgroundColor: "#fff",
+                                        cursor: "move",
+                                      }}
+                                    >
+                                      <TextField
+                                        fullWidth
+                                        label="Field Name"
+                                        value={field.name || ""}
+                                        onChange={(e) =>
+                                          updateAdditionalField(option.value, index, {
+                                            ...field,
+                                            name: e.target.value,
+                                          })
+                                        }
+                                        margin="dense"
+                                      />
+                                      <TextField
+                                        fullWidth
+                                        label="Field Label"
+                                        value={field.label || ""}
+                                        onChange={(e) =>
+                                          updateAdditionalField(option.value, index, {
+                                            ...field,
+                                            label: e.target.value,
+                                          })
+                                        }
+                                        margin="dense"
+                                      />
+                                      <Select
+                                        fullWidth
+                                        label="Field Type"
+                                        value={field.type || "text"}
+                                        onChange={(e) =>
+                                          updateAdditionalField(option.value, index, {
+                                            ...field,
+                                            type: e.target.value,
+                                          })
+                                        }
+                                        margin="dense"
+                                      >
+                                        <MenuItem value="text">Text</MenuItem>
+                                        <MenuItem value="email">Email</MenuItem>
+                                        <MenuItem value="select">Select</MenuItem>
+                                        <MenuItem value="checkbox">
+                                          Checkbox
+                                        </MenuItem>
+                                      </Select>
+                                      <IconButton
+                                        color="error"
+                                        onClick={() =>
+                                          removeAdditionalFieldForOption(
+                                            option.value,
+                                            index
+                                          )
+                                        }
+                                      >
+                                        <RemoveIcon />
+                                      </IconButton>
+                                    </Box>
+                                  )}
+                                </Draggable>
+                              )
+                            )}
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </DragDropContext>
+                  </Box>
+                ))}
                 <FormControlLabel
                   control={<Checkbox onChange={handleDistrictCheckboxChange} />}
                   label="Is District"

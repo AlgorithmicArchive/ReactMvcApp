@@ -1,13 +1,18 @@
 using System.Net;
 using System.Net.Mail;
+using EncryptionHelper;
 using Microsoft.Extensions.Options;
+using SahayataNidhi.Models.Entities;
 
 namespace SendEmails
 {
-    public class EmailSender(IOptions<EmailSettings> emailSettings, ILogger<EmailSender> logger) : IEmailSender
+    public class EmailSender(ILogger<EmailSender> logger, SocialWelfareDepartmentContext dbcontext, IEncryptionService encryptionService, IConfiguration configuration) : IEmailSender
     {
-        private readonly EmailSettings _emailSettings = emailSettings.Value;
+        protected readonly SocialWelfareDepartmentContext dbcontext = dbcontext;
         private readonly ILogger<EmailSender> _logger = logger;
+
+        private readonly IEncryptionService _encryptionService = encryptionService;
+        private readonly IConfiguration _configuration = configuration;
 
         public async Task SendEmail(string email, string subject, string message)
         {
@@ -19,8 +24,10 @@ namespace SendEmails
         {
             try
             {
-                string? senderEmail = _emailSettings.SenderEmail;
-                string? password = _emailSettings.Password;
+                var _emailSettings = dbcontext.EmailSettings.FirstOrDefault();
+                string? senderEmail = _emailSettings!.SenderEmail;
+                string? key = _configuration["Encryption:Key"];
+                string? password = _encryptionService.Decrypt(_emailSettings.Password, key!);
 
                 using (var client = new SmtpClient(_emailSettings.SmtpServer, _emailSettings.SmtpPort)
                 {

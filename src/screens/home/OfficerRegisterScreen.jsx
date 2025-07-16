@@ -52,7 +52,7 @@ export default function OfficerRegisterScreen() {
     if (!value) return "Email is required";
     try {
       const response = await axios.get("/Home/CheckEmail", {
-        params: { email: value },
+        params: { email: value, UserType: "Officer" },
       });
       return response.data.isUnique ? true : "Email already exists";
     } catch (error) {
@@ -64,7 +64,7 @@ export default function OfficerRegisterScreen() {
     if (!value) return "Mobile Number is required";
     try {
       const res = await axios.get("/Home/CheckMobileNumber", {
-        params: { number: value },
+        params: { number: value, UserType: "Officer" },
       });
       return res.data?.isUnique ? true : "Mobile Number already exists";
     } catch (error) {

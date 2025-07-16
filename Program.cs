@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.Json.Serialization;
-using Encryption;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -8,6 +7,7 @@ using SahayataNidhi.Models.Entities;
 using SendEmails;
 using Microsoft.AspNetCore.DataProtection;
 using System.Security.Claims;
+using EncryptionHelper;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -100,7 +100,7 @@ builder.Services.AddScoped<OtpStore>();
 builder.Services.AddScoped<EmailSender>();
 builder.Services.AddScoped<UserHelperFunctions>();
 builder.Services.AddTransient<PdfService>();
-builder.Services.AddSingleton<IEncryptionService, EncryptionHelper>();
+builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
 builder.Services.AddCors();
 
 var app = builder.Build();

@@ -13,13 +13,50 @@ namespace SahayataNidhi.Controllers.Admin
         [HttpPost]
         public IActionResult ValidateOfficer(string username)
         {
+            try
+            {
+                if (string.IsNullOrEmpty(username))
+                {
+                    return BadRequest(new { status = false, message = "Username is required." });
+                }
 
-            var officer = dbcontext.Users.FirstOrDefault(u => u.Username == username);
-            var AdditionalDetails = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(officer!.AdditionalDetails!);
-            AdditionalDetails!["Validate"] = true;
-            officer.AdditionalDetails = JsonConvert.SerializeObject(AdditionalDetails);
-            dbcontext.SaveChanges();
-            return Json(new { status = true });
+                var officer = dbcontext.Users.FirstOrDefault(u => u.Username == username);
+                if (officer == null)
+                {
+                    return NotFound(new { status = false, message = "Officer not found." });
+                }
+
+                // Deserialize AdditionalDetails, handle null case
+                var additionalDetails = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(officer.AdditionalDetails ?? "{}");
+                if (additionalDetails == null)
+                {
+                    return BadRequest(new { status = false, message = "Invalid officer details." });
+                }
+
+                // Toggle Validate state
+                bool currentValidate = additionalDetails.ContainsKey("Validate") ? additionalDetails["Validate"] : false;
+                additionalDetails["Validate"] = !currentValidate;
+
+                // Serialize back to JSON
+                officer.AdditionalDetails = JsonConvert.SerializeObject(additionalDetails);
+                dbcontext.SaveChanges();
+
+                // Current date and time for response or logging (04:29 PM IST, July 15, 2025)
+                string currentDateTime = DateTime.UtcNow.AddHours(5.5).ToString("dd MMM yyyy, hh:mm tt") + " IST";
+
+                return Json(new
+                {
+                    status = true,
+                    message = additionalDetails["Validate"] ? "Officer validated" : "Officer unvalidated",
+                    isValidated = additionalDetails["Validate"],
+                    updatedAt = currentDateTime
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validating officer: {Username}", username);
+                return StatusCode(500, new { status = false, message = "An error occurred while validating the officer." });
+            }
         }
 
         [HttpPost]

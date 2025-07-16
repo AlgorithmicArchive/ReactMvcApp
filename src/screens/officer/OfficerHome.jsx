@@ -1,5 +1,9 @@
 import React, { useEffect, useState, useRef } from "react";
-import { fetchServiceList } from "../../assets/fetch";
+import {
+  fetchServiceList,
+  fetchCertificateDetails,
+  fetchCertificates,
+} from "../../assets/fetch";
 import ServiceSelectionForm from "../../components/ServiceSelectionForm";
 import {
   Box,
@@ -124,6 +128,8 @@ export default function OfficerHome() {
   const [showTable, setShowTable] = useState(false);
   const [selectedAction, setSelectedAction] = useState("Reject");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
+  const [pendingRejectRows, setPendingRejectRows] = useState([]);
   const [pin, setPin] = useState("");
   const [storedPin, setStoredPin] = useState(null);
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
@@ -148,6 +154,34 @@ export default function OfficerHome() {
 
   const navigate = useNavigate();
 
+  const fetchCertificates = async (pin) => {
+    const formData = new FormData();
+    formData.append("pin", pin);
+    const response = await fetch("http://localhost:8000/certificates", {
+      method: "POST",
+      body: formData,
+    });
+    if (!response.ok) throw new Error(await response.text());
+    return response.json();
+  };
+
+  // Validate PDF blob
+  const isValidPdf = async (blob) => {
+    try {
+      if (blob.type !== "application/pdf") {
+        console.error("Invalid MIME type:", blob.type);
+        return false;
+      }
+      const arrayBuffer = await blob.slice(0, 4).arrayBuffer();
+      const header = new Uint8Array(arrayBuffer);
+      const pdfHeader = [37, 80, 68, 70]; // %PDF
+      return header.every((byte, i) => byte === pdfHeader[i]);
+    } catch (error) {
+      console.error("Error validating PDF blob:", error);
+      return false;
+    }
+  };
+
   // Fetch application counts
   const handleRecords = async (serviceId) => {
     setLoading(true);
@@ -164,7 +198,6 @@ export default function OfficerHome() {
       setCanSanction(response.data.canSanction);
       setCanHavePool(response.data.canHavePool);
 
-      // Map countList to counts object for charts
       const newCounts = {
         total:
           response.data.countList.find(
@@ -205,7 +238,7 @@ export default function OfficerHome() {
     setType(
       statusName === "Citizen Pending"
         ? "returntoedit"
-        : statusName == "Shifted To Another Location"
+        : statusName === "Shifted To Another Location"
         ? "shifted"
         : statusName.toLowerCase()
     );
@@ -218,14 +251,12 @@ export default function OfficerHome() {
   // Action functions for row actions
   const actionFunctions = {
     handleOpenApplication: (row) => {
-      console.log("OPEN APPLICATION");
       const userdata = row.original;
       navigate("/officer/userDetails", {
         state: { applicationId: userdata.referenceNumber, notaction: false },
       });
     },
     handleViewApplication: (row) => {
-      console.log("VIEW APPLICATIONS");
       const data = row.original;
       navigate("/officer/userDetails", {
         state: { applicationId: data.referenceNumber, notaction: true },
@@ -303,6 +334,12 @@ export default function OfficerHome() {
       currentApplicationId.replace(/\//g, "_") + "SanctionLetter.pdf"
     );
     try {
+      console.log("Sending PDF to sign:", {
+        pdfSize: pdfBlob.size,
+        pdfType: pdfBlob.type,
+        original_path:
+          currentApplicationId.replace(/\//g, "_") + "SanctionLetter.pdf",
+      });
       const response = await fetch("http://localhost:8000/sign", {
         method: "POST",
         body: formData,
@@ -316,7 +353,7 @@ export default function OfficerHome() {
       throw new Error(
         "Error signing PDF: " +
           error.message +
-          " Check If Desktop App is started."
+          " Check if Desktop App is started."
       );
     }
   }
@@ -353,11 +390,39 @@ export default function OfficerHome() {
       }
 
       if (selectedAction === "Sanction") {
-        const pdfResponse = await fetch(result.path);
-        if (!pdfResponse.ok) {
-          throw new Error("Failed to fetch PDF from server");
+        // Fetch PDF from GetSanctionLetter
+        const pdfResponse = await axiosInstance.get(
+          "/Officer/GetSanctionLetter",
+          {
+            params: { applicationId: id },
+          }
+        );
+        if (!pdfResponse.data.status || !pdfResponse.data.path) {
+          throw new Error(
+            pdfResponse.data.response || "Failed to fetch sanction letter"
+          );
         }
-        const newPdfBlob = await pdfResponse.blob();
+        const fetchResponse = await fetch(pdfResponse.data.path, {
+          headers: { Accept: "application/pdf" },
+        });
+        if (!fetchResponse.ok) {
+          throw new Error(`Failed to fetch PDF: ${fetchResponse.statusText}`);
+        }
+        const contentType = fetchResponse.headers.get("content-type");
+        if (!contentType.includes("application/pdf")) {
+          throw new Error(`Invalid content type: ${contentType}`);
+        }
+        const newPdfBlob = await fetchResponse.blob();
+        const isValid = await isValidPdf(newPdfBlob);
+        if (!isValid) {
+          throw new Error("Invalid PDF structure detected");
+        }
+        console.log(
+          "PDF fetched:",
+          pdfResponse.data.path,
+          "Size:",
+          newPdfBlob.size
+        );
         if (pdfUrl) {
           URL.revokeObjectURL(pdfUrl);
         }
@@ -390,6 +455,7 @@ export default function OfficerHome() {
         const nextIndex = currentIdIndex + 1;
         if (nextIndex < pendingIds.length) {
           setCurrentIdIndex(nextIndex);
+          await new Promise((resolve) => setTimeout(resolve, 500));
           await processSingleId(pendingIds[nextIndex]);
         } else {
           setPendingIds([]);
@@ -399,6 +465,10 @@ export default function OfficerHome() {
         }
       }
     } catch (error) {
+      console.error(
+        `Error processing ${selectedAction.toLowerCase()} for ID ${id}:`,
+        error
+      );
       toast.error(
         `Error processing ${selectedAction.toLowerCase()} request: ${
           error.message
@@ -415,6 +485,40 @@ export default function OfficerHome() {
   // Sign and update PDF
   const signAndUpdatePdf = async (pinToUse) => {
     try {
+      if (!pdfBlob) {
+        throw new Error("No PDF blob available for signing");
+      }
+      const isValid = await isValidPdf(pdfBlob);
+      if (!isValid) {
+        throw new Error("Invalid PDF structure detected");
+      }
+      // Validate certificate
+      const certDetails = await fetchCertificateDetails();
+      if (!certDetails) {
+        throw new Error("No registered DSC found");
+      }
+      const certificates = await fetchCertificates(pinToUse);
+      if (!certificates || certificates.length === 0) {
+        throw new Error("No certificates found on the USB token");
+      }
+      const selectedCertificate = certificates[0];
+      const expiration = new Date(certDetails.expirationDate);
+      const now = new Date();
+      const tokenSerial = selectedCertificate.serial_number
+        ?.toString()
+        .replace(/\s+/g, "")
+        .toUpperCase();
+      const registeredSerial = certDetails.serial_number
+        ?.toString()
+        .replace(/\s+/g, "")
+        .toUpperCase();
+      if (tokenSerial !== registeredSerial) {
+        throw new Error("Not the registered certificate");
+      }
+      if (expiration < now) {
+        throw new Error("The registered certificate has expired");
+      }
+
       const signedBlob = await signPdf(pdfBlob, pinToUse);
       const updateFormData = new FormData();
       updateFormData.append("signedPdf", signedBlob, "signed.pdf");
@@ -466,6 +570,7 @@ export default function OfficerHome() {
       const nextIndex = currentIdIndex + 1;
       if (nextIndex < pendingIds.length) {
         setCurrentIdIndex(nextIndex);
+        await new Promise((resolve) => setTimeout(resolve, 500));
         await processSingleId(pendingIds[nextIndex]);
       } else {
         setPendingIds([]);
@@ -474,6 +579,7 @@ export default function OfficerHome() {
         handleRecords(serviceId);
       }
     } catch (error) {
+      console.error("Error in signAndUpdatePdf:", error);
       toast.error("Error signing PDF: " + error.message, {
         position: "top-right",
         autoClose: 3000,
@@ -500,6 +606,7 @@ export default function OfficerHome() {
       // Error handled in signAndUpdatePdf
     } finally {
       setConfirmOpen(false);
+      setPin("");
     }
   };
 
@@ -522,6 +629,12 @@ export default function OfficerHome() {
     }
   };
 
+  // Handle Reject confirmation
+  const handleRejectConfirm = async () => {
+    setRejectConfirmOpen(false);
+    await handleExecuteAction(pendingRejectRows);
+  };
+
   // Handle bulk action execution
   const handleExecuteAction = async (selectedRows) => {
     if (!selectedRows || selectedRows.length === 0) {
@@ -533,9 +646,14 @@ export default function OfficerHome() {
       return;
     }
     const ids = selectedRows.map((item) => item.original.referenceNumber);
-    setPendingIds(ids);
-    setCurrentIdIndex(0);
-    await processSingleId(ids[0]);
+    if (selectedAction === "Reject" && canHavePool && type === "pool") {
+      setPendingRejectRows(selectedRows);
+      setRejectConfirmOpen(true);
+    } else {
+      setPendingIds(ids);
+      setCurrentIdIndex(0);
+      await processSingleId(ids[0]);
+    }
   };
 
   // Get action options for bulk action dropdown
@@ -860,6 +978,58 @@ export default function OfficerHome() {
           </Row>
         )}
       </Container>
+
+      <StyledDialog
+        open={rejectConfirmOpen}
+        onClose={() => {
+          setRejectConfirmOpen(false);
+          setPendingRejectRows([]);
+          handleRecords(serviceId);
+        }}
+      >
+        <DialogTitle
+          sx={{
+            fontWeight: 600,
+            color: "#2d3748",
+            fontFamily: "'Inter', sans-serif",
+          }}
+        >
+          Confirm Reject Action
+        </DialogTitle>
+        <DialogContent>
+          <Typography
+            sx={{ mb: 2, color: "#2d3748", fontFamily: "'Inter', sans-serif" }}
+          >
+            Are you sure you want to reject {pendingRejectRows.length} selected
+            application{pendingRejectRows.length > 1 ? "s" : ""}? This action
+            cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <StyledButton
+            onClick={() => {
+              setRejectConfirmOpen(false);
+              setPendingRejectRows([]);
+              handleRecords(serviceId);
+            }}
+            aria-label="Cancel"
+          >
+            Cancel
+          </StyledButton>
+          <StyledButton
+            onClick={handleRejectConfirm}
+            aria-label="Confirm Reject"
+            sx={{
+              background: "linear-gradient(45deg, #d32f2f, #f44336)",
+              "&:hover": {
+                background: "linear-gradient(45deg, #b71c1c, #d32f2f)",
+              },
+            }}
+          >
+            Confirm Reject
+          </StyledButton>
+        </DialogActions>
+      </StyledDialog>
 
       <StyledDialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
         <DialogTitle

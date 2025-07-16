@@ -8,7 +8,7 @@ import {
   Alert,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { useNavigate, useNavigation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const StyledBox = styled(Box)(({ theme }) => ({
   display: "flex",
@@ -36,16 +36,18 @@ const StyledButton = styled(Button)(({ theme }) => ({
 }));
 
 export default function ForgotPassword() {
+  const [mode, setMode] = useState("password"); // "password" or "username"
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [step, setStep] = useState(1); // 1: Email input, 2: OTP & Password input
+  const [username, setUsername] = useState(""); // For username display
+  const [step, setStep] = useState(1); // 1: Email input, 2: OTP & action input for password
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const navigate = useNavigate();
 
-  const handleSendOtp = async (e) => {
+  const handleSendAction = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
@@ -55,18 +57,31 @@ export default function ForgotPassword() {
     }
     setLoading(true);
     try {
+      const endpoint =
+        mode === "password"
+          ? "/Home/SendPasswordResetOtp"
+          : "/Home/SendUsernameToEmail";
       const formdata = new FormData();
       formdata.append("email", email);
-      const response = await fetch("/Home/SendPasswordResetOtp", {
+      const response = await fetch(endpoint, {
         method: "POST",
         body: formdata,
       });
       const data = await response.json();
       if (data.status) {
-        setSuccess(data.message || "OTP sent to your email!");
-        setStep(2);
+        if (mode === "password") {
+          setSuccess(data.message || "OTP sent for password reset!");
+          setStep(2);
+        } else {
+          setUsername(data.username || "Username sent to your email!");
+          setSuccess(data.message || "Username has been sent to your email!");
+          setEmail("");
+          navigate("/"); // Redirect to home after success
+        }
       } else {
-        setError(data.message || "Failed to send OTP. Please try again.");
+        setError(
+          data.message || "Failed to process request. Please try again."
+        );
       }
     } catch (err) {
       setError("An error occurred. Please try again.");
@@ -127,8 +142,35 @@ export default function ForgotPassword() {
           align="center"
           className="font-bold"
         >
-          Forgot Password
+          {mode === "password" ? "Forgot Password" : "Forgot Username"}
         </Typography>
+        <Box sx={{ mb: 2 }}>
+          <Button
+            variant={mode === "password" ? "contained" : "outlined"}
+            color="primary"
+            onClick={() => {
+              setMode("password");
+              setStep(1);
+              setError("");
+              setSuccess("");
+            }}
+            sx={{ mr: 1 }}
+          >
+            Forgot Password
+          </Button>
+          <Button
+            variant={mode === "username" ? "contained" : "outlined"}
+            color="primary"
+            onClick={() => {
+              setMode("username");
+              setStep(1);
+              setError("");
+              setSuccess("");
+            }}
+          >
+            Forgot Username
+          </Button>
+        </Box>
         {error && (
           <Alert severity="error" className="mb-4">
             {error}
@@ -137,11 +179,16 @@ export default function ForgotPassword() {
         {success && (
           <Alert severity="success" className="mb-4">
             {success}
+            {mode === "username" && username && (
+              <Typography variant="body1" sx={{ mt: 1 }}>
+                Note: Check your email for your username.
+              </Typography>
+            )}
           </Alert>
         )}
 
         {step === 1 ? (
-          <form onSubmit={handleSendOtp} className="flex flex-col gap-4">
+          <form onSubmit={handleSendAction} className="flex flex-col gap-4">
             <TextField
               label="Email Address"
               variant="outlined"
@@ -160,8 +207,10 @@ export default function ForgotPassword() {
             >
               {loading ? (
                 <CircularProgress size={24} color="inherit" />
-              ) : (
+              ) : mode === "password" ? (
                 "Send OTP"
+              ) : (
+                "Send Username to Email"
               )}
             </StyledButton>
           </form>

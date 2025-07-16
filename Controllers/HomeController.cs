@@ -220,6 +220,44 @@ namespace SahayataNidhi.Controllers
             return Json(new { status = true, message = "OTP sent to your email." });
         }
 
+        [HttpPost]
+        public async Task<IActionResult> SendUsernameToEmail([FromForm] IFormCollection form)
+        {
+            string email = form["email"].ToString();
+            if (string.IsNullOrEmpty(email) || !Regex.IsMatch(email.Trim(), @"^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$"))
+            {
+                return Json(new { status = false, message = "Please provide a valid email address." });
+            }
+
+            var user = _dbContext.Users.FirstOrDefault(u => u.Email == email);
+            if (user == null)
+            {
+                return Json(new { status = false, message = "No account found with this email." });
+            }
+
+            string fullName = user.Name!;
+            string username = user.Username ?? "User"; // Assuming Name is the username field
+
+            // Current date and time in IST
+            string currentDateTime = DateTime.UtcNow.AddHours(5.5)
+                .ToString("dd MMM yyyy, hh:mm tt") + " IST"; // 15 Jul 2025, 03:54 PM IST
+
+            string htmlMessage = $@"
+            <div style='font-family: Arial, sans-serif;'>
+                <h2 style='color: #2e6c80;'>Your Username Retrieval</h2>
+                <p>{fullName},</p>
+                <p>Your username is: <strong>{username}</strong>. This information was requested on {currentDateTime}.</p>
+                <p>If you did not request this, please contact support immediately.</p>
+                <br />
+                <p style='font-size: 12px; color: #888;'>Thank you,<br />Your Application Team</p>
+            </div>";
+
+            await _emailSender.SendEmail(email, "Your Username", htmlMessage);
+            return Json(new { status = true, message = "Username has been sent to your email." });
+        }
+
+
+
 
         public class ResetPasswordResult
         {
@@ -437,8 +475,8 @@ namespace SahayataNidhi.Controllers
             var password = new SqlParameter("@Password", form["Password"].ToString());
             var email = new SqlParameter("@Email", form["Email"].ToString());
             var mobileNumber = new SqlParameter("@MobileNumber", form["MobileNumber"].ToString());
-            var district = Convert.ToInt32(form["District"].ToString());
-            var tehsil = Convert.ToInt32(form["Tehsil"].ToString());
+            int district = string.IsNullOrEmpty(form["District"].ToString()) ? 0 : Convert.ToInt32(form["District"]);
+            int tehsil = string.IsNullOrEmpty(form["Tehsil"].ToString()) ? 0 : Convert.ToInt32(form["Tehsil"]);
 
             var addtionalDetails = new
             {
@@ -487,60 +525,6 @@ namespace SahayataNidhi.Controllers
                 return Json(new { status = false, response = "Registration failed." });
             }
         }
-
-
-        [HttpPost]
-        public async Task<IActionResult> SendEmailVerificationOtp([FromForm] IFormCollection form)
-        {
-            string email = form["email"].ToString();
-            var user = _dbContext.Users.FirstOrDefault(u => u.Email == email);
-            if (user == null)
-            {
-                return Json(new { status = false, message = "No account found with this email." });
-            }
-
-            if (user.IsEmailValid)
-            {
-                return Json(new { status = false, message = "Email is already verified." });
-            }
-
-            string otpKey = $"email_verify_otp:{user.UserId}";
-            string otp = GenerateOTP(6);
-            _otpStore.StoreOtp(otpKey, otp);
-
-            string htmlMessage = $@"
-            <div>
-                <h3>Email Verification OTP</h3>
-                <p>Your OTP is <strong>{otp}</strong>. It is valid for 5 minutes.</p>
-            </div>";
-
-            await _emailSender.SendEmail(email, "Email Verification OTP", htmlMessage);
-
-            return Json(new { status = true, message = "OTP sent to your email." });
-        }
-
-
-        [HttpPost]
-        public IActionResult VerifyEmailOtp([FromForm] IFormCollection form)
-        {
-            string email = form["email"].ToString();
-            string otp = form["otp"].ToString();
-            var user = _dbContext.Users.FirstOrDefault(u => u.Email == email);
-            if (user == null) return Json(new { status = false, message = "User not found" });
-
-            string otpKey = $"email_verify_otp:{user.UserId}";
-            var storedOtp = _otpStore.RetrieveOtp(otpKey);
-
-            if (storedOtp == null || storedOtp != otp)
-                return Json(new { status = false, message = "Invalid or expired OTP." });
-
-            user.IsEmailValid = true;
-            _dbContext.SaveChanges();
-
-            return Json(new { status = true, message = "Email verified successfully." });
-        }
-
-
 
         [HttpPost]
         public IActionResult Verification([FromForm] IFormCollection form)
@@ -612,6 +596,58 @@ namespace SahayataNidhi.Controllers
         }
 
 
+        [HttpPost]
+        public async Task<IActionResult> SendEmailVerificationOtp([FromForm] IFormCollection form)
+        {
+            string email = form["email"].ToString();
+            var user = _dbContext.Users.FirstOrDefault(u => u.Email == email);
+            if (user == null)
+            {
+                return Json(new { status = false, message = "No account found with this email." });
+            }
+
+            if (user.IsEmailValid)
+            {
+                return Json(new { status = false, message = "Email is already verified." });
+            }
+
+            string otpKey = $"email_verify_otp:{user.UserId}";
+            string otp = GenerateOTP(6);
+            _otpStore.StoreOtp(otpKey, otp);
+
+            string htmlMessage = $@"
+            <div>
+                <h3>Email Verification OTP</h3>
+                <p>Your OTP is <strong>{otp}</strong>. It is valid for 5 minutes.</p>
+            </div>";
+
+            await _emailSender.SendEmail(email, "Email Verification OTP", htmlMessage);
+
+            return Json(new { status = true, message = "OTP sent to your email." });
+        }
+
+
+        [HttpPost]
+        public IActionResult VerifyEmailOtp([FromForm] IFormCollection form)
+        {
+            string email = form["email"].ToString();
+            string otp = form["otp"].ToString();
+            var user = _dbContext.Users.FirstOrDefault(u => u.Email == email);
+            if (user == null) return Json(new { status = false, message = "User not found" });
+
+            string otpKey = $"email_verify_otp:{user.UserId}";
+            var storedOtp = _otpStore.RetrieveOtp(otpKey);
+
+            if (storedOtp == null || storedOtp != otp)
+                return Json(new { status = false, message = "Invalid or expired OTP." });
+
+            user.IsEmailValid = true;
+            _dbContext.SaveChanges();
+
+            return Json(new { status = true, message = "Email verified successfully." });
+        }
+
+
         public IActionResult LogOut()
         {
             // No need to handle session logout for JWT
@@ -652,17 +688,17 @@ namespace SahayataNidhi.Controllers
             return Json(new { isUnique });
         }
         [HttpGet]
-        public IActionResult CheckEmail(string email)
+        public IActionResult CheckEmail(string email, string UserType)
         {
-            var exists = _dbContext.Users.FirstOrDefault(u => u.Email == email);
+            var exists = _dbContext.Users.FirstOrDefault(u => u.Email == email && u.UserType == UserType);
             bool isUnique = exists == null; // unique if no matching user is found
             return Json(new { isUnique });
         }
 
         [HttpGet]
-        public IActionResult CheckMobileNumber(string number)
+        public IActionResult CheckMobileNumber(string number, string UserType)
         {
-            var exists = _dbContext.Users.FirstOrDefault(u => u.MobileNumber == number);
+            var exists = _dbContext.Users.FirstOrDefault(u => u.MobileNumber == number && u.UserType == UserType);
             bool isUnique = exists == null; // unique if no matching user is found
             return Json(new { isUnique });
         }

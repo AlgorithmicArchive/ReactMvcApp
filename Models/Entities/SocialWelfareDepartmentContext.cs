@@ -29,6 +29,8 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     public virtual DbSet<District> Districts { get; set; }
 
+    public virtual DbSet<EmailSetting> EmailSettings { get; set; }
+
     public virtual DbSet<HalqaPanchayat> HalqaPanchayats { get; set; }
 
     public virtual DbSet<Muncipality> Muncipalities { get; set; }
@@ -213,6 +215,20 @@ public partial class SocialWelfareDepartmentContext : DbContext
                 .HasMaxLength(50)
                 .IsUnicode(false);
             entity.Property(e => e.Uuid).HasColumnName("UUID");
+        });
+
+        modelBuilder.Entity<EmailSetting>(entity =>
+        {
+            entity.Property(e => e.Password).HasColumnType("text");
+            entity.Property(e => e.SenderEmail)
+                .HasMaxLength(255)
+                .IsUnicode(false);
+            entity.Property(e => e.SenderName)
+                .HasMaxLength(255)
+                .IsUnicode(false);
+            entity.Property(e => e.SmtpServer)
+                .HasMaxLength(255)
+                .IsUnicode(false);
         });
 
         modelBuilder.Entity<HalqaPanchayat>(entity =>

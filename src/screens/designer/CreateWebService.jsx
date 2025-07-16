@@ -257,7 +257,7 @@ export default function CreateWebService() {
       try {
         // Fetch existing web service configuration
         const configResponse = await axiosInstance.get(
-          `/Base/GetWebService/${selectedServiceId}`
+          `/Designer/GetWebService/${selectedServiceId}`
         );
         if (configResponse.data.status && configResponse.data.config) {
           const config = configResponse.data.config;
@@ -632,7 +632,7 @@ export default function CreateWebService() {
 
     try {
       const response = await axiosInstance.post(
-        "/Base/SaveWebService",
+        "/Designer/SaveWebService",
         formdata
       );
       if (response.data.status) {

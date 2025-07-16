@@ -743,7 +743,7 @@ export default function UserDetails() {
             mb: 4,
           }}
         >
-          Movement History
+          Application Movement History
         </Typography>
         <CollapsibleActionHistory
           detailsOpen={historyOpen}

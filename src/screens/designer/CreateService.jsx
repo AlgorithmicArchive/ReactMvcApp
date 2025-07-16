@@ -265,7 +265,10 @@ export default function CreateService() {
     formdata.append("formElement", JSON.stringify(sections));
 
     try {
-      const response = await axiosInstance.post("/Base/FormElement", formdata);
+      const response = await axiosInstance.post(
+        "/Designer/FormElement",
+        formdata
+      );
       const result = response.data;
       if (result.status) {
         toast.success(

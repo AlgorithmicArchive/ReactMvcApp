@@ -32,6 +32,7 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import CloseIcon from "@mui/icons-material/CloseOutlined";
 import MessageModal from "../MessageModal";
 import LoadingSpinner from "../LoadingSpinner";
+import { toast, ToastContainer } from "react-toastify";
 
 const sectionIconMap = {
   Location: <LocationOnIcon sx={{ fontSize: 36, color: "#14B8A6" }} />, // Teal
@@ -466,9 +467,9 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
             returnFields,
             flatDetails
           );
+          setAreas(formDetails);
           setDependableFields(dependableFields);
           reset(resetData);
-          setAreas(formDetails);
           setAdditionalDetails(additionalDetails);
         } else if (data !== null && data !== undefined) {
           setInitialData(data);
@@ -478,10 +479,10 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
         if (data != null) {
           Object.keys(data).forEach((key) => {
             data[key].map((item, sectionIndex) => {
-              setValue(item.name, item.value);
               if (item.name.toLowerCase().includes("district")) {
                 handleAreaChange(sectionIndex, { name: item.name }, item.value);
               }
+              setValue(item.name, item.value);
             });
           });
         }
@@ -1145,6 +1146,7 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
           navigate("/user/initiated");
         } else {
           setReferenceNumber(result.referenceNumber);
+          toast.success("Form Details Saved as Draft.");
         }
       } else {
         console.error("Submission failed:", result);
@@ -1925,7 +1927,7 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
                   disabled={buttonLoading || loading}
                   onClick={handleSubmit((data) => onSubmit(data, "save"))}
                 >
-                  Save{buttonLoading ? "..." : ""}
+                  Save as Draft{buttonLoading ? "..." : ""}
                 </Button>
               )}
               <Button
@@ -1970,6 +1972,7 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
         message="Some fields are not filled or are incorrectly filed. Please correctly fill all fields."
         type="error" // can be: "error", "success", "warning", "info"
       />
+      <ToastContainer />
     </Box>
   );
 };

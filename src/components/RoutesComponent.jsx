@@ -39,6 +39,7 @@ import ForgotPassword from "../screens/home/ForgotPassword";
 import ReportsAdmin from "../screens/admin/Reports";
 import AddAdmin from "../screens/admin/AddAdmin";
 import ValidateOfficer from "../screens/admin/ValidateOfficer";
+import EmailSettings from "../screens/designer/EmailSettings";
 
 const RoutesComponent = () => {
   return (
@@ -94,6 +95,7 @@ const RoutesComponent = () => {
           <Route path="createletterpdf" element={<CreateLetterPdf />} />
           <Route path="createwebservice" element={<CreateWebService />} />
           <Route path="dynamicform" element={<DynamicScrollableForm />} />
+          <Route path="emailsettings" element={<EmailSettings />} />
         </Route>
       </Route>
       <Route

@@ -1,4 +1,3 @@
-using Encryption;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -12,6 +11,7 @@ using System.Security.Claims;
 using System.Dynamic;
 using Newtonsoft.Json.Linq;
 using Renci.SshNet;
+using EncryptionHelper;
 
 namespace SahayataNidhi.Controllers.Officer
 {
@@ -152,7 +152,7 @@ namespace SahayataNidhi.Controllers.Officer
             details.CurrentPlayer = (int)currentPlayer!["playerId"]!;
             dbcontext.SaveChanges();
 
-            helper.InsertHistory(applicationId, "Pulled Application", (string)currentPlayer["designation"]!, "Call back Application");
+            helper.InsertHistory(applicationId, "Pulled Application", (string)currentPlayer["designation"]!, "Call back Application", officer.AccessLevel!, (int)officer.AccessCode!);
 
             return Json(new { status = true });
         }
@@ -225,7 +225,7 @@ namespace SahayataNidhi.Controllers.Officer
                 }
                 formdetails.WorkFlow = workFlow;
                 dbcontext.SaveChanges();
-                helper.InsertHistory(applicationId, action, officer.Role!, remarks);
+                helper.InsertHistory(applicationId, action, officer.Role!, remarks, officer.AccessLevel!, (int)officer.AccessCode!);
 
                 try
                 {
@@ -249,7 +249,7 @@ namespace SahayataNidhi.Controllers.Officer
                 }
 
                 string fullName = GetFieldValue("ApplicantName", formDetailsObj);
-                string serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == formdetails.ServiceId)!.ServiceName!;
+                string ServiceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == formdetails.ServiceId)!.ServiceName!;
                 string appliedDistrictId = GetFieldValue("District", formDetailsObj);
                 string appliedTehsilId = GetFieldValue("Tehsil", formDetailsObj);
 
@@ -290,24 +290,25 @@ namespace SahayataNidhi.Controllers.Officer
                 ? "<p>Kindly check the rejection reason by logging into your account.</p>"
                 : "";
 
-                string htmlMessage = $@"
-                <div style='font-family: Arial, sans-serif;'>
-                    <h2 style='color: #2e6c80;'>Application Status</h2>
-                    <p>Dear {fullName},</p>
-                    <p>Your application for the service <strong>{serviceName}</strong> has been <strong>{Action}</strong> by <strong>{officer.Role} {officerArea}</strong>.</p>
-                    <ul style='line-height: 1.6;'>
-                        <li><strong>Service:</strong> {serviceName}</li>
-                        <li><strong>Status:</strong> {Action}</li>
-                        <li><strong>Updated By:</strong> {officer.Role}</li>
-                        <li><strong>Reference ID:</strong> {formdetails.ReferenceNumber}</li>
-                        <li><strong>Update Date:</strong> {DateTime.Now:dd MMM yyyy hh:mm:ss tt}</li>
-                    </ul>
-                    {rejectionNote}
-                    <p>If you have any questions regarding this update, feel free to contact our support team.</p>
-                    <br />
-                    <p style='font-size: 12px; color: #888;'>Thank you,<br />Your Application Team</p>
-                </div>";
+                var emailtemplate = JObject.Parse(dbcontext.EmailSettings.FirstOrDefault()!.Templates!);
+                string template = emailtemplate["OfficerAction"]!.ToString();
 
+                var placeholders = new Dictionary<string, string>
+                {
+                    { "ApplicantName",fullName},
+                    { "ServiceName", ServiceName!},
+                    { "ReferenceNumber", applicationId },
+                    { "OfficerRole", officer.Role! },
+                    { "ActionTaken", Action! },
+                    { "OfficerArea", officerArea }
+                };
+
+                foreach (var pair in placeholders)
+                {
+                    template = template.Replace($"{{{pair.Key}}}", pair.Value);
+                }
+
+                string htmlMessage = template;
 
 
                 if (action == "Sanction")

@@ -69,7 +69,7 @@ const CreateLetterPdf = () => {
 
     const fetchFormFields = async () => {
       try {
-        const response = await axiosInstance.get("/Base/GetFormElements", {
+        const response = await axiosInstance.get("/Designer/GetFormElements", {
           params: { serviceId: selectedServiceId || "1" },
         });
         setFormFields(response.data.names || []);
@@ -94,7 +94,7 @@ const CreateLetterPdf = () => {
 
     const fetchLetterDetails = async () => {
       try {
-        const response = await axiosInstance.get("/Base/GetLetterDetails", {
+        const response = await axiosInstance.get("/Designer/GetLetterDetails", {
           params: {
             serviceId: selectedServiceId,
             objField: selectedLetterType,

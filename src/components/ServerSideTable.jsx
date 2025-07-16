@@ -140,6 +140,12 @@ const ServerSideTable = ({
       setRowSelection({});
     }
   };
+  console.log(
+    "Can Sanction",
+    canSanction,
+    "Pending Applications",
+    pendingApplications
+  );
 
   return (
     <Container
@@ -237,6 +243,7 @@ const ServerSideTable = ({
           onRowSelectionChange={
             canSanction && pendingApplications ? setRowSelection : undefined
           }
+          enableRowSelection={canSanction && pendingApplications}
           manualPagination
           enablePagination
           pageCount={pageCount}

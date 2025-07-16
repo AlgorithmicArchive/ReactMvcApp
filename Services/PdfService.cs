@@ -108,8 +108,10 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
 
         using PdfWriter writer = new(path);
         using PdfDocument pdf = new(writer);
-        pdf.SetDefaultPageSize(PageSize.A4); // Explicitly set A4 size
+        pdf.SetDefaultPageSize(PageSize.A4);
         using Document document = new(pdf);
+
+        // Add content
         document.Add(image);
         document.Add(new Paragraph("Union Territory of Jammu and Kashmir")
             .SetBold()
@@ -155,8 +157,8 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
             .SetTextAlignment(TextAlignment.RIGHT));
         document.Add(idTable);
 
-        // Create QR code with general details
-        Console.WriteLine("Details Keys: " + string.Join(", ", details.Keys)); // Debug: Log all keys in details
+        // Create QR code
+        Console.WriteLine("Details Keys: " + string.Join(", ", details.Keys));
         string qrContent = string.Join("\n", details
             .Where(kv => new[] { "NAME OF APPLICANT", "FATHER / HUSBAND / GUARDIAN", "ApplicationId" }.Contains(kv.Key))
             .Select(kv => $"{kv.Key}: {kv.Value}"));
@@ -167,14 +169,17 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
         }
         else
         {
-            qrContent += $"\nApplicationId: {ApplicationId}"; // Append ApplicationId if other details exist
+            qrContent += $"\nApplicationId: {ApplicationId}";
         }
-        Console.WriteLine("QR Content: " + qrContent); // Debug: Log final QR content
+        Console.WriteLine("QR Content: " + qrContent);
         BarcodeQRCode qrCode = new BarcodeQRCode(qrContent);
         PdfFormXObject qrXObject = qrCode.CreateFormXObject(ColorConstants.BLACK, pdf);
         Image qrImage = new Image(qrXObject)
-            .ScaleToFit(600, 600); // Adjust size as needed
+            .ScaleToFit(200, 200) // Set desired QR code size (200x200 points)
+            .SetFixedPosition(30, 30); // Position at bottom-left (x=30, y=30)
 
+        // Add QR code to the document
+        document.Add(qrImage);
 
         // Create footer table for Date and Officer
         Table footerTable = new Table(UnitValue.CreatePercentArray([50, 50]))
@@ -192,12 +197,6 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
                 .SetBold())
             .SetBorder(Border.NO_BORDER)
             .SetTextAlignment(TextAlignment.RIGHT));
-
-        // Add QR code to the page using PdfCanvas
-        PdfCanvas canvas = new(pdf.GetFirstPage());
-        canvas.AddXObjectAt(qrXObject, 30, 30); // Bottom-left corner (x=30, y=30)
-
-        // Add footer table after QR code
         document.Add(footerTable);
     }
 

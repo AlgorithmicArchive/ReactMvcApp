@@ -392,6 +392,11 @@ const MyNavbar = () => {
                     >
                       Web Service
                     </NavDropdown.Item>
+                    <NavDropdown.Item
+                      onClick={() => handleNavigate("/designer/emailsettings")}
+                    >
+                      Email
+                    </NavDropdown.Item>
                   </NavDropdown>
                 </div>
               </>

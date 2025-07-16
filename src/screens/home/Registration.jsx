@@ -93,7 +93,7 @@ export default function RegisterScreen() {
     if (!value) return "Email is required";
     try {
       const res = await axios.get("/Home/CheckEmail", {
-        params: { email: value },
+        params: { email: value, UserType: "Citizen" },
       });
       return res.data?.isUnique ? true : "Email already exists";
     } catch (error) {
@@ -106,7 +106,7 @@ export default function RegisterScreen() {
     if (!value) return "Mobile Number is required";
     try {
       const res = await axios.get("/Home/CheckMobileNumber", {
-        params: { number: value },
+        params: { number: value, UserType: "Citizen" },
       });
       return res.data?.isUnique ? true : "Mobile Number already exists";
     } catch (error) {
@@ -343,7 +343,7 @@ export default function RegisterScreen() {
                   disabled={loading}
                 />
               </Col>
-              <Col xs={6}>
+              {/* <Col xs={6}>
                 <CustomSelectField
                   label="District"
                   name="District"
@@ -368,7 +368,7 @@ export default function RegisterScreen() {
                   aria-describedby="tehsil-error"
                   disabled={loading}
                 />
-              </Col>
+              </Col> */}
             </Row>
           </Box>
 

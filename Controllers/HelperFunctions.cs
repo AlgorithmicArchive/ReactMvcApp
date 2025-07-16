@@ -286,7 +286,7 @@ public class UserHelperFunctions(IWebHostEnvironment webHostEnvironment, SocialW
 
     // }
 
-    public void InsertHistory(string referenceNumber, string ActionTaken, string ActionTaker, string Remarks)
+    public void InsertHistory(string referenceNumber, string ActionTaken, string ActionTaker, string Remarks, string LocationLevel, int LocationValue)
     {
         var history = new ActionHistory
         {
@@ -294,6 +294,8 @@ public class UserHelperFunctions(IWebHostEnvironment webHostEnvironment, SocialW
             ActionTaken = ActionTaken,
             ActionTaker = ActionTaker,
             Remarks = Remarks,
+            LocationLevel = LocationLevel,
+            LocationValue = LocationValue,
             ActionTakenDate = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")
         };
         dbcontext.ActionHistories.Add(history);

@@ -137,6 +137,14 @@ namespace SahayataNidhi.Controllers.Admin
             }
         }
 
+        public string GetArea(string AccessLevel, int AccessCode)
+        {
+            if (AccessLevel == "State") return "Jammu & Kashmir";
+            else if (AccessLevel == "Division") return AccessCode == 1 ? "Jammu" : "Kashmir";
+            else if (AccessLevel == "District") return dbcontext.Districts.FirstOrDefault(d => d.DistrictId == AccessCode)!.DistrictName!;
+            else return dbcontext.Tswotehsils.FirstOrDefault(t => t.TehsilId == AccessCode)!.TehsilName!;
+        }
+
         [HttpGet]
         public IActionResult GetOfficersList(int pageIndex = 0, int pageSize = 10)
         {
@@ -167,7 +175,9 @@ namespace SahayataNidhi.Controllers.Admin
                     new { accessorKey = "username", header = "Username" },
                     new { accessorKey = "email", header = "Email" },
                     new { accessorKey = "mobileNumber", header = "Mobile Number" },
-                    new { accessorKey = "designation", header = "Designation" }
+                    new { accessorKey = "designation", header = "Designation" },
+                    new { accessorKey = "accessLevel", header = "Officer Level" },
+                    new { accessorKey = "accessArea", header = "Officer Area" }
                 };
 
             var customActions = new List<dynamic>
@@ -188,6 +198,8 @@ namespace SahayataNidhi.Controllers.Admin
                 email = item.Email,
                 mobileNumber = item.MobileNumber,
                 designation = item.Designation,
+                accessLevel = item.AccessLevel,
+                accessArea = GetArea(item.AccessLevel!, Convert.ToInt32(item.AccessCode)),
                 customActions = Convert.ToBoolean(item.IsValidated) ? (object)"Validated" : customActions
             }).ToList();
 
@@ -478,7 +490,7 @@ namespace SahayataNidhi.Controllers.Admin
                 var paramAccessCode = new SqlParameter("@AccessCode", accessCode);
 
                 // Call stored procedure
-                var response = dbcontext.Database // DTO mapped to result of stored procedure
+                var response = dbcontext.Database
                     .SqlQueryRaw<OfficersToValidateModal>("EXEC GetOfficersToValidate @AccessLevel, @AccessCode", paramAccessLevel, paramAccessCode)
                     .ToList();
 
@@ -499,25 +511,29 @@ namespace SahayataNidhi.Controllers.Admin
                     new { accessorKey = "designation", header = "Designation" }
                 };
 
-                var customActions = new List<dynamic>
+                // Dynamic custom actions based on validation state
+                var customActions = new List<dynamic>();
+                foreach (var item in pagedData)
                 {
-                    new
+                    var isValidated = item.IsValidated ?? false; // Assuming IsValidated is a nullable bool in OfficersToValidateModal
+                    customActions.Add(new
                     {
-                        type = "Validate",
-                        tooltip = "Validate",
-                        color = "#F0C38E",
-                        actionFunction = "ValidateOfficer"
-                    }
-                };
-                // Shape the data
-                var data = pagedData.Select(item => new
+                        type = isValidated ? "Unvalidate" : "Validate",
+                        tooltip = isValidated ? "Unvalidate" : "Validate",
+                        color = isValidated ? "#FF6B6B" : "#F0C38E", // Red for unvalidate, orange for validate
+                        actionFunction = isValidated ? "ValidateOfficer" : "ValidateOfficer"
+                    });
+                }
+
+                // Shape the data with dynamic actions
+                var data = pagedData.Select((item, index) => new
                 {
                     name = item.Name,
                     username = item.Username,
                     email = item.Email,
                     mobileNumber = item.MobileNumber,
                     designation = item.Designation,
-                    customActions
+                    customActions = new List<dynamic> { customActions[index] } // Assign specific action per row
                 }).ToList();
 
                 return Json(new

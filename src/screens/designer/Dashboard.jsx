@@ -25,7 +25,7 @@ export default function Dashboard() {
         formdata.append("serviceId", serviceId);
         formdata.append("active", isActive);
         const response = await axiosInstance.post(
-          "/Base/ToggleServiceActive",
+          "/Designer/ToggleServiceActive",
           formdata
         );
 
@@ -57,7 +57,7 @@ export default function Dashboard() {
         formdata.append("webserviceId", webserviceId);
         formdata.append("active", isActive);
         const response = await axiosInstance.post(
-          "/Base/ToggleWebServiceActive",
+          "/Designer/ToggleWebServiceActive",
           formdata
         );
 
@@ -123,7 +123,7 @@ export default function Dashboard() {
         {activeTab === 0 && (
           <ServerSideTable
             key={`services-${servicesRefreshTrigger}`} // for services tab
-            url={"/Base/GetServicesDashboard"}
+            url={"/Designer/GetServicesDashboard"}
             extraParams={{}}
             actionFunctions={actionFunctions}
           />
@@ -131,7 +131,7 @@ export default function Dashboard() {
         {activeTab === 1 && (
           <ServerSideTable
             key={`webservices-${webServicesRefreshTrigger}`} // for web services tab
-            url={"/Base/GetWebServicesDashboard"}
+            url={"/Designer/GetWebServicesDashboard"}
             extraParams={{}}
             actionFunctions={actionFunctions}
           />

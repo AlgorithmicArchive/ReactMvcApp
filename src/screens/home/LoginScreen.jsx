@@ -185,11 +185,11 @@ export default function LoginScreen() {
             id="login-title"
             sx={{ fontWeight: 700, color: "primary.main", mb: 1 }}
           >
-            Welcome Back
+            Login
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          {/* <Typography variant="body2" color="text.secondary">
             Sign in to continue
-          </Typography>
+          </Typography> */}
         </Box>
 
         <Box
@@ -227,7 +227,7 @@ export default function LoginScreen() {
               underline="hover"
               aria-label="Forgot password"
             >
-              Forgot Password?
+              Forgot Password/Username?
             </Link>
           </Box>
 

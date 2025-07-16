@@ -78,9 +78,11 @@ namespace SahayataNidhi.Controllers.User
             var columns = new List<dynamic>
             {
                 new { header = "S.No", accessorKey = "sno" },
+                new { header = "Service Name", accessorKey = "serviceName" },
                 new { header = "Reference Number", accessorKey = "referenceNumber" },
                 new { header = "Applicant Name", accessorKey = "applicantName" },
                 new { header = "Currently With", accessorKey = "currentlyWith" },
+                new { header = "Submission Date", accessorKey = "submissionDate" },
                 new { header = "Status", accessorKey = "status" }
             };
 
@@ -107,6 +109,7 @@ namespace SahayataNidhi.Controllers.User
                 var officers = JsonConvert.DeserializeObject<JArray>(application.WorkFlow!);
                 var currentPlayer = application.CurrentPlayer;
                 string officerDesignation = (string)officers![currentPlayer]["designation"]!;
+                string serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == application.ServiceId)!.ServiceName!;
 
                 string officerArea = GetOfficerArea(officerDesignation, formDetails);
 
@@ -130,10 +133,12 @@ namespace SahayataNidhi.Controllers.User
                 data.Add(new
                 {
                     sno = (pageIndex * pageSize) + index + 1,
+                    serviceName = serviceName,
                     referenceNumber = application.ReferenceNumber,
                     applicantName = GetFieldValue("ApplicantName", formDetails),
                     currentlyWith = officerDesignation + " " + officerArea,
                     status = actionMap[(string)officers[currentPlayer]["status"]!],
+                    submissionDate = application.CreatedAt,
                     serviceId = application.ServiceId,
                     customActions = actions // Embed actions here
                 });
@@ -171,6 +176,7 @@ namespace SahayataNidhi.Controllers.User
             {
                 new { header = "S.No", accessorKey = "sno" },
                 new { header = "Reference Number", accessorKey = "referenceNumber" },
+                new { header = "Save Date", accessorKey = "saveDate" },
             };
 
             // Correctly initialize data list
@@ -188,6 +194,7 @@ namespace SahayataNidhi.Controllers.User
                     sno = (pageIndex * pageSize) + index + 1,
                     referenceNumber = application.ReferenceNumber,
                     serviceId = application.ServiceId,
+                    saveDate = application.CreatedAt,
                     customActions = actions
                 });
                 index++;
@@ -224,11 +231,12 @@ namespace SahayataNidhi.Controllers.User
             foreach (var item in history)
             {
                 string officerArea = GetOfficerAreaForHistory(item.LocationLevel!, item.LocationValue);
+                _logger.LogInformation($"------ OFFICER AREA: {officerArea} ---------------------");
 
                 data.Add(new
                 {
                     sno = index,
-                    actionTaker = item.ActionTaker + " " + item.ActionTaker != "Citizen" ? officerArea : "",
+                    actionTaker = item.ActionTaker != "Citizen" ? item.ActionTaker + " " + officerArea : item.ActionTaker,
                     actionTaken = item.ActionTaken! == "ReturnToCitizen" ? "Returned to citizen for correction" : item.ActionTaken,
                     actionTakenOn = item.ActionTakenDate,
                 });

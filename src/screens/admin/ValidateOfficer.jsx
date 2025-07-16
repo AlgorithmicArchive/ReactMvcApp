@@ -6,6 +6,7 @@ import MessageModal from "../../components/MessageModal";
 
 export default function ValidateOfficer() {
   const [modalOpen, setModalOpen] = useState(false);
+  const [responseMessage, setResponseMessage] = useState("");
   const actionFunctions = {
     ValidateOfficer: async (row) => {
       const userdata = row.original;
@@ -19,6 +20,7 @@ export default function ValidateOfficer() {
         );
 
         if (response.data.status) {
+          setResponseMessage(response.data.message);
           setModalOpen(true);
           // Optionally reload table
         } else {
@@ -52,7 +54,7 @@ export default function ValidateOfficer() {
       <MessageModal
         onClose={() => setModalOpen(false)}
         open={modalOpen}
-        message={"Officer Validated Successfully."}
+        message={responseMessage}
         type="success"
         title={"Officer Validation"}
         key={"Validation"}

@@ -11,11 +11,14 @@ import {
   Typography,
 } from "@mui/material";
 import FieldEditModal from "./FieldEditModal";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 // Function to normalize a field, preserving existing values
 const normalizeField = (field) => {
   const normalized = {
-    id: field.id || `field-${Date.now()}`,
+    id:
+      field.id ||
+      `field-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Ensure unique ID
     type: field.type || "text",
     label: field.label || "New Field",
     name: field.name || `NewField_${Date.now()}`,
@@ -87,7 +90,7 @@ const AdditionalFieldsModal = ({
 
   const addAdditionalField = () => {
     const newField = {
-      id: `field-${Date.now()}`,
+      id: `field-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Unique ID
       type: "text",
       label: "New Field",
       name: `NewField_${Date.now()}`,
@@ -179,6 +182,26 @@ const AdditionalFieldsModal = ({
     setNestedFieldToEdit(null);
   };
 
+  const onDragEnd = (result) => {
+    console.log("onDragEnd triggered:", result); // Debug log
+    const { source, destination, draggableId } = result;
+
+    if (!destination) {
+      console.log("No destination, drag cancelled");
+      return;
+    }
+
+    const fields = [...(localAdditionalFields[selectedOption] || [])];
+    const [removed] = fields.splice(source.index, 1);
+    fields.splice(destination.index, 0, removed);
+
+    setLocalAdditionalFields((prev) => ({
+      ...prev,
+      [selectedOption]: fields,
+    }));
+    console.log("Fields reordered:", fields);
+  };
+
   const handleSave = () => {
     const updatedAdditionalFields = normalizeAdditionalFields(
       localAdditionalFields
@@ -218,85 +241,122 @@ const AdditionalFieldsModal = ({
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
             Additional Fields for Option: {selectedOption}
           </Typography>
-          {(localAdditionalFields[selectedOption] || []).map((field) => (
-            <Box
-              key={field.id}
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 2,
-                mt: 1,
-                border: "1px solid #ccc",
-                padding: 1,
-                borderRadius: 1,
-              }}
-            >
-              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                <Typography variant="body2">{field.label}</Typography>
-                <Box>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => handleEditField(field)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => handleAddNestedFields(field)}
-                  >
-                    Add Nested Fields
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    color="error"
-                    onClick={() => removeAdditionalField(field.id)}
-                  >
-                    Remove
-                  </Button>
-                </Box>
-              </Box>
-              {field.additionalFields && (
-                <Box sx={{ marginLeft: 2 }}>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    Nested Additional Fields:
-                  </Typography>
-                  {Object.entries(field.additionalFields).map(
-                    ([option, nestedFields]) => (
-                      <Box key={option}>
-                        <Typography variant="body2" sx={{ fontWeight: "bold" }}>
-                          {option}:
-                        </Typography>
-                        {nestedFields.map((nestedField) => (
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId={selectedOption}>
+              {(provided) => (
+                <div ref={provided.innerRef} {...provided.droppableProps}>
+                  {(localAdditionalFields[selectedOption] || []).map(
+                    (field, index) => (
+                      <Draggable
+                        key={field.id}
+                        draggableId={field.id}
+                        index={index}
+                      >
+                        {(provided) => (
                           <Box
-                            key={nestedField.id}
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
                             sx={{
                               display: "flex",
-                              justifyContent: "space-between",
-                              marginLeft: 2,
+                              flexDirection: "column",
+                              gap: 2,
+                              mt: 1,
+                              border: "1px solid #ccc",
+                              padding: 1,
+                              borderRadius: 1,
+                              backgroundColor: "#fff",
+                              cursor: "move",
                             }}
                           >
-                            <Typography variant="body2">
-                              {nestedField.label}
-                            </Typography>
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              onClick={() => handleEditField(nestedField)}
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                              }}
                             >
-                              Edit
-                            </Button>
+                              <Typography variant="body2">
+                                {field.label}
+                              </Typography>
+                              <Box>
+                                <Button
+                                  variant="outlined"
+                                  size="small"
+                                  onClick={() => handleEditField(field)}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="outlined"
+                                  size="small"
+                                  onClick={() => handleAddNestedFields(field)}
+                                >
+                                  Add Nested Fields
+                                </Button>
+                                <Button
+                                  variant="outlined"
+                                  size="small"
+                                  color="error"
+                                  onClick={() =>
+                                    removeAdditionalField(field.id)
+                                  }
+                                >
+                                  Remove
+                                </Button>
+                              </Box>
+                            </Box>
+                            {field.additionalFields && (
+                              <Box sx={{ marginLeft: 2 }}>
+                                <Typography variant="body2" sx={{ mb: 1 }}>
+                                  Nested Additional Fields:
+                                </Typography>
+                                {Object.entries(field.additionalFields).map(
+                                  ([option, nestedFields]) => (
+                                    <Box key={option}>
+                                      <Typography
+                                        variant="body2"
+                                        sx={{ fontWeight: "bold" }}
+                                      >
+                                        {option}:
+                                      </Typography>
+                                      {nestedFields.map((nestedField) => (
+                                        <Box
+                                          key={nestedField.id}
+                                          sx={{
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            marginLeft: 2,
+                                          }}
+                                        >
+                                          <Typography variant="body2">
+                                            {nestedField.label}
+                                          </Typography>
+                                          <Button
+                                            variant="outlined"
+                                            size="small"
+                                            onClick={() =>
+                                              handleEditField(nestedField)
+                                            }
+                                          >
+                                            Edit
+                                          </Button>
+                                        </Box>
+                                      ))}
+                                    </Box>
+                                  )
+                                )}
+                              </Box>
+                            )}
                           </Box>
-                        ))}
-                      </Box>
+                        )}
+                      </Draggable>
                     )
                   )}
-                </Box>
+                  {provided.placeholder}
+                </div>
               )}
-            </Box>
-          ))}
+            </Droppable>
+          </DragDropContext>
           <Button
             variant="outlined"
             onClick={addAdditionalField}

@@ -270,7 +270,7 @@ export default function CreateWorkflow() {
     formdata.append("serviceId", selectedServiceId);
     formdata.append("workflowplayers", JSON.stringify(players));
     try {
-      const response = await fetch("/Base/WorkFlowPlayers", {
+      const response = await fetch("/Designer/WorkFlowPlayers", {
         method: "POST",
         body: formdata,
       });

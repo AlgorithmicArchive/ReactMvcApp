@@ -204,6 +204,28 @@ namespace SahayataNidhi.Controllers.Officer
             var serviceId = new SqlParameter("@ServiceId", ServiceId);
             List<CitizenApplication> response;
 
+            var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == ServiceId);
+            if (service == null)
+            {
+                return NotFound();
+            }
+
+            // Deserialize the OfficerEditableField JSON.
+            // Assuming the JSON is an array of objects.
+            var workflow = JsonConvert.DeserializeObject<List<dynamic>>(service.OfficerEditableField!);
+            if (workflow == null || workflow.Count == 0)
+            {
+                return Json(new { countList = new List<dynamic>(), canSanction = false });
+            }
+
+            // The JSON field names must match those in your stored JSON.
+            dynamic authorities = workflow.FirstOrDefault(p => p.designation == officerDetails.Role)!;
+            if (authorities == null)
+            {
+                return Json(new { countList = new List<dynamic>(), canSanction = false });
+            }
+
+
             if (type == "shifted")
             {
 
@@ -375,7 +397,8 @@ namespace SahayataNidhi.Controllers.Officer
                 data,
                 columns,
                 poolData,
-                totalRecords
+                totalRecords,
+                canSanction = (bool)authorities.canSanction
             });
         }
         [HttpGet]

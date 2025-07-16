@@ -295,110 +295,7 @@ namespace SahayataNidhi.Controllers
             return Json(new { status = true, services });
         }
 
-        [HttpPost]
-        public IActionResult FormElement([FromForm] IFormCollection form)
-        {
-            string serviceIdString = form["serviceId"].ToString();
-            string serviceName = form["serviceName"].ToString();
-            string serviceNameShort = form["serviceNameShort"].ToString();
-            string departmentName = form["departmentName"].ToString();
 
-            var formElement = form["formElement"].ToString();
-
-            if (!string.IsNullOrEmpty(serviceIdString))
-            {
-                int serviceId = Convert.ToInt32(serviceIdString);
-                var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
-
-                if (service != null)
-                {
-                    if (service.FormElement != formElement)
-                        service.FormElement = formElement;
-
-                    if (service.ServiceName != serviceName)
-                        service.ServiceName = serviceName;
-
-                    if (service.NameShort != serviceNameShort)
-                        service.NameShort = serviceNameShort;
-
-                    if (service.Department != departmentName)
-                        service.Department = departmentName;
-                }
-            }
-            else
-            {
-                var newService = new Service
-                {
-                    FormElement = formElement,
-                    ServiceName = serviceName,
-                    NameShort = serviceNameShort,
-                    Department = departmentName
-                };
-
-                dbcontext.Services.Add(newService);
-            }
-
-
-            dbcontext.SaveChanges();
-
-            return Json(new { status = true });
-        }
-
-        [HttpPost]
-        public IActionResult WorkFlowPlayers([FromForm] IFormCollection form)
-        {
-            string serviceIdString = form["serviceId"].ToString();
-            var workFlowPlayers = form["workflowplayers"].ToString();
-
-            if (!string.IsNullOrEmpty(serviceIdString))
-            {
-                int serviceId = Convert.ToInt32(serviceIdString);
-                var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
-                if (service != null)
-                {
-                    _logger.LogInformation("-----------INSIDE IF----------------");
-                    service.OfficerEditableField = workFlowPlayers;
-                    dbcontext.Services.Update(service);
-                }
-            }
-            else
-            {
-                var newService = new Service
-                {
-                    OfficerEditableField = workFlowPlayers
-                };
-                dbcontext.Services.Add(newService);
-            }
-
-            dbcontext.SaveChanges();
-
-            return Json(new { status = true });
-        }
-
-        public IActionResult GetFormElements(string serviceId)
-        {
-            // Fetch the service JSON string
-            var service = dbcontext.Services
-                .FirstOrDefault(s => s.ServiceId == Convert.ToInt32(serviceId));
-
-            if (service == null || string.IsNullOrWhiteSpace(service.FormElement))
-            {
-                return BadRequest(new { error = "Invalid serviceId or no form elements found." });
-            }
-
-            // Parse the JSON into a JToken
-            JToken root = JToken.Parse(service.FormElement);
-
-            // Extract all "name" values anywhere in the structure
-            List<string> allNames = root
-                .SelectTokens("$..name")   // recursive descent for every 'name' property
-                .Select(token => (string)token!)
-                .Where(name => !string.IsNullOrWhiteSpace(name))
-                .ToList();
-
-            // Return as JSON
-            return Json(new { names = allNames });
-        }
 
         [HttpGet]
         public IActionResult GetService()
@@ -446,8 +343,7 @@ namespace SahayataNidhi.Controllers
         public IActionResult IsDuplicateAccNo(string bankName, string ifscCode, string accNo, string applicationId)
         {
             // Input validation
-            if (string.IsNullOrEmpty(bankName) || string.IsNullOrEmpty(ifscCode) ||
-                string.IsNullOrEmpty(accNo))
+            if (string.IsNullOrEmpty(bankName) || string.IsNullOrEmpty(ifscCode) || string.IsNullOrEmpty(accNo))
             {
                 return Json(new { status = false });
             }
@@ -464,14 +360,31 @@ namespace SahayataNidhi.Controllers
                 .ToList();
 
             if (applications.Count == 0)
+            {
                 return Json(new { status = false });
-            else if (applications.Any(app => app.ReferenceNumber == applicationId))
+            }
+
+            // Exclude current application from the duplicates
+            var otherApplications = applications
+                .Where(app => string.IsNullOrWhiteSpace(applicationId) || app.ReferenceNumber != applicationId)
+                .ToList();
+
+            // If no other applications, then not a duplicate
+            if (otherApplications.Count == 0)
+            {
                 return Json(new { status = false });
-            else if (applications.Any(app => app.Status == "Rejected"))
-                return Json(new { status = false });
-            else
+            }
+
+            // If any of the other applications are NOT rejected, it's a duplicate
+            if (otherApplications.Any(app => app.Status != "Rejected"))
+            {
                 return Json(new { status = true });
+            }
+
+            // All are rejected → not considered duplicate
+            return Json(new { status = false });
         }
+
 
         [HttpPost]
         public IActionResult Validate([FromForm] IFormCollection file)
@@ -556,87 +469,6 @@ namespace SahayataNidhi.Controllers
 
 
         [HttpGet]
-        public IActionResult GetLetterDetails(int serviceId, string objField)
-        {
-            var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
-            if (service == null || string.IsNullOrWhiteSpace(service.Letters))
-            {
-                return NotFound("Service or Letters data not found.");
-            }
-
-            try
-            {
-                var json = JObject.Parse(service.Letters);
-
-                if (!json.TryGetValue(objField, out var requiredObj))
-                {
-                    return NotFound($"Field '{objField}' not found in Letters.");
-                }
-
-                return Json(new { requiredObj });
-            }
-            catch (JsonException ex)
-            {
-                return BadRequest($"Invalid JSON format: {ex.Message}");
-            }
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> SaveLetterDetails(int serviceId, string objField, string letterData)
-        {
-            // Find the service by serviceId
-            var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
-            if (service == null)
-            {
-                return NotFound(new { status = false, message = "Service not found." });
-            }
-
-            try
-            {
-                // Validate inputs
-                if (string.IsNullOrWhiteSpace(objField))
-                {
-                    return BadRequest(new { status = false, message = "Object field (objField) cannot be empty." });
-                }
-                if (string.IsNullOrWhiteSpace(letterData))
-                {
-                    return BadRequest(new { status = false, message = "Letter data cannot be empty." });
-                }
-
-                // Parse incoming letterData
-                var newJson = JObject.Parse(letterData);
-                if (newJson[objField] == null)
-                {
-                    return BadRequest(new { status = false, message = $"Invalid letter data: '{objField}' object required." });
-                }
-
-                // Parse existing Letters JSON or initialize a new JObject if null/empty
-                JObject existingJson = string.IsNullOrWhiteSpace(service.Letters)
-                    ? []
-                    : JObject.Parse(service.Letters);
-
-                // Update the specified object in the existing JSON, preserving other objects
-                existingJson[objField] = newJson[objField];
-
-                // Update the Letters field with the merged JSON
-                service.Letters = existingJson.ToString();
-                dbcontext.Services.Update(service);
-                await dbcontext.SaveChangesAsync();
-
-                return Json(new { status = true, message = $"{objField} letter updated successfully." });
-            }
-            catch (JsonException ex)
-            {
-                return BadRequest(new { status = false, message = $"Invalid JSON format: {ex.Message}" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, message = $"Error updating {objField} letter: {ex.Message}" });
-            }
-        }
-
-
-        [HttpGet]
         public IActionResult GetIFSCCode(string bankName, string branchName)
         {
             // Validate input parameters
@@ -682,313 +514,6 @@ namespace SahayataNidhi.Controllers
             }
         }
 
-        [HttpGet]
-        public IActionResult GetServicesDashboard(int pageIndex = 0, int pageSize = 10)
-        {
-            // Fetch all services from the database
-            var services = dbcontext.Services
-                                    .OrderBy(s => s.ServiceId)
-                                    .ToList();
-
-            var totalRecords = services.Count;
-
-            // Apply pagination
-            var pagedData = services
-                .Skip(pageIndex * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            // Define columns (Actions column can be added if needed)
-            var columns = new List<dynamic>
-            {
-                new { header = "S.No", accessorKey = "sno" },
-                new { header = "Service Name", accessorKey = "servicename" },
-                new { header = "Department", accessorKey = "department" },
-            };
-
-            // Prepare data
-            var data = new List<dynamic>();
-            int index = 0;
-
-            foreach (var item in pagedData)
-            {
-                var actions = new List<dynamic>
-                {
-                    new
-                    {
-                        id = (pageIndex * pageSize) + index + 1,
-                        tooltip = item.Active ? "Deactivate" : "Activate",
-                        color = "#F0C38E",
-                        actionFunction = "ToggleServiceActivation"
-                    }
-                };
-
-                data.Add(new
-                {
-                    sno = (pageIndex * pageSize) + index + 1,
-                    servicename = item.ServiceName,
-                    department = item.Department,
-                    serviceId = item.ServiceId,
-                    isActive = item.Active,
-                    customActions = actions,
-                });
-
-                index++;
-            }
-
-            return Json(new
-            {
-                data,
-                columns,
-                totalRecords
-            });
-        }
-
-
-
-        [HttpGet]
-        public IActionResult GetWebServicesDashboard(int pageIndex = 0, int pageSize = 10)
-        {
-            // Fetch all services from the database
-            var webServices = dbcontext.WebServices
-                                       .Include(ws => ws.Service) // Assuming navigation property
-                                       .ToList();
-
-            var totalRecords = webServices.Count;
-
-            var pagedData = webServices
-                .OrderBy(w => w.Id)
-                .Skip(pageIndex * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            // Define columns (Actions column last)
-            var columns = new List<dynamic>
-            {
-                new { header = "S.No", accessorKey = "sno" },
-                new { header = "Service Name", accessorKey = "servicename" },
-                new { header = "Web Service Name", accessorKey = "webservicename" },
-            };
-
-            // Prepare data
-            var data = new List<dynamic>();
-            int index = 0;
-
-            foreach (var item in pagedData)
-            {
-                var serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == item.ServiceId)?.ServiceName ?? "N/A";
-
-                var actions = new List<dynamic>
-                {
-                    new
-                    {
-                        id = (pageIndex * pageSize) + index + 1,
-                        tooltip = item.IsActive ? "Deactivate" : "Activate",
-                        color = "#F0C38E",
-                        actionFunction = "ToggleWebServiceActivation"
-                    }
-                };
-
-                data.Add(new
-                {
-                    sno = (pageIndex * pageSize) + index + 1,
-                    servicename = serviceName,
-                    webservicename = item.WebServiceName,
-                    customActions = actions,
-                    webserviceId = item.Id,
-                    isActive = item.IsActive
-                });
-
-                index++;
-            }
-
-            return Json(new
-            {
-                data,
-                columns,
-                totalRecords
-            });
-        }
-
-
-
-        [HttpPost]
-        public IActionResult ToggleServiceActive([FromForm] IFormCollection form)
-        {
-            int serviceId = Convert.ToInt32(form["serviceId"].ToString());
-            bool active = Convert.ToBoolean(form["active"]);
-
-            _logger.LogInformation($"---------- Service ID: {serviceId}   IS Active: {active}-----------------------");
-            var svc = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
-            if (svc == null)
-                return Json(new { status = false, message = "Not found" });
-
-            svc.Active = active;
-            dbcontext.SaveChanges();
-            return Json(new { status = true, active = svc.Active });
-        }
-
-        [HttpPost]
-        [Route("Base/ToggleWebServiceActive")]
-        public IActionResult ToggleWebServiceActive([FromForm] IFormCollection form)
-        {
-            try
-            {
-                int webserviceId = Convert.ToInt32(form["webserviceId"].ToString());
-                bool active = Convert.ToBoolean(form["active"]);
-
-                _logger.LogInformation($"---------- WebService ID: {webserviceId}   Is Active: {active}-----------------------");
-
-                var svc = dbcontext.WebServices.FirstOrDefault(s => s.Id == webserviceId);
-                if (svc == null)
-                {
-                    return Json(new { status = false, message = "Web service not found" });
-                }
-
-                if (active)
-                {
-                    // Check for other active web services for the same ServiceId
-                    var otherActiveWebService = dbcontext.WebServices
-                        .FirstOrDefault(ws => ws.ServiceId == svc.ServiceId && ws.Id != webserviceId && ws.IsActive);
-
-                    if (otherActiveWebService != null)
-                    {
-                        var serviceName = dbcontext.Services
-                            .FirstOrDefault(s => s.ServiceId == svc.ServiceId)?.ServiceName ?? "Unknown";
-                        return Json(new
-                        {
-                            status = false,
-                            message = $"Another web service (ID: {otherActiveWebService.Id}) is already active for service '{serviceName}'. Please deactivate it first."
-                        });
-                    }
-                }
-
-                // Update the requested web service
-                svc.IsActive = active;
-                svc.UpdatedAt = DateTime.UtcNow.ToString("o");
-                dbcontext.SaveChanges();
-
-                return Json(new
-                {
-                    status = true,
-                    active = svc.IsActive,
-                    message = $"Web service {(active ? "activated" : "deactivated")} successfully"
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error toggling web service activation");
-                return Json(new { status = false, message = $"Error toggling web service: {ex.Message}" });
-            }
-        }
-
-        [HttpGet]
-        [Route("Base/GetWebService/{serviceId}")]
-        public IActionResult GetWebService(int serviceId)
-        {
-            try
-            {
-                var webService = dbcontext.WebServices
-                    .FirstOrDefault(ws => ws.ServiceId == serviceId && ws.IsActive);
-
-                if (webService == null)
-                {
-                    return Json(new { status = false, message = "No configuration found for the specified service" });
-                }
-
-                return Json(new
-                {
-                    status = true,
-                    config = new
-                    {
-                        webService.Id, // Added WebServiceId
-                        webService.ServiceId,
-                        webService.WebServiceName,
-                        webService.ApiEndPoint,
-                        webService.OnAction,
-                        webService.FieldMappings,
-                        webService.CreatedAt,
-                        webService.UpdatedAt
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { status = false, message = $"Error fetching configuration: {ex.Message}" });
-            }
-        }
-
-        [HttpPost]
-        [Route("Base/SaveWebService")]
-        public IActionResult SaveWebService([FromForm] IFormCollection form)
-        {
-            try
-            {
-                var webServiceId = form["webServiceId"].ToString();
-                var serviceId = form["serviceId"];
-                var webServiceName = form["webServiceName"];
-                var apiEndPoint = form["apiEndPoint"].ToString();
-                var onAction = form["onAction"].ToString(); // JSON string
-                var fieldMappings = form["fieldMappings"].ToString(); // JSON string
-                var createdAt = form["createdAt"].ToString();
-                var updatedAt = form["updatedAt"].ToString();
-
-                // Validate serviceId
-                int parsedWebServiceId = Convert.ToInt32(webServiceId);
-
-                WebService webService;
-
-                // Check if webServiceId is provided and valid
-                if (!string.IsNullOrEmpty(webServiceId))
-                {
-                    // Try to find existing web service by WebServiceId
-                    webService = dbcontext.WebServices
-                        .FirstOrDefault(ws => ws.Id == parsedWebServiceId && ws.IsActive)!;
-
-                    if (webService != null)
-                    {
-                        webService.WebServiceName = webServiceName;
-                        webService.ApiEndPoint = apiEndPoint;
-                        webService.OnAction = onAction;
-                        webService.FieldMappings = fieldMappings;
-                        webService.UpdatedAt = updatedAt; // Update timestamp
-                        // CreatedAt remains unchanged
-                    }
-                    else
-                    {
-                        return Json(new { status = false, message = "Web service not found for the provided WebServiceId" });
-                    }
-                }
-                else
-                {
-                    // Create new web service
-                    webService = new WebService
-                    {
-                        WebServiceName = webServiceName,
-                        ApiEndPoint = apiEndPoint,
-                        OnAction = onAction,
-                        FieldMappings = fieldMappings,
-                        CreatedAt = createdAt,
-                        UpdatedAt = updatedAt,
-                        IsActive = true
-                    };
-                    dbcontext.WebServices.Add(webService);
-                }
-
-                dbcontext.SaveChanges();
-
-                return Json(new
-                {
-                    status = true,
-                    message = webServiceId != "" ? "Web service configuration updated successfully" : "Web service configuration saved successfully",
-                    webServiceId = webService.Id,
-                });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { status = false, message = "Failed to save configuration", error = ex.Message });
-            }
-        }
 
 
         [HttpGet]

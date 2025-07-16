@@ -100,7 +100,7 @@ export async function duplicateAccountNumber(
         ? formData["Bank Details"][2].value
         : formData.IfscCode;
     const res = await fetch(
-      `/Base/IsDuplicateAccNo?bankName=${bankName}&ifscCode=${ifscCode}accNo=${value}&applicationId=${referenceNumber}`
+      `/Base/IsDuplicateAccNo?bankName=${bankName}&ifscCode=${ifscCode}&accNo=${value}&applicationId=${referenceNumber}`
     );
     const data = await res.json();
     if (data.status) {
@@ -163,6 +163,29 @@ export async function validateFile(field, value) {
   }
 }
 
+export function range(field, value) {
+  if (value < field.minLength || value > field.maxLength) {
+    return `The value must be between ${field.minLength} and ${field.maxLength}.`;
+  }
+}
+
+export function isDateAfterCurrentDate(field, value) {
+  console.log(field, value);
+
+  const inputDate = new Date(value);
+  const currentDate = new Date();
+
+  // Zero out time to compare only dates
+  inputDate.setHours(0, 0, 0, 0);
+  currentDate.setHours(0, 0, 0, 0);
+
+  if (inputDate <= currentDate) {
+    return `${field.label || "Date"} must be after the current date.`;
+  }
+
+  return true;
+}
+
 // Transformation Function
 
 export function CapitalizeAlphabets(field, value) {
@@ -203,6 +226,7 @@ export const runValidations = async (
     if (typeof fun !== "function") continue;
 
     try {
+      console.log("Functions", field.validationFunctions);
       let error = await fun(field, value || "", formData, referenceNumber);
       if (error !== true) return error;
     } catch (err) {
@@ -233,6 +257,8 @@ const ValidationFunctionsList = {
   duplicateAccountNumber,
   validateFile,
   validateIfscCode,
+  range,
+  isDateAfterCurrentDate,
 };
 
 export const validationFunctionsList = [
@@ -246,6 +272,8 @@ export const validationFunctionsList = [
   { id: "duplicateAccountNumber", label: "Duplicate Account Number" },
   { id: "validateFile", label: "Validate File" },
   { id: "validateIfscCode", label: "Validate IFSC" },
+  { id: "range", label: "Range Value" },
+  { id: "isDateAfterCurrentDate", label: "After Current Date" },
 ];
 
 export const transformationFunctionsList = [
