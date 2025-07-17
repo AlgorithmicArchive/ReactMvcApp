@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace SahayataNidhi.Models.Entities;
 
-public partial class File
+public partial class UploadedFile
 {
     public int FileId { get; set; }
 

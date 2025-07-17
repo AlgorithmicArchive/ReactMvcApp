@@ -51,7 +51,7 @@ namespace SendEmails
                         foreach (var path in attachmentPaths)
                         {
                             _logger.LogInformation($"---------full Path:{path}------------------");
-                            if (File.Exists(path))
+                            if (System.IO.File.Exists(path))
                             {
                                 var attachment = new Attachment(path);
                                 mailMessage.Attachments.Add(attachment);

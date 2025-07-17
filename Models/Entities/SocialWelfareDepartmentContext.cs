@@ -31,8 +31,6 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     public virtual DbSet<EmailSetting> EmailSettings { get; set; }
 
-    public virtual DbSet<File> Files { get; set; }
-
     public virtual DbSet<HalqaPanchayat> HalqaPanchayats { get; set; }
 
     public virtual DbSet<Muncipality> Muncipalities { get; set; }
@@ -50,6 +48,8 @@ public partial class SocialWelfareDepartmentContext : DbContext
     public virtual DbSet<Tehsil> Tehsils { get; set; }
 
     public virtual DbSet<Tswotehsil> Tswotehsils { get; set; }
+
+    public virtual DbSet<UploadedFile> UploadedFiles { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
 
@@ -231,15 +231,6 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.SmtpServer)
                 .HasMaxLength(255)
                 .IsUnicode(false);
-        });
-
-        modelBuilder.Entity<File>(entity =>
-        {
-            entity.Property(e => e.FileName).HasMaxLength(255);
-            entity.Property(e => e.FileType).HasMaxLength(100);
-            entity.Property(e => e.UploadDate)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
         });
 
         modelBuilder.Entity<HalqaPanchayat>(entity =>
@@ -462,6 +453,17 @@ public partial class SocialWelfareDepartmentContext : DbContext
                 .HasMaxLength(50)
                 .IsUnicode(false)
                 .HasColumnName("tswoOfficeName");
+        });
+
+        modelBuilder.Entity<UploadedFile>(entity =>
+        {
+            entity.HasKey(e => e.FileId).HasName("PK_Files");
+
+            entity.Property(e => e.FileName).HasMaxLength(255);
+            entity.Property(e => e.FileType).HasMaxLength(100);
+            entity.Property(e => e.UploadDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
         });
 
         modelBuilder.Entity<User>(entity =>
