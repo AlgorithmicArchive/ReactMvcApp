@@ -170,8 +170,6 @@ export function range(field, value) {
 }
 
 export function isDateAfterCurrentDate(field, value) {
-  console.log(field, value);
-
   const inputDate = new Date(value);
   const currentDate = new Date();
 
@@ -226,7 +224,6 @@ export const runValidations = async (
     if (typeof fun !== "function") continue;
 
     try {
-      console.log("Functions", field.validationFunctions);
       let error = await fun(field, value || "", formData, referenceNumber);
       if (error !== true) return error;
     } catch (err) {

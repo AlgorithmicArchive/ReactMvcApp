@@ -413,8 +413,11 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
     ) {
       // Fetch the image from the URL and convert it to a File object
       setDefaultFile(initialData.ApplicantImage);
+    } else {
+      const flatDetails = flattenFormDetails(data);
+      setDefaultFile(flatDetails.ApplicantImage);
     }
-  }, [applicantImageFile, initialData, mode, setValue]);
+  }, [applicantImageFile, initialData, mode, data, setValue]);
 
   useEffect(() => {
     async function loadForm() {
@@ -472,8 +475,28 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
           reset(resetData);
           setAdditionalDetails(additionalDetails);
         } else if (data !== null && data !== undefined) {
-          setInitialData(data);
-          reset(data);
+          const flatDetails = flattenFormDetails(data);
+          const resetData = {
+            ...flatDetails,
+            ...Object.keys(flatDetails).reduce((acc, key) => {
+              if (
+                flatDetails[key] &&
+                typeof flatDetails[key] === "object" &&
+                "selected" in flatDetails[key]
+              ) {
+                acc[`${key}_select`] = flatDetails[key].selected;
+                acc[`${key}_file`] = flatDetails[key].file;
+                // Set OtherDocument from Other enclosure's selected value
+                if (key === "Other") {
+                  acc["OtherDocument"] = flatDetails[key].selected || "";
+                }
+              }
+              return acc;
+            }, {}),
+          };
+          setInitialData(flatDetails);
+          setAreas(data);
+          reset(resetData);
         }
 
         if (data != null) {
@@ -756,13 +779,6 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
           presentField.name
         )
       ) {
-        console.log(
-          "Present Field",
-          presentField.name,
-          "Field Value",
-          fieldValue
-        );
-
         await handleAreaChange(
           permanentSectionIndex,
           permanentField,
@@ -881,7 +897,6 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
 
   const handleAreaChange = async (sectionIndex, field, value) => {
     try {
-      console.log("HERE ", field);
       // 🧠 Determine which AddressType to use based on field name
       let addressTypeKey = "";
       if (field.name.startsWith("Present")) {
@@ -937,6 +952,7 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
       ];
 
       const match = fieldNames.find((f) => f.name === field.name);
+      console.log("Match", match);
       if (!match) {
         console.warn(`Field "${field.name}" not found in fieldNames.`);
         return;
