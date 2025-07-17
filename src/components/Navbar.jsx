@@ -2,6 +2,7 @@ import React, { useContext, useState, useEffect } from "react";
 import { Navbar, Nav, NavDropdown, Container } from "react-bootstrap";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { UserContext } from "../UserContext";
+import TokenTimer from "./TokenTimer";
 
 const MyNavbar = () => {
   const [expanded, setExpanded] = useState(false);
@@ -90,7 +91,6 @@ const MyNavbar = () => {
               }}
               className="d-inline-block align-top"
             />
-
             <span className="ms-2 fw-bold" style={{ color: "#333333" }}>
               ISSS Pension
             </span>
@@ -176,7 +176,7 @@ const MyNavbar = () => {
                       isSmallScreen
                         ? undefined
                         : hoveredItem === "application-status"
-                    } // Disable show on small screens
+                    }
                   >
                     <NavDropdown.Item
                       onClick={() => handleNavigate("/user/initiated")}
@@ -215,37 +215,6 @@ const MyNavbar = () => {
                 >
                   Reports
                 </Nav.Link>
-
-                {/* {designation.toLowerCase().includes("director") && (
-                  <div
-                    onMouseEnter={() => handleMouseEnter("bank-file")}
-                    onMouseLeave={handleMouseLeave}
-                  >
-                    <NavDropdown
-                      title={
-                        <span style={getNavItemStyle("bank-file")}>
-                          Manage Bank File
-                        </span>
-                      }
-                      id="manage-bank-file"
-                      show={
-                        isSmallScreen ? undefined : hoveredItem === "bank-file"
-                      }
-                    >
-                      <NavDropdown.Item
-                        onClick={() => handleNavigate("/officer/bankFile")}
-                      >
-                        Create Bank File
-                      </NavDropdown.Item>
-                      <NavDropdown.Item
-                        onClick={() => handleNavigate("/officer/responseFile")}
-                      >
-                        Check Response File
-                      </NavDropdown.Item>
-                    </NavDropdown>
-                  </div>
-                )} */}
-
                 <div
                   onMouseEnter={() => handleMouseEnter("dsc-management")}
                   onMouseLeave={handleMouseLeave}
@@ -285,7 +254,6 @@ const MyNavbar = () => {
                 >
                   Dashboard
                 </Nav.Link>
-
                 <Nav.Link
                   as={Link}
                   to="/admin/reports"
@@ -350,7 +318,6 @@ const MyNavbar = () => {
                 >
                   Dynamic Form
                 </Nav.Link>
-
                 <div
                   onMouseEnter={() => handleMouseEnter("designer-create")}
                   onMouseLeave={handleMouseLeave}
@@ -404,9 +371,9 @@ const MyNavbar = () => {
           </Nav>
 
           {userType && verified && (
-            <Nav className="ms-auto d-flex align-items-center">
+            <Nav className="ms-auto d-flex align-items-center gap-2">
               <span style={{ color: "#333333" }}>{username}</span>
-
+              <TokenTimer />
               <div
                 onMouseEnter={() => handleMouseEnter("profile")}
                 onMouseLeave={handleMouseLeave}

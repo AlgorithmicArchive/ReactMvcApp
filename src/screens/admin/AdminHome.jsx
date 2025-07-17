@@ -4,9 +4,10 @@ import {
   CardContent,
   Typography,
   CircularProgress,
+  Fade,
 } from "@mui/material";
 import { Container, Row, Col } from "react-bootstrap";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import PeopleIcon from "@mui/icons-material/People";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AssignmentIcon from "@mui/icons-material/Assignment";
@@ -15,10 +16,85 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axiosInstance from "../../axiosConfig";
 import ServerSideTable from "../../components/ServerSideTable";
-import { set } from "react-hook-form";
+import Chart from "chart.js/auto";
+
+// Define card data with colors and types
+const cardData = [
+  {
+    title: "Total Registered Officers",
+    icon: <PeopleIcon />,
+    color: "#1976d2",
+    dataKey: "totalOfficers",
+    type: "Officer",
+  },
+  {
+    title: "Total Registered Citizens",
+    icon: <PersonAddIcon />,
+    color: "#dc004e",
+    dataKey: "totalRegisteredUsers",
+    type: "Citizen",
+  },
+  {
+    title: "Total Applications Received",
+    icon: <AssignmentIcon />,
+    color: "#f57c00",
+    dataKey: "totalApplicationsSubmitted",
+    type: "Applications",
+  },
+  {
+    title: "Total Services",
+    icon: <MiscellaneousServicesIcon />,
+    color: "#388e3c",
+    dataKey: "totalServices",
+    type: "Services",
+  },
+];
+
+// DashboardChart component
+const DashboardChart = ({ data }) => {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    if (canvasRef.current) {
+      const ctx = canvasRef.current.getContext("2d");
+      const chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: ["Officers", "Citizens", "Applications", "Services"],
+          datasets: [
+            {
+              label: "Total",
+              data: [
+                data.totalOfficers,
+                data.totalRegisteredUsers,
+                data.totalApplicationsSubmitted,
+                data.totalServices,
+              ],
+              backgroundColor: ["#1976d2", "#dc004e", "#f57c00", "#388e3c"],
+              borderColor: ["#1976d2", "#dc004e", "#f57c00", "#388e3c"],
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+            },
+          },
+        },
+      });
+
+      return () => {
+        chart.destroy();
+      };
+    }
+  }, [data]);
+
+  return <canvas ref={canvasRef} style={{ maxWidth: "100%" }} />;
+};
 
 export default function AdminHome() {
-  // State for dashboard data, loading, and error
   const [dashboardData, setDashboardData] = useState({
     totalOfficers: 0,
     totalRegisteredUsers: 0,
@@ -30,6 +106,7 @@ export default function AdminHome() {
   const [showTable, setShowTable] = useState(false);
   const [url, setUrl] = useState("");
   const [listType, setListType] = useState("");
+  const tableRef = useRef(null);
 
   const actionFunctions = {
     ValidateOfficer: async (row) => {
@@ -56,7 +133,6 @@ export default function AdminHome() {
     },
   };
 
-  // Fetch dashboard data on component mount
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
@@ -82,19 +158,24 @@ export default function AdminHome() {
     fetchDashboardData();
   }, []);
 
-  const handleCardClick = async (type) => {
-    console.log(type);
-    if (type == "Officer") {
+  const handleCardClick = (type) => {
+    if (type === "Officer") {
       setUrl("/Admin/GetOfficersList");
-    } else if (type == "Citizen") {
+    } else if (type === "Citizen") {
       setUrl("/Admin/GetUsersList");
-    } else if (type == "Applications") {
+    } else if (type === "Applications") {
       setUrl("/Admin/GetApplicationsList");
-    } else if (type == "Services") {
+    } else if (type === "Services") {
       setUrl("/Admin/GetServices");
     }
     setListType(type);
     setShowTable(true);
+    // Scroll to table
+    setTimeout(() => {
+      if (tableRef.current) {
+        tableRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+    }, 100); // Small delay to ensure table is rendered
   };
 
   const cardStyles = {
@@ -110,7 +191,6 @@ export default function AdminHome() {
 
   const iconStyles = {
     fontSize: 40,
-    color: "#1976d2",
     mb: 1,
   };
 
@@ -119,7 +199,6 @@ export default function AdminHome() {
       sx={{
         width: "100%",
         minHeight: "100vh",
-        bgcolor: "#f8f9fa",
         py: 4,
       }}
     >
@@ -137,78 +216,66 @@ export default function AdminHome() {
             {error}
           </Typography>
         ) : (
-          <Row xs={1} md={2} lg={4} className="g-4">
-            <Col>
-              <Card sx={cardStyles} onClick={() => handleCardClick("Officer")}>
-                <CardContent>
-                  <PeopleIcon sx={iconStyles} />
-                  <Typography variant="h6" color="text.secondary">
-                    Total Registered Officers
+          <Fade in={!loading}>
+            <Box>
+              <Row xs={1} md={2} lg={4} className="g-4">
+                {cardData.map((card, index) => (
+                  <Col key={index}>
+                    <Card
+                      sx={{
+                        ...cardStyles,
+                        transition: "transform 0.2s",
+                        "&:hover": {
+                          transform: "scale(1.05)",
+                          boxShadow: 6,
+                        },
+                      }}
+                      onClick={() => handleCardClick(card.type)}
+                    >
+                      <CardContent>
+                        {React.cloneElement(card.icon, {
+                          sx: { ...iconStyles, color: card.color },
+                        })}
+                        <Typography variant="h6" color="text.secondary">
+                          {card.title}
+                        </Typography>
+                        <Typography variant="h4" sx={{ color: card.color }}>
+                          {dashboardData[card.dataKey]}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+              <Box sx={{ my: 4 }}>
+                <Card sx={{ p: 2 }}>
+                  <Typography variant="h6" align="center" gutterBottom>
+                    Dashboard Overview
                   </Typography>
-                  <Typography variant="h4" color="primary">
-                    {dashboardData.totalOfficers}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Col>
-            <Col>
-              <Card sx={cardStyles} onClick={() => handleCardClick("Citizen")}>
-                <CardContent>
-                  <PersonAddIcon sx={iconStyles} />
-                  <Typography variant="h6" color="text.secondary">
-                    Total Registered Users
-                  </Typography>
-                  <Typography variant="h4" color="primary">
-                    {dashboardData.totalRegisteredUsers}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Col>
-            <Col>
-              <Card
-                sx={cardStyles}
-                onClick={() => handleCardClick("Applications")}
-              >
-                <CardContent>
-                  <AssignmentIcon sx={iconStyles} />
-                  <Typography variant="h6" color="text.secondary">
-                    Total Applications Submitted
-                  </Typography>
-                  <Typography variant="h4" color="primary">
-                    {dashboardData.totalApplicationsSubmitted}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Col>
-            <Col>
-              <Card sx={cardStyles} onClick={() => handleCardClick("Services")}>
-                <CardContent>
-                  <MiscellaneousServicesIcon sx={iconStyles} />
-                  <Typography variant="h6" color="text.secondary">
-                    Total Services
-                  </Typography>
-                  <Typography variant="h4" color="primary">
-                    {dashboardData.totalServices}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Col>
-          </Row>
+                  <DashboardChart data={dashboardData} />
+                </Card>
+              </Box>
+            </Box>
+          </Fade>
+        )}
+
+        {showTable && (
+          <Fade in={showTable}>
+            <Box ref={tableRef} sx={{ padding: 2, marginTop: 4 }}>
+              <Typography variant="h5" gutterBottom>
+                List of {listType}
+              </Typography>
+              <ServerSideTable
+                key={listType}
+                url={url}
+                extraParams={{}}
+                actionFunctions={{}}
+              />
+            </Box>
+          </Fade>
         )}
       </Container>
 
-      {showTable && (
-        <Box sx={{ padding: 5, marginTop: 5 }}>
-          <ServerSideTable
-            key={listType}
-            url={url}
-            extraParams={{}}
-            actionFunctions={{}}
-          />
-        </Box>
-      )}
-
-      {/* Toast Container for Error Notifications */}
       <ToastContainer />
     </Box>
   );

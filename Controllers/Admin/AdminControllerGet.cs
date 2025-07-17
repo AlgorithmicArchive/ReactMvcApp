@@ -330,14 +330,13 @@ namespace SahayataNidhi.Controllers.Admin
 
             foreach (var item in pagedData)
             {
-                var dataDict = new Dictionary<string, object>(); // NEW per row
+                var dataDict = new Dictionary<string, object>();
 
                 dataDict["ReferenceNumber"] = item.ReferenceNumber!;
 
                 // Add column for ReferenceNumber once
                 if (columnsSet.Add("ReferenceNumber"))
                     columns.Insert(0, new { accessorKey = "ReferenceNumber", header = "Reference Number" });
-
 
                 if (!string.IsNullOrWhiteSpace(item.FormDetails))
                 {
@@ -349,7 +348,8 @@ namespace SahayataNidhi.Controllers.Admin
                         {
                             string? accessorKey = field["name"]?.ToString();
                             string? header = field["label"]?.ToString();
-                            if (accessorKey!.Contains("Tehsil") || accessorKey.Contains("District") || accessorKey.Contains("Block") || accessorKey!.Contains("Muncipality") || accessorKey.Contains("WardNo") || accessorKey.Contains("Village"))
+                            if (accessorKey!.Contains("Tehsil") || accessorKey.Contains("District") || accessorKey.Contains("Block") ||
+                                accessorKey!.Contains("Muncipality") || accessorKey.Contains("WardNo") || accessorKey.Contains("Village"))
                             {
                                 field["value"] = GetAreaName(Convert.ToInt32(field["value"]), accessorKey);
                             }
@@ -360,7 +360,7 @@ namespace SahayataNidhi.Controllers.Admin
                                 if (field["value"] != null)
                                     dataDict[accessorKey] = field["value"]!;
                                 else if (field["File"] != null)
-                                    dataDict[accessorKey] = field["File"]!;
+                                    dataDict[accessorKey] = System.IO.Path.GetFileName(field["File"]!.ToString());
 
                                 // Add column if not already added
                                 if (columnsSet.Add(accessorKey))
@@ -374,12 +374,13 @@ namespace SahayataNidhi.Controllers.Admin
                                         string? afKey = af["name"]?.ToString();
                                         string? afLabel = af["label"]?.ToString();
 
-                                        if (afKey!.Contains("Tehsil") || afKey.Contains("District") || afKey.Contains("Block") || afKey!.Contains("Muncipality") || afKey.Contains("WardNo") || afKey.Contains("Village"))
+                                        if (afKey!.Contains("Tehsil") || afKey.Contains("District") || afKey.Contains("Block") ||
+                                            afKey!.Contains("Muncipality") || afKey.Contains("WardNo") || afKey.Contains("Village"))
                                         {
                                             af["value"] = GetAreaName(Convert.ToInt32(af["value"]), afKey);
                                         }
 
-                                        var afValue = af["value"] ?? af["File"];
+                                        var afValue = af["value"] ?? (af["File"] != null ? System.IO.Path.GetFileName(af["File"]!.ToString()) : null);
 
                                         if (!string.IsNullOrWhiteSpace(afKey) && !string.IsNullOrWhiteSpace(afLabel))
                                         {
@@ -391,13 +392,11 @@ namespace SahayataNidhi.Controllers.Admin
                                     }
                                 }
                             }
-
-
                         }
                     }
                 }
 
-                data.Add(dataDict); // Add each row separately
+                data.Add(dataDict);
             }
 
             return Json(new

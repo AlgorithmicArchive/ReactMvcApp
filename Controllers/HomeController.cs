@@ -4,6 +4,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Data.SqlClient;
@@ -449,7 +450,7 @@ namespace SahayataNidhi.Controllers
                 var tokenDescriptor = new SecurityTokenDescriptor
                 {
                     Subject = new ClaimsIdentity(claims),
-                    Expires = DateTime.UtcNow.AddDays(30), // Token expiry
+                    Expires = DateTime.UtcNow.AddMinutes(30), // Token expiry
                     SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
                     Issuer = _configuration["JWT:Issuer"],
                     Audience = _configuration["JWT:Audience"]
@@ -465,6 +466,28 @@ namespace SahayataNidhi.Controllers
             {
                 return Json(new { status = false, response = "Invalid Username or Password." });
             }
+        }
+
+        [HttpGet]
+        [Authorize] // Requires a valid JWT token
+        public IActionResult ValidateToken()
+        {
+            // If the request reaches here, the token is valid (due to [Authorize])
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var username = User.FindFirst(ClaimTypes.Name)?.Value;
+            var userType = User.FindFirst(ClaimTypes.Role)?.Value;
+            var profile = User.FindFirst("Profile")?.Value;
+            var designation = User.FindFirst("Designation")?.Value;
+
+            return Json(new
+            {
+                status = true,
+                userId,
+                username,
+                userType,
+                profile,
+                designation
+            });
         }
 
         [HttpPost]

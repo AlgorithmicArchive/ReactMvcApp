@@ -38,9 +38,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", builder =>
     {
-        builder.AllowAnyOrigin()   // Allow any origin (use AllowSpecificOrigins for specific origins)
-               .AllowAnyMethod()   // Allow any HTTP method (GET, POST, etc.)
-               .AllowAnyHeader();  // Allow any headers
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
     });
 });
 
@@ -49,7 +49,6 @@ var jwtSecretKey = builder.Configuration.GetValue<string>("JWT:Secret");
 var key = Encoding.ASCII.GetBytes(jwtSecretKey!);
 builder.Services.AddAuthentication(options =>
 {
-    // Default authentication schemes
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
@@ -63,10 +62,10 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = builder.Configuration["JWT:Issuer"],
         ValidAudience = builder.Configuration["JWT:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(key)
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ClockSkew = TimeSpan.Zero // Disable clock skew for strict expiration
     };
 
-    // Add event to check token validation
     options.Events = new JwtBearerEvents
     {
         OnTokenValidated = context =>
@@ -117,17 +116,12 @@ app.UseStaticFiles(new StaticFileOptions
 {
     OnPrepareResponse = ctx =>
     {
-        // Allow CORS for all static files
         ctx.Context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
-
         var fileExtension = Path.GetExtension(ctx.File.Name).ToLower();
-
-        // Handle PDFs: Set Content-Disposition to inline
         if (fileExtension == ".pdf")
         {
             ctx.Context.Response.Headers.Append("Content-Disposition", "inline");
         }
-        // Handle Images: Ensure no Content-Disposition is set
         else if (new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg" }.Contains(fileExtension))
         {
             ctx.Context.Response.Headers.Append("Content-Type", $"image/{fileExtension.TrimStart('.')}");
@@ -141,14 +135,12 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Map SignalR hub route
 app.MapHub<ProgressHub>("/progressHub");
 
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-// Add fallback route for React
 app.MapFallbackToController("Index", "Home");
 
 app.Run();
