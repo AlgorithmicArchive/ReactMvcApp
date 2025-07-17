@@ -31,6 +31,8 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     public virtual DbSet<EmailSetting> EmailSettings { get; set; }
 
+    public virtual DbSet<File> Files { get; set; }
+
     public virtual DbSet<HalqaPanchayat> HalqaPanchayats { get; set; }
 
     public virtual DbSet<Muncipality> Muncipalities { get; set; }
@@ -229,6 +231,15 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.SmtpServer)
                 .HasMaxLength(255)
                 .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<File>(entity =>
+        {
+            entity.Property(e => e.FileName).HasMaxLength(255);
+            entity.Property(e => e.FileType).HasMaxLength(100);
+            entity.Property(e => e.UploadDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
         });
 
         modelBuilder.Entity<HalqaPanchayat>(entity =>

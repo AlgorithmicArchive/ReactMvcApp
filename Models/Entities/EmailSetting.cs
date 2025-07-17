@@ -17,5 +17,5 @@ public partial class EmailSetting
 
     public string Password { get; set; } = null!;
 
-    public string? Templates { get; set; } = "{}";
+    public string? Templates { get; set; }
 }
