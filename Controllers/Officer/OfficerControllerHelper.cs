@@ -138,6 +138,8 @@ namespace SahayataNidhi.Controllers.Officer
         [HttpPost]
         public async Task<IActionResult> UpdatePdf([FromForm] IFormCollection form)
         {
+            _logger.LogInformation($"----- Form: {form}  ApplicationID: {form["applicationId"]}-----------");
+
             if (form == null || !form.Files.Any() || string.IsNullOrEmpty(form["applicationId"]))
             {
                 return BadRequest(new { status = false, response = "Missing form data." });

@@ -58,10 +58,11 @@ export default function Initiated() {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        paddingBottom: 5,
+        padding: 5,
+        width: "100%",
       }}
     >
-      <Box sx={{ width: { xs: "100%", md: "80%" } }}>
+      <Box sx={{ width: { xs: "100%", lg: "90%" } }}>
         <ServerSideTable
           url="/User/GetInitiatedApplications"
           extraParams={{}}

@@ -175,7 +175,7 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
         BarcodeQRCode qrCode = new BarcodeQRCode(qrContent);
         PdfFormXObject qrXObject = qrCode.CreateFormXObject(ColorConstants.BLACK, pdf);
         Image qrImage = new Image(qrXObject)
-            .ScaleToFit(200, 200) // Set desired QR code size (200x200 points)
+            .ScaleToFit(100, 100) // Set desired QR code size (200x200 points)
             .SetFixedPosition(30, 30); // Position at bottom-left (x=30, y=30)
 
         // Add QR code to the document

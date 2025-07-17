@@ -140,17 +140,11 @@ const ServerSideTable = ({
       setRowSelection({});
     }
   };
-  console.log(
-    "Can Sanction",
-    canSanction,
-    "Pending Applications",
-    pendingApplications
-  );
 
   return (
     <Container
       style={{
-        maxWidth: 1200,
+        maxWidth: 1800,
         padding: 0,
         background:
           "linear-gradient(135deg, rgb(252, 252, 252) 0%, rgb(240, 236, 236) 100%)",
@@ -164,7 +158,7 @@ const ServerSideTable = ({
       <Box
         sx={{
           width: "100%",
-          maxWidth: 1200,
+          maxWidth: 1800,
           bgcolor: "background.default",
           borderRadius: 3,
           boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",

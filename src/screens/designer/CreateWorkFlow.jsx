@@ -270,10 +270,10 @@ export default function CreateWorkflow() {
     formdata.append("serviceId", selectedServiceId);
     formdata.append("workflowplayers", JSON.stringify(players));
     try {
-      const response = await fetch("/Designer/WorkFlowPlayers", {
-        method: "POST",
-        body: formdata,
-      });
+      const response = await axiosInstance.post(
+        "/Designer/WorkFlowPlayers",
+        formdata
+      );
       const result = await response.json();
       if (result.status) {
         toast.success("Workflow saved successfully!");

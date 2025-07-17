@@ -506,6 +506,23 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
                 handleAreaChange(sectionIndex, { name: item.name }, item.value);
               }
               setValue(item.name, item.value);
+              if (item.additionalFields) {
+                item.additionalFields.forEach((item) => {
+                  console.log("ITEM", item);
+                  if (
+                    item.name.toLowerCase().includes("district") ||
+                    item.name.toLowerCase().includes("muncipality")
+                  ) {
+                    console.log("SECTION INDEX", sectionIndex);
+                    handleAreaChange(
+                      sectionIndex,
+                      { name: item.name },
+                      item.value
+                    );
+                  }
+                  setValue(item.name, item.value);
+                });
+              }
             });
           });
         }
@@ -952,7 +969,6 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
       ];
 
       const match = fieldNames.find((f) => f.name === field.name);
-      console.log("Match", match);
       if (!match) {
         console.warn(`Field "${field.name}" not found in fieldNames.`);
         return;
@@ -990,9 +1006,9 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
 
       setFormSections((prevSections) => {
         const newSections = [...prevSections];
+
         const section = newSections[sectionIndex];
         let updated = false;
-
         section.fields = section.fields.map((f) => {
           if (f.name === childFieldName) {
             updated = true;
@@ -1025,7 +1041,7 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
         return newSections;
       });
 
-      setValue(childFieldName, "Please Select");
+      // setValue(childFieldName, "Please Select");
     } catch (error) {
       console.error("Error fetching child field options:", error);
     }

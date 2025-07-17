@@ -33,7 +33,7 @@ export default function Form() {
         {
           label: "Applicant Image",
           name: "ApplicantImage",
-          File: "/uploads/e39084ab.jpg",
+          File: "/assets/dummyDocs/Male2.jpg",
         },
         {
           label: "Date of Birth",
@@ -91,13 +91,7 @@ export default function Form() {
           label: "Present Address Type",
           name: "PresentAddressType",
           value: "Urban",
-          additionalFields: [
-            {
-              label: "Present District",
-              name: "PresentDistrict",
-              value: 5,
-            },
-          ],
+          additionalFields: [],
         },
         {
           label: "Present Pincode",
@@ -132,38 +126,38 @@ export default function Form() {
           label: "Domicile Certificate",
           name: "DomicileCertificate",
           Enclosure: "Domicile Certificate",
-          File: "/uploads/18864550.pdf",
+          File: "/assets/dummyDocs/Other.pdf",
         },
         {
           label: "Proof Of Residence",
           name: "ProofOfResidence",
           Enclosure: "Electricity Bill",
-          File: "/uploads/1327305b.pdf",
+          File: "/assets/dummyDocs/Other.pdf",
         },
         {
           label: "Proof Of Age",
           name: "ProofOfAge",
           Enclosure: "Domicile Certificate",
-          File: "/uploads/8aec36ca.pdf",
+          File: "/assets/dummyDocs/Other.pdf",
         },
         {
           label: "Ration Card",
           name: "RationCard",
           Enclosure: "Ration Card(Inner & Outter Both)",
-          File: "/uploads/32638128.pdf",
+          File: "/assets/dummyDocs/Other.pdf",
         },
         {
           label: "Bank Passbook",
           name: "BankPassbook",
           Enclosure: "Bank Passbook",
-          File: "/uploads/1422111e.pdf",
+          File: "/assets/dummyDocs/Other.pdf",
         },
         {
           label: "Affidavit",
           name: "Affidavit",
           Enclosure:
             "Affidavit attested by Judicial Magistrate lst Class or Executive Magistrate First Class that she/he is not in receipt of any pension/financial assistance from any other source.",
-          File: "/uploads/6a019288.pdf",
+          File: "/assets/dummyDocs/Other.pdf",
         },
         {
           label: "Other",
@@ -209,7 +203,7 @@ export default function Form() {
         {
           label: "Applicant Image",
           name: "ApplicantImage",
-          File: "/uploads/bde12f84.jpg",
+          File: "/assets/dummyDocs/Female2.jpg",
         },
         {
           label: "Date of Birth",
@@ -267,13 +261,7 @@ export default function Form() {
           label: "Present Address Type",
           name: "PresentAddressType",
           value: "Urban",
-          additionalFields: [
-            {
-              label: "Present District",
-              name: "PresentDistrict",
-              value: 5,
-            },
-          ],
+          additionalFields: [],
         },
         {
           label: "Present Pincode",
@@ -308,44 +296,44 @@ export default function Form() {
           label: "Domicile Certificate",
           name: "DomicileCertificate",
           Enclosure: "Domicile Certificate",
-          File: "/uploads/9589d4e1.pdf",
+          File: "/assets/dummyDocs/Other.pdf",
         },
         {
           label: "Proof Of Residence",
           name: "ProofOfResidence",
           Enclosure: "Electricity Bill",
-          File: "/uploads/8375c0ef.pdf",
+          File: "/assets/dummyDocs/Other.pdf",
         },
         {
           label: "Proof Of Age",
           name: "ProofOfAge",
           Enclosure: "Domicile Certificate",
-          File: "/uploads/b30302ba.pdf",
+          File: "/assets/dummyDocs/Other.pdf",
         },
         {
           label: "Ration Card",
           name: "RationCard",
           Enclosure: "Ration Card(Inner & Outter Both)",
-          File: "/uploads/5e83bd46.pdf",
+          File: "/assets/dummyDocs/Other.pdf",
         },
         {
           label: "Bank Passbook",
           name: "BankPassbook",
           Enclosure: "Bank Passbook",
-          File: "/uploads/ac637303.pdf",
+          File: "/assets/dummyDocs/Other.pdf",
         },
         {
           label: "Affidavit",
           name: "Affidavit",
           Enclosure:
             "Affidavit attested by Judicial Magistrate lst Class or Executive Magistrate First Class that she/he is not in receipt of any pension/financial assistance from any other source.",
-          File: "/uploads/1b5c0961.pdf",
+          File: "/assets/dummyDocs/Other.pdf",
         },
         {
           label: "Death Certificate Of Husband",
           name: "DeathCertificateOfHusband",
           Enclosure: "Death Certificate Of Husband",
-          File: "/uploads/851f1c85.pdf",
+          File: "/assets/dummyDocs/Other.pdf",
         },
         {
           label: "Other",

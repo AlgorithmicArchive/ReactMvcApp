@@ -164,9 +164,9 @@ const MainContent = () => {
     } else {
       sessionStorage.setItem("initialLoad", "false");
       setIsInitialLoad(false);
-      if (!token) {
-        navigate("/login");
-      }
+      // if (!token) {
+      //   navigate("/login");
+      // }
     }
   }, [
     token,

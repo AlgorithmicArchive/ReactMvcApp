@@ -1,9 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import {
-  fetchServiceList,
-  fetchCertificateDetails,
-  fetchCertificates,
-} from "../../assets/fetch";
+import { fetchServiceList, fetchCertificateDetails } from "../../assets/fetch";
 import ServiceSelectionForm from "../../components/ServiceSelectionForm";
 import {
   Box,
@@ -126,7 +122,7 @@ export default function OfficerHome() {
   const [canHavePool, setCanHavePool] = useState(false);
   const [type, setType] = useState("");
   const [showTable, setShowTable] = useState(false);
-  const [selectedAction, setSelectedAction] = useState("Reject");
+  const [selectedAction, setSelectedAction] = useState("Sanction");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
   const [pendingRejectRows, setPendingRejectRows] = useState([]);
@@ -377,19 +373,36 @@ export default function OfficerHome() {
     formData.append("defaultAction", selectedAction);
     formData.append(
       "Remarks",
-      selectedAction === "Sanction" ? "Sanctioned" : "Rejected"
+      selectedAction === "Sanction"
+        ? "Sanctioned"
+        : selectedAction === "Reject"
+        ? "Rejected"
+        : "Returned to Inbox"
     );
 
     try {
-      const { data: result } = await axiosInstance.post(
-        "/Officer/HandleAction",
-        formData
-      );
-      if (!result.status) {
-        throw new Error(result.response || "Something went wrong");
-      }
+      if (selectedAction === "toInbox") {
+        const response = await axiosInstance.get("/Officer/RemoveFromPool", {
+          params: {
+            ServiceId: serviceId,
+            itemToRemove: id,
+          },
+        });
+        if (!response.data.status) {
+          throw new Error(
+            response.data.message || "Failed to remove from pool."
+          );
+        }
+      } else if (selectedAction === "Sanction") {
+        // Update application status to Sanctioned
+        const { data: result } = await axiosInstance.post(
+          "/Officer/HandleAction",
+          formData
+        );
+        if (!result.status) {
+          throw new Error(result.response || "Failed to sanction application");
+        }
 
-      if (selectedAction === "Sanction") {
         // Fetch PDF from GetSanctionLetter
         const pdfResponse = await axiosInstance.get(
           "/Officer/GetSanctionLetter",
@@ -431,7 +444,17 @@ export default function OfficerHome() {
         setPdfUrl(blobUrl);
         setIsSignedPdf(false);
         setPdfModalOpen(true);
+        // Return early to wait for user interaction (PDF signing)
+        return;
       } else {
+        // Handle Reject action
+        const { data: result } = await axiosInstance.post(
+          "/Officer/HandleAction",
+          formData
+        );
+        if (!result.status) {
+          throw new Error(result.response || "Something went wrong");
+        }
         try {
           await axiosInstance.get("/Officer/RemoveFromPool", {
             params: {
@@ -439,30 +462,43 @@ export default function OfficerHome() {
               itemToRemove: id,
             },
           });
-          toast.success("Application rejected and removed from pool!", {
-            position: "top-right",
-            autoClose: 2000,
-            theme: "colored",
-          });
         } catch (error) {
+          console.error("Failed to remove application from pool:", error);
           toast.error("Failed to remove application from pool.", {
             position: "top-right",
             autoClose: 3000,
             theme: "colored",
           });
         }
+      }
 
-        const nextIndex = currentIdIndex + 1;
-        if (nextIndex < pendingIds.length) {
-          setCurrentIdIndex(nextIndex);
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          await processSingleId(pendingIds[nextIndex]);
-        } else {
-          setPendingIds([]);
-          setCurrentIdIndex(0);
-          setCurrentApplicationId("");
-          handleRecords(serviceId);
-        }
+      // Proceed to next ID for non-Sanction actions
+      const nextIndex = currentIdIndex + 1;
+      if (nextIndex < pendingIds.length) {
+        setCurrentIdIndex(nextIndex);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        await processSingleId(pendingIds[nextIndex]);
+      } else {
+        setPendingIds([]);
+        setCurrentIdIndex(0);
+        setCurrentApplicationId("");
+        toast.success(
+          `${
+            selectedAction === "toInbox"
+              ? "Returned to Inbox"
+              : selectedAction === "Sanction"
+              ? "Sanctioned"
+              : "Rejected"
+          } ${pendingIds.length} application${
+            pendingIds.length > 1 ? "s" : ""
+          }!`,
+          {
+            position: "top-right",
+            autoClose: 2000,
+            theme: "colored",
+          }
+        );
+        handleRecords(serviceId);
       }
     } catch (error) {
       console.error(
@@ -470,7 +506,7 @@ export default function OfficerHome() {
         error
       );
       toast.error(
-        `Error processing ${selectedAction.toLowerCase()} request: ${
+        `Error processing ${selectedAction.toLowerCase()} for ID ${id}: ${
           error.message
         }`,
         {
@@ -479,6 +515,101 @@ export default function OfficerHome() {
           theme: "colored",
         }
       );
+      // Continue processing remaining IDs for non-Sanction actions
+      const nextIndex = currentIdIndex + 1;
+      if (nextIndex < pendingIds.length && selectedAction !== "Sanction") {
+        setCurrentIdIndex(nextIndex);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        await processSingleId(pendingIds[nextIndex]);
+      } else {
+        setPendingIds([]);
+        setCurrentIdIndex(0);
+        setCurrentApplicationId("");
+        toast.success(
+          `${
+            selectedAction === "toInbox"
+              ? "Returned to Inbox"
+              : selectedAction === "Sanction"
+              ? "Sanctioned"
+              : "Rejected"
+          } ${pendingIds.length} application${
+            pendingIds.length > 1 ? "s" : ""
+          }!`,
+          {
+            position: "top-right",
+            autoClose: 2000,
+            theme: "colored",
+          }
+        );
+        handleRecords(serviceId);
+      }
+    }
+  };
+
+  // Handle pin submit
+  const handlePinSubmit = async () => {
+    if (!pin) {
+      toast.error("Please enter the USB token PIN.", {
+        position: "top-right",
+        autoClose: 3000,
+        theme: "colored",
+      });
+      return;
+    }
+    try {
+      await signAndUpdatePdf(pin);
+      setStoredPin(pin);
+      setConfirmOpen(false); // Close dialog immediately after success
+      setPin(""); // Clear PIN input
+    } catch (error) {
+      // Error handled in signAndUpdatePdf
+      setConfirmOpen(false); // Close dialog even on error
+      setPin("");
+    }
+  };
+
+  // Handle Sign PDF button click
+  const handleSignPdf = async () => {
+    if (storedPin) {
+      try {
+        await signAndUpdatePdf(storedPin);
+      } catch (error) {
+        // Only clear storedPin for specific errors requiring PIN re-entry
+        if (
+          error.message.includes("No certificates found") ||
+          error.message.includes("Not the registered certificate") ||
+          error.message.includes("The registered certificate has expired")
+        ) {
+          setStoredPin(null); // Clear storedPin for critical errors
+          setConfirmOpen(true); // Reopen PIN prompt
+        } else {
+          // For other errors, keep storedPin and proceed
+          const nextIndex = currentIdIndex + 1;
+          if (nextIndex < pendingIds.length) {
+            setCurrentIdIndex(nextIndex);
+            setCurrentApplicationId(pendingIds[nextIndex]);
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await processSingleId(pendingIds[nextIndex]);
+          } else {
+            setPendingIds([]);
+            setCurrentIdIndex(0);
+            setCurrentApplicationId("");
+            toast.success(
+              `Sanctioned ${pendingIds.length} application${
+                pendingIds.length > 1 ? "s" : ""
+              }!`,
+              {
+                position: "top-right",
+                autoClose: 2000,
+                theme: "colored",
+              }
+            );
+            handleRecords(serviceId);
+          }
+        }
+      }
+    } else {
+      setConfirmOpen(true); // Open PIN prompt if no storedPin
     }
   };
 
@@ -567,15 +698,28 @@ export default function OfficerHome() {
         theme: "colored",
       });
 
+      // Proceed to next ID after signing
       const nextIndex = currentIdIndex + 1;
       if (nextIndex < pendingIds.length) {
         setCurrentIdIndex(nextIndex);
+        setCurrentApplicationId(pendingIds[nextIndex]);
         await new Promise((resolve) => setTimeout(resolve, 500));
         await processSingleId(pendingIds[nextIndex]);
       } else {
         setPendingIds([]);
         setCurrentIdIndex(0);
         setCurrentApplicationId("");
+        setConfirmOpen(false);
+        toast.success(
+          `Sanctioned ${pendingIds.length} application${
+            pendingIds.length > 1 ? "s" : ""
+          }!`,
+          {
+            position: "top-right",
+            autoClose: 2000,
+            theme: "colored",
+          }
+        );
         handleRecords(serviceId);
       }
     } catch (error) {
@@ -585,47 +729,7 @@ export default function OfficerHome() {
         autoClose: 3000,
         theme: "colored",
       });
-      throw error;
-    }
-  };
-
-  // Handle PIN submission
-  const handlePinSubmit = async () => {
-    if (!pin) {
-      toast.error("Please enter the USB token PIN.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
-      return;
-    }
-    try {
-      await signAndUpdatePdf(pin);
-      setStoredPin(pin);
-    } catch (error) {
-      // Error handled in signAndUpdatePdf
-    } finally {
-      setConfirmOpen(false);
-      setPin("");
-    }
-  };
-
-  // Handle Sign PDF button click
-  const handleSignPdf = async () => {
-    if (storedPin) {
-      try {
-        await signAndUpdatePdf(storedPin);
-      } catch (error) {
-        setStoredPin(null);
-        toast.error("Signing failed with stored PIN. Please enter PIN again.", {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
-        });
-        setConfirmOpen(true);
-      }
-    } else {
-      setConfirmOpen(true);
+      throw error; // Re-throw to be caught by handleSignPdf
     }
   };
 
@@ -658,7 +762,10 @@ export default function OfficerHome() {
 
   // Get action options for bulk action dropdown
   const getActionOptions = () => {
-    const options = [{ value: "Reject", label: "Reject" }];
+    const options = [
+      { value: "Reject", label: "Reject" },
+      { value: "toInbox", label: "Return to Inbox" },
+    ];
     if (canSanction) {
       options.push({ value: "Sanction", label: "Sanction" });
     }

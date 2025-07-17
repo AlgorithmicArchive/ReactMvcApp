@@ -469,6 +469,43 @@ namespace SahayataNidhi.Controllers
         }
 
         [HttpGet]
+        [Authorize]
+        public IActionResult RefreshToken()
+        {
+            var username = User.FindFirst(ClaimTypes.Name)?.Value;
+            var user = _dbContext.Users.FirstOrDefault(u => u.Username == username);
+            if (user == null)
+                return Unauthorized(new { status = false, message = "User not found." });
+
+            var claims = User.Claims.Select(c => new Claim(c.Type, c.Value)).ToList();
+            var jwtSecretKey = _configuration["JWT:Secret"];
+            var key = Encoding.ASCII.GetBytes(jwtSecretKey!);
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(claims),
+                Expires = DateTime.UtcNow.AddMinutes(30),
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
+                Issuer = _configuration["JWT:Issuer"],
+                Audience = _configuration["JWT:Audience"]
+            };
+
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            var tokenString = tokenHandler.WriteToken(token);
+
+            return Json(new
+            {
+                status = true,
+                token = tokenString,
+                userType = user.UserType,
+                profile = user.Profile,
+                username,
+                designation = User.FindFirst("Designation")?.Value ?? ""
+            });
+        }
+
+        [HttpGet]
         [Authorize] // Requires a valid JWT token
         public IActionResult ValidateToken()
         {

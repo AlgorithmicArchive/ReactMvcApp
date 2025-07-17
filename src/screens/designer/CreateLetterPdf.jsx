@@ -238,7 +238,7 @@ const CreateLetterPdf = () => {
 
     try {
       const response = await axiosInstance.post(
-        "/Base/SaveLetterDetails",
+        "/Designer/SaveLetterDetails",
         formData
       );
       if (response.data.status) {

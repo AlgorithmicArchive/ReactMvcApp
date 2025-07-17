@@ -296,7 +296,7 @@ export default function LoginScreen() {
                   component="span"
                   sx={{
                     fontFamily: "monospace",
-                    fontSize: { xs: 16, sm: 18 },
+                    fontSize: { xs: 24, sm: 24 },
                     fontWeight: Math.random() > 0.5 ? 700 : 400,
                     color: Math.random() > 0.5 ? "primary.main" : "#2d3748",
                     transform: `rotate(${Math.floor(
