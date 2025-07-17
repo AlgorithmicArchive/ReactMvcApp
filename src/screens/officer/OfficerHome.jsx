@@ -366,7 +366,7 @@ export default function OfficerHome() {
   };
 
   // Process single ID
-  const processSingleId = async (id) => {
+  const processSingleId = async (id, index, totalIds) => {
     setCurrentApplicationId(id);
     const formData = new FormData();
     formData.append("applicationId", id);
@@ -379,6 +379,8 @@ export default function OfficerHome() {
         ? "Rejected"
         : "Returned to Inbox"
     );
+
+    let hasError = false;
 
     try {
       if (selectedAction === "toInbox") {
@@ -394,7 +396,6 @@ export default function OfficerHome() {
           );
         }
       } else if (selectedAction === "Sanction") {
-        // Update application status to Sanctioned
         const { data: result } = await axiosInstance.post(
           "/Officer/HandleAction",
           formData
@@ -403,21 +404,23 @@ export default function OfficerHome() {
           throw new Error(result.response || "Failed to sanction application");
         }
 
-        // Fetch PDF from GetSanctionLetter
         const pdfResponse = await axiosInstance.get(
           "/Officer/GetSanctionLetter",
           {
             params: { applicationId: id },
           }
         );
-        if (!pdfResponse.data.status || !pdfResponse.data.path) {
+        if (!pdfResponse.data.status || !pdfResponse.data.fileId) {
           throw new Error(
             pdfResponse.data.response || "Failed to fetch sanction letter"
           );
         }
-        const fetchResponse = await fetch(pdfResponse.data.path, {
-          headers: { Accept: "application/pdf" },
-        });
+        const fetchResponse = await fetch(
+          `/api/file/download/${pdfResponse.data.fileId}`,
+          {
+            headers: { Accept: "application/pdf" },
+          }
+        );
         if (!fetchResponse.ok) {
           throw new Error(`Failed to fetch PDF: ${fetchResponse.statusText}`);
         }
@@ -432,7 +435,7 @@ export default function OfficerHome() {
         }
         console.log(
           "PDF fetched:",
-          pdfResponse.data.path,
+          pdfResponse.data.fileId,
           "Size:",
           newPdfBlob.size
         );
@@ -444,8 +447,7 @@ export default function OfficerHome() {
         setPdfUrl(blobUrl);
         setIsSignedPdf(false);
         setPdfModalOpen(true);
-        // Return early to wait for user interaction (PDF signing)
-        return;
+        return false; // Pause processing for Sanction
       } else {
         // Handle Reject action
         const { data: result } = await axiosInstance.post(
@@ -464,41 +466,16 @@ export default function OfficerHome() {
           });
         } catch (error) {
           console.error("Failed to remove application from pool:", error);
-          toast.error("Failed to remove application from pool.", {
-            position: "top-right",
-            autoClose: 3000,
-            theme: "colored",
-          });
+          toast.error(
+            `Failed to remove application ${id} from pool: ${error.message}`,
+            {
+              position: "top-right",
+              autoClose: 3000,
+              theme: "colored",
+            }
+          );
+          hasError = true; // Mark error but continue
         }
-      }
-
-      // Proceed to next ID for non-Sanction actions
-      const nextIndex = currentIdIndex + 1;
-      if (nextIndex < pendingIds.length) {
-        setCurrentIdIndex(nextIndex);
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        await processSingleId(pendingIds[nextIndex]);
-      } else {
-        setPendingIds([]);
-        setCurrentIdIndex(0);
-        setCurrentApplicationId("");
-        toast.success(
-          `${
-            selectedAction === "toInbox"
-              ? "Returned to Inbox"
-              : selectedAction === "Sanction"
-              ? "Sanctioned"
-              : "Rejected"
-          } ${pendingIds.length} application${
-            pendingIds.length > 1 ? "s" : ""
-          }!`,
-          {
-            position: "top-right",
-            autoClose: 2000,
-            theme: "colored",
-          }
-        );
-        handleRecords(serviceId);
       }
     } catch (error) {
       console.error(
@@ -515,35 +492,52 @@ export default function OfficerHome() {
           theme: "colored",
         }
       );
-      // Continue processing remaining IDs for non-Sanction actions
-      const nextIndex = currentIdIndex + 1;
-      if (nextIndex < pendingIds.length && selectedAction !== "Sanction") {
-        setCurrentIdIndex(nextIndex);
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        await processSingleId(pendingIds[nextIndex]);
-      } else {
-        setPendingIds([]);
-        setCurrentIdIndex(0);
-        setCurrentApplicationId("");
-        toast.success(
-          `${
-            selectedAction === "toInbox"
-              ? "Returned to Inbox"
-              : selectedAction === "Sanction"
-              ? "Sanctioned"
-              : "Rejected"
-          } ${pendingIds.length} application${
-            pendingIds.length > 1 ? "s" : ""
-          }!`,
-          {
-            position: "top-right",
-            autoClose: 2000,
-            theme: "colored",
-          }
-        );
-        handleRecords(serviceId);
+      hasError = true;
+    }
+
+    // Return whether processing should continue
+    return !hasError;
+  };
+
+  // Process all IDs
+  const processAllIds = async (ids) => {
+    setPendingIds(ids);
+    setCurrentIdIndex(0);
+    let successCount = 0;
+
+    for (let i = 0; i < ids.length; i++) {
+      setCurrentIdIndex(i);
+      const success = await processSingleId(ids[i], i, ids.length);
+      if (selectedAction === "Sanction" && !success) {
+        // Pause for Sanction action to allow user interaction
+        return;
+      }
+      if (success) {
+        successCount++;
       }
     }
+
+    // After all IDs are processed
+    setPendingIds([]);
+    setCurrentIdIndex(0);
+    setCurrentApplicationId("");
+    toast.success(
+      `${
+        selectedAction === "toInbox"
+          ? "Returned to Inbox"
+          : selectedAction === "Sanction"
+          ? "Sanctioned"
+          : "Rejected"
+      } ${successCount} of ${ids.length} application${
+        ids.length > 1 ? "s" : ""
+      }!`,
+      {
+        position: "top-right",
+        autoClose: 2000,
+        theme: "colored",
+      }
+    );
+    handleRecords(serviceId);
   };
 
   // Handle pin submit
@@ -559,11 +553,10 @@ export default function OfficerHome() {
     try {
       await signAndUpdatePdf(pin);
       setStoredPin(pin);
-      setConfirmOpen(false); // Close dialog immediately after success
-      setPin(""); // Clear PIN input
+      setConfirmOpen(false);
+      setPin("");
     } catch (error) {
-      // Error handled in signAndUpdatePdf
-      setConfirmOpen(false); // Close dialog even on error
+      setConfirmOpen(false);
       setPin("");
     }
   };
@@ -574,22 +567,25 @@ export default function OfficerHome() {
       try {
         await signAndUpdatePdf(storedPin);
       } catch (error) {
-        // Only clear storedPin for specific errors requiring PIN re-entry
         if (
           error.message.includes("No certificates found") ||
           error.message.includes("Not the registered certificate") ||
           error.message.includes("The registered certificate has expired")
         ) {
-          setStoredPin(null); // Clear storedPin for critical errors
-          setConfirmOpen(true); // Reopen PIN prompt
+          setStoredPin(null);
+          setConfirmOpen(true);
         } else {
-          // For other errors, keep storedPin and proceed
+          // Continue with next ID
           const nextIndex = currentIdIndex + 1;
           if (nextIndex < pendingIds.length) {
             setCurrentIdIndex(nextIndex);
             setCurrentApplicationId(pendingIds[nextIndex]);
             await new Promise((resolve) => setTimeout(resolve, 500));
-            await processSingleId(pendingIds[nextIndex]);
+            await processSingleId(
+              pendingIds[nextIndex],
+              nextIndex,
+              pendingIds.length
+            );
           } else {
             setPendingIds([]);
             setCurrentIdIndex(0);
@@ -609,7 +605,7 @@ export default function OfficerHome() {
         }
       }
     } else {
-      setConfirmOpen(true); // Open PIN prompt if no storedPin
+      setConfirmOpen(true);
     }
   };
 
@@ -623,7 +619,6 @@ export default function OfficerHome() {
       if (!isValid) {
         throw new Error("Invalid PDF structure detected");
       }
-      // Validate certificate
       const certDetails = await fetchCertificateDetails();
       if (!certDetails) {
         throw new Error("No registered DSC found");
@@ -698,13 +693,17 @@ export default function OfficerHome() {
         theme: "colored",
       });
 
-      // Proceed to next ID after signing
+      // Proceed to next ID
       const nextIndex = currentIdIndex + 1;
       if (nextIndex < pendingIds.length) {
         setCurrentIdIndex(nextIndex);
         setCurrentApplicationId(pendingIds[nextIndex]);
         await new Promise((resolve) => setTimeout(resolve, 500));
-        await processSingleId(pendingIds[nextIndex]);
+        await processSingleId(
+          pendingIds[nextIndex],
+          nextIndex,
+          pendingIds.length
+        );
       } else {
         setPendingIds([]);
         setCurrentIdIndex(0);
@@ -729,14 +728,16 @@ export default function OfficerHome() {
         autoClose: 3000,
         theme: "colored",
       });
-      throw error; // Re-throw to be caught by handleSignPdf
+      throw error;
     }
   };
 
   // Handle Reject confirmation
   const handleRejectConfirm = async () => {
     setRejectConfirmOpen(false);
-    await handleExecuteAction(pendingRejectRows);
+    await processAllIds(
+      pendingRejectRows.map((row) => row.original.referenceNumber)
+    );
   };
 
   // Handle bulk action execution
@@ -750,13 +751,11 @@ export default function OfficerHome() {
       return;
     }
     const ids = selectedRows.map((item) => item.original.referenceNumber);
-    if (selectedAction === "Reject" && canHavePool && type === "pool") {
+    if (selectedAction === "Reject") {
       setPendingRejectRows(selectedRows);
       setRejectConfirmOpen(true);
     } else {
-      setPendingIds(ids);
-      setCurrentIdIndex(0);
-      await processSingleId(ids[0]);
+      await processAllIds(ids);
     }
   };
 
