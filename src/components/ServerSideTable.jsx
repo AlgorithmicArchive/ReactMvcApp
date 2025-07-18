@@ -7,19 +7,112 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Tooltip,
-  useTheme,
   Typography,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  darken,
 } from "@mui/material";
-import { Container } from "react-bootstrap";
-import axiosInstance from "../axiosConfig";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import RefreshIcon from "@mui/icons-material/Refresh";
+import axiosInstance from "../axiosConfig";
+import styled from "@emotion/styled";
+
+const TableContainer = styled(Box)`
+  background: linear-gradient(180deg, #e6f0fa 0%, #b3cde0 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+`;
+
+const TableCard = styled(Box)`
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  &:hover {
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  }
+`;
+
+const ActionButton = styled(Button)`
+  background: linear-gradient(45deg, #1e88e5, #4fc3f7);
+  color: #ffffff;
+  font-weight: 600;
+  text-transform: none;
+  border-radius: 8px;
+  padding: 0.5rem 1.5rem;
+  transition: all 0.3s ease;
+  &:hover {
+    background: linear-gradient(45deg, #1565c0, #039be5);
+    box-shadow: 0 4px 12px rgba(30, 136, 229, 0.3);
+  }
+`;
+
+const RefreshButton = styled(Button)`
+  border: 1px solid #1e88e5;
+  color: #1e88e5;
+  font-weight: 600;
+  text-transform: none;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  transition: all 0.3s ease;
+  &:hover {
+    background: #1e88e5;
+    color: #ffffff;
+    transform: scale(1.02);
+  }
+`;
+
+const StyledToggleButtonGroup = styled(ToggleButtonGroup)`
+  & .MuiToggleButton-root {
+    text-transform: none;
+    font-weight: 600;
+    padding: 0.5rem 2rem;
+    border-radius: 8px;
+    border: 1px solid #b3cde0;
+    color: #1f2937;
+    transition: all 0.3s ease;
+    &:hover {
+      background: #e6f0fa;
+      transform: scale(1.02);
+    }
+    &.Mui-selected {
+      background: linear-gradient(45deg, #1e88e5, #4fc3f7);
+      color: #ffffff;
+      &:hover {
+        background: linear-gradient(45deg, #1565c0, #039be5);
+      }
+    }
+  }
+`;
+
+const StyledFormControl = styled(FormControl)`
+  & .MuiOutlinedInput-root {
+    border-radius: 8px;
+    background: #ffffff;
+    border: 1px solid #b3cde0;
+    &:hover .MuiOutlinedInput-notchedOutline {
+      border-color: #1e88e5;
+    }
+    &.Mui-focused .MuiOutlinedInput-notchedOutline {
+      border-color: #1e88e5;
+      border-width: 2px;
+    }
+  }
+  & .MuiInputLabel-root {
+    color: #1f2937;
+    &.Mui-focused {
+      color: #1e88e5;
+    }
+  }
+  min-width: 150px;
+  margin-right: 1rem;
+`;
 
 const ServerSideTable = ({
   url,
@@ -35,9 +128,8 @@ const ServerSideTable = ({
   actionOptions,
   selectedAction,
   setSelectedAction,
+  Title,
 }) => {
-  const theme = useTheme();
-
   const [columns, setColumns] = useState([]);
   const [inboxData, setInboxData] = useState([]);
   const [poolData, setPoolData] = useState([]);
@@ -50,39 +142,8 @@ const ServerSideTable = ({
     pageSize: 10,
   });
   const [viewType, setViewType] = useState("Inbox");
-  const [hasActions, setHasActions] = useState(false); // New state for actions column
-
-  const formControlStyles = {
-    "& .MuiOutlinedInput-root": {
-      "& fieldset": { borderColor: "divider" },
-      "&:hover fieldset": { borderColor: "primary.main" },
-      "&.Mui-focused": {
-        borderColor: "primary.main",
-        borderWidth: "2px",
-      },
-      backgroundColor: "background.paper",
-      color: "text.primary",
-      borderRadius: 1,
-    },
-    "& .MuiInputLabel-root": {
-      color: "text.primary",
-      "&.Mui-focused": { color: "primary.main" },
-    },
-    minWidth: 150,
-    mr: 2,
-  };
-
-  const buttonStyles = {
-    textTransform: "none",
-    fontWeight: 600,
-    fontSize: { xs: 12, md: 14 },
-    py: 1,
-    "&:hover": {
-      backgroundColor: "primary.dark",
-      transform: "scale(1.02)",
-      transition: "all 0.2s ease",
-    },
-  };
+  const [hasActions, setHasActions] = useState(false);
+  const [columnOrder, setColumnOrder] = useState([]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -95,15 +156,17 @@ const ServerSideTable = ({
         },
       });
       const json = response.data;
-
-      // Check for customActions in data
       const hasAnyActions =
         json.data?.some((row) => row.customActions?.length > 0) ||
         json.poolData?.some((row) => row.customActions?.length > 0) ||
         false;
 
+      const updatedColumns = Object.values(json.columns || {}).map((col) =>
+        col.accessorKey === "sno" ? { ...col, size: 20 } : col
+      );
+
       setHasActions(hasAnyActions);
-      setColumns(json.columns || []);
+      setColumns(updatedColumns);
       setInboxData(json.data || []);
       setPoolData(json.poolData || []);
       setTotalRecords(json.totalRecords || 0);
@@ -142,88 +205,51 @@ const ServerSideTable = ({
   };
 
   return (
-    <Container
-      style={{
-        maxWidth: 1800,
-        padding: 0,
-        background:
-          "linear-gradient(135deg, rgb(252, 252, 252) 0%, rgb(240, 236, 236) 100%)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        p: { xs: 2, md: 4 },
-      }}
-    >
-      <Box
-        sx={{
-          width: "100%",
-          maxWidth: 1800,
-          bgcolor: "background.default",
-          borderRadius: 3,
-          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
-          p: { xs: 2, md: 3 },
-          transition: "transform 0.3s ease-in-out",
-          "&:hover": {
-            transform: "translateY(-5px)",
-          },
-        }}
-        role="region"
-        aria-labelledby="table-title"
-      >
-        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+    <TableContainer>
+      <TableCard>
+        <Typography
+          variant="h4"
+          sx={{
+            fontWeight: 700,
+            color: "#1f2937",
+            fontFamily: "'Inter', sans-serif",
+            mb: 2,
+            textAlign: "center",
+          }}
+        >
+          {Title}
+        </Typography>
+        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
+          <Typography variant="body2" color="#6b7280">
+            Total Records: {totalRecords}
+          </Typography>
           <Tooltip title="Refresh Data" arrow>
-            <Button
+            <RefreshButton
               variant="outlined"
-              color="primary"
               onClick={fetchData}
-              sx={{ textTransform: "none", fontWeight: 600 }}
               aria-label="Refresh table data"
             >
               <RefreshIcon />
-            </Button>
+            </RefreshButton>
           </Tooltip>
         </Box>
-
         {showToggleButtons && (
           <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
-            <ToggleButtonGroup
+            <StyledToggleButtonGroup
               value={viewType}
               exclusive
               onChange={handleViewTypeChange}
               aria-label="View type selection"
-              sx={{
-                "& .MuiToggleButton-root": {
-                  textTransform: "none",
-                  fontWeight: 600,
-                  px: 3,
-                  py: 1,
-                  borderRadius: 2,
-                  "&.Mui-selected": {
-                    backgroundColor: "primary.main",
-                    color: "background.paper",
-                    "&:hover": {
-                      backgroundColor: "primary.dark",
-                    },
-                  },
-                  "&:hover": {
-                    backgroundColor: "primary.light",
-                    transform: "scale(1.02)",
-                    transition: "all 0.2s ease",
-                  },
-                },
-              }}
             >
               <ToggleButton value="Inbox" aria-label="Inbox view">
-                Inbox
+                Inbox ({inboxData.length})
               </ToggleButton>
               <ToggleButton value="Pool" aria-label="Pool view">
-                Pool
+                Pool ({poolData.length})
               </ToggleButton>
-            </ToggleButtonGroup>
+            </StyledToggleButtonGroup>
           </Box>
         )}
-
         <MaterialReactTable
           key={`${pagination.pageIndex}-${pagination.pageSize}`}
           columns={columns}
@@ -231,13 +257,16 @@ const ServerSideTable = ({
           state={{
             pagination,
             isLoading,
+            columnOrder,
             ...(canSanction && pendingApplications && { rowSelection }),
           }}
           onPaginationChange={setPagination}
           onRowSelectionChange={
             canSanction && pendingApplications ? setRowSelection : undefined
           }
+          onColumnOrderChange={setColumnOrder}
           enableRowSelection={canSanction && pendingApplications}
+          enableColumnOrdering
           manualPagination
           enablePagination
           pageCount={pageCount}
@@ -245,66 +274,54 @@ const ServerSideTable = ({
           muiTablePaperProps={{
             sx: {
               borderRadius: "12px",
-              backgroundColor: "background.paper",
-              color: "text.primary",
-              border: `1px solid ${theme.palette.divider}`,
+              background: "#ffffff",
+              border: "1px solid #b3cde0",
               boxShadow: "0 4px 16px rgba(0, 0, 0, 0.05)",
             },
           }}
           muiTableContainerProps={{
-            sx: {
-              maxHeight: "600px",
-              backgroundColor: "background.default",
-              border: `1px solid ${theme.palette.divider}`,
-            },
+            sx: { maxHeight: "600px", background: "#ffffff" },
           }}
           muiTableHeadCellProps={{
             sx: {
-              backgroundColor: "background.default",
-              color: "text.primary",
+              background: "#e6f0fa",
+              color: "#1f2937",
               fontWeight: 600,
               fontSize: { xs: 12, md: 14 },
-              borderBottom: `2px solid ${theme.palette.divider}`,
-              borderRight: `1px solid ${theme.palette.divider}`,
-              "&:last-child": {
-                borderRight: "none",
-              },
+              borderBottom: "2px solid #b3cde0",
+              borderRight: "1px solid #b3cde0",
+              "&:last-child": { borderRight: "none" },
             },
           }}
           muiTableBodyRowProps={{
             sx: {
               "&:hover": {
-                backgroundColor: "action.hover",
+                background: "#f8fafc",
                 transition: "background-color 0.2s ease",
               },
             },
           }}
           muiTableBodyCellProps={{
             sx: {
-              color: "text.primary",
-              backgroundColor: "background.paper",
+              color: "#1f2937",
+              background: "#ffffff",
               fontSize: { xs: 12, md: 14 },
-              borderRight: `1px solid ${theme.palette.divider}`,
-              borderBottom: `1px solid ${theme.palette.divider}`,
-              "&:last-child": {
-                borderRight: "none",
-              },
+              borderRight: "1px solid #b3cde0",
+              borderBottom: "1px solid #b3cde0",
+              "&:last-child": { borderRight: "none" },
             },
           }}
           muiTableFooterRowProps={{
-            sx: {
-              borderTop: `2px solid ${theme.palette.divider}`,
-            },
+            sx: { borderTop: "2px solid #b3cde0" },
           }}
           muiTablePaginationProps={{
             rowsPerPageOptions: [10, 25, 50],
             showFirstButton: true,
             showLastButton: true,
-            pageCount: pageCount,
             sx: {
-              color: "text.primary",
-              backgroundColor: "background.paper",
-              borderTop: `1px solid ${theme.palette.divider}`,
+              color: "#1f2937",
+              background: "#ffffff",
+              borderTop: "1px solid #b3cde0",
               fontSize: { xs: 12, md: 14 },
             },
           }}
@@ -313,7 +330,7 @@ const ServerSideTable = ({
               sx={{
                 textAlign: "center",
                 py: 4,
-                color: "text.secondary",
+                color: "#6b7280",
                 fontSize: { xs: 14, md: 16 },
               }}
             >
@@ -325,82 +342,62 @@ const ServerSideTable = ({
               {isLoading && (
                 <CircularProgress
                   size={24}
-                  color="primary"
+                  sx={{ color: "#1e88e5" }}
                   aria-label="Loading table data"
                 />
               )}
-              <Typography variant="body2" color="text.secondary">
-                Total Records: {totalRecords}
-              </Typography>
             </Box>
           )}
           {...(hasActions && {
-            // Conditionally enable actions column
             enableRowActions: true,
             positionActionsColumn: "last",
-            renderRowActions: ({ row }) => {
-              return (
-                <Box sx={{ display: "flex", gap: 1 }}>
-                  {Array.isArray(row.original.customActions) ? (
-                    (row.original.customActions || []).map((action, index) => {
-                      const onClickHandler =
-                        actionFunctions[action.actionFunction];
-                      return (
-                        <Tooltip key={index} title={action.tooltip} arrow>
-                          <Button
-                            variant="contained"
-                            size="small"
-                            sx={{
-                              textTransform: "none",
-                              fontWeight: 600,
-                              fontSize: { xs: 12, md: 13 },
-                              py: 0.5,
-                              backgroundColor: "primary.main",
-                              "&:hover": {
-                                transform: "scale(1.02)",
-                                transition: "all 0.2s ease",
-                              },
-                            }}
-                            onClick={() =>
-                              onClickHandler && onClickHandler(row)
-                            }
-                            aria-label={`${
-                              action.name || action.tooltip
-                            } for row ${row.original.sno}`}
-                          >
-                            {action.name || action.tooltip}
-                          </Button>
-                        </Tooltip>
-                      );
-                    })
-                  ) : (
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {row.original.customActions}
-                    </Typography>
-                  )}
-                </Box>
-              );
-            },
+            renderRowActions: ({ row }) => (
+              <Box sx={{ display: "flex", gap: 1 }}>
+                {Array.isArray(row.original.customActions) ? (
+                  (row.original.customActions || []).map((action, index) => (
+                    <Tooltip key={index} title={action.tooltip} arrow>
+                      <ActionButton
+                        variant="contained"
+                        size="small"
+                        onClick={() =>
+                          actionFunctions[action.actionFunction]?.(row)
+                        }
+                        aria-label={`${action.name || action.tooltip} for row ${
+                          row.original.sno
+                        }`}
+                      >
+                        {action.name || action.tooltip}
+                      </ActionButton>
+                    </Tooltip>
+                  ))
+                ) : (
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 600, color: "#1f2937" }}
+                  >
+                    {row.original.customActions}
+                  </Typography>
+                )}
+              </Box>
+            ),
           })}
           renderTopToolbarCustomActions={({ table }) => {
             const selectedRows = table.getSelectedRowModel().rows;
             if (canSanction && pendingApplications && viewType === "Inbox") {
               return (
-                <Button
+                <ActionButton
                   variant="contained"
-                  color="primary"
                   disabled={selectedRows.length === 0}
                   onClick={() => onPushToPool(selectedRows)}
-                  sx={buttonStyles}
                   aria-label="Push selected applications to pool"
                 >
                   Push to Pool
-                </Button>
+                </ActionButton>
               );
             } else if (canHavePool && viewType === "Pool") {
               return (
-                <Box sx={{ display: "flex", alignItems: "center" }}>
-                  <FormControl sx={formControlStyles}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <StyledFormControl>
                     <InputLabel id="bulk-action-select-label">
                       Bulk Action
                     </InputLabel>
@@ -417,27 +414,31 @@ const ServerSideTable = ({
                         </MenuItem>
                       ))}
                     </Select>
-                  </FormControl>
-                  <Button
+                  </StyledFormControl>
+                  <ActionButton
                     variant="contained"
-                    color="primary"
                     disabled={selectedRows.length === 0}
                     onClick={() => onExecuteAction(selectedRows)}
-                    sx={buttonStyles}
                     aria-label={`Execute ${selectedAction.toLowerCase()} action`}
                   >
                     Execute
-                  </Button>
+                  </ActionButton>
                 </Box>
               );
             }
             return null;
           }}
         />
-      </Box>
-
-      <ToastContainer />
-    </Container>
+        <ToastContainer
+          toastStyle={{
+            background: "#ffffff",
+            color: "#1f2937",
+            borderRadius: 8,
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+          }}
+        />
+      </TableCard>
+    </TableContainer>
   );
 };
 

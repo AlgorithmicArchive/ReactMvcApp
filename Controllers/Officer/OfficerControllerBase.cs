@@ -170,7 +170,9 @@ namespace SahayataNidhi.Controllers.Officer
                 var formdetails = dbcontext.CitizenApplications.FirstOrDefault(fd => fd.ReferenceNumber == applicationId);
                 var formDetailsObj = JObject.Parse(formdetails!.FormDetails!);
                 var workFlow = formdetails!.WorkFlow;
+                var officerArray = JsonConvert.DeserializeObject<JArray>(workFlow!);
                 int currentPlayer = formdetails.CurrentPlayer;
+                UpdateWorkflowFlags(officerArray!, currentPlayer);
                 if (!string.IsNullOrEmpty(workFlow))
                 {
                     var players = JArray.Parse(workFlow);

@@ -5,12 +5,7 @@ import {
   Avatar,
   Button,
   CircularProgress,
-  Container,
   Divider,
-  Table,
-  TableBody,
-  TableRow,
-  TableCell,
   Grid2,
   Tooltip,
   IconButton,
@@ -21,6 +16,104 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axiosInstance from "../../axiosConfig";
 import { useNavigate } from "react-router-dom";
+import styled from "@emotion/styled";
+
+const MainContainer = styled(Box)`
+  min-height: 100vh;
+  background: linear-gradient(180deg, #e6f0fa 0%, #b3cde0 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+`;
+
+const ProfileCard = styled(Box)`
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 2.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  width: 100%;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  &:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  }
+`;
+
+const StyledAvatar = styled(Avatar)`
+  width: 120px;
+  height: 120px;
+  border: 3px solid #1e88e5;
+  box-shadow: 0 4px 12px rgba(30, 136, 229, 0.3);
+  transition: transform 0.3s ease;
+  margin: 0 auto;
+  &:hover {
+    transform: scale(1.1);
+  }
+`;
+
+const UploadButton = styled(IconButton)`
+  background: #1e88e5;
+  color: #ffffff;
+  position: absolute;
+  bottom: -8px;
+  right: -8px;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  &:hover {
+    background: #1565c0;
+    transform: scale(1.1);
+  }
+`;
+
+const StatContainer = styled(Box)`
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1.5rem 0;
+`;
+
+const StatBox = styled(Box)`
+  flex: 1;
+  background: #e6f0fa;
+  border-radius: 10px;
+  padding: 1rem;
+  text-align: center;
+  border: 1px solid #b3cde0;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+`;
+
+const InfoItem = styled(Box)`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #b3cde0;
+  &:last-of-type {
+    border-bottom: none;
+  }
+`;
+
+const ActionButton = styled(Button)`
+  background: linear-gradient(45deg, #1e88e5, #4fc3f7);
+  color: #ffffff;
+  font-weight: 600;
+  text-transform: none;
+  border-radius: 10px;
+  padding: 0.75rem 2rem;
+  margin-top: 1.5rem;
+  width: 100%;
+  transition: all 0.3s ease;
+  &:hover {
+    background: linear-gradient(45deg, #1565c0, #039be5);
+    box-shadow: 0 4px 12px rgba(30, 136, 229, 0.3);
+  }
+`;
 
 export default function UserHome() {
   const [userDetails, setUserDetails] = useState(null);
@@ -32,7 +125,6 @@ export default function UserHome() {
 
   const navigate = useNavigate();
 
-  // Fetch user details
   async function GetUserDetails() {
     try {
       const response = await axiosInstance.get("/User/GetUserDetails");
@@ -52,62 +144,6 @@ export default function UserHome() {
     }
   }
 
-  // Handle profile picture upload (client-side preview and server-side upload)
-  const handleProfileUpload = async (event) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Client-side validation
-      if (!["image/jpeg", "image/png"].includes(file.type)) {
-        toast.error("Only JPEG or PNG images are allowed.", {
-          position: "top-center",
-          autoClose: 3000,
-          theme: "colored",
-        });
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("File size must be less than 5MB.", {
-          position: "top-center",
-          autoClose: 3000,
-          theme: "colored",
-        });
-        return;
-      }
-
-      const url = URL.createObjectURL(file);
-      setProfile({ file, url });
-      toast.success("Profile picture preview updated!", {
-        position: "top-center",
-        autoClose: 3000,
-        theme: "colored",
-      });
-
-      // Server-side upload
-      const formData = new FormData();
-      formData.append("profilePicture", file);
-      try {
-        await axiosInstance.post("/User/UploadProfilePicture", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        toast.success("Profile picture uploaded successfully!", {
-          position: "top-center",
-          autoClose: 3000,
-          theme: "colored",
-        });
-      } catch (error) {
-        toast.error("Failed to upload profile picture. Please try again.", {
-          position: "top-center",
-          autoClose: 3000,
-          theme: "colored",
-        });
-        setProfile((prev) => ({
-          ...prev,
-          url: userDetails?.profile || "/assets/images/profile.jpg",
-        }));
-      }
-    }
-  };
-
   useEffect(() => {
     GetUserDetails();
   }, []);
@@ -120,13 +156,14 @@ export default function UserHome() {
           justifyContent: "center",
           alignItems: "center",
           minHeight: "100vh",
-          bgcolor: "#F8FAFC",
+          bgcolor: "#ffd7c4",
         }}
         aria-live="polite"
       >
         <CircularProgress
-          color="primary"
+          color="inherit"
           size={40}
+          sx={{ color: "#8b5cf6" }}
           aria-label="Loading user profile"
         />
       </Box>
@@ -134,253 +171,125 @@ export default function UserHome() {
   }
 
   return (
-    <Box
-      sx={{
-        minHeight: { xs: "100vh", lg: "80vh" },
-        bgcolor: "#F8FAFC",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        py: 4,
-      }}
-      role="main"
-      aria-labelledby="user-profile-title"
-    >
-      <Container
-        sx={{
-          bgcolor: "white",
-          borderRadius: 8,
-          boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
-          p: { xs: 2, md: 3 },
-          mt: 2,
-          mb: 2,
-          transition: "box-shadow 0.2s ease",
-          "&:hover": {
-            boxShadow: "0 6px 20px rgba(0, 0, 0, 0.15)",
-          },
-        }}
-      >
-        <Grid2 container spacing={2}>
-          <Grid2
-            size={{ xs: 12, md: 5 }}
+    <MainContainer>
+      <ProfileCard>
+        <Box sx={{ textAlign: "center", mb: 2 }}>
+          <Box sx={{ position: "relative", display: "inline-block" }}>
+            <StyledAvatar
+              src={profile.url}
+              alt={`${userDetails?.name || "User"}'s profile picture`}
+            />
+          </Box>
+          <Typography
+            variant="h4"
             sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
+              fontWeight: 700,
+              color: "#1f2937",
+              fontFamily: "'Inter', sans-serif",
+              mt: 2,
             }}
+            id="user-profile-title"
           >
-            <Box sx={{ position: "relative" }}>
-              <Avatar
-                src={profile.url}
-                alt={`${userDetails?.name || "User"}'s profile picture`}
-                sx={{
-                  width: 180,
-                  height: 180,
-                  border: "3px solid #3B82F6",
-                  boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
-                  transition: "transform 0.2s ease",
-                  "&:hover": {
-                    transform: "scale(1.05)",
-                  },
-                  bgcolor: "#3B82F6",
-                }}
-              />
-            </Box>
-            <Grid2 container spacing={2} sx={{ mt: 2 }}>
-              <Grid2 size={{ xs: 6 }}>
-                <Box
-                  sx={{
-                    textAlign: "center",
-                    p: 2,
-                    backgroundColor: "background.default",
-                    border: "1px solid black",
-                    borderRadius: 8,
-                    bgcolor: "#F9FAFB",
-                    transition: "box-shadow 0.2s ease",
-                    "&:hover": {
-                      boxShadow: "0 4px 24px rgba(0, 0, 0, 0.15)",
-                    },
-                  }}
-                >
-                  <Typography
-                    variant="subtitle2"
-                    sx={{ color: "#3B82F6", fontWeight: 600 }}
-                  >
-                    INITIATED
-                  </Typography>
-                  <Typography
-                    variant="h6"
-                    sx={{ color: "#1E293B", fontWeight: 600 }}
-                  >
-                    {userDetails?.initiated ?? "N/A"}
-                  </Typography>
-                </Box>
-              </Grid2>
-              <Grid2 size={{ xs: 6 }}>
-                <Box
-                  sx={{
-                    textAlign: "center",
-                    p: 2,
-                    backgroundColor: "background.default",
-                    border: "1px solid black",
-                    borderRadius: 8,
-                    bgcolor: "#F9FAFB",
-                    transition: "box-shadow 0.2s ease",
-                    "&:hover": {
-                      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-                    },
-                  }}
-                >
-                  <Typography
-                    variant="subtitle2"
-                    sx={{ color: "#EC4899", fontWeight: 600 }}
-                  >
-                    INCOMPLETE
-                  </Typography>
-                  <Typography
-                    variant="h6"
-                    sx={{ color: "#1E293B", fontWeight: 600 }}
-                  >
-                    {userDetails?.incomplete ?? "N/A"}
-                  </Typography>
-                </Box>
-              </Grid2>
-            </Grid2>
-          </Grid2>
-          <Grid2 size={{ xs: 12, md: 7 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-              <Typography
-                variant="h4"
-                id="user-profile-title"
-                sx={{
-                  fontWeight: 600,
-                  color: "#1E293B",
-                }}
-              >
-                {userDetails?.name || "Unknown User"}
-              </Typography>
-              <Tooltip title="Edit profile details">
-                <Button
-                  variant="contained"
-                  startIcon={<Edit />}
-                  aria-label="Edit profile"
-                  onClick={() => navigate("/settings")}
-                  sx={{
-                    borderRadius: 6,
-                    p: "8px 16px",
-                    fontWeight: 600,
-                    fontSize: "0.9rem",
-                    bgcolor: "#3B82F6",
-                    color: "white",
-                    textTransform: "none",
-                    transition: "all 0.2s ease",
-                    "&:hover": {
-                      bgcolor: "#1E40AF",
-                      boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
-                    },
-                  }}
-                >
-                  Edit
-                </Button>
-              </Tooltip>
-            </Box>
+            {userDetails?.name || "Unknown User"}
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{ color: "#6b7280", fontWeight: 500 }}
+          >
+            {userDetails?.location || "Jammu, Jammu"}
+          </Typography>
+        </Box>
+        <Divider sx={{ my: 2, borderColor: "#e5e7eb" }} />
+        <StatContainer>
+          <StatBox>
             <Typography
-              variant="body2"
-              sx={{ color: "#4B5563", fontWeight: 500, mb: 2 }}
+              variant="caption"
+              sx={{ fontWeight: 600, color: "#8b5cf6" }}
             >
-              {userDetails?.location || "Jammu, Jammu"}
+              INITIATED
             </Typography>
-            <Divider sx={{ my: 2, borderColor: "#E5E7EB" }} />
-            <Table
-              aria-label="User details table"
+            <Typography variant="h5" sx={{ fontWeight: 700, color: "#1f2937" }}>
+              {userDetails?.initiated ?? "N/A"}
+            </Typography>
+          </StatBox>
+          <StatBox>
+            <Typography
+              variant="caption"
+              sx={{ fontWeight: 600, color: "#ec4899" }}
+            >
+              INCOMPLETE
+            </Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: "#1f2937" }}>
+              {userDetails?.incomplete ?? "N/A"}
+            </Typography>
+          </StatBox>
+        </StatContainer>
+        <Divider sx={{ my: 2, borderColor: "#e5e7eb" }} />
+        <Box>
+          <InfoItem>
+            <Typography
+              variant="body1"
+              sx={{ fontWeight: 600, color: "#6b7280" }}
+            >
+              Username
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={{ fontWeight: 500, color: "#1f2937" }}
+            >
+              {userDetails?.username || "N/A"}
+            </Typography>
+          </InfoItem>
+          <InfoItem>
+            <Typography
+              variant="body1"
+              sx={{ fontWeight: 600, color: "#6b7280" }}
+            >
+              Email
+            </Typography>
+            <Typography
+              variant="body1"
               sx={{
-                bgcolor: "white",
-                borderRadius: 6,
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                fontWeight: 500,
+                color: "#1f2937",
+                wordBreak: "break-word",
               }}
             >
-              <TableBody>
-                <TableRow>
-                  <TableCell
-                    sx={{
-                      borderBottom: "1px solid #E5E7EB",
-                      p: 1,
-                      fontWeight: 600,
-                      color: "#4B5563",
-                    }}
-                  >
-                    Username
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      borderBottom: "1px solid #E5E7EB",
-                      p: 1,
-                      color: "#1E293B",
-                      fontWeight: 500,
-                    }}
-                  >
-                    {userDetails?.username || "N/A"}
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell
-                    sx={{
-                      borderBottom: "1px solid #E5E7EB",
-                      p: 1,
-                      fontWeight: 600,
-                      color: "#4B5563",
-                    }}
-                  >
-                    Email
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      borderBottom: "1px solid #E5E7EB",
-                      p: 1,
-                      color: "#1E293B",
-                      fontWeight: 500,
-                      wordBreak: "break-word",
-                    }}
-                  >
-                    {userDetails?.email || "N/A"}
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell
-                    sx={{
-                      borderBottom: "1px solid #E5E7EB",
-                      p: 1,
-                      fontWeight: 600,
-                      color: "#4B5563",
-                    }}
-                  >
-                    Mobile Number
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      borderBottom: "1px solid #E5E7EB",
-                      p: 1,
-                      color: "#1E293B",
-                      fontWeight: 500,
-                    }}
-                  >
-                    {userDetails?.mobileNumber || "N/A"}
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </Grid2>
-        </Grid2>
-        <ToastContainer
-          toastStyle={{
-            background: "white",
-            color: "#1E293B",
-            borderRadius: 6,
-            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-          }}
-        />
-      </Container>
-    </Box>
+              {userDetails?.email || "N/A"}
+            </Typography>
+          </InfoItem>
+          <InfoItem>
+            <Typography
+              variant="body1"
+              sx={{ fontWeight: 600, color: "#6b7280" }}
+            >
+              Mobile Number
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={{ fontWeight: 500, color: "#1f2937" }}
+            >
+              {userDetails?.mobileNumber || "N/A"}
+            </Typography>
+          </InfoItem>
+        </Box>
+        <ActionButton
+          variant="contained"
+          startIcon={<Edit />}
+          aria-label="Edit profile"
+          onClick={() => navigate("/settings")}
+        >
+          Edit Profile
+        </ActionButton>
+      </ProfileCard>
+      <ToastContainer
+        toastStyle={{
+          background: "white",
+          color: "#1f2937",
+          borderRadius: 8,
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+        }}
+      />
+    </MainContainer>
   );
 }

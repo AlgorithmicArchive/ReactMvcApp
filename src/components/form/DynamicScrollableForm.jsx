@@ -18,6 +18,7 @@ import {
   Alert,
   FormLabel,
   FormGroup,
+  CircularProgress,
 } from "@mui/material";
 import { Col, Row } from "react-bootstrap";
 import { fetchFormDetails, GetServiceContent } from "../../assets/fetch";
@@ -1801,7 +1802,21 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
     }
   };
 
-  if (loading) return <LoadingSpinner />;
+  if (loading)
+    return (
+      <Box
+        sx={{
+          width: "100%",
+          height: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          bgcolor: "#f8f9fa",
+        }}
+      >
+        <CircularProgress size={60} />
+      </Box>
+    );
 
   return (
     <Box

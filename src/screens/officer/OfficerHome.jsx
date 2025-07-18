@@ -132,6 +132,7 @@ export default function OfficerHome() {
   const [selectedAction, setSelectedAction] = useState("Sanction");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
+  const [pullConfirmOpen, setPullConfirmOpen] = useState(false);
   const [pendingRejectRows, setPendingRejectRows] = useState([]);
   const [pin, setPin] = useState("");
   const [storedPin, setStoredPin] = useState(null);
@@ -149,6 +150,7 @@ export default function OfficerHome() {
   const [lastServiceId, setLastServiceId] = useState("");
   const [tableKey, setTableKey] = useState(0); // Added to force table re-render
   const [pendingFormData, setPendingFormData] = useState(null);
+  const [pullRow, setPullRow] = useState({});
 
   const tableRef = useRef(null);
   const tableInstanceRef = useRef(null);
@@ -285,27 +287,8 @@ export default function OfficerHome() {
         });
       },
       pullApplication: async (row) => {
-        const data = row.original;
-        try {
-          const response = await axiosInstance.get("/Officer/PullApplication", {
-            params: { applicationId: data.referenceNumber },
-          });
-          if (response.data.status) {
-            toast.success("Successfully pulled application!", {
-              position: "top-right",
-              autoClose: 2000,
-              theme: "colored",
-            });
-            refreshTable();
-            if (serviceId) debouncedHandleRecords(serviceId);
-          }
-        } catch (error) {
-          toast.error("Failed to pull application. Please try again.", {
-            position: "top-right",
-            autoClose: 3000,
-            theme: "colored",
-          });
-        }
+        setPullRow(row.original);
+        setPullConfirmOpen(true);
       },
     }),
     [navigate, serviceId, debouncedHandleRecords, refreshTable]
@@ -781,6 +764,30 @@ export default function OfficerHome() {
     setLoading(false);
   }, [pendingRejectRows, processAllIds]);
 
+  const handlePullApplication = async () => {
+    const data = pullRow;
+    try {
+      const response = await axiosInstance.get("/Officer/PullApplication", {
+        params: { applicationId: data.referenceNumber },
+      });
+      if (response.data.status) {
+        toast.success("Successfully pulled application!", {
+          position: "top-right",
+          autoClose: 2000,
+          theme: "colored",
+        });
+        refreshTable();
+        if (serviceId) debouncedHandleRecords(serviceId);
+      }
+    } catch (error) {
+      toast.error("Failed to pull application. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+        theme: "colored",
+      });
+    }
+  };
+
   const handleExecuteAction = useCallback(
     async (selectedRows) => {
       if (!selectedRows || selectedRows.length === 0) {
@@ -1131,6 +1138,7 @@ export default function OfficerHome() {
         )}
       </Container>
 
+      {/* Rejection Dialog */}
       <StyledDialog
         open={rejectConfirmOpen}
         onClose={() => {
@@ -1177,6 +1185,55 @@ export default function OfficerHome() {
             }}
           >
             Confirm Reject
+          </StyledButton>
+        </DialogActions>
+      </StyledDialog>
+
+      {/* Pull Application Dialog */}
+      <StyledDialog
+        open={pullConfirmOpen}
+        onClose={() => {
+          setRejectConfirmOpen(false);
+          setPendingRejectRows([]);
+        }}
+      >
+        <DialogTitle
+          sx={{
+            fontWeight: 600,
+            color: "#2d3748",
+            fontFamily: "'Inter', sans-serif",
+          }}
+        >
+          Confirm Pull Action
+        </DialogTitle>
+        <DialogContent>
+          <Typography
+            sx={{ mb: 2, color: "#2d3748", fontFamily: "'Inter', sans-serif" }}
+          >
+            Are you sure you want to pull {pullRow.referenceNumber} application?
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <StyledButton
+            onClick={() => {
+              setPullConfirmOpen(false);
+            }}
+            aria-label="Cancel"
+          >
+            Cancel
+          </StyledButton>
+          <StyledButton
+            onClick={handlePullApplication}
+            aria-label="Confirm Pull"
+            sx={{
+              background: "linear-gradient(45deg, #d32f2f, #f44336)",
+              "&:hover": {
+                background: "linear-gradient(45deg, #b71c1c, #d32f2f)",
+              },
+            }}
+          >
+            Confirm Pull
           </StyledButton>
         </DialogActions>
       </StyledDialog>

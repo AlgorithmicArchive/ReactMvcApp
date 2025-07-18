@@ -1,8 +1,29 @@
 import React, { useState } from "react";
-import { Box } from "@mui/material";
+import { Box, styled } from "@mui/material";
 import BasicModal from "../../components/BasicModal";
 import { useNavigate } from "react-router-dom";
 import ServerSideTable from "../../components/ServerSideTable";
+
+const MainContainer = styled(Box)`
+  min-height: 100vh;
+  background: linear-gradient(180deg, #e6f0fa 0%, #b3cde0 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+`;
+
+const TableCard = styled(Box)`
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  width: 90%;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  &:hover {
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  }
+`;
 
 export default function Initiated() {
   const [open, setOpen] = useState(false);
@@ -52,23 +73,14 @@ export default function Initiated() {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: { xs: "100vh", md: "70vh" },
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 5,
-        width: "100%",
-      }}
-    >
-      <Box sx={{ width: { xs: "100%", lg: "90%" } }}>
+    <MainContainer>
+      <TableCard>
         <ServerSideTable
           url="/User/GetInitiatedApplications"
           extraParams={{}}
           actionFunctions={actionFunctions}
         />
-      </Box>
+      </TableCard>
       <BasicModal
         open={open}
         handleClose={handleClose}
@@ -77,6 +89,6 @@ export default function Initiated() {
         table={table}
         accordion={ApplicationId}
       />
-    </Box>
+    </MainContainer>
   );
 }

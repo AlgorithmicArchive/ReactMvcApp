@@ -16,11 +16,14 @@ export default function Verification() {
     formState: { errors },
   } = useForm();
 
-  const { setVerified, userType } = useContext(UserContext);
+  const { setVerified, userType, username } = useContext(UserContext);
   const navigate = useNavigate();
 
-  const handleOptionSelect = (option) => {
+  const handleOptionSelect = async (option) => {
     setSelectedOption(option);
+    if (option == "otp") {
+      await fetch(`/Home/SendLoginOtp?username=${username}`);
+    }
   };
 
   const onSubmit = async (data) => {

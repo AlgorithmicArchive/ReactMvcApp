@@ -450,9 +450,12 @@ namespace SahayataNidhi.Controllers.Officer
                 List<dynamic> columns = new List<dynamic>
                 {
                     new { accessorKey = "tehsilName", header = "Tehsil Name" },
-                    new { accessorKey = "totalApplicationsSubmitted", header = "Total Applications Submitted" },
+                    new { accessorKey = "totalApplicationsSubmitted", header = "Total Applications Received" },
+                    new { accessorKey = "totalApplicationsPending", header = "Total Applications Pending" },
+                    new { accessorKey = "totalApplicationsReturnToEdit", header = "Total Applications Pending With Citizens" },
+                    new { accessorKey = "totalApplicationsSanctioned", header = "Total Applications Sanctioned" },
                     new { accessorKey = "totalApplicationsRejected", header = "Total Applications Rejected" },
-                    new { accessorKey = "totalApplicationsSanctioned", header = "Total Applications Sanctioned" }
+
                 };
 
                 // Map the paged response to dynamic data for the frontend
@@ -460,8 +463,11 @@ namespace SahayataNidhi.Controllers.Officer
                 {
                     tehsilName = item.TehsilName,
                     totalApplicationsSubmitted = item.TotalApplicationsSubmitted,
+                    totalApplicationsPending = item.TotalApplicationsPending,
+                    totalApplicationsReturnToEdit = item.TotalApplicationsReturnToEdit,
+                    totalApplicationsSanctioned = item.TotalApplicationsSanctioned,
                     totalApplicationsRejected = item.TotalApplicationsRejected,
-                    totalApplicationsSanctioned = item.TotalApplicationsSanctioned
+
                 }).Cast<dynamic>().ToList();
 
                 // Return JSON response
@@ -774,6 +780,7 @@ namespace SahayataNidhi.Controllers.Officer
                 .Where(ca => ca.ReferenceNumber == applicationId)
                 .FirstOrDefaultAsync();
 
+
             if (application == null)
             {
                 return NotFound("Application not found.");
@@ -787,6 +794,8 @@ namespace SahayataNidhi.Controllers.Officer
                 var document = new Document(pdf, PageSize.A4);
                 document.SetMargins(20, 20, 20, 20);
 
+                string serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == application.ServiceId)!.ServiceName!;
+
                 // Parse FormDetails JSON
                 var formDetails = JObject.Parse(application.FormDetails!);
 
@@ -796,14 +805,19 @@ namespace SahayataNidhi.Controllers.Officer
 
                 // Title cell
                 var titleCell = new Cell(1, 1)
-                    .Add(new Paragraph("Citizen Applications Details")
-                        .SetFontSize(16)
-                        .SetBold()
-                        .SetTextAlignment(TextAlignment.CENTER)
-                        .SetFontColor(new DeviceRgb(25, 118, 210))
-                        .SetMarginBottom(15))
-                    .SetBorder(Border.NO_BORDER)
-                    .SetVerticalAlignment(VerticalAlignment.MIDDLE);
+                .Add(new Paragraph("Citizen Application Details")
+                    .SetFontSize(16)
+                    .SetBold()
+                    .SetTextAlignment(TextAlignment.CENTER)
+                    .SetFontColor(new DeviceRgb(25, 118, 210))
+                    .SetMarginBottom(5)) // Reduced margin to bring serviceName closer
+                .Add(new Paragraph(serviceName)
+                    .SetFontSize(12)
+                    .SetTextAlignment(TextAlignment.CENTER)
+                    .SetFontColor(new DeviceRgb(0, 0, 0)) // Black color for serviceName
+                    .SetMarginBottom(15))
+                .SetBorder(Border.NO_BORDER)
+                .SetVerticalAlignment(VerticalAlignment.MIDDLE);
                 headerTable.AddCell(titleCell);
 
                 // Applicant image cell

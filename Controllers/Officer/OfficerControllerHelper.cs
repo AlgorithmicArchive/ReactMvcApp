@@ -242,9 +242,29 @@ namespace SahayataNidhi.Controllers.Officer
                 && int.TryParse(s, out int did))
                 return GetDistrictName(did);
 
-            if (fieldName.Contains("Tehsil", StringComparison.OrdinalIgnoreCase)
+            if (fieldName.Equals("Tehsil", StringComparison.OrdinalIgnoreCase)
                 && int.TryParse(s, out int tid))
-                return GetTehsilName(tid);
+                return dbcontext.Tswotehsils.FirstOrDefault(m => m.TehsilId == tid)!.TehsilName!;
+
+            if (fieldName.EndsWith("Tehsil", StringComparison.OrdinalIgnoreCase)
+               && int.TryParse(s, out int Tid))
+                return dbcontext.Tehsils.FirstOrDefault(m => m.TehsilId == Tid)!.TehsilName!;
+
+            if (fieldName.Contains("Muncipality", StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(s, out int mid))
+                return dbcontext.Muncipalities.FirstOrDefault(m => m.MuncipalityId == mid)!.MuncipalityName!;
+
+            if (fieldName.Contains("Block", StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(s, out int bid))
+                return dbcontext.Blocks.FirstOrDefault(m => m.BlockId == bid)!.BlockName!;
+
+            if (fieldName.Contains("Ward", StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(s, out int wid))
+                return dbcontext.Wards.FirstOrDefault(m => m.WardCode == wid)!.WardNo.ToString()!;
+
+            if (fieldName.Contains("Village", StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(s, out int vid))
+                return dbcontext.Villages.FirstOrDefault(m => m.VillageId == vid)!.VillageName!;
 
             return s;
         }

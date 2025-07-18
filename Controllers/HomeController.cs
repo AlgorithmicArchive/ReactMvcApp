@@ -126,6 +126,32 @@ namespace SahayataNidhi.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> SendLoginOtp(string? username)
+        {
+            string otpKey;
+            otpKey = $"otp:{username}";
+
+            string otp = GenerateOTP(6);
+            _otpStore.StoreOtp(otpKey, otp);
+
+            string email = _dbContext.Users.FirstOrDefault(u => u.Username == username)!.Email!;
+
+            string htmlMessage = $@"
+            <div style='font-family: Arial, sans-serif;'>
+                <h2 style='color: #2e6c80;'>Your OTP Code</h2>
+                <p>Use the following One-Time Password (OTP) to complete your verification. It is valid for <strong>5 minutes</strong>.</p>
+                <div style='font-size: 24px; font-weight: bold; color: #333; margin: 20px 0;'>{otp}</div>
+                <p>If you did not request this, please ignore this email.</p>
+                <br />
+                <p style='font-size: 12px; color: #888;'>Thank you,<br />Your Application Team</p>
+            </div>";
+
+            await _emailSender.SendEmail(email!, "OTP For Registration", htmlMessage);
+            return Json(new { status = true });
+        }
+
+
+        [HttpGet]
         public async Task<IActionResult> SendOtp(string? email)
         {
             string otpKey;
@@ -553,7 +579,8 @@ namespace SahayataNidhi.Controllers
 
             if (!string.IsNullOrEmpty(otp) && string.IsNullOrEmpty(backupCode))
             {
-                string? otpCache = _otpStore.RetrieveOtp("verification");
+                string otpKey = $"otp:{usernameClaim}";
+                string? otpCache = _otpStore.RetrieveOtp(otpKey);
                 if (otpCache == otp || otp == "123456")
                 {
                     verified = true;

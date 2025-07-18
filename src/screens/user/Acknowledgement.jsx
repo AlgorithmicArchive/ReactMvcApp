@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { fetchAcknowledgement } from "../../assets/fetch";
-import { Box, Typography } from "@mui/material";
+import { Box, CircularProgress, Typography } from "@mui/material";
 import PdfViewer from "../../components/PdfViewer";
 import { useLocation } from "react-router-dom";
 import LoadingSpinner from "../../components/LoadingSpinner";
@@ -61,7 +61,18 @@ export default function Acknowledgement() {
       }}
     >
       {loading ? (
-        <LoadingSpinner />
+        <Box
+          sx={{
+            width: "100%",
+            height: "100vh",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            bgcolor: "#f8f9fa",
+          }}
+        >
+          <CircularProgress size={60} />
+        </Box>
       ) : (
         <>
           <Typography variant="h2" gutterBottom>
