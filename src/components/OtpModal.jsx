@@ -1,32 +1,40 @@
-import React from 'react';
-import { Modal, Box, Typography, TextField, Button } from '@mui/material';
+import React, { useState } from "react";
+import { Modal, Box, Typography, TextField, Button } from "@mui/material";
 
-const OtpModal = ({ open, onClose, onSubmit }) => {
-  const [otp, setOtp] = React.useState('');
+export default function OtpModal({ open, onClose, onSubmit }) {
+  const [otp, setOtp] = useState("");
 
-  const handleChange = (e) => setOtp(e.target.value);
-
-  const handleSubmit = () => {
-    onSubmit(otp); // Pass the OTP value to the parent component
-    onClose(); // Close the modal
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    console.log("OtpModal submitting OTP:", otp);
+    onSubmit(otp);
+    setOtp(""); // Reset OTP input after submission
   };
 
   return (
-    <Modal open={open} onClose={onClose} aria-labelledby="otp-modal-title" aria-describedby="otp-modal-description">
+    <Modal
+      open={open}
+      onClose={() => {
+        console.log("OtpModal onClose triggered");
+        onClose();
+      }}
+      aria-labelledby="otp-modal-title"
+      aria-describedby="otp-modal-description"
+    >
       <Box
         sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
           width: 400,
-          bgcolor: 'background.paper',
-          border: '2px solid #000',
+          bgcolor: "background.paper",
+          border: "2px solid #000",
           boxShadow: 24,
           p: 4,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
           gap: 2,
         }}
       >
@@ -36,19 +44,40 @@ const OtpModal = ({ open, onClose, onSubmit }) => {
         <Typography id="otp-modal-description" sx={{ mt: 1 }}>
           Please enter the OTP sent to your registered email.
         </Typography>
-        <TextField
-          label="OTP"
-          variant="outlined"
-          value={otp}
-          onChange={handleChange}
-          sx={{ mt: 2, width: '100%' }}
-        />
-        <Button variant="contained" color="primary" onClick={handleSubmit} sx={{ mt: 2 }}>
-          Submit OTP
-        </Button>
+        <form onSubmit={handleSubmit} style={{ width: "100%" }}>
+          <TextField
+            label="OTP"
+            variant="outlined"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+            sx={{ mt: 2, width: "100%" }}
+            inputProps={{ maxLength: 6 }}
+            aria-label="OTP input"
+          />
+          <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              disabled={!otp || otp.length < 4}
+              fullWidth
+            >
+              Submit OTP
+            </Button>
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={() => {
+                console.log("Cancel button clicked");
+                onClose();
+              }}
+              fullWidth
+            >
+              Cancel
+            </Button>
+          </Box>
+        </form>
       </Box>
     </Modal>
   );
-};
-
-export default OtpModal;
+}

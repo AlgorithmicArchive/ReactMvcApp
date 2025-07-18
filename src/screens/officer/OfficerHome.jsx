@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import { fetchServiceList, fetchCertificateDetails } from "../../assets/fetch";
 import ServiceSelectionForm from "../../components/ServiceSelectionForm";
 import {
@@ -34,6 +40,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import BasicModal from "../../components/BasicModal";
 import styled from "@emotion/styled";
+import debounce from "lodash/debounce";
 
 // Register Chart.js components
 ChartJS.register(
@@ -45,7 +52,7 @@ ChartJS.register(
   Legend
 );
 
-// Styled components for Reports-like design
+// Styled components
 const StyledCard = styled(Card)`
   background: linear-gradient(135deg, #ffffff, #f8f9fa);
   border-radius: 12px;
@@ -139,16 +146,81 @@ export default function OfficerHome() {
   const [error, setError] = useState(null);
   const [officerRole, setOfficerRole] = useState("");
   const [officerArea, setOfficerArea] = useState("");
+  const [lastServiceId, setLastServiceId] = useState("");
+  const [tableKey, setTableKey] = useState(0); // Added to force table re-render
+  const [pendingFormData, setPendingFormData] = useState(null);
 
   const tableRef = useRef(null);
-
+  const tableInstanceRef = useRef(null);
+  const navigate = useNavigate();
   const {
     control,
     formState: { errors },
     reset,
   } = useForm();
 
-  const navigate = useNavigate();
+  // Debounced handleRecords with cleanup
+  const debouncedHandleRecords = useCallback(
+    debounce(async (newServiceId) => {
+      if (!newServiceId || newServiceId === lastServiceId) return;
+      setLoading(true);
+      setError(null);
+      try {
+        setServiceId(newServiceId);
+        setLastServiceId(newServiceId);
+        const response = await axiosInstance.get(
+          "/Officer/GetApplicationsCount",
+          {
+            params: { ServiceId: newServiceId },
+          }
+        );
+        setCountList(response.data.countList);
+        setCanSanction(response.data.canSanction);
+        setCanHavePool(response.data.canHavePool);
+
+        const newCounts = {
+          total:
+            response.data.countList.find(
+              (item) => item.label === "Total Applications"
+            )?.count || 0,
+          pending:
+            response.data.countList.find((item) => item.label === "Pending")
+              ?.count || 0,
+          forwarded:
+            response.data.countList.find((item) => item.label === "Forwarded")
+              ?.count || 0,
+          citizenPending:
+            response.data.countList.find(
+              (item) => item.label === "Citizen Pending"
+            )?.count || 0,
+          rejected:
+            response.data.countList.find((item) => item.label === "Rejected")
+              ?.count || 0,
+          sanctioned:
+            response.data.countList.find((item) => item.label === "Sanctioned")
+              ?.count || 0,
+        };
+        setCounts(newCounts);
+      } catch (error) {
+        setError("Failed to fetch application counts.");
+        toast.error("Failed to load application counts. Please try again.", {
+          position: "top-right",
+          autoClose: 3000,
+          theme: "colored",
+        });
+      } finally {
+        setLoading(false);
+      }
+    }, 500),
+    [lastServiceId]
+  );
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      debouncedHandleRecords.cancel();
+    };
+  }, [debouncedHandleRecords]);
 
   const fetchCertificates = async (pin) => {
     const formData = new FormData();
@@ -161,13 +233,9 @@ export default function OfficerHome() {
     return response.json();
   };
 
-  // Validate PDF blob
   const isValidPdf = async (blob) => {
     try {
-      if (blob.type !== "application/pdf") {
-        console.error("Invalid MIME type:", blob.type);
-        return false;
-      }
+      if (blob.type !== "application/pdf") return false;
       const arrayBuffer = await blob.slice(0, 4).arrayBuffer();
       const header = new Uint8Array(arrayBuffer);
       const pdfHeader = [37, 80, 68, 70]; // %PDF
@@ -178,59 +246,7 @@ export default function OfficerHome() {
     }
   };
 
-  // Fetch application counts
-  const handleRecords = async (serviceId) => {
-    setLoading(true);
-    setError(null);
-    try {
-      setServiceId(serviceId);
-      const response = await axiosInstance.get(
-        "/Officer/GetApplicationsCount",
-        {
-          params: { ServiceId: serviceId },
-        }
-      );
-      setCountList(response.data.countList);
-      setCanSanction(response.data.canSanction);
-      setCanHavePool(response.data.canHavePool);
-
-      const newCounts = {
-        total:
-          response.data.countList.find(
-            (item) => item.label === "Total Applications"
-          )?.count || 0,
-        pending:
-          response.data.countList.find((item) => item.label === "Pending")
-            ?.count || 0,
-        forwarded:
-          response.data.countList.find((item) => item.label === "Forwarded")
-            ?.count || 0,
-        citizenPending:
-          response.data.countList.find(
-            (item) => item.label === "Citizen Pending"
-          )?.count || 0,
-        rejected:
-          response.data.countList.find((item) => item.label === "Rejected")
-            ?.count || 0,
-        sanctioned:
-          response.data.countList.find((item) => item.label === "Sanctioned")
-            ?.count || 0,
-      };
-      setCounts(newCounts);
-    } catch (error) {
-      setError("Failed to fetch application counts.");
-      toast.error("Failed to load application counts. Please try again.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle card click
-  const handleCardClick = async (statusName) => {
+  const handleCardClick = useCallback((statusName) => {
     setType(
       statusName === "Citizen Pending"
         ? "returntoedit"
@@ -242,86 +258,98 @@ export default function OfficerHome() {
     setTimeout(() => {
       tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 100);
-  };
+  }, []);
 
-  // Action functions for row actions
-  const actionFunctions = {
-    handleOpenApplication: (row) => {
-      const userdata = row.original;
-      navigate("/officer/userDetails", {
-        state: { applicationId: userdata.referenceNumber, notaction: false },
-      });
-    },
-    handleViewApplication: (row) => {
-      const data = row.original;
-      navigate("/officer/userDetails", {
-        state: { applicationId: data.referenceNumber, notaction: true },
-      });
-    },
-    pullApplication: async (row) => {
-      const data = row.original;
-      try {
-        const response = await axiosInstance.get("/Officer/PullApplication", {
-          params: { applicationId: data.referenceNumber },
+  const refreshTable = useCallback(() => {
+    if (
+      tableInstanceRef.current &&
+      typeof tableInstanceRef.current.refetch === "function"
+    ) {
+      tableInstanceRef.current.refetch();
+    }
+    setTableKey((prev) => prev + 1); // Force table re-render
+  }, []);
+
+  const actionFunctions = useMemo(
+    () => ({
+      handleOpenApplication: (row) => {
+        const userdata = row.original;
+        navigate("/officer/userDetails", {
+          state: { applicationId: userdata.referenceNumber, notaction: false },
         });
-        if (response.data.status) {
-          toast.success("Successfully pulled application!", {
+      },
+      handleViewApplication: (row) => {
+        const data = row.original;
+        navigate("/officer/userDetails", {
+          state: { applicationId: data.referenceNumber, notaction: true },
+        });
+      },
+      pullApplication: async (row) => {
+        const data = row.original;
+        try {
+          const response = await axiosInstance.get("/Officer/PullApplication", {
+            params: { applicationId: data.referenceNumber },
+          });
+          if (response.data.status) {
+            toast.success("Successfully pulled application!", {
+              position: "top-right",
+              autoClose: 2000,
+              theme: "colored",
+            });
+            refreshTable();
+            if (serviceId) debouncedHandleRecords(serviceId);
+          }
+        } catch (error) {
+          toast.error("Failed to pull application. Please try again.", {
             position: "top-right",
-            autoClose: 2000,
+            autoClose: 3000,
             theme: "colored",
           });
-          window.location.reload();
         }
+      },
+    }),
+    [navigate, serviceId, debouncedHandleRecords, refreshTable]
+  );
+
+  const handlePushToPool = useCallback(
+    async (selectedRows) => {
+      if (selectedRows.length === 0) {
+        toast.error("No applications selected.", {
+          position: "top-right",
+          autoClose: 3000,
+          theme: "colored",
+        });
+        return;
+      }
+
+      const selectedData = selectedRows.map(
+        (row) => row.original.referenceNumber
+      );
+      const list = JSON.stringify(selectedData);
+
+      try {
+        const response = await axiosInstance.get("/Officer/UpdatePool", {
+          params: { serviceId: serviceId, list: list },
+        });
+        toast.success("Successfully pushed to pool!", {
+          position: "top-right",
+          autoClose: 2000,
+          theme: "colored",
+        });
+        refreshTable();
+        if (serviceId) debouncedHandleRecords(serviceId);
       } catch (error) {
-        toast.error("Failed to pull application. Please try again.", {
+        toast.error("Failed to push to pool. Please try again.", {
           position: "top-right",
           autoClose: 3000,
           theme: "colored",
         });
       }
     },
-  };
+    [serviceId, debouncedHandleRecords, refreshTable]
+  );
 
-  // Handle Push to Pool
-  const handlePushToPool = async (selectedRows) => {
-    if (selectedRows.length === 0) {
-      toast.error("No applications selected.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
-      return;
-    }
-
-    const selectedData = selectedRows.map(
-      (row) => row.original.referenceNumber
-    );
-    const list = JSON.stringify(selectedData);
-
-    try {
-      const response = await axiosInstance.get("/Officer/UpdatePool", {
-        params: {
-          serviceId: serviceId,
-          list: list,
-        },
-      });
-      toast.success("Successfully pushed to pool!", {
-        position: "top-right",
-        autoClose: 2000,
-        theme: "colored",
-      });
-      handleRecords(serviceId);
-    } catch (error) {
-      toast.error("Failed to push to pool. Please try again.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
-    }
-  };
-
-  // Sign PDF
-  async function signPdf(pdfBlob, pin) {
+  const signPdf = async (pdfBlob, pin) => {
     const formData = new FormData();
     formData.append("pdf", pdfBlob, "document.pdf");
     formData.append("pin", pin);
@@ -330,12 +358,6 @@ export default function OfficerHome() {
       currentApplicationId.replace(/\//g, "_") + "SanctionLetter.pdf"
     );
     try {
-      console.log("Sending PDF to sign:", {
-        pdfSize: pdfBlob.size,
-        pdfType: pdfBlob.type,
-        original_path:
-          currentApplicationId.replace(/\//g, "_") + "SanctionLetter.pdf",
-      });
       const response = await fetch("http://localhost:8000/sign", {
         method: "POST",
         body: formData,
@@ -352,10 +374,9 @@ export default function OfficerHome() {
           " Check if Desktop App is started."
       );
     }
-  }
+  };
 
-  // Handle modal close
-  const handleModalClose = () => {
+  const handleModalClose = useCallback(() => {
     setPdfModalOpen(false);
     if (pdfUrl) {
       URL.revokeObjectURL(pdfUrl);
@@ -363,185 +384,162 @@ export default function OfficerHome() {
     setPdfUrl("");
     setPdfBlob(null);
     setIsSignedPdf(false);
-  };
+  }, [pdfUrl]);
 
-  // Process single ID
-  const processSingleId = async (id, index, totalIds) => {
-    setCurrentApplicationId(id);
-    const formData = new FormData();
-    formData.append("applicationId", id);
-    formData.append("defaultAction", selectedAction);
-    formData.append(
-      "Remarks",
-      selectedAction === "Sanction"
-        ? "Sanctioned"
-        : selectedAction === "Reject"
-        ? "Rejected"
-        : "Returned to Inbox"
-    );
+  const processSingleId = useCallback(
+    async (id, index, totalIds) => {
+      setCurrentApplicationId(id);
+      const formData = new FormData();
+      formData.append("applicationId", id);
+      formData.append("defaultAction", selectedAction);
+      formData.append(
+        "Remarks",
+        selectedAction === "Sanction"
+          ? "Sanctioned"
+          : selectedAction === "Reject"
+          ? "Rejected"
+          : "Returned to Inbox"
+      );
 
-    let hasError = false;
+      let hasError = false;
 
-    try {
-      if (selectedAction === "toInbox") {
-        const response = await axiosInstance.get("/Officer/RemoveFromPool", {
-          params: {
-            ServiceId: serviceId,
-            itemToRemove: id,
-          },
-        });
-        if (!response.data.status) {
-          throw new Error(
-            response.data.message || "Failed to remove from pool."
-          );
-        }
-      } else if (selectedAction === "Sanction") {
-        const { data: result } = await axiosInstance.post(
-          "/Officer/HandleAction",
-          formData
-        );
-        if (!result.status) {
-          throw new Error(result.response || "Failed to sanction application");
-        }
-
-        const pdfResponse = await axiosInstance.get(
-          "/Officer/GetSanctionLetter",
-          {
-            params: { applicationId: id },
-          }
-        );
-        if (!pdfResponse.data.status || !pdfResponse.data.fileId) {
-          throw new Error(
-            pdfResponse.data.response || "Failed to fetch sanction letter"
-          );
-        }
-        const fetchResponse = await fetch(
-          `/api/file/download/${pdfResponse.data.fileId}`,
-          {
-            headers: { Accept: "application/pdf" },
-          }
-        );
-        if (!fetchResponse.ok) {
-          throw new Error(`Failed to fetch PDF: ${fetchResponse.statusText}`);
-        }
-        const contentType = fetchResponse.headers.get("content-type");
-        if (!contentType.includes("application/pdf")) {
-          throw new Error(`Invalid content type: ${contentType}`);
-        }
-        const newPdfBlob = await fetchResponse.blob();
-        const isValid = await isValidPdf(newPdfBlob);
-        if (!isValid) {
-          throw new Error("Invalid PDF structure detected");
-        }
-        console.log(
-          "PDF fetched:",
-          pdfResponse.data.fileId,
-          "Size:",
-          newPdfBlob.size
-        );
-        if (pdfUrl) {
-          URL.revokeObjectURL(pdfUrl);
-        }
-        const blobUrl = URL.createObjectURL(newPdfBlob);
-        setPdfBlob(newPdfBlob);
-        setPdfUrl(blobUrl);
-        setIsSignedPdf(false);
-        setPdfModalOpen(true);
-        return false; // Pause processing for Sanction
-      } else {
-        // Handle Reject action
-        const { data: result } = await axiosInstance.post(
-          "/Officer/HandleAction",
-          formData
-        );
-        if (!result.status) {
-          throw new Error(result.response || "Something went wrong");
-        }
-        try {
-          await axiosInstance.get("/Officer/RemoveFromPool", {
-            params: {
-              ServiceId: serviceId,
-              itemToRemove: id,
-            },
+      try {
+        if (selectedAction === "toInbox") {
+          const response = await axiosInstance.get("/Officer/RemoveFromPool", {
+            params: { ServiceId: serviceId, itemToRemove: id },
           });
-        } catch (error) {
-          console.error("Failed to remove application from pool:", error);
-          toast.error(
-            `Failed to remove application ${id} from pool: ${error.message}`,
+          if (!response.data.status) {
+            throw new Error(
+              response.data.message || "Failed to remove from pool."
+            );
+          }
+        } else if (selectedAction === "Sanction") {
+          // Fetch sanction letter first
+          const pdfResponse = await axiosInstance.get(
+            "/Officer/GetSanctionLetter",
             {
-              position: "top-right",
-              autoClose: 3000,
-              theme: "colored",
+              params: { applicationId: id },
             }
           );
-          hasError = true; // Mark error but continue
+          if (!pdfResponse.data.status || !pdfResponse.data.path) {
+            throw new Error(
+              pdfResponse.data.response || "Failed to fetch sanction letter"
+            );
+          }
+          const fetchResponse = await fetch(`${pdfResponse.data.path}`, {
+            headers: { Accept: "application/pdf" },
+          });
+          if (!fetchResponse.ok) {
+            throw new Error(`Failed to fetch PDF: ${fetchResponse.statusText}`);
+          }
+          const contentType = fetchResponse.headers.get("content-type");
+          if (!contentType.includes("application/pdf")) {
+            throw new Error(`Invalid content type: ${contentType}`);
+          }
+          const newPdfBlob = await fetchResponse.blob();
+          const isValid = await isValidPdf(newPdfBlob);
+          if (!isValid) {
+            throw new Error("Invalid PDF structure detected");
+          }
+          if (pdfUrl) {
+            URL.revokeObjectURL(pdfUrl);
+          }
+          const blobUrl = URL.createObjectURL(newPdfBlob);
+          setPdfBlob(newPdfBlob);
+          setPdfUrl(blobUrl);
+          setIsSignedPdf(false);
+          setPdfModalOpen(true);
+          // Store formData for use after signing
+          setPendingFormData(formData);
+          return false; // Pause processing for Sanction
+        } else {
+          const { data: result } = await axiosInstance.post(
+            "/Officer/HandleAction",
+            formData
+          );
+          if (!result.status) {
+            throw new Error(result.response || "Something went wrong");
+          }
+          try {
+            await axiosInstance.get("/Officer/RemoveFromPool", {
+              params: { ServiceId: serviceId, itemToRemove: id },
+            });
+          } catch (error) {
+            toast.error(
+              `Failed to remove application ${id} from pool: ${error.message}`,
+              {
+                position: "top-right",
+                autoClose: 3000,
+                theme: "colored",
+              }
+            );
+            hasError = true;
+          }
+        }
+      } catch (error) {
+        toast.error(
+          `Error processing ${selectedAction.toLowerCase()} for ID ${id}: ${
+            error.message
+          }`,
+          {
+            position: "top-right",
+            autoClose: 3000,
+            theme: "colored",
+          }
+        );
+        hasError = true;
+      }
+
+      return !hasError;
+    },
+    [selectedAction, serviceId, pdfUrl, setPendingFormData]
+  );
+
+  const processAllIds = useCallback(
+    async (ids) => {
+      setPendingIds(ids);
+      setCurrentIdIndex(0);
+      let successCount = 0;
+
+      for (let i = 0; i < ids.length; i++) {
+        setCurrentIdIndex(i);
+        const success = await processSingleId(ids[i], i, ids.length);
+        if (selectedAction === "Sanction" && !success) {
+          return;
+        }
+        if (success) {
+          successCount++;
         }
       }
-    } catch (error) {
-      console.error(
-        `Error processing ${selectedAction.toLowerCase()} for ID ${id}:`,
-        error
+
+      setPendingIds([]);
+      setCurrentIdIndex(0);
+      setCurrentApplicationId("");
+      toast.success(
+        `${
+          selectedAction === "toInbox"
+            ? "Returned to Inbox"
+            : selectedAction === "Sanction"
+            ? "Sanctioned"
+            : "Rejected"
+        } ${successCount} of ${ids.length} application${
+          ids.length > 1 ? "s" : ""
+        }!`,
+        { position: "top-right", autoClose: 2000, theme: "colored" }
       );
-      toast.error(
-        `Error processing ${selectedAction.toLowerCase()} for ID ${id}: ${
-          error.message
-        }`,
-        {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
-        }
-      );
-      hasError = true;
-    }
+      refreshTable();
+      if (serviceId) debouncedHandleRecords(serviceId);
+    },
+    [
+      selectedAction,
+      serviceId,
+      processSingleId,
+      debouncedHandleRecords,
+      refreshTable,
+    ]
+  );
 
-    // Return whether processing should continue
-    return !hasError;
-  };
-
-  // Process all IDs
-  const processAllIds = async (ids) => {
-    setPendingIds(ids);
-    setCurrentIdIndex(0);
-    let successCount = 0;
-
-    for (let i = 0; i < ids.length; i++) {
-      setCurrentIdIndex(i);
-      const success = await processSingleId(ids[i], i, ids.length);
-      if (selectedAction === "Sanction" && !success) {
-        // Pause for Sanction action to allow user interaction
-        return;
-      }
-      if (success) {
-        successCount++;
-      }
-    }
-
-    // After all IDs are processed
-    setPendingIds([]);
-    setCurrentIdIndex(0);
-    setCurrentApplicationId("");
-    toast.success(
-      `${
-        selectedAction === "toInbox"
-          ? "Returned to Inbox"
-          : selectedAction === "Sanction"
-          ? "Sanctioned"
-          : "Rejected"
-      } ${successCount} of ${ids.length} application${
-        ids.length > 1 ? "s" : ""
-      }!`,
-      {
-        position: "top-right",
-        autoClose: 2000,
-        theme: "colored",
-      }
-    );
-    handleRecords(serviceId);
-  };
-
-  // Handle pin submit
-  const handlePinSubmit = async () => {
+  const handlePinSubmit = useCallback(async () => {
     if (!pin) {
       toast.error("Please enter the USB token PIN.", {
         position: "top-right",
@@ -559,10 +557,9 @@ export default function OfficerHome() {
       setConfirmOpen(false);
       setPin("");
     }
-  };
+  }, [pin, signAndUpdatePdf]);
 
-  // Handle Sign PDF button click
-  const handleSignPdf = async () => {
+  const handleSignPdf = useCallback(async () => {
     if (storedPin) {
       try {
         await signAndUpdatePdf(storedPin);
@@ -575,7 +572,6 @@ export default function OfficerHome() {
           setStoredPin(null);
           setConfirmOpen(true);
         } else {
-          // Continue with next ID
           const nextIndex = currentIdIndex + 1;
           if (nextIndex < pendingIds.length) {
             setCurrentIdIndex(nextIndex);
@@ -600,167 +596,213 @@ export default function OfficerHome() {
                 theme: "colored",
               }
             );
-            handleRecords(serviceId);
+            refreshTable();
+            if (serviceId) debouncedHandleRecords(serviceId);
           }
         }
       }
     } else {
       setConfirmOpen(true);
     }
-  };
+  }, [
+    storedPin,
+    currentIdIndex,
+    pendingIds,
+    serviceId,
+    processSingleId,
+    debouncedHandleRecords,
+    refreshTable,
+  ]);
 
-  // Sign and update PDF
-  const signAndUpdatePdf = async (pinToUse) => {
-    try {
-      if (!pdfBlob) {
-        throw new Error("No PDF blob available for signing");
-      }
-      const isValid = await isValidPdf(pdfBlob);
-      if (!isValid) {
-        throw new Error("Invalid PDF structure detected");
-      }
-      const certDetails = await fetchCertificateDetails();
-      if (!certDetails) {
-        throw new Error("No registered DSC found");
-      }
-      const certificates = await fetchCertificates(pinToUse);
-      if (!certificates || certificates.length === 0) {
-        throw new Error("No certificates found on the USB token");
-      }
-      const selectedCertificate = certificates[0];
-      const expiration = new Date(certDetails.expirationDate);
-      const now = new Date();
-      const tokenSerial = selectedCertificate.serial_number
-        ?.toString()
-        .replace(/\s+/g, "")
-        .toUpperCase();
-      const registeredSerial = certDetails.serial_number
-        ?.toString()
-        .replace(/\s+/g, "")
-        .toUpperCase();
-      if (tokenSerial !== registeredSerial) {
-        throw new Error("Not the registered certificate");
-      }
-      if (expiration < now) {
-        throw new Error("The registered certificate has expired");
-      }
-
-      const signedBlob = await signPdf(pdfBlob, pinToUse);
-      const updateFormData = new FormData();
-      updateFormData.append("signedPdf", signedBlob, "signed.pdf");
-      updateFormData.append("applicationId", currentApplicationId);
-      const updateResponse = await axiosInstance.post(
-        "/Officer/UpdatePdf",
-        updateFormData
-      );
-      if (!updateResponse.data.status) {
-        throw new Error(
-          "Failed to update PDF on server: " +
-            (updateResponse.data.response || "Unknown error")
-        );
-      }
-
+  const signAndUpdatePdf = useCallback(
+    async (pinToUse) => {
       try {
-        await axiosInstance.get("/Officer/RemoveFromPool", {
-          params: {
-            ServiceId: serviceId,
-            itemToRemove: currentApplicationId,
-          },
-        });
-        toast.success("Application sanctioned and removed from pool!", {
+        if (!pdfBlob) {
+          throw new Error("No PDF blob available for signing");
+        }
+        const isValid = await isValidPdf(pdfBlob);
+        if (!isValid) {
+          throw new Error("Invalid PDF structure detected");
+        }
+        const certDetails = await fetchCertificateDetails();
+        if (!certDetails) {
+          throw new Error("No registered DSC found");
+        }
+        const certificates = await fetchCertificates(pinToUse);
+        if (!certificates || certificates.length === 0) {
+          throw new Error("No certificates found on the USB token");
+        }
+        const selectedCertificate = certificates[0];
+        const expiration = new Date(certDetails.expirationDate);
+        const now = new Date();
+        const tokenSerial = selectedCertificate.serial_number
+          ?.toString()
+          .replace(/\s+/g, "")
+          .toUpperCase();
+        const registeredSerial = certDetails.serial_number
+          ?.toString()
+          .replace(/\s+/g, "")
+          .toUpperCase();
+        if (tokenSerial !== registeredSerial) {
+          throw new Error("Not the registered certificate");
+        }
+        if (expiration < now) {
+          throw new Error("The registered certificate has expired");
+        }
+
+        const signedBlob = await signPdf(pdfBlob, pinToUse);
+        const updateFormData = new FormData();
+        updateFormData.append("signedPdf", signedBlob, "signed.pdf");
+        updateFormData.append("applicationId", currentApplicationId);
+        const updateResponse = await axiosInstance.post(
+          "/Officer/UpdatePdf",
+          updateFormData
+        );
+        if (!updateResponse.data.status) {
+          throw new Error(
+            "Failed to update PDF on server: " +
+              (updateResponse.data.response || "Unknown error")
+          );
+        }
+
+        // Perform HandleAction after successful signing
+        if (pendingFormData) {
+          const { data: result } = await axiosInstance.post(
+            "/Officer/HandleAction",
+            pendingFormData
+          );
+          if (!result.status) {
+            throw new Error(
+              result.response || "Failed to sanction application"
+            );
+          }
+        }
+
+        try {
+          await axiosInstance.get("/Officer/RemoveFromPool", {
+            params: {
+              ServiceId: serviceId,
+              itemToRemove: currentApplicationId,
+            },
+          });
+          toast.success("Application sanctioned and removed from pool!", {
+            position: "top-right",
+            autoClose: 2000,
+            theme: "colored",
+          });
+        } catch (error) {
+          toast.error("Failed to remove application from pool.", {
+            position: "top-right",
+            autoClose: 3000,
+            theme: "colored",
+          });
+        }
+
+        if (pdfUrl) {
+          URL.revokeObjectURL(pdfUrl);
+        }
+        const blobUrl = URL.createObjectURL(signedBlob);
+        setPdfUrl(blobUrl);
+        setPdfBlob(null);
+        setIsSignedPdf(true);
+        setPendingFormData(null); // Clear pending form data
+        toast.success("PDF signed successfully!", {
           position: "top-right",
           autoClose: 2000,
           theme: "colored",
         });
+
+        // Update cards by fetching new counts
+        if (serviceId) {
+          await debouncedHandleRecords(serviceId); // Ensure counts are updated
+        }
+
+        const nextIndex = currentIdIndex + 1;
+        if (nextIndex < pendingIds.length) {
+          setCurrentIdIndex(nextIndex);
+          setCurrentApplicationId(pendingIds[nextIndex]);
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          await processSingleId(
+            pendingIds[nextIndex],
+            nextIndex,
+            pendingIds.length
+          );
+        } else {
+          setPendingIds([]);
+          setCurrentIdIndex(0);
+          setCurrentApplicationId("");
+          setConfirmOpen(false);
+          toast.success(
+            `Sanctioned ${pendingIds.length} application${
+              pendingIds.length > 1 ? "s" : ""
+            }!`,
+            {
+              position: "top-right",
+              autoClose: 2000,
+              theme: "colored",
+            }
+          );
+          // Update cards for final batch
+          if (serviceId) {
+            await debouncedHandleRecords(serviceId); // Ensure counts are updated
+          }
+          refreshTable();
+        }
       } catch (error) {
-        toast.error("Failed to remove application from pool.", {
+        toast.error("Error signing PDF: " + error.message, {
           position: "top-right",
           autoClose: 3000,
           theme: "colored",
         });
+        setPendingFormData(null); // Clear pending form data on error
+        throw error;
       }
+    },
+    [
+      pdfBlob,
+      currentApplicationId,
+      pdfUrl,
+      pendingIds,
+      currentIdIndex,
+      serviceId,
+      processSingleId,
+      debouncedHandleRecords,
+      refreshTable,
+      pendingFormData,
+    ]
+  );
 
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl);
-      }
-      const blobUrl = URL.createObjectURL(signedBlob);
-      setPdfUrl(blobUrl);
-      setPdfBlob(null);
-      setIsSignedPdf(true);
-      toast.success("PDF signed successfully!", {
-        position: "top-right",
-        autoClose: 2000,
-        theme: "colored",
-      });
-
-      // Proceed to next ID
-      const nextIndex = currentIdIndex + 1;
-      if (nextIndex < pendingIds.length) {
-        setCurrentIdIndex(nextIndex);
-        setCurrentApplicationId(pendingIds[nextIndex]);
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        await processSingleId(
-          pendingIds[nextIndex],
-          nextIndex,
-          pendingIds.length
-        );
-      } else {
-        setPendingIds([]);
-        setCurrentIdIndex(0);
-        setCurrentApplicationId("");
-        setConfirmOpen(false);
-        toast.success(
-          `Sanctioned ${pendingIds.length} application${
-            pendingIds.length > 1 ? "s" : ""
-          }!`,
-          {
-            position: "top-right",
-            autoClose: 2000,
-            theme: "colored",
-          }
-        );
-        handleRecords(serviceId);
-      }
-    } catch (error) {
-      console.error("Error in signAndUpdatePdf:", error);
-      toast.error("Error signing PDF: " + error.message, {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
-      throw error;
-    }
-  };
-
-  // Handle Reject confirmation
-  const handleRejectConfirm = async () => {
+  const handleRejectConfirm = useCallback(async () => {
+    setLoading(true);
     setRejectConfirmOpen(false);
     await processAllIds(
       pendingRejectRows.map((row) => row.original.referenceNumber)
     );
-  };
+    setLoading(false);
+  }, [pendingRejectRows, processAllIds]);
 
-  // Handle bulk action execution
-  const handleExecuteAction = async (selectedRows) => {
-    if (!selectedRows || selectedRows.length === 0) {
-      toast.error("No applications selected.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
-      return;
-    }
-    const ids = selectedRows.map((item) => item.original.referenceNumber);
-    if (selectedAction === "Reject") {
-      setPendingRejectRows(selectedRows);
-      setRejectConfirmOpen(true);
-    } else {
-      await processAllIds(ids);
-    }
-  };
+  const handleExecuteAction = useCallback(
+    async (selectedRows) => {
+      if (!selectedRows || selectedRows.length === 0) {
+        toast.error("No applications selected.", {
+          position: "top-right",
+          autoClose: 3000,
+          theme: "colored",
+        });
+        return;
+      }
+      const ids = selectedRows.map((item) => item.original.referenceNumber);
+      if (selectedAction === "Reject") {
+        setPendingRejectRows(selectedRows);
+        setRejectConfirmOpen(true);
+      } else {
+        await processAllIds(ids);
+      }
+    },
+    [selectedAction, processAllIds]
+  );
 
-  // Get action options for bulk action dropdown
-  const getActionOptions = () => {
+  const getActionOptions = useMemo(() => {
     const options = [
       { value: "Reject", label: "Reject" },
       { value: "toInbox", label: "Return to Inbox" },
@@ -769,94 +811,99 @@ export default function OfficerHome() {
       options.push({ value: "Sanction", label: "Sanction" });
     }
     return options;
-  };
+  }, [canSanction]);
 
-  // Chart data
-  const barData = {
-    labels: [
-      "Total",
-      "Pending",
-      "Forwarded",
-      "Citizen Pending",
-      "Rejected",
-      "Sanctioned",
-    ],
-    datasets: [
-      {
-        label: "Applications",
-        data: [
-          counts.total,
-          counts.pending,
-          counts.forwarded,
-          counts.citizenPending,
-          counts.rejected,
-          counts.sanctioned,
-        ],
-        backgroundColor: [
-          "#1976d2",
-          "#ff9800",
-          "#1976d2",
-          "#9c27b0",
-          "#f44336",
-          "#4caf50",
-        ],
-        borderColor: ["#1565c0", "#f57c00", "#7b1fa2", "#d32f2f", "#388e3c"],
-        borderWidth: 0,
-      },
-    ],
-  };
+  const barData = useMemo(
+    () => ({
+      labels: [
+        "Total",
+        "Pending",
+        "Forwarded",
+        "Citizen Pending",
+        "Rejected",
+        "Sanctioned",
+      ],
+      datasets: [
+        {
+          label: "Applications",
+          data: [
+            counts.total,
+            counts.pending,
+            counts.forwarded,
+            counts.citizenPending,
+            counts.rejected,
+            counts.sanctioned,
+          ],
+          backgroundColor: [
+            "#1976d2",
+            "#ff9800",
+            "#1976d2",
+            "#9c27b0",
+            "#f44336",
+            "#4caf50",
+          ],
+          borderColor: ["#1565c0", "#f57c00", "#7b1fa2", "#d32f2f", "#388e3c"],
+          borderWidth: 0,
+        },
+      ],
+    }),
+    [counts]
+  );
 
-  const pieData = {
-    labels: [
-      "Pending",
-      "Forwarded",
-      "Citizen Pending",
-      "Rejected",
-      "Sanctioned",
-    ],
-    datasets: [
-      {
-        data: [
-          counts.pending,
-          counts.forwarded,
-          counts.citizenPending,
-          counts.rejected,
-          counts.sanctioned,
-        ],
-        backgroundColor: [
-          "#ff9800",
-          "#1976d2",
-          "#9c27b0",
-          "#f44336",
-          "#4caf50",
-        ],
-        borderColor: ["#fff", "#fff", "#fff", "#fff", "#fff"],
-        borderWidth: 0,
-      },
-    ],
-  };
+  const pieData = useMemo(
+    () => ({
+      labels: [
+        "Pending",
+        "Forwarded",
+        "Citizen Pending",
+        "Rejected",
+        "Sanctioned",
+      ],
+      datasets: [
+        {
+          data: [
+            counts.pending,
+            counts.forwarded,
+            counts.citizenPending,
+            counts.rejected,
+            counts.sanctioned,
+          ],
+          backgroundColor: [
+            "#ff9800",
+            "#1976d2",
+            "#9c27b0",
+            "#f44336",
+            "#4caf50",
+          ],
+          borderColor: ["#fff", "#fff", "#fff", "#fff", "#fff"],
+          borderWidth: 0,
+        },
+      ],
+    }),
+    [counts]
+  );
 
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: "top",
-        labels: {
-          font: {
-            size: 14,
-            family: "'Inter', sans-serif",
-          },
+  const chartOptions = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "top",
+          labels: { font: { size: 14, family: "'Inter', sans-serif" } },
         },
       },
-    },
-  };
+    }),
+    []
+  );
 
-  // Extra params for ServerSideTable
-  const extraParams = {
-    ServiceId: serviceId,
-    type: type,
-  };
+  const extraParams = useMemo(
+    () => ({
+      ServiceId: serviceId,
+      type: type,
+    }),
+    [serviceId, type]
+  );
 
   useEffect(() => {
     const fetchServices = async () => {
@@ -878,14 +925,16 @@ export default function OfficerHome() {
     fetchServices();
   }, []);
 
-  // Color mapping for status cards
-  const statusColors = {
-    "Total Applications": "#1976d2",
-    Pending: "#ff9800",
-    "Citizen Pending": "#9c27b0",
-    Rejected: "#f44336",
-    Sanctioned: "#4caf50",
-  };
+  const statusColors = useMemo(
+    () => ({
+      "Total Applications": "#1976d2",
+      Pending: "#ff9800",
+      "Citizen Pending": "#9c27b0",
+      Rejected: "#f44336",
+      Sanctioned: "#4caf50",
+    }),
+    []
+  );
 
   if (loading) {
     return (
@@ -962,7 +1011,7 @@ export default function OfficerHome() {
                 <ServiceSelectionForm
                   services={services}
                   errors={errors}
-                  onServiceSelect={handleRecords}
+                  onServiceSelect={debouncedHandleRecords}
                   sx={{
                     "& .MuiFormControl-root": {
                       bgcolor: "#ffffff",
@@ -1049,10 +1098,11 @@ export default function OfficerHome() {
                     variant="h6"
                     sx={{ mb: 3, fontWeight: 600, color: "#2d3748" }}
                   >
-                    {type} Applications
+                    {type.toUpperCase()} Applications
                   </Typography>
                   <ServerSideTable
-                    key={`${serviceId}-${type}`}
+                    ref={tableInstanceRef}
+                    key={`table-${tableKey}-${serviceId}-${type}`}
                     url="/Officer/GetApplications"
                     extraParams={extraParams}
                     actionFunctions={actionFunctions}
@@ -1062,20 +1112,16 @@ export default function OfficerHome() {
                     serviceId={serviceId}
                     onPushToPool={handlePushToPool}
                     onExecuteAction={handleExecuteAction}
-                    actionOptions={getActionOptions()}
+                    actionOptions={getActionOptions}
                     selectedAction={selectedAction}
                     setSelectedAction={setSelectedAction}
                     sx={{
-                      "& .MuiTable-root": {
-                        background: "#ffffff",
-                      },
+                      "& .MuiTable-root": { background: "#ffffff" },
                       "& .MuiTableCell-root": {
                         color: "#2d3748",
                         borderColor: "#e0e0e0",
                       },
-                      "& .MuiButton-root": {
-                        color: "#1976d2",
-                      },
+                      "& .MuiButton-root": { color: "#1976d2" },
                     }}
                   />
                 </CardContent>
@@ -1090,7 +1136,6 @@ export default function OfficerHome() {
         onClose={() => {
           setRejectConfirmOpen(false);
           setPendingRejectRows([]);
-          handleRecords(serviceId);
         }}
       >
         <DialogTitle
@@ -1116,7 +1161,6 @@ export default function OfficerHome() {
             onClick={() => {
               setRejectConfirmOpen(false);
               setPendingRejectRows([]);
-              handleRecords(serviceId);
             }}
             aria-label="Cancel"
           >

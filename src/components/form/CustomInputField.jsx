@@ -11,6 +11,7 @@ export default function CustomInputField({
   placeholder = "Enter text...",
   rules = {},
   onChange,
+  onBlur,
   maxLength,
   minLength,
 }) {
@@ -46,7 +47,7 @@ export default function CustomInputField({
               field.onChange(e);
               if (onChange) onChange(e);
             }}
-            onBlur={field.onBlur}
+            onBlur={onBlur}
             InputProps={{
               sx: {
                 fontSize: "16px",

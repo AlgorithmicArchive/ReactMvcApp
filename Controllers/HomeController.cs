@@ -126,45 +126,10 @@ namespace SahayataNidhi.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> SendOtp(string? userId = null)
+        public async Task<IActionResult> SendOtp(string? email)
         {
             string otpKey;
-            string email;
-            string userName;
-
-            if (!string.IsNullOrEmpty(userId))
-            {
-                // Registration scenario: Use provided UserId
-                var user = _dbContext.Users.FirstOrDefault(u => u.UserId.ToString() == userId);
-                if (user == null || string.IsNullOrEmpty(user.Email))
-                {
-                    return Json(new { status = false, message = "User not found or invalid email." });
-                }
-                otpKey = $"otp:{userId}";
-                email = user.Email;
-                userName = user.Name!;
-            }
-            else
-            {
-                // Authenticated scenario: Use JWT claims
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var userTypeClaim = User.FindFirst(ClaimTypes.Role)?.Value;
-
-                if (string.IsNullOrEmpty(userIdClaim) || string.IsNullOrEmpty(userTypeClaim))
-                {
-                    return Json(new { status = false, message = "User not authenticated." });
-                }
-
-                var user = _dbContext.Users.FirstOrDefault(u => u.UserId.ToString() == userIdClaim);
-                if (user == null || string.IsNullOrEmpty(user.Email))
-                {
-                    return Json(new { status = false, message = "User not found or invalid email." });
-                }
-
-                otpKey = $"otp:{userIdClaim}";
-                email = user.Email;
-                userName = user.Name!;
-            }
+            otpKey = $"otp:{email}";
 
             string otp = GenerateOTP(6);
             _otpStore.StoreOtp(otpKey, otp);
@@ -172,7 +137,6 @@ namespace SahayataNidhi.Controllers
             string htmlMessage = $@"
             <div style='font-family: Arial, sans-serif;'>
                 <h2 style='color: #2e6c80;'>Your OTP Code</h2>
-                <p>Dear {userName},</p>
                 <p>Use the following One-Time Password (OTP) to complete your verification. It is valid for <strong>5 minutes</strong>.</p>
                 <div style='font-size: 24px; font-weight: bold; color: #333; margin: 20px 0;'>{otp}</div>
                 <p>If you did not request this, please ignore this email.</p>
@@ -180,7 +144,7 @@ namespace SahayataNidhi.Controllers
                 <p style='font-size: 12px; color: #888;'>Thank you,<br />Your Application Team</p>
             </div>";
 
-            await _emailSender.SendEmail(email, "OTP For Registration", htmlMessage);
+            await _emailSender.SendEmail(email!, "OTP For Registration", htmlMessage);
             return Json(new { status = true });
         }
 
@@ -340,15 +304,15 @@ namespace SahayataNidhi.Controllers
         public IActionResult OTPValidation([FromForm] IFormCollection form)
         {
             var otp = form["otp"].ToString();
-            var userId = form["UserId"].ToString();
+            var email = form["email"].ToString();
 
-            if (string.IsNullOrEmpty(otp) || string.IsNullOrEmpty(userId))
+            if (string.IsNullOrEmpty(otp) || string.IsNullOrEmpty(email))
             {
-                return Json(new { status = false, message = "OTP or UserId is missing." });
+                return Json(new { status = false, message = "OTP or email is missing." });
             }
 
-            // Construct the OTP key using the provided UserId
-            string otpKey = $"otp:{userId}";
+            // Construct the OTP key using the provided email
+            string otpKey = $"otp:{email}";
             string? storedOtp = _otpStore.RetrieveOtp(otpKey);
 
             if (storedOtp == null)
@@ -359,20 +323,6 @@ namespace SahayataNidhi.Controllers
             // Verify the OTP
             if (storedOtp == otp)
             {
-                // Find the user by UserId
-                var user = _dbContext.Users.FirstOrDefault(u => u.UserId.ToString() == userId);
-                if (user == null)
-                {
-                    return Json(new { status = false, message = "User not found." });
-                }
-
-                // Mark email as verified
-                user.IsEmailValid = true;
-                _dbContext.SaveChanges();
-
-                // Clear the OTP from the store
-                _otpStore.RetrieveOtp(otpKey);
-
                 return Json(new { status = true, message = "OTP validated successfully." });
             }
 
@@ -557,28 +507,16 @@ namespace SahayataNidhi.Controllers
             var registeredDate = new SqlParameter("@RegisteredDate", DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt"));
 
 
-            var result = _dbContext.Users.FromSqlRaw(
+            var result = await _dbContext.Users.FromSqlRaw(
                 "EXEC RegisterUser @Name, @Username, @Password, @Email, @MobileNumber, @Profile, @UserType, @BackupCodes, @AdditionalDetails, @RegisteredDate",
                 fullName, username, password, email, mobileNumber, Profile, UserType, AddtionalDetails, backupCodesParam, registeredDate
-            ).ToList();
+            ).ToListAsync();
 
             if (result.Count != 0)
             {
-                // Call SendOtp with the new UserId
-                var otpResult = await SendOtp(result[0].UserId.ToString());
-                if (otpResult is JsonResult jsonResult && jsonResult.Value is { } value)
-                {
-                    var status = value.GetType().GetProperty("status")?.GetValue(value);
-                    if (status is bool statusBool && statusBool)
-                    {
-                        return Json(new { status = true, userId = result[0].UserId });
-                    }
-                    else
-                    {
-                        return Json(new { status = false, response = "Failed to send OTP." });
-                    }
-                }
-                return Json(new { status = false, response = "Error processing OTP." });
+                result[0].IsEmailValid = true;
+                _dbContext.SaveChanges();
+                return Json(new { status = true, response = "Registration Successfull." });
             }
             else
             {
