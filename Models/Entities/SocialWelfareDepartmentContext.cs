@@ -49,8 +49,6 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     public virtual DbSet<Tswotehsil> Tswotehsils { get; set; }
 
-    public virtual DbSet<UploadedFile> UploadedFiles { get; set; }
-
     public virtual DbSet<User> Users { get; set; }
 
     public virtual DbSet<UserDocument> UserDocuments { get; set; }
@@ -455,17 +453,6 @@ public partial class SocialWelfareDepartmentContext : DbContext
                 .HasColumnName("tswoOfficeName");
         });
 
-        modelBuilder.Entity<UploadedFile>(entity =>
-        {
-            entity.HasKey(e => e.FileId).HasName("PK_Files");
-
-            entity.Property(e => e.FileName).HasMaxLength(255);
-            entity.Property(e => e.FileType).HasMaxLength(100);
-            entity.Property(e => e.UploadDate)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
-        });
-
         modelBuilder.Entity<User>(entity =>
         {
             entity.Property(e => e.BackupCodes).IsUnicode(false);
@@ -498,7 +485,6 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.FileId).HasColumnName("fileId");
             entity.Property(e => e.FileName).HasMaxLength(255);
             entity.Property(e => e.FileType).HasMaxLength(50);
-            entity.Property(e => e.ReferenceNumber).HasMaxLength(50);
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");

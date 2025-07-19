@@ -7,8 +7,6 @@ public partial class UserDocument
 {
     public int FileId { get; set; }
 
-    public string ReferenceNumber { get; set; } = null!;
-
     public string FileName { get; set; } = null!;
 
     public string FileType { get; set; } = null!;
