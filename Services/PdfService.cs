@@ -17,10 +17,12 @@ using Newtonsoft.Json.Linq;
 using SahayataNidhi.Models.Entities;
 
 
-public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDepartmentContext dbcontext)
+public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDepartmentContext dbcontext, UserHelperFunctions helper)
 {
     private readonly IWebHostEnvironment _webHostEnvironment = webHostEnvironment;
     protected readonly SocialWelfareDepartmentContext dbcontext = dbcontext;
+    protected readonly UserHelperFunctions helper = helper;
+
 
     public string GetArreaName(string? accessLevel, int? accessCode)
     {
@@ -94,10 +96,12 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
 
     }
 
-    public void CreateSanctionPdf(Dictionary<string, string> details, string sanctionLetterFor, string information, OfficerDetailsModal Officer, string ApplicationId)
+    public async Task CreateSanctionPdf(Dictionary<string, string> details, string sanctionLetterFor, string information, OfficerDetailsModal Officer, string ApplicationId)
     {
-        string path = System.IO.Path.Combine(_webHostEnvironment.WebRootPath, "files", ApplicationId.Replace("/", "_") + "SanctionLetter.pdf");
-        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path) ?? string.Empty);
+
+        // Generate PDF into MemoryStream
+        using var memoryStream = new MemoryStream();
+
 
         string emblem = System.IO.Path.Combine(_webHostEnvironment.WebRootPath, "assets", "images", "emblem.png");
         Image image = new Image(ImageDataFactory.Create(emblem))
@@ -106,7 +110,7 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
         string? sanctionedFromWhere = Officer.AccessLevel != "State" ? $"Office of The {Officer.Role}, {GetArreaName(Officer.AccessLevel, Officer.AccessCode)}" : "SOCIAL WELFARE DEPARTMENT\nCIVIL SECRETARIAT, JAMMU / SRINAGAR";
         string? branchOffice = GetBranchOffice(ApplicationId);
 
-        using PdfWriter writer = new(path);
+        using PdfWriter writer = new(memoryStream);
         using PdfDocument pdf = new(writer);
         pdf.SetDefaultPageSize(PageSize.A4);
         using Document document = new(pdf);
@@ -198,31 +202,34 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
             .SetBorder(Border.NO_BORDER)
             .SetTextAlignment(TextAlignment.RIGHT));
         document.Add(footerTable);
+
+        document.Close();
+        await helper.GetFilePath(null, memoryStream.ToArray(), ApplicationId.Replace("/", "_") + "SanctionLetter.pdf");
     }
 
-    public void CreateAcknowledgement(OrderedDictionary details, string applicationId, string serviceName)
+    public async Task CreateAcknowledgement(OrderedDictionary details, string applicationId, string serviceName)
     {
-        string path = System.IO.Path.Combine(_webHostEnvironment.WebRootPath, "files", applicationId.Replace("/", "_") + "Acknowledgement.pdf");
-        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path) ?? string.Empty);
+        // Generate PDF into MemoryStream
+        using var memoryStream = new MemoryStream();
+        using PdfWriter writer = new PdfWriter(memoryStream);
+        using PdfDocument pdf = new PdfDocument(writer);
+        using Document document = new Document(pdf);
 
         string emblem = System.IO.Path.Combine(_webHostEnvironment.WebRootPath, "assets", "images", "emblem.png");
         Image image = new Image(ImageDataFactory.Create(emblem))
-                        .ScaleToFit(50, 50)        // Resize the image (optional)
-                        .SetHorizontalAlignment(HorizontalAlignment.CENTER);  // Center align the image
-
-        using PdfWriter writer = new(path);
-        using PdfDocument pdf = new(writer);
-        using Document document = new(pdf);
+                        .ScaleToFit(50, 50)
+                        .SetHorizontalAlignment(HorizontalAlignment.CENTER);
         document.Add(image);
+
         document.Add(new Paragraph("Union Territory of Jammu and Kashmir")
             .SetBold()
             .SetTextAlignment(TextAlignment.CENTER)
             .SetFontSize(20));
 
         document.Add(new Paragraph(serviceName)
-           .SetBold()
-           .SetTextAlignment(TextAlignment.CENTER)
-           .SetFontSize(16));
+            .SetBold()
+            .SetTextAlignment(TextAlignment.CENTER)
+            .SetFontSize(16));
 
         document.Add(new Paragraph("Acknowledgement")
             .SetBold()
@@ -230,14 +237,18 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
             .SetFontSize(16));
 
         Table table = new Table(UnitValue.CreatePercentArray(2)).UseAllAvailableWidth();
-
         foreach (DictionaryEntry item in details)
         {
             table.AddCell(new Cell().Add(new Paragraph(item.Key.ToString())));
             table.AddCell(new Cell().Add(new Paragraph(item.Value?.ToString() ?? string.Empty)));
         }
-
         document.Add(table);
+
+        // Ensure the PDF is finalized
+        document.Close();
+
+        // Call GetFilePath to store in database
+        await helper.GetFilePath(null, memoryStream.ToArray(), applicationId.Replace("/", "_") + DateTime.Now.ToString() + "Acknowledgement.pdf");
     }
 
 

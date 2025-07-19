@@ -22,6 +22,24 @@ namespace SahayataNidhi.Controllers
         private const long MaxPdfFile = 200 * 1024; // 200KB
 
 
+        [HttpGet]
+        public async Task<IActionResult> DisplayFile(string fileName)
+        {
+            var fileModel = await dbcontext.UserDocuments
+                .FirstOrDefaultAsync(f => f.FileName == fileName);
+
+            if (fileModel == null)
+            {
+                return NotFound("File not found.");
+            }
+
+            if (!fileModel.FileType.StartsWith("image/") && fileModel.FileType != "application/pdf")
+            {
+                return BadRequest("File is not an image or PDF.");
+            }
+
+            return File(fileModel.FileData, fileModel.FileType);
+        }
 
         public OfficerDetailsModal? GetOfficerDetails()
         {
@@ -513,8 +531,6 @@ namespace SahayataNidhi.Controllers
                 return StatusCode(500, new { status = false, message = "An error occurred while fetching the IFSC code.", error = ex.Message });
             }
         }
-
-
 
         [HttpGet]
         public IActionResult GetAreaList(string table, int parentId)

@@ -13,45 +13,126 @@ public class UserHelperFunctions(IWebHostEnvironment webHostEnvironment, SocialW
 
     private readonly ILogger<UserHelperFunctions> _logger = logger;
 
-    public async Task<string> GetFilePath(IFormFile? docFile, string folder = "uploads")
+    public async Task<string> GetFilePath(IFormFile? docFile = null, byte[]? fileData = null, string? fileName = null)
     {
-        string docPath = "";
-        string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, folder);
-        string shortGuid = Guid.NewGuid().ToString("N")[..8];
-
-        string fileExtension = Path.GetExtension(docFile?.FileName)!;
-        string uniqueName = shortGuid + fileExtension;
-
-
-        if (!Directory.Exists(uploadsFolder))
+        if ((docFile == null || docFile.Length == 0) && fileData == null)
         {
-            Directory.CreateDirectory(uploadsFolder);
+            return "No file provided.";
         }
 
-        if (docFile != null && docFile.Length > 0)
-        {
-            _logger.LogInformation($"----File:{docFile?.FileName} Extension:{Path.GetExtension(docFile?.FileName)}-------");
-            try
-            {
-                string filePath = Path.Combine(uploadsFolder, uniqueName);
-                _logger.LogInformation($"-----Attempting to save file at: {filePath}----");
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await docFile!.CopyToAsync(stream);
-                }
+        string uniqueName;
+        byte[] data;
+        string contentType;
 
-                docPath = "/" + folder + "/" + uniqueName;
-            }
-            catch (Exception ex)
+        if (docFile != null)
+        {
+            // Handle IFormFile
+            string fileExtension = Path.GetExtension(docFile.FileName);
+            string shortGuid = Guid.NewGuid().ToString("N")[..12];
+            uniqueName = shortGuid + fileExtension;
+            contentType = docFile.ContentType;
+
+            using var memoryStream = new MemoryStream();
+            await docFile.CopyToAsync(memoryStream);
+            data = memoryStream.ToArray();
+        }
+        else
+        {
+            // Handle programmatically generated file
+            if (fileData == null)
             {
-                _logger.LogError($"Error while uploading file: {ex.Message}");
-                throw;
+                throw new ArgumentNullException(nameof(fileData));
+            }
+
+
+            // Determine file type from fileData (check for PDF signature)
+            string fileExtension;
+            if (fileData.Length > 5 && fileData[0] == 0x25 && fileData[1] == 0x50 && fileData[2] == 0x44 && fileData[3] == 0x46 && fileData[4] == 0x2D)
+            {
+                // Confirmed PDF (%PDF- signature)
+                fileExtension = ".pdf";
+                contentType = "application/pdf";
+            }
+            else
+            {
+                throw new NotSupportedException("Unsupported file type. Only PDF is supported.");
+            }
+
+            string shortGuid = Guid.NewGuid().ToString("N")[..12];
+            uniqueName = shortGuid + fileExtension;
+            data = fileData;
+        }
+
+        if (fileName != null)
+        {
+            var existingFile = dbcontext.UserDocuments.FirstOrDefault(f => f.FileName == fileName);
+            if (existingFile != null)
+            {
+                dbcontext.UserDocuments.Remove(existingFile);
+                await dbcontext.SaveChangesAsync(); // or dbcontext.SaveChanges() if not async
             }
         }
 
+        // Save to database to generate FileId
+        var fileModel = new UserDocument
+        {
+            FileName = fileName == null ? uniqueName : fileName, // Temporary placeholder
+            FileType = contentType,
+            FileSize = data.Length,
+            FileData = data,
+            UpdatedAt = DateTime.Now
+        };
 
-        return docPath;
+        dbcontext.UserDocuments.Add(fileModel);
+        await dbcontext.SaveChangesAsync();
+
+
+
+
+
+        return "/Base/DisplayFile?filename=" + uniqueName;
     }
+
+
+    // public async Task<string> GetFilePath(IFormFile? docFile, string folder = "uploads")
+    // {
+    //     string docPath = "";
+    //     string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, folder);
+    //     string shortGuid = Guid.NewGuid().ToString("N")[..8];
+
+    //     string fileExtension = Path.GetExtension(docFile?.FileName)!;
+    //     string uniqueName = shortGuid + fileExtension;
+
+
+    //     if (!Directory.Exists(uploadsFolder))
+    //     {
+    //         Directory.CreateDirectory(uploadsFolder);
+    //     }
+
+    //     if (docFile != null && docFile.Length > 0)
+    //     {
+    //         _logger.LogInformation($"----File:{docFile?.FileName} Extension:{Path.GetExtension(docFile?.FileName)}-------");
+    //         try
+    //         {
+    //             string filePath = Path.Combine(uploadsFolder, uniqueName);
+    //             _logger.LogInformation($"-----Attempting to save file at: {filePath}----");
+    //             using (var stream = new FileStream(filePath, FileMode.Create))
+    //             {
+    //                 await docFile!.CopyToAsync(stream);
+    //             }
+
+    //             docPath = "/" + folder + "/" + uniqueName;
+    //         }
+    //         catch (Exception ex)
+    //         {
+    //             _logger.LogError($"Error while uploading file: {ex.Message}");
+    //             throw;
+    //         }
+    //     }
+
+
+    //     return docPath;
+    // }
 
     public string GetCurrentFinancialYear()
     {

@@ -36,6 +36,7 @@ namespace SahayataNidhi.Controllers.User
             // Process each file.
             foreach (var file in form.Files)
             {
+                _logger.LogInformation($"--------- Filename: {file.FileName} ------------------");
                 string filePath = await helper.GetFilePath(file)!;
                 foreach (var field in allFields.Where(f => f["name"]?.ToString() == file.Name))
                 {
@@ -159,7 +160,7 @@ namespace SahayataNidhi.Controllers.User
                     }
                 }
 
-                string fullPath = FetchAcknowledgementDetails(ReferenceNumber);
+                string fullPath = await FetchAcknowledgementDetails(ReferenceNumber);
                 string? fullName = GetFormFieldValue(formDetailsObj, "ApplicantName");
                 string? ServiceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId)!.ServiceName;
                 string? email = GetFormFieldValue(formDetailsObj, "Email");

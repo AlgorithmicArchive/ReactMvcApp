@@ -200,8 +200,7 @@ namespace SahayataNidhi.Controllers.Profile
                 }
             }
 
-            var filePath = await _helper.GetFilePath(uploadedFile, "profile");
-            _logger.LogInformation($"------File Path: {filePath}");
+            var filePath = await _helper.GetFilePath(uploadedFile);
             user.Profile = filePath;
             _dbcontext.SaveChanges();
 
@@ -252,7 +251,7 @@ namespace SahayataNidhi.Controllers.Profile
                             }
                         }
 
-                        var filePath = await _helper.GetFilePath(file, "profile");
+                        var filePath = await _helper.GetFilePath(file);
                         _logger.LogInformation($"------File Path: {filePath}");
                         user.Profile = filePath;
                     }

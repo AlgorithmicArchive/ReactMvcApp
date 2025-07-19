@@ -211,9 +211,8 @@ namespace SahayataNidhi.Controllers.User
         public IActionResult GetAcknowledgement(string ApplicationId)
         {
             string fileName = ApplicationId.Replace("/", "_") + "Acknowledgement.pdf";
-            string path = $"files/{fileName}";
 
-            string fullPath = path;
+            string fullPath = "Base/DisplayFile?filename=" + fileName;
 
             return Json(new { fullPath });
         }
@@ -428,7 +427,7 @@ namespace SahayataNidhi.Controllers.User
             }
             return Json(new { success = true, sanctionDetails = pdfFields });
         }
-        private string FetchAcknowledgementDetails(string applicationId)
+        private async Task<string> FetchAcknowledgementDetails(string applicationId)
         {
             // 1) Load the application record
             var details = dbcontext.CitizenApplications
@@ -471,16 +470,16 @@ namespace SahayataNidhi.Controllers.User
             acknowledgementDetails["DATE OF SUBMISSION"] = details.CreatedAt?.ToString() ?? string.Empty;
 
             // 6) Generate the PDF
-            _pdfService.CreateAcknowledgement(acknowledgementDetails, applicationId, serviceName);
+            await _pdfService.CreateAcknowledgement(acknowledgementDetails, applicationId, serviceName);
 
             // 7) Return the file path
             string fileName = applicationId.Replace("/", "_") + "Acknowledgement.pdf";
-            string path = $"files/{fileName}";
+            // string path = $"files/{fileName}";
 
-            string fullPath = Path.Combine(_webHostEnvironment.ContentRootPath, "wwwroot", path);
+            // string fullPath = Path.Combine(_webHostEnvironment.ContentRootPath, "wwwroot", path);
 
 
-            return fullPath;
+            return "Base/DisplayFile?filename=" + fileName;
         }
         private JObject MapServiceFieldsFromForm(JObject formDetailsObj, JObject fieldMapping)
         {
@@ -575,7 +574,7 @@ namespace SahayataNidhi.Controllers.User
         {
             return typeof(T).GetProperty(propertyName) != null;
         }
-      
+
         private static string? GetFormFieldValue(JObject formDetailsObj, string fieldName)
         {
             foreach (var section in formDetailsObj.Properties())

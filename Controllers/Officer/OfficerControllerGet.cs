@@ -667,7 +667,7 @@ namespace SahayataNidhi.Controllers.Officer
         }
 
         [HttpGet]
-        public IActionResult GetSanctionLetter(string applicationId)
+        public async Task<IActionResult> GetSanctionLetter(string applicationId)
         {
             OfficerDetailsModal officer = GetOfficerDetails();
             var formdetails = dbcontext.CitizenApplications.FirstOrDefault(fd => fd.ReferenceNumber == applicationId);
@@ -700,13 +700,13 @@ namespace SahayataNidhi.Controllers.Officer
             }
 
             // Call your PDF generator
-            _pdfService.CreateSanctionPdf(pdfFields, sanctionLetterFor?.ToString() ?? "", information?.ToString() ?? "", officer, applicationId);
+            await _pdfService.CreateSanctionPdf(pdfFields, sanctionLetterFor?.ToString() ?? "", information?.ToString() ?? "", officer, applicationId);
             string fileName = applicationId.Replace("/", "_") + "SanctionLetter.pdf";
 
             return Json(new
             {
                 status = true,
-                path = Url.Content($"~/files/{fileName}")
+                path = "/Base/DisplayFile?filename=" + fileName
             });
         }
 

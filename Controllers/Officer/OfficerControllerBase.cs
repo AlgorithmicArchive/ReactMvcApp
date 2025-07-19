@@ -316,9 +316,17 @@ namespace SahayataNidhi.Controllers.Officer
                 if (action == "Sanction")
                 {
                     string fileName = applicationId.Replace("/", "_") + "SanctionLetter.pdf";
-                    string path = $"files/{fileName}";
-                    string fullPath = Path.Combine(_webHostEnvironment.ContentRootPath, "wwwroot", path);
-                    var attachments = new List<string> { fullPath };
+                    var fileModel = await dbcontext.UserDocuments
+                        .FirstOrDefaultAsync(f => f.FileName == fileName);
+
+                    if (fileModel == null)
+                    {
+                        _logger.LogWarning($"File not found in database: {fileName}");
+                    }
+                    string tempPath = Path.Combine(Path.GetTempPath(), fileName);
+                    await System.IO.File.WriteAllBytesAsync(tempPath, fileModel!.FileData);
+
+                    var attachments = new List<string> { tempPath };
                     try
                     {
                         await emailSender.SendEmailWithAttachments(userEmail!, "Form Submission", htmlMessage, attachments);

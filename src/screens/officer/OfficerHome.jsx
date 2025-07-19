@@ -995,7 +995,7 @@ export default function OfficerHome() {
         flexDirection: "column",
         alignItems: "center",
         p: { xs: 3, md: 5 },
-        bgcolor: "#f8f9fa",
+        background: "linear-gradient(180deg, #e6f0fa 0%, #b3cde0 100%)",
       }}
     >
       <Typography
@@ -1013,21 +1013,17 @@ export default function OfficerHome() {
       <Container>
         <Row className="mb-5 justify-content-center">
           <Col xs={12} md={8} lg={6}>
-            <StyledCard>
-              <CardContent>
-                <ServiceSelectionForm
-                  services={services}
-                  errors={errors}
-                  onServiceSelect={debouncedHandleRecords}
-                  sx={{
-                    "& .MuiFormControl-root": {
-                      bgcolor: "#ffffff",
-                      borderRadius: "8px",
-                    },
-                  }}
-                />
-              </CardContent>
-            </StyledCard>
+            <ServiceSelectionForm
+              services={services}
+              errors={errors}
+              onServiceSelect={debouncedHandleRecords}
+              sx={{
+                "& .MuiFormControl-root": {
+                  bgcolor: "#ffffff",
+                  borderRadius: "8px",
+                },
+              }}
+            />
           </Col>
         </Row>
 

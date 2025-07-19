@@ -21,9 +21,9 @@ export default function Verification() {
 
   const handleOptionSelect = async (option) => {
     setSelectedOption(option);
-    if (option == "otp") {
-      await fetch(`/Home/SendLoginOtp?username=${username}`);
-    }
+    // if (option == "otp") {
+    //   await fetch(`/Home/SendLoginOtp?username=${username}`);
+    // }
   };
 
   const onSubmit = async (data) => {

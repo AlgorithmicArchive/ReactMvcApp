@@ -29,15 +29,7 @@ const ServiceSelectionForm = ({ services, errors, onServiceSelect }) => {
   return (
     <Box
       sx={{
-        backgroundColor: "background.paper",
-        padding: 1,
-        borderRadius: 5,
         margin: "0 auto",
-        display: "flex",
-        gap: 10,
-        alignItems: "center",
-        paddingRight: 2,
-        paddingLeft: 2,
         color: "primary.main",
       }}
     >
