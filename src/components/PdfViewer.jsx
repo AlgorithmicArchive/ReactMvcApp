@@ -22,7 +22,7 @@ const PdfViewer = ({ pdfUrl, path, exportButton = null, width }) => {
           Here we use a CDN URL; ensure the version here is in sync with the library version. */}
       <Worker workerUrl="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js">
         <div style={{ height: "750px", width: width || "600px" }}>
-          <Viewer fileUrl={pdfUrl} />
+          <Viewer fileUrl={`/Base/DisplayFile?filename=${pdfUrl}`} />
         </div>
       </Worker>
     </div>

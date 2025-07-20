@@ -136,7 +136,7 @@ export const CollapsibleFormDetails = ({
                                 /\.(jpg|jpeg|png|gif)$/i.test(field.File) ? (
                                   <Box
                                     component="img"
-                                    src={field.File}
+                                    src={`/Base/DisplayFile?filename=${field.File}`}
                                     alt={field.label}
                                     sx={{
                                       width: "100%",

@@ -248,7 +248,7 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
         document.Close();
 
         // Call GetFilePath to store in database
-        await helper.GetFilePath(null, memoryStream.ToArray(), applicationId.Replace("/", "_") + DateTime.Now.ToString() + "Acknowledgement.pdf");
+        await helper.GetFilePath(null, memoryStream.ToArray(), applicationId.Replace("/", "_") + "Acknowledgement.pdf");
     }
 
 

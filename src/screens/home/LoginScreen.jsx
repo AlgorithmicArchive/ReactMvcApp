@@ -72,6 +72,7 @@ export default function LoginScreen() {
 
   const navigate = useNavigate();
 
+  const [buttonLoading, setButtonLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [otpModalOpen, setOtpModalOpen] = useState(false);
   const [otp, setOtp] = useState("");
@@ -91,6 +92,7 @@ export default function LoginScreen() {
     formData.append("username", data.username);
     formData.append("password", data.password);
 
+    setButtonLoading(true);
     setLoading(true);
     try {
       const response = await Login(formData);
@@ -129,6 +131,7 @@ export default function LoginScreen() {
       toast.error("An error occurred. Please try again.");
     } finally {
       setLoading(false);
+      setButtonLoading(false);
       setCaptcha(generateCaptcha());
     }
   };
@@ -139,7 +142,7 @@ export default function LoginScreen() {
       return;
     }
 
-    setLoading(true);
+    setButtonLoading(true);
     try {
       const formData = new FormData();
       formData.append("email", email);
@@ -161,7 +164,7 @@ export default function LoginScreen() {
     } catch (err) {
       toast.error("Error verifying OTP.");
     } finally {
-      setLoading(false);
+      setButtonLoading(false);
     }
   };
 
@@ -184,6 +187,22 @@ export default function LoginScreen() {
       toast.error("Error resending OTP.");
     }
   };
+
+  if (loading)
+    return (
+      <Box
+        sx={{
+          width: "100%",
+          height: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          bgcolor: "#f8f9fa",
+        }}
+      >
+        <CircularProgress size={60} />
+      </Box>
+    );
 
   return (
     <Box
@@ -237,7 +256,7 @@ export default function LoginScreen() {
             placeholder="Enter your username"
             errors={errors}
             aria-describedby="username-error"
-            disabled={loading}
+            disabled={buttonLoading}
           />
 
           <CustomInputField
@@ -248,7 +267,7 @@ export default function LoginScreen() {
             placeholder="Enter your password"
             errors={errors}
             aria-describedby="password-error"
-            disabled={loading}
+            disabled={buttonLoading}
           />
 
           {/* CAPTCHA Display and Input */}
@@ -312,7 +331,7 @@ export default function LoginScreen() {
             </Box>
             <IconButton
               onClick={handleRefreshCaptcha}
-              disabled={loading}
+              disabled={buttonLoading}
               sx={{
                 color: "primary.main",
                 border: "1px solid",
@@ -337,7 +356,7 @@ export default function LoginScreen() {
             placeholder="Enter the CAPTCHA code"
             errors={errors}
             aria-describedby="captcha-error"
-            disabled={loading}
+            disabled={buttonLoading}
           />
 
           <Box sx={{ textAlign: "right" }}>
@@ -352,14 +371,14 @@ export default function LoginScreen() {
           </Box>
 
           <CustomButton
-            text={loading ? "Logging In..." : "Log In"}
+            text={buttonLoading ? "Logging In..." : "Log In"}
             bgColor="primary.main"
             color="background.default"
             type="submit"
             width="100%"
-            disabled={loading}
+            disabled={buttonLoading}
             startIcon={
-              loading && <CircularProgress size={20} color="inherit" />
+              buttonLoading && <CircularProgress size={20} color="inherit" />
             }
             sx={{
               py: 1.5,
@@ -407,7 +426,7 @@ export default function LoginScreen() {
             value={otp}
             onChange={(e) => setOtp(e.target.value)}
             inputProps={{ maxLength: 6 }}
-            disabled={loading}
+            disabled={buttonLoading}
             aria-label="OTP input"
           />
           <Box mt={1}>
@@ -415,7 +434,7 @@ export default function LoginScreen() {
               component="button"
               variant="body2"
               onClick={handleResendOtp}
-              disabled={loading}
+              disabled={buttonLoading}
               aria-label="Resend OTP"
             >
               Resend OTP
@@ -423,13 +442,16 @@ export default function LoginScreen() {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOtpModalOpen(false)} disabled={loading}>
+          <Button
+            onClick={() => setOtpModalOpen(false)}
+            disabled={buttonLoading}
+          >
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={handleOtpVerify}
-            disabled={loading}
+            disabled={buttonLoading}
             aria-label="Verify OTP"
           >
             Verify
