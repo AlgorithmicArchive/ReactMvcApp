@@ -23,8 +23,7 @@ const MainContainer = styled(Box)`
   background: linear-gradient(180deg, #e6f0fa 0%, #b3cde0 100%);
   display: flex;
   justify-content: center;
-  align-items: center;
-  padding: 2rem;
+  padding: 5rem;
 `;
 
 const ProfileCard = styled(Box)`
@@ -34,6 +33,7 @@ const ProfileCard = styled(Box)`
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   max-width: 500px;
   width: 100%;
+  height: max-content;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   &:hover {
     transform: translateY(-6px);

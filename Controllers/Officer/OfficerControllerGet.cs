@@ -191,7 +191,13 @@ namespace SahayataNidhi.Controllers.Officer
             // });
 
             // Return the count list and whether the officer can sanction.
-            return Json(new { countList, canSanction = (bool)authorities.canSanction, canHavePool = (bool)authorities.canHavePool });
+            var officerAuthorities = new
+            {
+                canSanction = (bool)authorities.canSanction,
+                canHavePool = (bool)authorities.canHavePool,
+                canCorrigendum = (bool)authorities.canCorrigendum
+            };
+            return Json(new { countList, canSanction = (bool)authorities.canSanction, canHavePool = (bool)authorities.canHavePool, canCorrigendum = (bool)authorities.canCorrigendum, officerAuthorities });
         }
         [HttpGet]
         public IActionResult GetApplications(int ServiceId, string type, int pageIndex = 0, int pageSize = 10)
@@ -251,7 +257,7 @@ namespace SahayataNidhi.Controllers.Officer
             // Sorting for consistent pagination based on ReferenceNumber
             var sortedResponse = response.OrderBy(a =>
             {
-                var parts = a.ReferenceNumber.Split('/');
+                var parts = a.ReferenceNumber!.Split('/');
                 var numberPart = parts.Last();
                 return int.TryParse(numberPart, out int num) ? num : 0;
             }).ToList();
@@ -312,7 +318,7 @@ namespace SahayataNidhi.Controllers.Officer
                 }
                 else
                 {
-                    if (pool!.Contains(details.ReferenceNumber) && type == "pending")
+                    if (pool!.Contains(details.ReferenceNumber!) && type == "pending")
                     {
                         customActions.Add(new
                         {
@@ -401,6 +407,7 @@ namespace SahayataNidhi.Controllers.Officer
                 canSanction = (bool)authorities.canSanction
             });
         }
+
         [HttpGet]
         public IActionResult GetApplicationsForReports(int AccessCode, int ServiceId, string? StatusType = null, int pageIndex = 0, int pageSize = 10)
         {
@@ -706,7 +713,7 @@ namespace SahayataNidhi.Controllers.Officer
             return Json(new
             {
                 status = true,
-                path = "/Base/DisplayFile?filename=" + fileName
+                path = fileName
             });
         }
 
@@ -766,7 +773,6 @@ namespace SahayataNidhi.Controllers.Officer
             return Json(new { data, columns, customActions = new { } });
         }
 
-        [HttpGet]
         [HttpGet]
         public async Task<IActionResult> GenerateUserDetailsPdf(string applicationId)
         {
@@ -1258,5 +1264,85 @@ namespace SahayataNidhi.Controllers.Officer
                 return File(pdfBytes, "application/pdf", $"{applicationId}_UserDetails.pdf");
             }
         }
+
+        [HttpGet]
+        public IActionResult RemoveFromPool(int ServiceId, string itemToRemove)
+        {
+            var officer = GetOfficerDetails();
+
+            // Find the existing pool for this officer and service
+            var poolRecord = dbcontext.Pools.FirstOrDefault(p =>
+                p.ServiceId == ServiceId &&
+                p.ListType == "Pool" &&
+                p.AccessLevel == officer.AccessLevel &&
+                p.AccessCode == officer.AccessCode);
+
+            if (poolRecord == null || string.IsNullOrWhiteSpace(poolRecord.List))
+            {
+                return Json(new { status = false, message = "No existing pool found." });
+            }
+
+            // Deserialize the current pool list
+            var poolList = JsonConvert.DeserializeObject<List<string>>(poolRecord.List) ?? new List<string>();
+
+            // Remove the specified item (case-sensitive match)
+            bool removed = poolList.Remove(itemToRemove);
+
+            if (!removed)
+            {
+                return Json(new { status = false, message = "Item not found in the pool." });
+            }
+
+            // Serialize and update the pool list
+            poolRecord.List = JsonConvert.SerializeObject(poolList);
+            dbcontext.SaveChanges();
+
+            return Json(new { status = true, ServiceId, removedItem = itemToRemove });
+        }
+
+        [HttpGet]
+        public IActionResult GetApplicationForCorrigendum(string referenceNumber, string serviceId)
+        {
+            var officer = GetOfficerDetails();
+
+            var ReferenceNumber = new SqlParameter("@ReferenceNumber", referenceNumber);
+            var Role = new SqlParameter("@Role", officer.Role);
+            var OfficerAccessLevel = new SqlParameter("@OfficerAccessLevel", officer.AccessLevel);
+            var OfficerAccessCode = new SqlParameter("@OfficerAccessCode", officer.AccessCode);
+            var ServiceId = new SqlParameter("@ServiceId", Convert.ToInt32(serviceId));
+
+            var result = dbcontext.CitizenApplications
+                .FromSqlRaw("EXEC GetApplicationForCorrigendum @ReferenceNumber, @Role, @OfficerAccessLevel, @OfficerAccessCode, @ServiceId",
+                             ReferenceNumber, Role, OfficerAccessLevel, OfficerAccessCode, ServiceId)
+                .ToList();
+
+            if (result.Count == 0)
+            {
+                return Json(new
+                {
+                    status = false,
+                    message = "Either this application is not yet sanctioned or doesn't belong to your Tehsil"
+                });
+            }
+
+            // Safely parse FormDetails and get only "Applicant Details"
+            var formDetailsJson = result[0].FormDetails;
+            if (string.IsNullOrEmpty(formDetailsJson))
+            {
+                return Json(new { status = false, message = "Form details are missing." });
+            }
+
+            var formDetails = JsonConvert.DeserializeObject<Dictionary<string, object>>(formDetailsJson);
+            formDetails!.TryGetValue("Applicant Details", out var applicantDetails);
+
+            return Json(new
+            {
+                status = true,
+                application = result[0],
+                applicantDetails
+            });
+        }
+
+
     }
 }

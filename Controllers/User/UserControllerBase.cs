@@ -12,9 +12,10 @@ using Newtonsoft.Json.Linq;
 namespace SahayataNidhi.Controllers.User
 {
     [Authorize(Roles = "Citizen")]
-    public partial class UserController(SocialWelfareDepartmentContext dbcontext, ILogger<UserController> logger, UserHelperFunctions helper, EmailSender emailSender, PdfService pdfService, IWebHostEnvironment webHostEnvironment) : Controller
+    public partial class UserController(SocialWelfareDepartmentContext dbcontext, IAuditLogService auditService, ILogger<UserController> logger, UserHelperFunctions helper, EmailSender emailSender, PdfService pdfService, IWebHostEnvironment webHostEnvironment) : Controller
     {
         protected readonly SocialWelfareDepartmentContext dbcontext = dbcontext;
+        private readonly IAuditLogService _auditService = auditService;
         protected readonly ILogger<UserController> _logger = logger;
         protected readonly UserHelperFunctions helper = helper;
         protected readonly EmailSender emailSender = emailSender;

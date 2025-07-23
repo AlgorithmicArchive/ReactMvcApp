@@ -19,6 +19,8 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     public virtual DbSet<ApplicationPerDistrict> ApplicationPerDistricts { get; set; }
 
+    public virtual DbSet<AuditLog> AuditLogs { get; set; }
+
     public virtual DbSet<BankDetail> BankDetails { get; set; }
 
     public virtual DbSet<Block> Blocks { get; set; }
@@ -102,6 +104,24 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.FinancialYear)
                 .HasMaxLength(50)
                 .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.HasKey(e => e.LogId);
+
+            entity.Property(e => e.Action).HasMaxLength(100);
+            entity.Property(e => e.Browser).HasMaxLength(100);
+            entity.Property(e => e.Device).HasMaxLength(100);
+            entity.Property(e => e.IpAddress).HasMaxLength(45);
+            entity.Property(e => e.OperatingSystem).HasMaxLength(100);
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.Property(e => e.Timestamp).HasDefaultValueSql("(getutcdate())");
+
+            entity.HasOne(d => d.User).WithMany(p => p.AuditLogs)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_AuditLogs_Users");
         });
 
         modelBuilder.Entity<BankDetail>(entity =>
@@ -393,6 +413,9 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
             entity.Property(e => e.AccessLevel)
                 .HasMaxLength(255)
+                .IsUnicode(false);
+            entity.Property(e => e.ListType)
+                .HasMaxLength(20)
                 .IsUnicode(false);
 
             entity.HasOne(d => d.Service).WithMany(p => p.Pools)

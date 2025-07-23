@@ -10,20 +10,13 @@ using SahayataNidhi.Models.Entities;
 namespace SahayataNidhi.Controllers.Profile
 {
     [Authorize(Roles = "Citizen,Officer,Admin")]
-    public class ProfileController : Controller
+    public class ProfileController(SocialWelfareDepartmentContext dbcontext, ILogger<ProfileController> logger, UserHelperFunctions helper, IWebHostEnvironment webHostEnvironment, IAuditLogService auditService) : Controller
     {
-        private readonly SocialWelfareDepartmentContext _dbcontext;
-        private readonly ILogger<ProfileController> _logger;
-        private readonly UserHelperFunctions _helper;
-        private readonly IWebHostEnvironment _webHostEnvironment;
-
-        public ProfileController(SocialWelfareDepartmentContext dbcontext, ILogger<ProfileController> logger, UserHelperFunctions helper, IWebHostEnvironment webHostEnvironment)
-        {
-            _dbcontext = dbcontext;
-            _logger = logger;
-            _helper = helper;
-            _webHostEnvironment = webHostEnvironment;
-        }
+        private readonly SocialWelfareDepartmentContext _dbcontext = dbcontext;
+        private readonly ILogger<ProfileController> _logger = logger;
+        private readonly UserHelperFunctions _helper = helper;
+        private readonly IWebHostEnvironment _webHostEnvironment = webHostEnvironment;
+        private readonly IAuditLogService _auditService = auditService;
 
         public override void OnActionExecuted(ActionExecutedContext context)
         {
@@ -81,38 +74,6 @@ namespace SahayataNidhi.Controllers.Profile
             return Json(details);
         }
 
-        [HttpPost]
-        public IActionResult UpdateColumn([FromForm] IFormCollection form)
-        {
-            string? columnName = form["columnName"].ToString();
-            string? columnValue = form["columnValue"].ToString();
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            string? userType = HttpContext.Session.GetString("UserType");
-            string? TableName = "";
-
-            if (userType == "Citizen")
-                TableName = "Citizens";
-            else if (userType == "Officer")
-                TableName = "Officers";
-
-            try
-            {
-                _dbcontext.Database.ExecuteSqlRaw(
-                    "EXEC UpdateCitizenDetail @ColumnName, @ColumnValue, @TableName, @CitizenId",
-                    new SqlParameter("@ColumnName", columnName),
-                    new SqlParameter("@ColumnValue", columnValue),
-                    new SqlParameter("@TableName", TableName),
-                    new SqlParameter("@CitizenId", userId)
-                );
-                return Json(new { status = true, url = "/Profile/Index" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error updating column {columnName}: {ex.Message}");
-                return Json(new { status = false, errorMessage = "Failed to update details." });
-            }
-        }
-
         [HttpGet]
         public IActionResult GenerateBackupCodes()
         {
@@ -161,50 +122,6 @@ namespace SahayataNidhi.Controllers.Profile
                 if (userDetails != null) return View(userDetails);
             }
             return RedirectToAction("Error", "Home");
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> ChangeImage([FromForm] IFormCollection image)
-        {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var user = _dbcontext.Users.FirstOrDefault(u => u.UserId.ToString() == userId);
-
-            if (user == null)
-            {
-                _logger.LogInformation("User not found.");
-                return Json(new { isValid = false, errorMessage = "User not found." });
-            }
-
-            if (image.Files.Count == 0)
-            {
-                return Json(new { isValid = false, errorMessage = "No file uploaded." });
-            }
-
-            var uploadedFile = image.Files[0];
-            var profile = user.Profile;
-
-            if (!string.IsNullOrEmpty(profile) && profile != "/assets/images/profile.jpg")
-            {
-                string existingFilePath = Path.Combine(_webHostEnvironment.WebRootPath, profile.TrimStart('/'));
-                if (System.IO.File.Exists(existingFilePath))
-                {
-                    try
-                    {
-                        System.IO.File.Delete(existingFilePath);
-                        _logger.LogInformation($"Existing file {existingFilePath} deleted.");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError($"Error deleting file {existingFilePath}: {ex.Message}");
-                    }
-                }
-            }
-
-            var filePath = await _helper.GetFilePath(uploadedFile);
-            user.Profile = filePath;
-            _dbcontext.SaveChanges();
-
-            return Json(new { isValid = true, filePath });
         }
 
         [HttpPost]
@@ -259,6 +176,8 @@ namespace SahayataNidhi.Controllers.Profile
 
                 await _dbcontext.SaveChangesAsync();
 
+
+                _auditService.InsertLog(HttpContext, "Update Profile", "Profile Updated successfully.", user!.UserId, "Success");
                 return Json(new
                 {
                     isValid = true,

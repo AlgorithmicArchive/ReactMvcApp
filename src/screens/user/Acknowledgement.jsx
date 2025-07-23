@@ -19,23 +19,10 @@ export default function Acknowledgement() {
 
     const getPdfBlob = async () => {
       try {
-        const { path, completePath } = await fetchAcknowledgement(
-          applicationId
-        );
-
-        if (completePath) {
-          const response = await axios.get(completePath, {
-            responseType: "blob",
-          });
-
-          if (response.status === 200) {
-            const blobUrl = URL.createObjectURL(response.data);
-            setPdfBlobUrl(blobUrl);
-            setPath(path);
-          } else {
-            console.error("Failed to fetch PDF from server:", response);
-          }
-        }
+        const fileName =
+          applicationId.replace(/\//g, "_") + "Acknowledgement.pdf";
+        setPath(fileName);
+        setPdfBlobUrl(fileName); // or use URL.createObjectURL if needed
       } catch (error) {
         console.error("Error loading PDF:", error);
       } finally {
@@ -43,9 +30,7 @@ export default function Acknowledgement() {
       }
     };
 
-    const timeoutId = setTimeout(getPdfBlob, 1000);
-
-    return () => clearTimeout(timeoutId); // cleanup
+    getPdfBlob();
   }, [applicationId]);
 
   return (

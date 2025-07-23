@@ -291,57 +291,6 @@ export default function Form() {
           value: "1234567890122519",
         },
       ],
-      Documents: [
-        {
-          label: "Domicile Certificate",
-          name: "DomicileCertificate",
-          Enclosure: "Domicile Certificate",
-          File: "/assets/dummyDocs/Other.pdf",
-        },
-        {
-          label: "Proof Of Residence",
-          name: "ProofOfResidence",
-          Enclosure: "Electricity Bill",
-          File: "/assets/dummyDocs/Other.pdf",
-        },
-        {
-          label: "Proof Of Age",
-          name: "ProofOfAge",
-          Enclosure: "Domicile Certificate",
-          File: "/assets/dummyDocs/Other.pdf",
-        },
-        {
-          label: "Ration Card",
-          name: "RationCard",
-          Enclosure: "Ration Card(Inner & Outter Both)",
-          File: "/assets/dummyDocs/Other.pdf",
-        },
-        {
-          label: "Bank Passbook",
-          name: "BankPassbook",
-          Enclosure: "Bank Passbook",
-          File: "/assets/dummyDocs/Other.pdf",
-        },
-        {
-          label: "Affidavit",
-          name: "Affidavit",
-          Enclosure:
-            "Affidavit attested by Judicial Magistrate lst Class or Executive Magistrate First Class that she/he is not in receipt of any pension/financial assistance from any other source.",
-          File: "/assets/dummyDocs/Other.pdf",
-        },
-        {
-          label: "Death Certificate Of Husband",
-          name: "DeathCertificateOfHusband",
-          Enclosure: "Death Certificate Of Husband",
-          File: "/assets/dummyDocs/Other.pdf",
-        },
-        {
-          label: "Other",
-          name: "Other",
-          Enclosure: "",
-          File: null,
-        },
-      ],
     },
   ];
   const randomIndex = Math.floor(Math.random() * dummyDataList.length);

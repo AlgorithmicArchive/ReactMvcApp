@@ -69,7 +69,11 @@ const PlayerEditModal = ({ player, onClose, onSave }) => {
       (field) => field.id === over.id
     );
 
-    const newActionForm = arrayMove(editedPlayer.actionForm, oldIndex, newIndex);
+    const newActionForm = arrayMove(
+      editedPlayer.actionForm,
+      oldIndex,
+      newIndex
+    );
     setEditedPlayer((prev) => ({
       ...prev,
       actionForm: newActionForm,
@@ -236,8 +240,8 @@ const PlayerEditModal = ({ player, onClose, onSave }) => {
           <FormControlLabel
             control={
               <Checkbox
-              checked={editedPlayer.canPull}
-              onChange={(e) => handleChange("canPull", e.target.checked)}
+                checked={editedPlayer.canPull}
+                onChange={(e) => handleChange("canPull", e.target.checked)}
               />
             }
             label="Can Pull"
@@ -250,6 +254,17 @@ const PlayerEditModal = ({ player, onClose, onSave }) => {
               />
             }
             label="Can Bulk Applications"
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={editedPlayer.canCorrigendum}
+                onChange={(e) =>
+                  handleChange("canCorrigendum", e.target.checked)
+                }
+              />
+            }
+            label="Can Corrigendum"
           />
         </Box>
         <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useForm, Controller, get, useWatch } from "react-hook-form";
-import { runValidations } from "../../assets/formvalidations";
+import {
+  runValidations,
+  TransformationFunctionsList,
+} from "../../assets/formvalidations";
 import {
   Box,
   Checkbox,
@@ -159,8 +162,8 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [initialData, setInitialData] = useState(null);
   const [additionalDetails, setAdditionalDetails] = useState(null);
-  const [isCopyAddressChecked, setIsCopyAddressChecked] = useState(false);
   const [messageModalOpen, setMessageModalOpen] = useState(false);
+  const [aadhaarNumber, setAadhaarNumber] = useState("");
   const applicantImageFile = watch("ApplicantImage");
   const [applicantImagePreview, setApplicantImagePreview] = useState(
     "/assets/images/profile.jpg"
@@ -171,6 +174,7 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
 
   const hasRunRef = useRef(false);
   const watchedDependableValues = useWatch({ control, name: DependableFields });
+  const isBackspacePressed = useRef(false);
 
   // Effect to manage non-rendered fields
   useEffect(() => {
@@ -851,66 +855,8 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
     return fields;
   };
 
-  const handleValidateAll = async () => {
-    const formData = getValues();
-    const allFields = formSections.flatMap((section, index) =>
-      section.fields.flatMap((field) => collectNestedFields(field, formData))
-    );
-
-    const enabledFields = allFields.filter((name) => !isFieldDisabled(name));
-
-    if (mode === "edit") {
-      const allUpdated = enabledFields.every((name) => dirtyFields[name]);
-      if (!allUpdated) {
-        alert("Please modify all correction fields before proceeding.");
-        return false;
-      }
-    }
-
-    const hasEmptyField = enabledFields.some((name) => {
-      const value = formData[name];
-      return value === "" || value === null || value === undefined;
-    });
-
-    if (hasEmptyField) {
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleDistrictChange = async (sectionIndex, districtField, value) => {
-    try {
-      const response = await fetch(
-        `/Base/GetTeshilForDistrict?districtId=${value}`
-      );
-      const data = await response.json();
-      if (data.status && data.tehsils) {
-        const newOptions = [
-          { value: "Please Select", label: "Please Select" },
-          ...data.tehsils.map((tehsil) => ({
-            value: tehsil.tehsilId,
-            label: tehsil.tehsilName,
-          })),
-        ];
-        setFormSections((prevSections) => {
-          const newSections = [...prevSections];
-          const section = newSections[sectionIndex];
-          const tehsilFieldName = districtField.name.replace(
-            "District",
-            "Tehsil"
-          );
-          section.fields = section.fields.map((field) =>
-            field.name === tehsilFieldName
-              ? { ...field, options: newOptions }
-              : field
-          );
-          return newSections;
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching tehsils:", error);
-    }
+  const handleAaddhaarNumber = () => {
+    console.log("Aadhaar Number", aadhaarNumber);
   };
 
   const handleAreaChange = async (sectionIndex, field, value) => {
@@ -1284,40 +1230,77 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
                 ),
             }}
             render={({ field: { onChange, value, ref } }) => (
-              <TextField
-                type={field.type}
-                id={`field-${field.id}`}
-                label={getLabelWithAsteriskJSX(field)}
-                value={value || ""}
-                onChange={(e) => {
-                  let val = e.target.value;
-                  if (
-                    field.transformationFunctions?.includes("CaptilizeAlphabet")
-                  ) {
-                    val = val.toUpperCase();
-                  }
-                  onChange(val);
-                }}
-                onBlur={() => {
-                  if (field.name === "IfscCode") {
-                    handleChekcBankIfsc(field.name);
-                  }
-                }}
-                inputRef={ref}
-                disabled={isFieldDisabled(field.name)}
-                error={Boolean(errors[field.name])}
-                helperText={errors[field.name]?.message || ""}
-                fullWidth
-                margin="normal"
-                InputLabelProps={{
-                  shrink: true,
-                  style: { fontSize: "1rem", color: "#000000" },
-                }}
-                inputProps={{
-                  maxLength: field.maxLength,
-                }}
-                sx={commonStyles}
-              />
+              <>
+                <TextField
+                  type={field.type}
+                  id={`field-${field.id}`}
+                  label={getLabelWithAsteriskJSX(field)}
+                  value={value || ""}
+                  onKeyDown={(e) => {
+                    isBackspacePressed.current = e.key === "Backspace";
+                  }}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const lastChar = val.toString().charAt(val.length - 1);
+
+                    let updatedAadhaar;
+
+                    if (isBackspacePressed.current) {
+                      updatedAadhaar = aadhaarNumber.slice(0, -1); // remove last digit
+                    } else {
+                      updatedAadhaar = aadhaarNumber + lastChar; // append digit
+                    }
+
+                    setAadhaarNumber(updatedAadhaar);
+
+                    let transformedVal = updatedAadhaar;
+
+                    if (field.transformationFunctions?.length > 0) {
+                      field.transformationFunctions.forEach((fnName) => {
+                        const transformFn = TransformationFunctionsList[fnName];
+                        if (transformFn) {
+                          transformedVal = transformFn(
+                            transformedVal,
+                            updatedAadhaar,
+                            getValues(),
+                            setValue
+                          );
+                        }
+                      });
+                    }
+
+                    onChange(transformedVal);
+                  }}
+                  onBlur={() => {
+                    if (field.name === "IfscCode") {
+                      handleChekcBankIfsc(field.name);
+                    }
+                  }}
+                  inputRef={ref}
+                  disabled={isFieldDisabled(field.name)}
+                  error={Boolean(errors[field.name])}
+                  helperText={errors[field.name]?.message || ""}
+                  fullWidth
+                  margin="normal"
+                  InputLabelProps={{
+                    shrink: true,
+                    style: { fontSize: "1rem", color: "#000000" },
+                  }}
+                  inputProps={{
+                    maxLength: field.maxLength,
+                  }}
+                  sx={commonStyles}
+                />
+                {field.name == "AadharNumber" &&
+                  !Boolean(errors[field.name]) && (
+                    <Button
+                      sx={[buttonStyles, { width: "100%" }]}
+                      onClick={handleAaddhaarNumber}
+                    >
+                      Validate
+                    </Button>
+                  )}
+              </>
             )}
           />
         );

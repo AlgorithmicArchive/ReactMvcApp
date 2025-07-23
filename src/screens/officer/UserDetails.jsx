@@ -288,7 +288,7 @@ export default function UserDetails() {
 
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
       const blobUrl = URL.createObjectURL(signedBlob);
-      setPdfUrl(blobUrl);
+      setPdfUrl(updateResponse.data.path);
       setPdfBlob(null);
       setIsSignedPdf(true);
       setConfirmOpen(false);
@@ -319,18 +319,20 @@ export default function UserDetails() {
     if (!result.status) {
       throw new Error(result.response || "Something went wrong");
     }
-    const pdfResponse = await fetch(result.path);
-    if (!pdfResponse.ok) {
-      throw new Error("Failed to fetch PDF from server");
-    }
-    const newPdfBlob = await pdfResponse.blob();
-    if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-    const blobUrl = URL.createObjectURL(newPdfBlob);
+    const pdfResponse = await axiosInstance.get(`/Base/DisplayFile`, {
+      params: { filename: result.path },
+      responseType: "blob",
+    });
+    const newPdfBlob = new Blob([pdfResponse.data], {
+      type: "application/pdf",
+    });
+
+    // Update state for modal display
     setPdfBlob(newPdfBlob);
-    setPdfUrl(blobUrl);
+    setPdfUrl(result.path);
     setIsSignedPdf(false);
-    setPdfModalOpen(true);
     setIsSanctionLetter(true);
+    setPdfModalOpen(true);
   };
 
   const handleFinalSubmit = async (data) => {

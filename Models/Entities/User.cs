@@ -28,4 +28,6 @@ public partial class User
     public bool IsEmailValid { get; set; }
 
     public string? RegisteredDate { get; set; }
+
+    public virtual ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
 }

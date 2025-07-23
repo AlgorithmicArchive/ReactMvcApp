@@ -615,8 +615,10 @@ const CreateLetterPdf = () => {
               borderRadius: 2,
               maxWidth: 500,
               mx: "auto",
-              mt: "10%",
+              marginTop: "20px",
               boxShadow: 24,
+              maxHeight: 800,
+              overflowY: "auto",
             }}
           >
             <Typography variant="h5" sx={{ mb: 3 }}>

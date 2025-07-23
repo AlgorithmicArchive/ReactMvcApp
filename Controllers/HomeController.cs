@@ -11,32 +11,23 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using SahayataNidhi.Models;
 using SahayataNidhi.Models.Entities;
 using SendEmails;
 
 namespace SahayataNidhi.Controllers
 {
-    public class HomeController : Controller
+    public class HomeController(ILogger<HomeController> logger, SocialWelfareDepartmentContext dbContext, OtpStore otpStore, EmailSender emailSender, UserHelperFunctions helper, PdfService pdfService, IConfiguration configuration, IAuditLogService auditService) : Controller
     {
-        private readonly ILogger<HomeController> _logger;
-        private readonly SocialWelfareDepartmentContext _dbContext;
-        private readonly OtpStore _otpStore;
-        private readonly EmailSender _emailSender;
-        private readonly UserHelperFunctions _helper;
-        private readonly PdfService _pdfService;
-        private readonly IConfiguration _configuration;
-
-        public HomeController(ILogger<HomeController> logger, SocialWelfareDepartmentContext dbContext, OtpStore otpStore, EmailSender emailSender, UserHelperFunctions helper, PdfService pdfService, IConfiguration configuration)
-        {
-            _logger = logger;
-            _dbContext = dbContext;
-            _otpStore = otpStore;
-            _emailSender = emailSender;
-            _helper = helper;
-            _pdfService = pdfService;
-            _configuration = configuration;
-        }
+        private readonly ILogger<HomeController> _logger = logger;
+        private readonly SocialWelfareDepartmentContext _dbContext = dbContext;
+        private readonly OtpStore _otpStore = otpStore;
+        private readonly EmailSender _emailSender = emailSender;
+        private readonly UserHelperFunctions _helper = helper;
+        private readonly PdfService _pdfService = pdfService;
+        private readonly IConfiguration _configuration = configuration;
+        private readonly IAuditLogService _auditService = auditService;
 
         public override void OnActionExecuted(ActionExecutedContext context)
         {
@@ -312,10 +303,12 @@ namespace SahayataNidhi.Controllers
                 var resetResult = result.FirstOrDefault();
                 if (resetResult != null && resetResult.Result == 1)
                 {
+                    _auditService.InsertLog(HttpContext, "Reset Password", "Password reseted successfully.", user!.UserId, "Success");
                     return Json(new { status = true, message = resetResult.Message });
                 }
                 else
                 {
+                    _auditService.InsertLog(HttpContext, "Reset Password", "Failed to reset password.", user!.UserId, "Failure");
                     return Json(new { status = false, message = resetResult?.Message ?? "Failed to reset password." });
                 }
 
@@ -362,7 +355,7 @@ namespace SahayataNidhi.Controllers
             SqlParameter password = !string.IsNullOrEmpty(form["password"]) ? new SqlParameter("Password", form["password"].ToString()) : null!;
 
             var user = _dbContext.Users.FromSqlRaw("EXEC UserLogin @Username,@Password", username, password).AsEnumerable().FirstOrDefault();
-            string designation = "";
+            string? designation = "";
             if (user != null)
             {
                 if (!user.IsEmailValid)
@@ -382,30 +375,48 @@ namespace SahayataNidhi.Controllers
                 {
                     try
                     {
-                        var officerDetails = JsonConvert.DeserializeObject<Dictionary<string, string>>(user.AdditionalDetails!);
+                        var officerDetails = JsonConvert.DeserializeObject<Dictionary<string, JToken>>(user.AdditionalDetails!);
                         if (officerDetails != null)
                         {
-                            if (officerDetails.TryGetValue("Validate", out var validatedStr) && bool.TryParse(validatedStr, out bool isValidated))
+                            // Check for "Validate" key
+                            if (officerDetails.TryGetValue("Validate", out var validatedToken))
                             {
-                                if (!isValidated)
+                                if (validatedToken.Type == JTokenType.Boolean)
                                 {
-                                    return Json(new
+                                    if (!validatedToken.Value<bool>())
                                     {
-                                        status = false,
-                                        response = "You are not yet validated by an Admin. Please wait till validation is complete."
-                                    });
+                                        return Json(new
+                                        {
+                                            status = false,
+                                            response = "You are not yet validated by an Admin. Please wait till validation is complete."
+                                        });
+                                    }
+                                }
+                                else if (bool.TryParse(validatedToken.ToString(), out bool isValidated))
+                                {
+                                    if (!isValidated)
+                                    {
+                                        return Json(new
+                                        {
+                                            status = false,
+                                            response = "You are not yet validated by an Admin. Please wait till validation is complete."
+                                        });
+                                    }
                                 }
                             }
 
-                            if (officerDetails.TryGetValue("Role", out var role))
+                            // Check for "Role" key
+                            if (officerDetails.TryGetValue("Role", out var roleToken))
                             {
-                                designation = role;
+                                designation = roleToken.Type == JTokenType.String ? roleToken.Value<string>() : roleToken.ToString();
+
                                 if (!string.IsNullOrEmpty(designation))
                                 {
                                     claims.Add(new Claim("Designation", designation));
                                 }
                             }
                         }
+
                     }
                     catch
                     {
@@ -435,11 +446,13 @@ namespace SahayataNidhi.Controllers
                 var token = tokenHandler.CreateToken(tokenDescriptor);
                 var tokenString = tokenHandler.WriteToken(token);
 
+                _auditService.InsertLog(HttpContext, "Login", "User logged in to the account.", user.UserId, "Success");
                 // Return the token and other required details to the client
                 return Json(new { status = true, token = tokenString, userType = user.UserType, profile = user.Profile, username = form["username"], designation });
             }
             else
             {
+                _auditService.InsertLog(HttpContext, "Login", "Invalid Username Or Passowrd.", user!.UserId, "Failure");
                 return Json(new { status = false, response = "Invalid Username or Password." });
             }
         }

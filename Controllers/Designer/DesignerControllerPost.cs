@@ -1,5 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SahayataNidhi.Models.Entities;
@@ -254,7 +256,6 @@ namespace SahayataNidhi.Controllers
                 var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == serviceId);
                 if (service != null)
                 {
-                    _logger.LogInformation("-----------INSIDE IF----------------");
                     service.OfficerEditableField = workFlowPlayers;
                     dbcontext.Services.Update(service);
                 }
@@ -269,6 +270,8 @@ namespace SahayataNidhi.Controllers
             }
 
             dbcontext.SaveChanges();
+
+            dbcontext.Database.ExecuteSqlRaw("EXEC UpdateWorkflowForService @ServiceId", new SqlParameter("@ServiceId", Convert.ToInt32(serviceIdString)));
 
             return Json(new { status = true });
         }

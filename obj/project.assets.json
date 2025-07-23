@@ -3853,6 +3853,58 @@
           "lib/netstandard1.3/System.Xml.XmlDocument.dll": {}
         }
       },
+      "Wangkanai.Detection/8.20.0": {
+        "type": "package",
+        "dependencies": {
+          "Wangkanai.Hosting": "3.7.0",
+          "Wangkanai.System": "5.8.0"
+        },
+        "compile": {
+          "lib/net8.0/Wangkanai.Detection.dll": {
+            "related": ".pdb"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/Wangkanai.Detection.dll": {
+            "related": ".pdb"
+          }
+        },
+        "frameworkReferences": [
+          "Microsoft.AspNetCore.App"
+        ]
+      },
+      "Wangkanai.Hosting/3.7.0": {
+        "type": "package",
+        "dependencies": {
+          "Wangkanai.System": "5.8.0"
+        },
+        "compile": {
+          "lib/net8.0/Wangkanai.Hosting.dll": {
+            "related": ".pdb"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/Wangkanai.Hosting.dll": {
+            "related": ".pdb"
+          }
+        },
+        "frameworkReferences": [
+          "Microsoft.AspNetCore.App"
+        ]
+      },
+      "Wangkanai.System/5.8.0": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/Wangkanai.System.dll": {
+            "related": ".pdb"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/Wangkanai.System.dll": {
+            "related": ".pdb"
+          }
+        }
+      },
       "XLParser/1.5.2": {
         "type": "package",
         "dependencies": {
@@ -11159,6 +11211,52 @@
         "system.xml.xmldocument.nuspec"
       ]
     },
+    "Wangkanai.Detection/8.20.0": {
+      "sha512": "llPuXlZPkhkK++9knG5VQj/TU9Ph6A4nnNIUSuqJcktF/0zvMCrV+vZNPwuYkZkgevDMcDlBjYjm+ZOBcLv3Ww==",
+      "type": "package",
+      "path": "wangkanai.detection/8.20.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "NUGET.md",
+        "README.md",
+        "lib/net8.0/Wangkanai.Detection.dll",
+        "lib/net8.0/Wangkanai.Detection.pdb",
+        "wangkanai-logo.png",
+        "wangkanai.detection.8.20.0.nupkg.sha512",
+        "wangkanai.detection.nuspec"
+      ]
+    },
+    "Wangkanai.Hosting/3.7.0": {
+      "sha512": "IcvGT9bz7346eJ33iT1Of1/YsvxvNNGxwKqsdfzagQjqgRLXs35W5LEPaGAvfaq77LpHUUn2BNYbFp3UcHjswQ==",
+      "type": "package",
+      "path": "wangkanai.hosting/3.7.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/net8.0/Wangkanai.Hosting.dll",
+        "lib/net8.0/Wangkanai.Hosting.pdb",
+        "wangkanai-logo.png",
+        "wangkanai.hosting.3.7.0.nupkg.sha512",
+        "wangkanai.hosting.nuspec"
+      ]
+    },
+    "Wangkanai.System/5.8.0": {
+      "sha512": "2FbVGr41ZJeP0q0Ym+MNs7v8RbZj0u9CQBA5VnaHVx26HwwFtVmhzn1d9q9+0ap476YE3HEie13RB7kHy6ybRA==",
+      "type": "package",
+      "path": "wangkanai.system/5.8.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/net8.0/Wangkanai.System.dll",
+        "lib/net8.0/Wangkanai.System.pdb",
+        "wangkanai-logo.png",
+        "wangkanai.system.5.8.0.nupkg.sha512",
+        "wangkanai.system.nuspec"
+      ]
+    },
     "XLParser/1.5.2": {
       "sha512": "8tnUCmMbn6c/HGuHFyq1sulHym8YReTKDNXFFQk0U8nldNx6RGrwRvLh0+aQjEc7YoC3Q1ztH1npLt7dClKqjw==",
       "type": "package",
@@ -11188,6 +11286,7 @@
       "Newtonsoft.Json >= 13.0.3",
       "Pkcs11Interop >= 5.1.2",
       "SSH.NET >= 2024.1.0",
+      "Wangkanai.Detection >= 8.20.0",
       "itext.bouncy-castle-fips-adapter >= 8.0.5",
       "itext7 >= 8.0.5",
       "itext7.bouncy-castle-adapter >= 8.0.5"
@@ -11283,6 +11382,10 @@
           "SSH.NET": {
             "target": "Package",
             "version": "[2024.1.0, )"
+          },
+          "Wangkanai.Detection": {
+            "target": "Package",
+            "version": "[8.20.0, )"
           },
           "itext.bouncy-castle-fips-adapter": {
             "target": "Package",

@@ -149,6 +149,8 @@ const MainContent = () => {
                 navigate("/admin/home");
               } else if (userType === "Designer") {
                 navigate("/designer/dashboard");
+              } else if (userType == "Viewer") {
+                navigate("/viewer/home");
               }
             }
           }

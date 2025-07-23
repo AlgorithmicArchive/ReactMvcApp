@@ -44,6 +44,8 @@ export default function Verification() {
             ? "/officer/home"
             : response.userType === "Designer"
             ? "/designer/dashboard"
+            : response.userType == "Viewer"
+            ? "/viewer/home"
             : "/user/home";
         navigate(url);
       } else {

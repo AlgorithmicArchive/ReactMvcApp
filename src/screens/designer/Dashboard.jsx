@@ -126,6 +126,7 @@ export default function Dashboard() {
             url={"/Designer/GetServicesDashboard"}
             extraParams={{}}
             actionFunctions={actionFunctions}
+            Title={"Services"}
           />
         )}
         {activeTab === 1 && (
@@ -134,6 +135,7 @@ export default function Dashboard() {
             url={"/Designer/GetWebServicesDashboard"}
             extraParams={{}}
             actionFunctions={actionFunctions}
+            Title={"Web Services"}
           />
         )}
         <ToastContainer position="top-right" autoClose={3000} />

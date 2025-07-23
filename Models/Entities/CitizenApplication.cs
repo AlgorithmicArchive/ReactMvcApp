@@ -5,7 +5,7 @@ namespace SahayataNidhi.Models.Entities;
 
 public partial class CitizenApplication
 {
-    public string ReferenceNumber { get; set; } = null!;
+    public string? ReferenceNumber { get; set; }
 
     public int CitizenId { get; set; }
 
@@ -18,6 +18,8 @@ public partial class CitizenApplication
     public string? WorkFlow { get; set; }
 
     public string? AdditionalDetails { get; set; }
+
+    public string? Corrigendum { get; set; } = null;
 
     public int CurrentPlayer { get; set; }
 

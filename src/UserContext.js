@@ -31,6 +31,8 @@ export const UserProvider = ({ children }) => {
     return savedDesignation ? JSON.parse(savedDesignation) : null;
   });
 
+  const [officerAuthorities, setOfficerAuthorities] = useState({});
+
   const [tokenExpiry, setTokenExpiry] = useState(null); // New state for token expiry
 
   useEffect(() => {
@@ -94,6 +96,8 @@ export const UserProvider = ({ children }) => {
         setDesignation,
         tokenExpiry,
         setTokenExpiry, // Expose tokenExpiry and setter
+        officerAuthorities,
+        setOfficerAuthorities,
       }}
     >
       {children}

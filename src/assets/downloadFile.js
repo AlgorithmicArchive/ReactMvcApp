@@ -1,8 +1,9 @@
-import axios from "axios";
+import axiosInstance from "../axiosConfig";
 
 export const downloadFile = async (filePath) => {
   try {
-    const response = await axios.get(`http://localhost:5004/${filePath}`, {
+    const response = await axiosInstance.get(`Base/DisplayFile`, {
+      params: { fileName: filePath },
       responseType: "blob", // Important to handle the file as a Blob
     });
 

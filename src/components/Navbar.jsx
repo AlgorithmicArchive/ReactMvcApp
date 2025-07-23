@@ -21,10 +21,12 @@ const MyNavbar = () => {
     designation,
     verified,
     setVerified,
+    officerAuthorities,
   } = useContext(UserContext);
 
   // Detect screen size to toggle hover behavior
   useEffect(() => {
+    console.log("Officer Authorities", officerAuthorities);
     const handleResize = () => {
       setIsSmallScreen(window.innerWidth < 992); // Bootstrap's lg breakpoint
     };
@@ -239,6 +241,36 @@ const MyNavbar = () => {
                     </NavDropdown.Item>
                   </NavDropdown>
                 </div>
+                {officerAuthorities && officerAuthorities.canCorrigendum && (
+                  <Nav.Link
+                    as={Link}
+                    to="/officer/issuecorrigendum"
+                    style={getNavItemStyle(
+                      "officer-corrigendum",
+                      "/officer/corrigendum"
+                    )}
+                    onClick={() => setExpanded(false)}
+                    onMouseEnter={() => handleMouseEnter("officer-corrigendum")}
+                    onMouseLeave={handleMouseLeave}
+                  >
+                    Issue Corrigendum
+                  </Nav.Link>
+                )}
+              </>
+            )}
+
+            {userType === "Viewer" && verified && (
+              <>
+                <Nav.Link
+                  as={Link}
+                  to="/viewer/home"
+                  style={getNavItemStyle("viewer-home", "/viewer/home")}
+                  onClick={() => setExpanded(false)}
+                  onMouseEnter={() => handleMouseEnter("viewer-home")}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  Home
+                </Nav.Link>
               </>
             )}
 

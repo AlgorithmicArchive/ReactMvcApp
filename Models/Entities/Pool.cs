@@ -13,6 +13,8 @@ public partial class Pool
 
     public int AccessCode { get; set; }
 
+    public string? ListType { get; set; }
+
     public string? List { get; set; }
 
     public virtual Service Service { get; set; } = null!;

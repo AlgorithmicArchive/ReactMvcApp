@@ -50,6 +50,7 @@ export default function ValidateOfficer() {
         extraParams={{}}
         actionFunctions={actionFunctions}
         refreshTrigger={true}
+        Title={"Validate Officers"}
       />
       <MessageModal
         onClose={() => setModalOpen(false)}

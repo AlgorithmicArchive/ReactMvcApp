@@ -3,6 +3,8 @@ import { Box, styled } from "@mui/material";
 import BasicModal from "../../components/BasicModal";
 import { useNavigate } from "react-router-dom";
 import ServerSideTable from "../../components/ServerSideTable";
+import axiosInstance from "../../axiosConfig";
+import { toast } from "react-toastify";
 
 const MainContainer = styled(Box)`
   min-height: 100vh;
@@ -53,22 +55,41 @@ export default function Initiated() {
         },
       });
     },
-    DownloadSanctionLetter: (row) => {
-      console.log("HERE");
+    DownloadSanctionLetter: async (row) => {
       const userdata = row.original;
       const applicationId = userdata.referenceNumber;
 
-      // Build the download URL
-      const fileName = applicationId.replace(/\//g, "_") + "SanctionLetter.pdf";
-      const url = `/files/${fileName}`;
+      try {
+        const fileName =
+          applicationId.replace(/\//g, "_") + "SanctionLetter.pdf";
 
-      // Trigger download
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+        // Fetch the sanction letter from the API
+        const response = await axiosInstance.get(
+          "/User/DownloadSanctionLetter",
+          { params: { fileName: fileName }, responseType: "blob" }
+        );
+
+        // Create a Blob from the response data
+        const blob = new Blob([response.data], { type: "application/pdf" });
+
+        // Trigger download
+        const link = document.createElement("a");
+        link.href = window.URL.createObjectURL(blob);
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Clean up
+        window.URL.revokeObjectURL(link.href);
+      } catch (error) {
+        console.error("Error downloading sanction letter:", error);
+        toast.error("Failed to download sanction letter.", {
+          position: "top-center",
+          autoClose: 3000,
+          theme: "colored",
+        });
+      }
     },
   };
 
@@ -79,6 +100,7 @@ export default function Initiated() {
           url="/User/GetInitiatedApplications"
           extraParams={{}}
           actionFunctions={actionFunctions}
+          Title={"Initiated Applications"}
         />
       </TableCard>
       <BasicModal

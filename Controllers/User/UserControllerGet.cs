@@ -54,11 +54,13 @@ namespace SahayataNidhi.Controllers.User
         public IActionResult GetInitiatedApplications(int pageIndex = 0, int pageSize = 10)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var UserId = new SqlParameter("@UserId", Convert.ToInt32(userIdClaim));
+            var PageIndex = new SqlParameter("@PageIndex", pageIndex);
+            var PageSize = new SqlParameter("@PageSize", pageSize);
+            var IsPaginated = new SqlParameter("@IsPaginated", 1);
 
             // Ensure that you filter by the correct "Initiated" status
-            var applications = dbcontext.CitizenApplications
-                                        .Where(u => u.CitizenId.ToString() == userIdClaim && u.Status != "Incomplete")
-                                        .ToList();
+            var applications = dbcontext.CitizenApplications.FromSqlRaw("EXEC GetInitiatedApplications @UserId, @PageIndex, @PageSize, @IsPaginated", UserId, PageIndex, PageSize, IsPaginated).ToList();
 
             var totalRecords = applications.Count;
 
@@ -108,18 +110,18 @@ namespace SahayataNidhi.Controllers.User
                 var formDetails = JsonConvert.DeserializeObject<dynamic>(application.FormDetails!);
                 var officers = JsonConvert.DeserializeObject<JArray>(application.WorkFlow!);
                 var currentPlayer = application.CurrentPlayer;
-                string officerDesignation = (string)officers![currentPlayer]["designation"]!;
+                string officerDesignation = (string)officers![currentPlayer!]!["designation"]!;
                 string serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == application.ServiceId)!.ServiceName!;
 
                 string officerArea = GetOfficerArea(officerDesignation, formDetails);
 
                 // Define actions for this row
                 var actions = new List<dynamic>();
-                if ((string)officers![currentPlayer]["status"]! != "returntoedit" && (string)officers[currentPlayer]["status"]! != "sanctioned")
+                if ((string)officers![currentPlayer!]!["status"]! != "returntoedit" && (string)officers[currentPlayer!]!["status"]! != "sanctioned")
                 {
                     actions.Add(new { tooltip = "View", color = "#F0C38E", actionFunction = "CreateTimeLine" });
                 }
-                else if ((string)officers[currentPlayer]["status"]! == "sanctioned")
+                else if ((string)officers[currentPlayer!]!["status"]! == "sanctioned")
                 {
                     actions.Add(new { tooltip = "View", color = "#F0C38E", actionFunction = "CreateTimeLine" });
                     actions.Add(new { tooltip = "Download", color = "#F0C38E", actionFunction = "DownloadSanctionLetter" });
@@ -137,7 +139,7 @@ namespace SahayataNidhi.Controllers.User
                     referenceNumber = application.ReferenceNumber,
                     applicantName = GetFieldValue("ApplicantName", formDetails),
                     currentlyWith = officerDesignation + " " + officerArea,
-                    status = actionMap[(string)officers[currentPlayer]["status"]!],
+                    status = actionMap[(string)officers[currentPlayer!]!["status"]!],
                     submissionDate = application.CreatedAt,
                     serviceId = application.ServiceId,
                     customActions = actions // Embed actions here
@@ -214,7 +216,7 @@ namespace SahayataNidhi.Controllers.User
             var parameter = new SqlParameter("@ApplicationId", ApplicationId);
             var application = await dbcontext.CitizenApplications.FirstOrDefaultAsync(ca => ca.ReferenceNumber == ApplicationId);
             var players = JsonConvert.DeserializeObject<dynamic>(application!.WorkFlow!) as JArray;
-            int currentPlayerIndex = application.CurrentPlayer;
+            int currentPlayerIndex = (int)application.CurrentPlayer!;
             var currentPlayer = players!.FirstOrDefault(o => (int)o["playerId"]! == currentPlayerIndex);
             var history = await dbcontext.ActionHistories.Where(ah => ah.ReferenceNumber == ApplicationId).ToListAsync();
             var formDetails = JsonConvert.DeserializeObject<dynamic>(application.FormDetails!);
@@ -354,6 +356,39 @@ namespace SahayataNidhi.Controllers.User
             };
 
             return details;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> DownloadSanctionLetter(string fileName)
+        {
+            var userId = Convert.ToInt32(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            try
+            {
+                var sanctionLetter = await dbcontext.UserDocuments
+                    .FirstOrDefaultAsync(sl => sl.FileName == fileName);
+                if (sanctionLetter == null)
+                    return NotFound($"Sanction letter for FileName {fileName} not found.");
+
+                // Log the download action
+                _auditService.InsertLog(HttpContext, "Download File", "Sanction Letter downloaded successfully.", userId, "Success");
+
+                // Return the file
+                return File(sanctionLetter.FileData, "application/pdf", sanctionLetter.FileName);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred while downloading the sanction letter. {ex}");
+            }
+        }
+
+        [HttpGet]
+        public IActionResult GetAcknowledgement(string ApplicationId)
+        {
+            string fileName = ApplicationId.Replace("/", "_") + "Acknowledgement.pdf";
+
+            string fullPath = "Base/DisplayFile?filename=" + fileName;
+
+            return Json(new { fullPath });
         }
     }
 }

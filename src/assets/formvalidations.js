@@ -184,12 +184,6 @@ export function isDateAfterCurrentDate(field, value) {
   return true;
 }
 
-// Transformation Function
-
-export function CapitalizeAlphabets(field, value) {
-  return value.toUpperCase();
-}
-
 export async function tehsilForDistrict(field, districtValue) {
   if (!districtValue) return [];
   try {
@@ -258,6 +252,22 @@ const ValidationFunctionsList = {
   isDateAfterCurrentDate,
 };
 
+export const TransformationFunctionsList = {
+  CaptilizeAlphabet: (value) => value.toUpperCase(),
+  MaskAadhaar: (value, aadhaarNumber) => {
+    const input =
+      typeof aadhaarNumber === "string" && aadhaarNumber.length > 0
+        ? aadhaarNumber
+        : value;
+
+    let digitCount = 0;
+
+    return input.replace(/\d/g, (digit) => {
+      return digitCount++ < 8 ? "X" : digit;
+    });
+  },
+};
+
 export const validationFunctionsList = [
   { id: "notEmpty", label: "Required" },
   { id: "onlyAlphabets", label: "Only Alphabets" },
@@ -276,4 +286,5 @@ export const validationFunctionsList = [
 export const transformationFunctionsList = [
   { id: "CaptilizeAlphabet", label: "Captital Alphabets" },
   { id: "handleCopyAddress", label: "Copy Address" },
+  { id: "MaskAadhaar", label: "Mask Aadhaar" },
 ];

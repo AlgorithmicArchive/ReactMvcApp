@@ -282,6 +282,7 @@ export default function Reports() {
                   <ServerSideTable
                     key={`${district}-${service}-${selectedStatus}`}
                     url={`${API_BASE_URL}/Officer/GetApplicationsForReports`}
+                    Title={"Tehsil Wise Report"}
                     extraParams={extraParams}
                     sx={{
                       "& .MuiTable-root": {

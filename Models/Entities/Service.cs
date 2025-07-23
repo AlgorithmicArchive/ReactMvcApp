@@ -23,10 +23,6 @@ public partial class Service
 
     public string? Letters { get; set; }
 
-    public string? Pool { get; set; }
-
-    public string? Approve { get; set; }
-
     public bool? ApprovalListEnabled { get; set; }
 
     public string? WebService { get; set; }

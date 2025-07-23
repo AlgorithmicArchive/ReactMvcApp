@@ -26,8 +26,7 @@ import "react-toastify/dist/ReactToastify.css";
 
 // Function to generate a random CAPTCHA (6 alphanumeric characters)
 const generateCaptcha = () => {
-  const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const characters = "ABCDEFGHIJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
   let captcha = "";
   for (let i = 0; i < 6; i++) {
     captcha += characters.charAt(Math.floor(Math.random() * characters.length));

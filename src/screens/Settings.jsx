@@ -7,6 +7,9 @@ import {
   CircularProgress,
   Tooltip,
   TextField,
+  FormControl,
+  Button,
+  FormHelperText,
 } from "@mui/material";
 import { Container, Row, Col } from "react-bootstrap";
 import axiosInstance from "../axiosConfig";
@@ -26,6 +29,7 @@ export default function Settings() {
     email: "",
     mobileNumber: "",
     profile: "",
+    ageProof: "",
   });
   const [used, setUsed] = useState([]);
   const [unused, setUnused] = useState([]);
@@ -338,6 +342,25 @@ export default function Settings() {
                 },
               }}
             />
+            <FormControl fullWidth margin="normal">
+              <Button
+                variant="contained"
+                component="label"
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": { borderColor: "#90CAF9" },
+                    "&:hover fieldset": { borderColor: "#42A5F5" },
+                    "&.Mui-focused fieldset": { borderColor: "#1E88E5" },
+                  },
+                }}
+              >
+                <Typography>Proof Of Age</Typography>
+                <input type="file" hidden accept={".pdf"} />
+              </Button>
+              <Typography sx={{ fontSize: "0.85rem", color: "#6B7280" }}>
+                Accepted File Types: .pdf Size: 100kb-200kb
+              </Typography>
+            </FormControl>
           </Box>
         </Box>
 

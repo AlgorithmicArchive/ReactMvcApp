@@ -24,7 +24,7 @@ namespace SahayataNidhi.Controllers.Officer
         PdfService pdfService,
         IWebHostEnvironment webHostEnvironment,
         IHubContext<ProgressHub> hubContext,
-        IEncryptionService encryptionService) : Controller
+        IEncryptionService encryptionService, IAuditLogService auditService) : Controller
     {
         protected readonly SocialWelfareDepartmentContext dbcontext = dbcontext;
         protected readonly ILogger<OfficerController> _logger = logger;
@@ -34,6 +34,7 @@ namespace SahayataNidhi.Controllers.Officer
         private readonly IWebHostEnvironment _webHostEnvironment = webHostEnvironment;
         private readonly IHubContext<ProgressHub> hubContext = hubContext;
         protected readonly IEncryptionService encryptionService = encryptionService;
+        private readonly IAuditLogService _auditService = auditService;
 
         public override void OnActionExecuted(ActionExecutedContext context)
         {
@@ -97,6 +98,9 @@ namespace SahayataNidhi.Controllers.Officer
             string officerArea = GetAccessArea(officer.AccessLevel!, officer.AccessCode);
             return Json(new { serviceList, role = officer.RoleShort, area = officerArea });
         }
+       
+       
+       
         [HttpGet]
         public async Task<IActionResult> PullApplication(string applicationId)
         {
@@ -350,18 +354,20 @@ namespace SahayataNidhi.Controllers.Officer
                     }
                 }
 
+                string description = action != "returntoedit" ? $"Application {action} by {officer.RoleShort} {officerArea}" : $"Application Returned to citizen for correction by {officer.RoleShort} {officerArea}";
 
+                _auditService.InsertLog(HttpContext, action, description, officer.UserId, "Success");
                 return Json(new { status = true });
 
             }
             catch (Exception ex)
             {
+                _auditService.InsertLog(HttpContext, action, ex.Message, officer.UserId, "Failure");
                 return Json(new { status = false, response = ex.Message, stackTrace = ex.StackTrace });
             }
 
 
         }
-
 
         [HttpPost]
         public IActionResult UploadToSftp([FromForm] IFormCollection form)

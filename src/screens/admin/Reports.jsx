@@ -283,6 +283,7 @@ export default function ReportsAdmin() {
                     key={`${district}-${service}-${selectedStatus}`}
                     url={`${API_BASE_URL}/Admin/GetApplicationsForReports`}
                     extraParams={extraParams}
+                    Title={"Tehsil Wise Reports"}
                     sx={{
                       "& .MuiTable-root": {
                         background: "#ffffff",

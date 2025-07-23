@@ -56,6 +56,7 @@ const CollapsibleActionHistory = ({
             url={"/Officer/GetApplicationHistory"}
             extraParams={{ applicationId }}
             actionFunctions={{}}
+            Title={"Application History"}
           />
         </Box>
       </Collapse>

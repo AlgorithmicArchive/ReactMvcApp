@@ -91,7 +91,8 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy("CitizenPolicy", policy => policy.RequireRole("Citizen"))
     .AddPolicy("OfficerPolicy", policy => policy.RequireRole("Officer"))
     .AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin"))
-    .AddPolicy("DesignerPolicy", policy => policy.RequireRole("Designer"));
+    .AddPolicy("DesignerPolicy", policy => policy.RequireRole("Designer"))
+    .AddPolicy("ViewerPolicy", policy => policy.RequireRole("Viewer"));
 
 builder.Services.AddTransient<IEmailSender, EmailSender>();
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
@@ -100,7 +101,9 @@ builder.Services.AddScoped<EmailSender>();
 builder.Services.AddScoped<UserHelperFunctions>();
 builder.Services.AddTransient<PdfService>();
 builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddCors();
+builder.Services.AddDetection();
 
 var app = builder.Build();
 
@@ -128,7 +131,7 @@ app.UseStaticFiles(new StaticFileOptions
         }
     }
 });
-
+app.UseDetection();
 app.UseRouting();
 app.UseCors("AllowAll");
 

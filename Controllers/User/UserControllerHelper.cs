@@ -65,8 +65,6 @@ namespace SahayataNidhi.Controllers.User
 
             return Json(new { status = true, districts });
         }
-
-
         [HttpGet]
         public IActionResult GetTehsils(string districtId)
         {
@@ -207,15 +205,7 @@ namespace SahayataNidhi.Controllers.User
                 return Json(new { status = false, message = "No Service Found" });
             }
         }
-        [HttpGet]
-        public IActionResult GetAcknowledgement(string ApplicationId)
-        {
-            string fileName = ApplicationId.Replace("/", "_") + "Acknowledgement.pdf";
 
-            string fullPath = "Base/DisplayFile?filename=" + fileName;
-
-            return Json(new { fullPath });
-        }
         public string GetFieldValue(string fieldName, dynamic data)
         {
             foreach (var section in data)
@@ -241,24 +231,24 @@ namespace SahayataNidhi.Controllers.User
             string label = item.label?.ToString() ?? "[No Label]";
             string fmt = item.transformString?.ToString() ?? "{0}";
 
-            // If there's no {n} at all, return static
             if (!Regex.IsMatch(fmt, @"\{\d+\}"))
                 return new { Label = label, Value = fmt };
 
-            // 1) Build rawValues (recursive lookup + District/Tehsil)
+            // 1) Build rawValues, filtering out empty values
             var rawValues = (item.selectedFields as IEnumerable<object> ?? Enumerable.Empty<object>())
                 .Select(sf =>
                 {
                     var name = sf?.ToString() ?? "";
-                    if (string.IsNullOrWhiteSpace(name)) return "";
+                    if (string.IsNullOrWhiteSpace(name)) return null;
                     var fieldObj = FindFieldRecursively(data, name);
-                    return fieldObj == null ? ""
-                           : ExtractValueWithSpecials(fieldObj, name);
+                    var value = fieldObj == null ? "" : ExtractValueWithSpecials(fieldObj, name);
+                    return string.IsNullOrWhiteSpace(value) ? null : value;
                 })
+                .Where(v => v != null)
                 .ToList();
 
             // 2) Find highest non-empty index
-            int lastIndex = rawValues.FindLastIndex(v => !string.IsNullOrWhiteSpace(v));
+            int lastIndex = rawValues.Count - 1;
             if (lastIndex < 0)
                 return new { Label = label, Value = "" };
 
@@ -287,25 +277,52 @@ namespace SahayataNidhi.Controllers.User
                     kept[kept.Count - 1] = lit.Substring(0, p + 1);
             }
 
-            // 7) Now rebuild, replacing placeholders {i} <= lastIndex
+            // 7) Rebuild, skipping empty placeholders and their preceding literals
             var sb = new StringBuilder();
-            foreach (var tok in kept)
+            for (int i = 0; i < kept.Count; i++)
             {
+                var tok = kept[i];
                 var m = Regex.Match(tok, @"\{(\d+)\}");
                 if (m.Success)
                 {
                     int idx = int.Parse(m.Groups[1].Value);
-                    sb.Append(idx <= lastIndex ? rawValues[idx] : "");
+                    if (idx <= lastIndex && !string.IsNullOrWhiteSpace(rawValues[idx]))
+                    {
+                        // Append the preceding literal (if it exists and is not empty) before the value
+                        if (i > 0 && !Regex.IsMatch(kept[i - 1], @"\{\d+\}") && !string.IsNullOrWhiteSpace(kept[i - 1]))
+                        {
+                            sb.Append(kept[i - 1]);
+                        }
+                        sb.Append(rawValues[idx]);
+                    }
+                    else
+                    {
+                        // Skip the preceding literal if the placeholder is empty
+                        if (i > 0 && !Regex.IsMatch(kept[i - 1], @"\{\d+\}"))
+                        {
+                            i--; // Backtrack to skip the preceding literal
+                        }
+                    }
                 }
-                else
+                else if (i + 1 >= kept.Count || !Regex.IsMatch(kept[i + 1], @"\{\d+\}"))
                 {
-                    sb.Append(tok);
+                    // Append standalone literals not followed by a placeholder
+                    if (!string.IsNullOrWhiteSpace(tok))
+                    {
+                        sb.Append(tok);
+                    }
                 }
             }
 
-            var result = sb.ToString().TrimEnd();
+            // 8) Clean up multiple commas and trailing commas/spaces
+            var result = Regex.Replace(sb.ToString().TrimEnd(), @",(\s*,)*\s*$", "");
+            result = Regex.Replace(result, @"\s*,\s*,", ",").Trim();
+
+            _logger.LogInformation($"---------- Result: {JsonConvert.SerializeObject(result)} --------------------");
+
             return new { Label = label, Value = result };
         }
+
         // Recursive search for a JObject with ["name"] == fieldName
         private static JObject? FindFieldRecursively(JToken token, string fieldName)
         {
@@ -574,7 +591,6 @@ namespace SahayataNidhi.Controllers.User
         {
             return typeof(T).GetProperty(propertyName) != null;
         }
-
         private static string? GetFormFieldValue(JObject formDetailsObj, string fieldName)
         {
             foreach (var section in formDetailsObj.Properties())
@@ -597,6 +613,7 @@ namespace SahayataNidhi.Controllers.User
 
             return null; // not found
         }
+
 
     }
 }

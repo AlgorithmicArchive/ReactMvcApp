@@ -4,6 +4,7 @@ import React, {
   useRef,
   useMemo,
   useCallback,
+  useContext,
 } from "react";
 import { fetchServiceList, fetchCertificateDetails } from "../../assets/fetch";
 import ServiceSelectionForm from "../../components/ServiceSelectionForm";
@@ -19,6 +20,7 @@ import {
   Typography,
   CircularProgress,
   Card,
+  Tooltip as MuiTooltip,
   CardContent,
 } from "@mui/material";
 import { useForm } from "react-hook-form";
@@ -31,8 +33,8 @@ import {
   BarElement,
   CategoryScale,
   LinearScale,
-  Tooltip,
   Legend,
+  Tooltip,
 } from "chart.js";
 import ServerSideTable from "../../components/ServerSideTable";
 import { useNavigate } from "react-router-dom";
@@ -41,6 +43,7 @@ import "react-toastify/dist/ReactToastify.css";
 import BasicModal from "../../components/BasicModal";
 import styled from "@emotion/styled";
 import debounce from "lodash/debounce";
+import { UserContext } from "../../UserContext";
 
 // Register Chart.js components
 ChartJS.register(
@@ -155,6 +158,9 @@ export default function OfficerHome() {
   const tableRef = useRef(null);
   const tableInstanceRef = useRef(null);
   const navigate = useNavigate();
+
+  const { setOfficerAuthorities } = useContext(UserContext);
+
   const {
     control,
     formState: { errors },
@@ -179,6 +185,7 @@ export default function OfficerHome() {
         setCountList(response.data.countList);
         setCanSanction(response.data.canSanction);
         setCanHavePool(response.data.canHavePool);
+        setOfficerAuthorities(response.data.officerAuthorities);
 
         const newCounts = {
           total:
@@ -398,38 +405,26 @@ export default function OfficerHome() {
           }
         } else if (selectedAction === "Sanction") {
           // Fetch sanction letter first
-          const pdfResponse = await axiosInstance.get(
+          const response = await axiosInstance.get(
             "/Officer/GetSanctionLetter",
             {
               params: { applicationId: id },
             }
           );
-          if (!pdfResponse.data.status || !pdfResponse.data.path) {
-            throw new Error(
-              pdfResponse.data.response || "Failed to fetch sanction letter"
-            );
+          const result = response.data;
+          if (!result.status) {
+            throw new Error(result.response || "Something went wrong");
           }
-          const fetchResponse = await fetch(`${pdfResponse.data.path}`, {
-            headers: { Accept: "application/pdf" },
+          const pdfResponse = await axiosInstance.get(`/Base/DisplayFile`, {
+            params: { filename: result.path },
+            responseType: "blob",
           });
-          if (!fetchResponse.ok) {
-            throw new Error(`Failed to fetch PDF: ${fetchResponse.statusText}`);
-          }
-          const contentType = fetchResponse.headers.get("content-type");
-          if (!contentType.includes("application/pdf")) {
-            throw new Error(`Invalid content type: ${contentType}`);
-          }
-          const newPdfBlob = await fetchResponse.blob();
-          const isValid = await isValidPdf(newPdfBlob);
-          if (!isValid) {
-            throw new Error("Invalid PDF structure detected");
-          }
-          if (pdfUrl) {
-            URL.revokeObjectURL(pdfUrl);
-          }
+          const newPdfBlob = new Blob([pdfResponse.data], {
+            type: "application/pdf",
+          });
           const blobUrl = URL.createObjectURL(newPdfBlob);
           setPdfBlob(newPdfBlob);
-          setPdfUrl(blobUrl);
+          setPdfUrl(result.path);
           setIsSignedPdf(false);
           setPdfModalOpen(true);
           // Store formData for use after signing
@@ -685,7 +680,7 @@ export default function OfficerHome() {
           URL.revokeObjectURL(pdfUrl);
         }
         const blobUrl = URL.createObjectURL(signedBlob);
-        setPdfUrl(blobUrl);
+        setPdfUrl(updateResponse.data.path);
         setPdfBlob(null);
         setIsSignedPdf(true);
         setPendingFormData(null); // Clear pending form data
@@ -1045,16 +1040,26 @@ export default function OfficerHome() {
                     >
                       {item.label}
                     </Typography>
-                    <Typography
-                      variant="h3"
-                      sx={{
-                        fontWeight: 700,
-                        mt: 1,
-                        fontSize: { xs: "1.5rem", md: "2rem" },
-                      }}
+                    <MuiTooltip
+                      title={
+                        item.tooltipText || `View ${item.label} applications`
+                      }
+                      enterTouchDelay={0}
+                      leaveTouchDelay={2000}
+                      arrow
                     >
-                      {item.count}
-                    </Typography>
+                      <Typography
+                        variant="h3"
+                        sx={{
+                          fontWeight: 700,
+                          mt: 1,
+                          fontSize: { xs: "1.5rem", md: "2rem" },
+                          cursor: "pointer", // Indicate interactivity
+                        }}
+                      >
+                        {item.count}
+                      </Typography>
+                    </MuiTooltip>
                   </CardContent>
                 </StatCard>
               </Col>
@@ -1097,12 +1102,6 @@ export default function OfficerHome() {
             <Col xs={12}>
               <StyledCard>
                 <CardContent>
-                  <Typography
-                    variant="h6"
-                    sx={{ mb: 3, fontWeight: 600, color: "#2d3748" }}
-                  >
-                    {type.toUpperCase()} Applications
-                  </Typography>
                   <ServerSideTable
                     ref={tableInstanceRef}
                     key={`table-${tableKey}-${serviceId}-${type}`}
@@ -1118,6 +1117,9 @@ export default function OfficerHome() {
                     actionOptions={getActionOptions}
                     selectedAction={selectedAction}
                     setSelectedAction={setSelectedAction}
+                    Title={`${
+                      type.charAt(0).toUpperCase() + type.slice(1)
+                    } Applications`}
                     sx={{
                       "& .MuiTable-root": { background: "#ffffff" },
                       "& .MuiTableCell-root": {

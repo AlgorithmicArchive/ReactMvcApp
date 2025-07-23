@@ -62,6 +62,7 @@ const BasicModal = ({
               url={table.url}
               extraParams={table.params}
               actionFunctions={{}}
+              Title={Title}
             />
           )}
           {pdf != null && <PdfViewer pdfUrl={pdf} />}

@@ -71,74 +71,13 @@ namespace SahayataNidhi.Controllers.Officer
             }
             return "";
         }
-        public IActionResult UpdatePool(int ServiceId, string list)
-        {
-            var officer = GetOfficerDetails();
-            var PoolList = dbcontext.Pools.FirstOrDefault(p => p.ServiceId == Convert.ToInt32(ServiceId) && p.AccessLevel == officer.AccessLevel && p.AccessCode == officer.AccessCode);
-            var pool = PoolList != null && !string.IsNullOrWhiteSpace(PoolList!.List) ? JsonConvert.DeserializeObject<List<string>>(PoolList.List) : [];
-            var poolList = JsonConvert.DeserializeObject<List<string>>(list);
-            foreach (var item in poolList!)
-            {
-                pool!.Add(item);
-            }
+       
 
-            _logger.LogInformation($"----------------POOL After ADD: {JsonConvert.SerializeObject(pool)}---------------------------");
-            if (PoolList == null)
-            {
-                var newPool = new Pool
-                {
-                    ServiceId = ServiceId,
-                    AccessLevel = officer.AccessLevel!,
-                    AccessCode = (int)officer.AccessCode!,
-                    List = JsonConvert.SerializeObject(pool)
-                };
-                dbcontext.Pools.Add(newPool);
-            }
-            else
-                PoolList!.List = JsonConvert.SerializeObject(pool);
-
-            dbcontext.SaveChanges();
-            return Json(new { status = true, ServiceId, list });
-        }
-
-        public IActionResult RemoveFromPool(int ServiceId, string itemToRemove)
-        {
-            var officer = GetOfficerDetails();
-
-            // Find the existing pool for this officer and service
-            var poolRecord = dbcontext.Pools.FirstOrDefault(p =>
-                p.ServiceId == ServiceId &&
-                p.AccessLevel == officer.AccessLevel &&
-                p.AccessCode == officer.AccessCode);
-
-            if (poolRecord == null || string.IsNullOrWhiteSpace(poolRecord.List))
-            {
-                return Json(new { status = false, message = "No existing pool found." });
-            }
-
-            // Deserialize the current pool list
-            var poolList = JsonConvert.DeserializeObject<List<string>>(poolRecord.List) ?? new List<string>();
-
-            // Remove the specified item (case-sensitive match)
-            bool removed = poolList.Remove(itemToRemove);
-
-            if (!removed)
-            {
-                return Json(new { status = false, message = "Item not found in the pool." });
-            }
-
-            // Serialize and update the pool list
-            poolRecord.List = JsonConvert.SerializeObject(poolList);
-            dbcontext.SaveChanges();
-
-            _logger.LogInformation($"----------------POOL After REMOVE: {JsonConvert.SerializeObject(poolList)}---------------------------");
-
-            return Json(new { status = true, ServiceId, removedItem = itemToRemove });
-        }
+       
         [HttpPost]
         public async Task<IActionResult> UpdatePdf([FromForm] IFormCollection form)
         {
-            _logger.LogInformation($"----- Form: {form}  ApplicationID: {form["applicationId"]}-----------");
+            _logger.LogInformation($"Form: {form} ApplicationID: {form["applicationId"]}");
 
             if (form == null || !form.Files.Any() || string.IsNullOrEmpty(form["applicationId"]))
             {
@@ -153,17 +92,47 @@ namespace SahayataNidhi.Controllers.Officer
                 return BadRequest(new { status = false, response = "No file uploaded." });
             }
 
-            // Construct the file path based on applicationId
-            string fileName = applicationId.Replace("/", "_") + "SanctionLetter.pdf";
-            string path = Path.Combine(_webHostEnvironment.WebRootPath, "files", fileName);
-
-            // Overwrite the original file
-            using (var stream = new FileStream(path, FileMode.Create))
+            try
             {
-                await signedPdf.CopyToAsync(stream);
-            }
+                // Construct the file name based on applicationId
+                string fileName = applicationId.Replace("/", "_") + "SanctionLetter.pdf";
 
-            return Json(new { status = true });
+                // Read the file into a byte array
+                using var memoryStream = new MemoryStream();
+                await signedPdf.CopyToAsync(memoryStream);
+                var fileData = memoryStream.ToArray();
+
+                // Check if the file exists in UserDocuments
+                var existingFile = await dbcontext.UserDocuments
+                    .FirstOrDefaultAsync(f => f.FileName == fileName);
+
+                if (existingFile != null)
+                {
+                    // Update existing record
+                    existingFile.FileData = fileData;
+                    existingFile.FileType = "application/pdf";
+                    existingFile.UpdatedAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    // Create new record
+                    dbcontext.UserDocuments.Add(new UserDocument
+                    {
+                        FileName = fileName,
+                        FileData = fileData,
+                        FileType = "application/pdf",
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                }
+
+                await dbcontext.SaveChangesAsync();
+
+                return Json(new { status = true, path = fileName });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, response = $"An error occurred while updating the sanction letter: {ex.Message}" });
+            }
         }
 
         private dynamic GetFormattedValue(dynamic item, JObject data)
@@ -174,43 +143,95 @@ namespace SahayataNidhi.Controllers.Officer
             string label = item.label?.ToString() ?? "[No Label]";
             string fmt = item.transformString?.ToString() ?? "{0}";
 
-            // If there's no {n} placeholders, return static string
             if (!Regex.IsMatch(fmt, @"\{\d+\}"))
                 return new { Label = label, Value = fmt };
 
-            // Build rawValues (recursive lookup + District/Tehsil)
+            // 1) Build rawValues, filtering out empty values
             var rawValues = (item.selectedFields as IEnumerable<object> ?? Enumerable.Empty<object>())
                 .Select(sf =>
                 {
                     var name = sf?.ToString() ?? "";
-                    if (string.IsNullOrWhiteSpace(name)) return "";
+                    if (string.IsNullOrWhiteSpace(name)) return null;
                     var fieldObj = FindFieldRecursively(data, name);
-                    return fieldObj == null ? "" : ExtractValueWithSpecials(fieldObj, name);
+                    var value = fieldObj == null ? "" : ExtractValueWithSpecials(fieldObj, name);
+                    return string.IsNullOrWhiteSpace(value) ? null : value;
                 })
+                .Where(v => v != null)
                 .ToList();
 
-            // Tokenize transformString into placeholders and literals
+            // 2) Find highest non-empty index
+            int lastIndex = rawValues.Count - 1;
+            if (lastIndex < 0)
+                return new { Label = label, Value = "" };
+
+            // 3) Tokenize into placeholders and literals
             var tokens = Regex.Split(fmt, @"(\{\d+\})").ToList();
 
-            // Build the output string, processing all tokens
-            var sb = new StringBuilder();
-            foreach (var tok in tokens)
+            // 4) Find the first placeholder whose index > lastIndex
+            int badTokenIdx = tokens
+                .Select((tok, idx) => new { tok, idx })
+                .FirstOrDefault(x =>
+                {
+                    var m = Regex.Match(x.tok, @"\{(\d+)\}");
+                    return m.Success && int.Parse(m.Groups[1].Value) > lastIndex;
+                })
+                ?.idx ?? tokens.Count;
+
+            // 5) Collect tokens up to badTokenIdx
+            var kept = tokens.Take(badTokenIdx).ToList();
+
+            // 6) If the last kept token is a literal and contains ')', trim it at the first ')'
+            if (kept.Count > 0 && !Regex.IsMatch(kept.Last(), @"\{\d+\}"))
             {
+                var lit = kept.Last();
+                int p = lit.IndexOf(')');
+                if (p >= 0)
+                    kept[kept.Count - 1] = lit.Substring(0, p + 1);
+            }
+
+            // 7) Rebuild, skipping empty placeholders and their preceding literals
+            var sb = new StringBuilder();
+            for (int i = 0; i < kept.Count; i++)
+            {
+                var tok = kept[i];
                 var m = Regex.Match(tok, @"\{(\d+)\}");
                 if (m.Success)
                 {
                     int idx = int.Parse(m.Groups[1].Value);
-                    // Include value if index is valid and value is non-empty; otherwise, skip with empty string
-                    sb.Append(idx < rawValues.Count && !string.IsNullOrWhiteSpace(rawValues[idx]) ? rawValues[idx] : "");
+                    if (idx <= lastIndex && !string.IsNullOrWhiteSpace(rawValues[idx]))
+                    {
+                        // Append the preceding literal (if it exists and is not empty) before the value
+                        if (i > 0 && !Regex.IsMatch(kept[i - 1], @"\{\d+\}") && !string.IsNullOrWhiteSpace(kept[i - 1]))
+                        {
+                            sb.Append(kept[i - 1]);
+                        }
+                        sb.Append(rawValues[idx]);
+                    }
+                    else
+                    {
+                        // Skip the preceding literal if the placeholder is empty
+                        if (i > 0 && !Regex.IsMatch(kept[i - 1], @"\{\d+\}"))
+                        {
+                            i--; // Backtrack to skip the preceding literal
+                        }
+                    }
                 }
-                else
+                else if (i + 1 >= kept.Count || !Regex.IsMatch(kept[i + 1], @"\{\d+\}"))
                 {
-                    // Append literal text
-                    sb.Append(tok);
+                    // Append standalone literals not followed by a placeholder
+                    if (!string.IsNullOrWhiteSpace(tok))
+                    {
+                        sb.Append(tok);
+                    }
                 }
             }
 
-            var result = sb.ToString().TrimEnd();
+            // 8) Clean up multiple commas and trailing commas/spaces
+            var result = Regex.Replace(sb.ToString().TrimEnd(), @",(\s*,)*\s*$", "");
+            result = Regex.Replace(result, @"\s*,\s*,", ",").Trim();
+
+            _logger.LogInformation($"---------- Result: {JsonConvert.SerializeObject(result)} --------------------");
+
             return new { Label = label, Value = result };
         }
         // Recursive search for a JObject with ["name"] == fieldName
@@ -523,7 +544,7 @@ namespace SahayataNidhi.Controllers.Officer
             var officerRoles = dbcontext.Users
                 .Where(u => u.UserType == "Officer" && u.AdditionalDetails != null)
                 .AsEnumerable() // Forces evaluation on the client side
-                .Select(u => JsonConvert.DeserializeObject<Dictionary<string, string>>(u.AdditionalDetails!))
+                .Select(u => JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(u.AdditionalDetails!))
                 .Where(details => details != null && details.ContainsKey("Role"))
                 .Select(details => details!["Role"])
                 .Distinct()

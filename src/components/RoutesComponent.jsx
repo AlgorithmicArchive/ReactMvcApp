@@ -40,6 +40,9 @@ import ReportsAdmin from "../screens/admin/Reports";
 import AddAdmin from "../screens/admin/AddAdmin";
 import ValidateOfficer from "../screens/admin/ValidateOfficer";
 import EmailSettings from "../screens/designer/EmailSettings";
+import ViewerLayout from "../screens/viewer/ViewerLayout";
+import ViewerHome from "../screens/viewer/ViewerHome";
+import IssueCorrigendum from "../screens/officer/IssueCorrigendum";
 
 const RoutesComponent = () => {
   return (
@@ -77,6 +80,12 @@ const RoutesComponent = () => {
           <Route path="bankFile" element={<BankFile />} />
           <Route path="responseFile" element={<ResponseFile />} />
           <Route path="registerdsc" element={<RegisterDSC />} />
+          <Route path="issuecorrigendum" element={<IssueCorrigendum />} />
+        </Route>
+      </Route>
+      <Route element={<ProtectedRoute requiredRoles={["Viewer"]} />}>
+        <Route path="/viewer" element={<ViewerLayout />}>
+          <Route path="home" element={<ViewerHome />} />
         </Route>
       </Route>
       <Route element={<ProtectedRoute requiredRoles={["Admin"]} />}>
