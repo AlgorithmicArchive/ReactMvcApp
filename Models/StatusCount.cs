@@ -7,5 +7,6 @@ public class StatusCounts
     public int SanctionedCount { get; set; }
     public int RejectCount { get; set; }
     public int DisbursedCount { get; set; } // Added for the DisbursedCount
+    public int CorrigendumCount { get; set; }
     public int TotalApplications { get; set; } // New property for total applications count
 }

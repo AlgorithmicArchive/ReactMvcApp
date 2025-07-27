@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Specialized;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using iText.Barcodes;
 using iText.IO.Image;
 using iText.Kernel.Colors;
@@ -16,13 +17,11 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SahayataNidhi.Models.Entities;
 
-
 public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDepartmentContext dbcontext, UserHelperFunctions helper)
 {
     private readonly IWebHostEnvironment _webHostEnvironment = webHostEnvironment;
     protected readonly SocialWelfareDepartmentContext dbcontext = dbcontext;
     protected readonly UserHelperFunctions helper = helper;
-
 
     public string GetArreaName(string? accessLevel, int? accessCode)
     {
@@ -46,7 +45,7 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
     public string GetBranchOffice(string applicationId)
     {
         var citizenDetails = dbcontext.CitizenApplications
-     .FirstOrDefault(ca => ca.ReferenceNumber == applicationId);
+            .FirstOrDefault(ca => ca.ReferenceNumber == applicationId);
 
         if (citizenDetails == null || string.IsNullOrEmpty(citizenDetails.FormDetails))
             throw new Exception("Application not found or form data missing.");
@@ -93,15 +92,12 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
         }
 
         return branchOffice;
-
     }
 
     public async Task CreateSanctionPdf(Dictionary<string, string> details, string sanctionLetterFor, string information, OfficerDetailsModal Officer, string ApplicationId)
     {
-
         // Generate PDF into MemoryStream
         using var memoryStream = new MemoryStream();
-
 
         string emblem = System.IO.Path.Combine(_webHostEnvironment.WebRootPath, "assets", "images", "emblem.png");
         Image image = new Image(ImageDataFactory.Create(emblem))
@@ -179,8 +175,8 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
         BarcodeQRCode qrCode = new BarcodeQRCode(qrContent);
         PdfFormXObject qrXObject = qrCode.CreateFormXObject(ColorConstants.BLACK, pdf);
         Image qrImage = new Image(qrXObject)
-            .ScaleToFit(110, 110) // Set desired QR code size (200x200 points)
-            .SetFixedPosition(30, 30); // Position at bottom-left (x=30, y=30)
+            .ScaleToFit(110, 110)
+            .SetFixedPosition(30, 30);
 
         // Add QR code to the document
         document.Add(qrImage);
@@ -251,6 +247,168 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
         await helper.GetFilePath(null, memoryStream.ToArray(), applicationId.Replace("/", "_") + "Acknowledgement.pdf");
     }
 
+    public async Task CreateCorrigendumSanctionPdf(string corrigendumFieldsJson, string applicationId, OfficerDetailsModal officer, string serviceName, string corrigendumId)
+    {
+        // Validate inputs
+        if (string.IsNullOrEmpty(corrigendumFieldsJson))
+            throw new ArgumentException("Corrigendum fields JSON cannot be null or empty.");
+        if (string.IsNullOrEmpty(applicationId))
+            throw new ArgumentException("Application ID cannot be null or empty.");
+        if (officer == null)
+            throw new ArgumentException("Officer details cannot be null.");
 
+        // Deserialize corrigendum fields
+        var corrigendumFields = JsonConvert.DeserializeObject<JObject>(corrigendumFieldsJson);
+        if (corrigendumFields == null)
+            throw new Exception("Failed to deserialize corrigendum fields.");
 
+        // Generate PDF into MemoryStream
+        using var memoryStream = new MemoryStream();
+        using PdfWriter writer = new PdfWriter(memoryStream);
+        using PdfDocument pdf = new PdfDocument(writer);
+        pdf.SetDefaultPageSize(PageSize.A4);
+        using Document document = new Document(pdf);
+
+        // Add emblem
+        string emblemPath = System.IO.Path.Combine(_webHostEnvironment.WebRootPath, "assets", "images", "emblem.png");
+        Image emblem = new Image(ImageDataFactory.Create(emblemPath))
+            .ScaleToFit(50, 50)
+            .SetHorizontalAlignment(HorizontalAlignment.CENTER);
+        document.Add(emblem);
+
+        // Add header
+        document.Add(new Paragraph("Union Territory of Jammu and Kashmir")
+            .SetBold()
+            .SetTextAlignment(TextAlignment.CENTER)
+            .SetFontSize(16));
+        string sanctionedFromWhere = officer.AccessLevel != "State"
+            ? $"Office of The {officer.Role}, {GetArreaName(officer.AccessLevel, officer.AccessCode)}"
+            : "SOCIAL WELFARE DEPARTMENT\nCIVIL SECRETARIAT, JAMMU / SRINAGAR";
+        document.Add(new Paragraph(sanctionedFromWhere)
+            .SetTextAlignment(TextAlignment.CENTER)
+            .SetFontSize(16));
+        document.Add(new Paragraph($"Corrigendum Sanction Letter for {serviceName}")
+            .SetTextAlignment(TextAlignment.CENTER)
+            .SetFontSize(16));
+
+        // Add recipient (bank manager)
+        string branchOffice = GetBranchOffice(applicationId);
+        document.Add(new Paragraph($"To\n\nTHE MANAGER\nTHE JAMMU AND KASHMIR BANK LIMITED\nB/O {branchOffice}")
+            .SetFontSize(14));
+        document.Add(new Paragraph("\nPlease Find the Corrigendum Details Below:")
+            .SetFontSize(12));
+
+        // Create table for corrigendum fields
+        Table table = new Table(UnitValue.CreatePercentArray([30, 35, 35])).UseAllAvailableWidth();
+        table.AddHeaderCell(new Cell().Add(new Paragraph("Form Field").SetBold()));
+        table.AddHeaderCell(new Cell().Add(new Paragraph("Old Value").SetBold()));
+        table.AddHeaderCell(new Cell().Add(new Paragraph("New Value").SetBold()));
+
+        var stack = new Stack<(string path, JToken field)>();
+        string remarks = corrigendumFields["remarks"]?.ToString() ?? "";
+
+        // Seed with top-level entries, excluding remarks
+        foreach (var item in corrigendumFields)
+        {
+            if (item.Key != "remarks" && item.Value is JObject)
+            {
+                stack.Push((item.Key, item.Value));
+            }
+        }
+
+        while (stack.Count > 0)
+        {
+            var (path, field) = stack.Pop();
+            string header = Regex.Replace(path, "(\\B[A-Z])", " $1");
+            string oldValue = field["old_value"]?.ToString() ?? "";
+            string newValue = field["new_value"]?.ToString() ?? "";
+
+            table.AddCell(new Cell().Add(new Paragraph(header)));
+            table.AddCell(new Cell().Add(new Paragraph(oldValue)));
+            table.AddCell(new Cell().Add(new Paragraph(newValue)));
+
+            // Process nested additional_values
+            var additionalValues = field["additional_values"];
+            if (additionalValues != null && additionalValues is JObject nested)
+            {
+                foreach (var nestedItem in nested)
+                {
+                    string nestedPath = $"{path}.{nestedItem.Key}";
+                    stack.Push((nestedPath, nestedItem.Value)!);
+                }
+            }
+        }
+
+        document.Add(table);
+
+        // Add vertical gap
+        document.Add(new Paragraph("\n").SetHeight(10));
+
+        // Create table for NO and ISSUING AUTHORITY
+        Table idTable = new Table(UnitValue.CreatePercentArray([50, 50]))
+            .UseAllAvailableWidth();
+        idTable.AddCell(new Cell()
+            .Add(new Paragraph($"NO: {applicationId}")
+                .SetFontSize(8)
+                .SetFontColor(ColorConstants.BLUE)
+                .SetBold())
+            .SetBorder(Border.NO_BORDER)
+            .SetTextAlignment(TextAlignment.LEFT));
+        idTable.AddCell(new Cell()
+            .Add(new Paragraph("ISSUING AUTHORITY")
+                .SetFontSize(10)
+                .SetBold())
+            .SetBorder(Border.NO_BORDER)
+            .SetTextAlignment(TextAlignment.RIGHT));
+        document.Add(idTable);
+
+        // Create QR code
+        var qrDetails = new List<string>();
+        foreach (var item in corrigendumFields)
+        {
+            if (item.Key != "remarks" && item.Value is JObject field)
+            {
+                string header = Regex.Replace(item.Key, "(\\B[A-Z])", " $1");
+                string newValue = field["new_value"]?.ToString() ?? "";
+                if (!string.IsNullOrEmpty(newValue))
+                {
+                    qrDetails.Add($"{header}: {newValue}");
+                }
+            }
+        }
+        qrDetails.Add($"ApplicationId: {applicationId}");
+
+        string qrContent = string.Join("\n", qrDetails);
+        if (string.IsNullOrEmpty(qrContent))
+        {
+            qrContent = $"ApplicationId: {applicationId}";
+        }
+        BarcodeQRCode qrCode = new BarcodeQRCode(qrContent);
+        PdfFormXObject qrXObject = qrCode.CreateFormXObject(ColorConstants.BLACK, pdf);
+        Image qrImage = new Image(qrXObject)
+            .ScaleToFit(110, 110)
+            .SetFixedPosition(30, 30);
+        document.Add(qrImage);
+
+        // Create footer table for Date and Officer
+        Table footerTable = new Table(UnitValue.CreatePercentArray([50, 50]))
+            .UseAllAvailableWidth();
+        footerTable.AddCell(new Cell()
+            .Add(new Paragraph($"Date: {DateTime.Today:dd/MM/yyyy}")
+                .SetFontSize(8)
+                .SetFontColor(ColorConstants.BLUE)
+                .SetBold())
+            .SetBorder(Border.NO_BORDER)
+            .SetTextAlignment(TextAlignment.LEFT));
+        footerTable.AddCell(new Cell()
+            .Add(new Paragraph($"{officer.Role}, {GetArreaName(officer.AccessLevel, officer.AccessCode)}")
+                .SetFontSize(10)
+                .SetBold())
+            .SetBorder(Border.NO_BORDER)
+            .SetTextAlignment(TextAlignment.RIGHT));
+        document.Add(footerTable);
+
+        document.Close();
+        await helper.GetFilePath(null, memoryStream.ToArray(), applicationId.Replace("/", "_") + "_" + corrigendumId + "CorrigendumSanctionLetter.pdf");
+    }
 }

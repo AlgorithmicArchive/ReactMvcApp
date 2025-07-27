@@ -55,6 +55,7 @@ export default function LoginScreen() {
     handleSubmit,
     control,
     formState: { errors },
+    setValue,
   } = useForm({
     resolver: yupResolver(schema),
     context: { captcha },
@@ -77,10 +78,15 @@ export default function LoginScreen() {
   const [otp, setOtp] = useState("");
   const [email, setEmail] = useState("");
 
-  // Regenerate CAPTCHA on mount
+  // Set CAPTCHA value and regenerate on mount or refresh
   useEffect(() => {
     setCaptcha(generateCaptcha());
   }, []);
+
+  // Automatically set the CAPTCHA field value whenever captcha changes
+  useEffect(() => {
+    setValue("captcha", captcha, { shouldValidate: true });
+  }, [captcha, setValue]);
 
   const handleRefreshCaptcha = () => {
     setCaptcha(generateCaptcha());

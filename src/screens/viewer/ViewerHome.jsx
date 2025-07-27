@@ -26,7 +26,6 @@ const DashboardCard = styled(Card)(({ theme }) => ({
   minWidth: 200,
   borderRadius: "16px",
   boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
-  background: theme.palette.background.paper,
   transition: "transform 0.3s ease, box-shadow 0.3s ease",
   "&:hover": {
     transform: "translateY(-6px)",
@@ -34,44 +33,84 @@ const DashboardCard = styled(Card)(({ theme }) => ({
   },
 }));
 
-const iconList = [
-  <AssignmentTurnedIn />,
-  <CheckCircle />,
-  <Cancel />,
-  <HourglassEmpty />,
-  <Group />,
-  <TrendingUp />,
-  <AccountBalanceWallet />,
-  <MonetizationOn />,
-  <ErrorOutline />,
-  <EmojiEvents />,
-];
-
-const colors = [
-  "#42A5F5",
-  "#66BB6A",
-  "#EF5350",
-  "#FFCA28",
-  "#7E57C2",
-  "#26A69A",
-  "#FF7043",
-  "#5C6BC0",
-  "#D81B60",
-  "#43A047",
-];
-
 const cardData = [
-  { title: "Received Applications", value: "1,234" },
-  { title: "Sanctioned ", value: "856" },
-  { title: "Rejected ", value: "178" },
-  { title: "Under Process ", value: "200" },
-  { title: "Pending with Citizen ", value: "20" },
-  { title: "Total Amount Latest Month Disbursed", value: "₹5,67,89,000" },
-  { title: "Latest Disbursed (Beneficiaries)", value: "542" },
-  { title: "Sanctioned After Last Month", value: "320" },
-  { title: "Success in Latest Month Disbursed", value: "519" },
-  { title: "Failures in Latest Month Disbursed", value: "23" },
-  { title: "Latest Arrear Disbursed", value: "₹12,50,000" },
+  {
+    title: "Applications Received",
+    value: "1,234",
+    icon: <AssignmentTurnedIn />,
+    cardColor: "#1976D2", // Blue for incoming applications
+    textColor: "#FFFFFF", // White for readability
+  },
+  {
+    title: "Sanctioned",
+    value: "856",
+    icon: <CheckCircle />,
+    cardColor: "#388E3C", // Green for positive outcome
+    textColor: "#FFFFFF",
+  },
+  {
+    title: "Under Process",
+    value: "200",
+    icon: <HourglassEmpty />,
+    cardColor: "#FBC02D", // Amber for ongoing work
+    textColor: "#212121", // Dark gray for lighter background
+  },
+  {
+    title: "Pending with Citizen",
+    value: "20",
+    icon: <Group />,
+    cardColor: "#7B1FA2", // Purple for user-related actions
+    textColor: "#FFFFFF",
+  },
+  {
+    title: "Rejected",
+    value: "178",
+    icon: <Cancel />,
+    cardColor: "#D32F2F", // Red for negative outcome
+    textColor: "#FFFFFF",
+  },
+  {
+    title: "Total Amount Disbursed (Latest Month)",
+    value: "₹5,67,89,000",
+    icon: <MonetizationOn />,
+    cardColor: "#00897B", // Teal for financial metrics
+    textColor: "#FFFFFF",
+  },
+  {
+    title: "New Sanctions (After Latest Disbursements)",
+    value: "320",
+    icon: <TrendingUp />,
+    cardColor: "#4CAF50", // Light green for new positive actions
+    textColor: "#FFFFFF",
+  },
+  {
+    title: "No. of Beneficiaries Paid (Latest Month)",
+    value: "542",
+    icon: <AccountBalanceWallet />,
+    cardColor: "#0288D1", // Blue-green for payments
+    textColor: "#FFFFFF",
+  },
+  {
+    title: "Successful Disbursements (Latest Month)",
+    value: "519",
+    icon: <EmojiEvents />,
+    cardColor: "#43A047", // Bright green for success
+    textColor: "#FFFFFF",
+  },
+  {
+    title: "Failed Disbursements (Latest Month)",
+    value: "23",
+    icon: <ErrorOutline />,
+    cardColor: "#C62828", // Dark red for failures
+    textColor: "#FFFFFF",
+  },
+  {
+    title: "Arrear Amount Disbursed (Latest Month)",
+    value: "₹12,50,000",
+    icon: <MonetizationOn />,
+    cardColor: "#00695C", // Dark teal for financial arrears
+    textColor: "#FFFFFF",
+  },
 ];
 
 export default function ViewerHome() {
@@ -94,7 +133,7 @@ export default function ViewerHome() {
           color: theme.palette.text.primary,
         }}
       >
-        Dashboard Overview
+        Dashboard
       </Typography>
 
       <Box
@@ -109,11 +148,13 @@ export default function ViewerHome() {
           {cardData.map((card, index) => (
             <Col
               key={index}
-              lg={index > 4 && index < 8 ? 3 : index > 7 ? 3 : 2}
+              lg={
+                index > 4 && index < 7 ? 6 : index > 6 ? 3 : index == 9 ? 12 : 2
+              }
               xs={12}
-              style={{ marginRight: 0.5, marginBottom: 40 }}
+              style={{ marginBottom: 40 }}
             >
-              <DashboardCard>
+              <DashboardCard sx={{ backgroundColor: card.cardColor }}>
                 <CardContent
                   sx={{
                     textAlign: "center",
@@ -125,21 +166,21 @@ export default function ViewerHome() {
                 >
                   <Avatar
                     sx={{
-                      bgcolor: colors[index % colors.length],
+                      bgcolor: "#FFFFFF",
                       width: 56,
                       height: 56,
                       mb: 2,
                     }}
                   >
-                    {React.cloneElement(iconList[index % iconList.length], {
-                      style: { color: "#fff" },
+                    {React.cloneElement(card.icon, {
+                      style: { color: card.cardColor },
                     })}
                   </Avatar>
                   <Typography
                     variant="subtitle1"
                     sx={{
                       fontWeight: 500,
-                      color: theme.palette.text.secondary,
+                      color: card.textColor,
                       mb: 1,
                     }}
                   >
@@ -149,7 +190,7 @@ export default function ViewerHome() {
                     variant="h5"
                     sx={{
                       fontWeight: "bold",
-                      color: theme.palette.primary.main,
+                      color: card.textColor,
                     }}
                   >
                     {card.value}

@@ -73,6 +73,7 @@ const StatCard = styled(Card)`
   overflow: hidden;
   position: relative;
   cursor: pointer;
+  max-width: 200px;
   &:before {
     content: "";
     position: absolute;
@@ -154,6 +155,7 @@ export default function OfficerHome() {
   const [tableKey, setTableKey] = useState(0); // Added to force table re-render
   const [pendingFormData, setPendingFormData] = useState(null);
   const [pullRow, setPullRow] = useState({});
+  const [url, setUrl] = useState("/Officer/GetApplications");
 
   const tableRef = useRef(null);
   const tableInstanceRef = useRef(null);
@@ -263,6 +265,11 @@ export default function OfficerHome() {
         ? "shifted"
         : statusName.toLowerCase()
     );
+    if (statusName === "Corrigendum") {
+      setUrl("/Officer/GetCorrigendumApplicaions");
+    } else {
+      setUrl("/Officer/GetApplications");
+    }
     setShowTable(true);
     setTimeout(() => {
       tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -296,6 +303,23 @@ export default function OfficerHome() {
       pullApplication: async (row) => {
         setPullRow(row.original);
         setPullConfirmOpen(true);
+      },
+      handleViewCorrigendumApplication: (row) => {
+        const userdata = row.original;
+        navigate("/officer/viewcorrigendumdetails", {
+          state: { applicationId: userdata.referenceNumber },
+        });
+      },
+      handleEditCorrigendumApplication: (row) => {
+        const userdata = row.original;
+        console.log("User Data", userdata);
+        navigate("/officer/issuecorrigendum", {
+          state: {
+            ReferenceNumber: userdata.referenceNumber,
+            ServiceId: userdata.serviceId,
+            applicationId: userdata.applicationId,
+          },
+        });
       },
     }),
     [navigate, serviceId, debouncedHandleRecords, refreshTable]
@@ -1023,78 +1047,92 @@ export default function OfficerHome() {
         </Row>
 
         {counts && (
-          <Row className="mb-5 justify-content-center">
-            {countList.map((item, index) => (
-              <Col key={index} xs={12} sm={6} md={4} lg={2} className="mb-4">
-                <StatCard
-                  sx={{ bgcolor: statusColors[item.label] || "#1976d2" }}
-                  onClick={() => handleCardClick(item.label)}
+          <>
+            <Row className="mb-5 justify-content-center gap-1">
+              {countList.map((item, index) => (
+                <Col
+                  key={index}
+                  xs={12}
+                  sm={6}
+                  md={4}
+                  lg={2}
+                  className="mb-4 justify-content-center"
                 >
-                  <CardContent sx={{ position: "relative", zIndex: 1, p: 2 }}>
-                    <Typography
-                      variant="h6"
-                      sx={{
-                        fontWeight: 600,
-                        fontSize: { xs: "0.9rem", md: "1rem" },
-                      }}
-                    >
-                      {item.label}
-                    </Typography>
-                    <MuiTooltip
-                      title={
-                        item.tooltipText || `View ${item.label} applications`
-                      }
-                      enterTouchDelay={0}
-                      leaveTouchDelay={2000}
-                      arrow
-                    >
+                  <StatCard
+                    sx={{
+                      bgcolor: statusColors[item.label] || "#1976d2",
+                      margin: "0 auto",
+                    }}
+                    onClick={() => handleCardClick(item.label)}
+                  >
+                    <CardContent sx={{ position: "relative", zIndex: 1, p: 2 }}>
                       <Typography
-                        variant="h3"
+                        variant="h6"
                         sx={{
-                          fontWeight: 700,
-                          mt: 1,
-                          fontSize: { xs: "1.5rem", md: "2rem" },
-                          cursor: "pointer", // Indicate interactivity
+                          fontWeight: 600,
+                          fontSize: { xs: "0.9rem", md: "1rem" },
                         }}
                       >
-                        {item.count}
+                        {item.label}
                       </Typography>
-                    </MuiTooltip>
+                      <MuiTooltip
+                        title={
+                          item.tooltipText || `View ${item.label} applications`
+                        }
+                        enterTouchDelay={0}
+                        leaveTouchDelay={2000}
+                        arrow
+                      >
+                        <Typography
+                          variant="h3"
+                          sx={{
+                            fontWeight: 700,
+                            mt: 1,
+                            fontSize: { xs: "1.5rem", md: "2rem" },
+                            cursor: "pointer", // Indicate interactivity
+                          }}
+                        >
+                          {item.count}
+                        </Typography>
+                      </MuiTooltip>
+                    </CardContent>
+                  </StatCard>
+                </Col>
+              ))}
+            </Row>
+            <Row>
+              <Col xs={12} lg={6} className="mb-4 mt">
+                <StyledCard>
+                  <CardContent>
+                    <Typography
+                      variant="h6"
+                      sx={{ mb: 3, fontWeight: 600, color: "#2d3748" }}
+                    >
+                      Application Status Distribution
+                    </Typography>
+                    <Box sx={{ height: "350px" }}>
+                      <Pie data={pieData} options={chartOptions} />
+                    </Box>
                   </CardContent>
-                </StatCard>
+                </StyledCard>
               </Col>
-            ))}
-            <Col xs={12} lg={6} className="mb-4">
-              <StyledCard>
-                <CardContent>
-                  <Typography
-                    variant="h6"
-                    sx={{ mb: 3, fontWeight: 600, color: "#2d3748" }}
-                  >
-                    Application Status Distribution
-                  </Typography>
-                  <Box sx={{ height: "350px" }}>
-                    <Pie data={pieData} options={chartOptions} />
-                  </Box>
-                </CardContent>
-              </StyledCard>
-            </Col>
-            <Col xs={12} lg={6} className="mb-4">
-              <StyledCard>
-                <CardContent>
-                  <Typography
-                    variant="h6"
-                    sx={{ mb: 3, fontWeight: 600, color: "#2d3748" }}
-                  >
-                    Application Counts
-                  </Typography>
-                  <Box sx={{ height: "350px" }}>
-                    <Bar data={barData} options={chartOptions} />
-                  </Box>
-                </CardContent>
-              </StyledCard>
-            </Col>
-          </Row>
+              <Col xs={12} lg={6} className="mb-4">
+                <StyledCard>
+                  <CardContent>
+                    <Typography
+                      variant="h6"
+                      sx={{ mb: 3, fontWeight: 600, color: "#2d3748" }}
+                    >
+                      Application Counts
+                    </Typography>
+                    <Box sx={{ height: "350px" }}>
+                      <Bar data={barData} options={chartOptions} />
+                    </Box>
+                  </CardContent>
+                </StyledCard>
+              </Col>
+            </Row>
+          </>
         )}
 
         {showTable && (
@@ -1105,7 +1143,7 @@ export default function OfficerHome() {
                   <ServerSideTable
                     ref={tableInstanceRef}
                     key={`table-${tableKey}-${serviceId}-${type}`}
-                    url="/Officer/GetApplications"
+                    url={url}
                     extraParams={extraParams}
                     actionFunctions={actionFunctions}
                     canSanction={canSanction}

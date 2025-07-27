@@ -29,6 +29,8 @@ public partial class SocialWelfareDepartmentContext : DbContext
 
     public virtual DbSet<CitizenApplication> CitizenApplications { get; set; }
 
+    public virtual DbSet<Corrigendum> Corrigenda { get; set; }
+
     public virtual DbSet<District> Districts { get; set; }
 
     public virtual DbSet<EmailSetting> EmailSettings { get; set; }
@@ -217,6 +219,23 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.VerifiedByDeptOn)
                 .HasMaxLength(50)
                 .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<Corrigendum>(entity =>
+        {
+            entity.ToTable("Corrigendum");
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.ReferenceNumber)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+
+            entity.HasOne(d => d.ReferenceNumberNavigation).WithMany(p => p.Corrigenda)
+                .HasForeignKey(d => d.ReferenceNumber)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Corrigendum_Citizen_Applications");
         });
 
         modelBuilder.Entity<District>(entity =>

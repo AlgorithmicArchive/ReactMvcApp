@@ -61,6 +61,7 @@ export default function Initiated() {
 
       try {
         const fileName =
+          // "JK-PNS-JMU_2025-2026_11_2CorrigendumSanctionLetter.pdf";
           applicationId.replace(/\//g, "_") + "SanctionLetter.pdf";
 
         // Fetch the sanction letter from the API

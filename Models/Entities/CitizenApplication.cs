@@ -5,7 +5,7 @@ namespace SahayataNidhi.Models.Entities;
 
 public partial class CitizenApplication
 {
-    public string? ReferenceNumber { get; set; }
+    public string ReferenceNumber { get; set; } = null!;
 
     public int CitizenId { get; set; }
 
@@ -19,8 +19,6 @@ public partial class CitizenApplication
 
     public string? AdditionalDetails { get; set; }
 
-    public string? Corrigendum { get; set; } = null;
-
     public int CurrentPlayer { get; set; }
 
     public string? Status { get; set; }
@@ -30,4 +28,6 @@ public partial class CitizenApplication
     public string? VerifiedByDeptOn { get; set; }
 
     public string? CreatedAt { get; set; }
+
+    public virtual ICollection<Corrigendum> Corrigenda { get; set; } = new List<Corrigendum>();
 }

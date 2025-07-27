@@ -1,0 +1,684 @@
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import axiosInstance from "../../axiosConfig";
+import {
+  Box,
+  CircularProgress,
+  MenuItem,
+  Select,
+  TextField,
+  Typography,
+  FormControl,
+  InputLabel,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from "@mui/material";
+import { MaterialReactTable } from "material-react-table";
+import styled from "@emotion/styled";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import BasicModal from "../../components/BasicModal";
+
+const TableContainer = styled(Box)`
+  background: linear-gradient(180deg, #e6f0fa 0%, #b3cde0 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  border-radius: 16px;
+`;
+
+const TableCard = styled(Box)`
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  &:hover {
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  }
+`;
+
+const MaterialTable = ({ columns, data, viewType }) => {
+  return (
+    <MaterialReactTable
+      columns={columns}
+      data={data}
+      enableColumnActions={false}
+      enableColumnFilters={false}
+      enablePagination={false}
+      enableSorting={false}
+      muiTablePaperProps={{
+        sx: {
+          borderRadius: "12px",
+          background: "#ffffff",
+          border: "1px solid #b3cde0",
+          boxShadow: "0 4px 16px rgba(0, 0, 0, 0.05)",
+        },
+      }}
+      muiTableContainerProps={{
+        sx: { maxHeight: "600px", background: "#ffffff" },
+      }}
+      muiTableHeadCellProps={{
+        sx: {
+          background: "#e6f0fa",
+          color: "#1f2937",
+          fontWeight: 600,
+          fontSize: { xs: 12, md: 14 },
+          borderBottom: "2px solid #b3cde0",
+          borderRight: "1px solid #b3cde0",
+          "&:last-child": { borderRight: "none" },
+        },
+      }}
+      muiTableBodyRowProps={{
+        sx: {
+          "&:hover": {
+            background: "#f8fafc",
+            transition: "background-color 0.2s ease",
+          },
+        },
+      }}
+      muiTableBodyCellProps={{
+        sx: {
+          color: "#1f2937",
+          background: "#ffffff",
+          fontSize: { xs: 12, md: 14 },
+          borderRight: "1px solid #b3cde0",
+          borderBottom: "1px solid #b3cde0",
+          "&:last-child": { borderRight: "none" },
+        },
+      }}
+      muiTableFooterRowProps={{
+        sx: { borderTop: "2px solid #b3cde0" },
+      }}
+      muiTablePaginationProps={{
+        rowsPerPageOptions: [10, 25, 50],
+        showFirstButton: true,
+        showLastButton: true,
+        sx: {
+          color: "#1f2937",
+          background: "#ffffff",
+          borderTop: "1px solid #b3cde0",
+          fontSize: { xs: 12, md: 14 },
+        },
+      }}
+      renderEmptyRowsFallback={() => (
+        <Box
+          sx={{
+            textAlign: "center",
+            py: 4,
+            color: "rgb(107, 114, 128)",
+            fontSize: { xs: 14, md: 16 },
+          }}
+        >
+          No {viewType?.toLowerCase() || ""} applications available.
+        </Box>
+      )}
+    />
+  );
+};
+
+const validationSchema = yup.object().shape({
+  action: yup.string().required("Action is required"),
+  remarks: yup.string().required("Remarks are required"),
+});
+
+export default function ViewCorrigendumDetails() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { applicationId } = location.state || {};
+  const [loading, setLoading] = useState(true);
+  const [fieldColumns, setFieldColumns] = useState([]);
+  const [fieldData, setFieldData] = useState([]);
+  const [canTakeAction, setCanTakeAction] = useState(false);
+  const [data, setData] = useState([]);
+  const [columns, setColumns] = useState([]);
+  const [actions, setActions] = useState([]);
+  const [corrigendumId, setCorrigendumId] = useState();
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState("");
+  const [pdfBlob, setPdfBlob] = useState(null);
+  const [isSignedPdf, setIsSignedPdf] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pin, setPin] = useState("");
+  const [buttonLoading, setButtonLoading] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState(null);
+
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(validationSchema),
+    defaultValues: {
+      action: "",
+      remarks: "",
+    },
+  });
+
+  useEffect(() => {
+    const fetchCorrigendum = async () => {
+      try {
+        const response = await axiosInstance.get(
+          "/Officer/GetCorrigendumApplication",
+          { params: { referenceNumber: applicationId } }
+        );
+        const result = response.data;
+        setData(result.data);
+        setColumns(result.columns);
+        setFieldData(result.fieldsData);
+        setFieldColumns(result.fieldColumns);
+        setCanTakeAction(result.canTakeAction);
+        setActions(result.actions);
+        setCorrigendumId(result.corrigendumId);
+      } catch (error) {
+        console.error("Error fetching corrigendum details:", error);
+        toast.error("Failed to load corrigendum details. Please try again.", {
+          position: "top-center",
+          autoClose: 3000,
+          theme: "colored",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (applicationId) fetchCorrigendum();
+  }, [applicationId]);
+
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    };
+  }, [pdfUrl]);
+
+  const checkDesktopApp = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/");
+      if (!response.ok) {
+        toast.error("Desktop application is not running.", {
+          position: "top-center",
+          autoClose: 3000,
+          theme: "colored",
+        });
+        return false;
+      }
+      return true;
+    } catch (error) {
+      toast.error(
+        "Please start the USB Token PDF Signer desktop application.",
+        {
+          position: "top-center",
+          autoClose: 3000,
+          theme: "colored",
+        }
+      );
+      return false;
+    }
+  };
+
+  const fetchCertificates = async (pin) => {
+    const formData = new FormData();
+    formData.append("pin", pin);
+    const response = await fetch("http://localhost:8000/certificates", {
+      method: "POST",
+      body: formData,
+    });
+    if (!response.ok) throw new Error(await response.text());
+    return response.json();
+  };
+
+  const signPdf = async (pdfBlob, pin) => {
+    const formData = new FormData();
+    formData.append("pdf", pdfBlob, "document.pdf");
+    formData.append("pin", pin);
+    formData.append(
+      "original_path",
+      applicationId.replace(/\//g, "_") + "CorrigendumSanctionLetter.pdf"
+    );
+    try {
+      const response = await fetch("http://localhost:8000/sign", {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Signing failed: ${errorText}`);
+      }
+      return await response.blob();
+    } catch (error) {
+      throw new Error(
+        "Error signing PDF: " +
+          error.message +
+          " Check if Desktop App is started."
+      );
+    }
+  };
+
+  const handlePinSubmit = async () => {
+    if (!pin) {
+      toast.error("Please enter the USB token PIN.", {
+        position: "top-center",
+        autoClose: 3000,
+        theme: "colored",
+      });
+      return;
+    }
+
+    setButtonLoading(true);
+    try {
+      const certificates = await fetchCertificates(pin);
+      if (!certificates || certificates.length === 0) {
+        throw new Error("No certificates found on the USB token.");
+      }
+
+      const signedBlob = await signPdf(pdfBlob, pin);
+
+      const updateFormData = new FormData();
+      updateFormData.append("signedPdf", signedBlob, "signed.pdf");
+      updateFormData.append("applicationId", applicationId);
+      updateFormData.append("corrigendumId", corrigendumId);
+      const updateResponse = await axiosInstance.post(
+        "/Officer/UpdateCorrigendumPdf",
+        updateFormData
+      );
+
+      if (!updateResponse.data.status) {
+        throw new Error(
+          "Failed to update PDF on server: " +
+            (updateResponse.data.response || "Unknown error")
+        );
+      }
+
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      const blobUrl = URL.createObjectURL(signedBlob);
+      setPdfUrl(updateResponse.data.path);
+      setPdfBlob(null);
+      setIsSignedPdf(true);
+      setConfirmOpen(false);
+      setPdfModalOpen(true);
+
+      if (pendingFormData) {
+        await handleFinalSubmit(pendingFormData);
+        setPendingFormData(null);
+      }
+    } catch (error) {
+      console.error("Signing error:", error);
+      toast.error("Error signing PDF: " + error.message, {
+        position: "top-center",
+        autoClose: 3000,
+        theme: "colored",
+      });
+    } finally {
+      setButtonLoading(false);
+      setPin("");
+    }
+  };
+
+  const sanctionAction = async () => {
+    try {
+      const response = await axiosInstance.get(
+        "/Officer/GetCorrigendumSanctionLetter",
+        {
+          params: { applicationId, corrigendumId },
+        }
+      );
+      const result = response.data;
+      if (!result.status) {
+        throw new Error(result.response || "Something went wrong");
+      }
+      const pdfResponse = await axiosInstance.get(`/Base/DisplayFile`, {
+        params: { filename: result.path },
+        responseType: "blob",
+      });
+      const newPdfBlob = new Blob([pdfResponse.data], {
+        type: "application/pdf",
+      });
+
+      setPdfBlob(newPdfBlob);
+      setPdfUrl(result.path);
+      setIsSignedPdf(false);
+      setPdfModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching corrigendum sanction letter:", error);
+      toast.error(
+        "Failed to fetch corrigendum sanction letter: " + error.message,
+        {
+          position: "top-center",
+          autoClose: 3000,
+          theme: "colored",
+        }
+      );
+    }
+  };
+
+  const handleFinalSubmit = async (formData) => {
+    const data = new FormData();
+    for (const key in formData) {
+      data.append(key, formData[key]);
+    }
+    data.append("corrigendumId", corrigendumId);
+    data.append("referenceNumber", applicationId);
+
+    try {
+      const response = await axiosInstance.post(
+        "/Officer/HandleCorrigendumAction",
+        data
+      );
+      if (!response.data.status) {
+        throw new Error(response.data.response || "Something went wrong");
+      }
+      toast.success("Action completed successfully!", {
+        position: "top-center",
+        autoClose: 6000,
+        theme: "colored",
+      });
+      setTimeout(() => {
+        navigate("/officer/home");
+      }, 6000);
+    } catch (error) {
+      console.error("Submission error:", error);
+      toast.error("Error processing request: " + error.message, {
+        position: "top-center",
+        autoClose: 3000,
+        theme: "colored",
+      });
+    }
+  };
+
+  const onSubmit = async (formData) => {
+    setButtonLoading(true);
+    if (formData.action === "sanction") {
+      const isAppRunning = await checkDesktopApp();
+      if (!isAppRunning) {
+        setButtonLoading(false);
+        return;
+      }
+      setPendingFormData(formData);
+      await sanctionAction();
+      setButtonLoading(false);
+      return;
+    }
+    await handleFinalSubmit(formData);
+    setButtonLoading(false);
+  };
+
+  const handleModalClose = () => {
+    setPdfModalOpen(false);
+    if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    setPdfUrl("");
+    setPdfBlob(null);
+    setIsSignedPdf(false);
+  };
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          width: "100%",
+          height: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          bgcolor: "#f8f9fa",
+        }}
+      >
+        <CircularProgress size={60} />
+      </Box>
+    );
+  }
+
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 2,
+        minHeight: "100vh",
+        bgcolor: "#f0f2f5",
+      }}
+    >
+      <Box
+        sx={{
+          width: "90%",
+          maxWidth: "1200px",
+          bgcolor: "#ffffff",
+          borderRadius: "16px",
+          boxShadow: "0 8px 24px rgba(0, 0, 0, 0.1)",
+          padding: 4,
+          my: 4,
+        }}
+      >
+        <Typography
+          variant="h5"
+          textAlign="center"
+          gutterBottom
+          sx={{ color: "#1f2937", fontWeight: 700 }}
+        >
+          Corrigendum Application Details
+        </Typography>
+        <Typography
+          variant="h6"
+          textAlign="center"
+          color="text.secondary"
+          mb={4}
+        >
+          Reference Number: {applicationId}
+        </Typography>
+
+        <Box sx={{ mb: 6 }}>
+          <Typography
+            variant="h5"
+            textAlign="center"
+            gutterBottom
+            sx={{ color: "#2196f3", fontWeight: 600 }}
+          >
+            Corrigendum Fields
+          </Typography>
+          <TableContainer>
+            <TableCard>
+              <MaterialTable
+                columns={fieldColumns}
+                data={fieldData}
+                viewType="corrigendum field"
+              />
+            </TableCard>
+          </TableContainer>
+        </Box>
+
+        <Box sx={{ mb: 6 }}>
+          <Typography
+            variant="h5"
+            textAlign="center"
+            gutterBottom
+            sx={{ color: "#2196f3", fontWeight: 600 }}
+          >
+            Corrigendum History
+          </Typography>
+          <TableContainer>
+            <TableCard>
+              <MaterialTable
+                columns={columns}
+                data={data}
+                viewType="corrigendum history"
+              />
+            </TableCard>
+          </TableContainer>
+        </Box>
+
+        {canTakeAction && (
+          <Box
+            component="form"
+            onSubmit={handleSubmit(onSubmit)}
+            sx={{
+              width: "100%",
+              maxWidth: "600px",
+              mx: "auto",
+              mt: 6,
+              border: "1px solid #b3cde0",
+              borderRadius: "12px",
+              padding: 4,
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.05)",
+              bgcolor: "#ffffff",
+              display: "flex",
+              flexDirection: "column",
+              gap: 3,
+            }}
+          >
+            <Typography
+              variant="h5"
+              textAlign="center"
+              gutterBottom
+              sx={{ color: "#4caf50", fontWeight: 600 }}
+            >
+              Action Form
+            </Typography>
+
+            <FormControl fullWidth error={!!errors.action}>
+              <InputLabel id="action-select-label">Select Action</InputLabel>
+              <Controller
+                name="action"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    labelId="action-select-label"
+                    id="action-select"
+                    label="Select Action"
+                    {...field}
+                  >
+                    {actions.map((action) => (
+                      <MenuItem key={action.value} value={action.value}>
+                        {action.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                )}
+              />
+              {errors.action && (
+                <Typography variant="caption" color="error">
+                  {errors.action.message}
+                </Typography>
+              )}
+            </FormControl>
+
+            <Controller
+              name="remarks"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Remarks"
+                  fullWidth
+                  multiline
+                  rows={4}
+                  error={!!errors.remarks}
+                  helperText={errors.remarks?.message}
+                />
+              )}
+            />
+
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={buttonLoading}
+              sx={{
+                mt: 2,
+                py: 1.5,
+                bgcolor: "#2196f3",
+                "&:hover": { bgcolor: "#1976d2" },
+              }}
+            >
+              {buttonLoading ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : (
+                "Submit Action"
+              )}
+            </Button>
+          </Box>
+        )}
+
+        <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+          <DialogTitle>Enter USB Token PIN</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Please enter the PIN for your USB token to sign the document.
+            </Typography>
+            <TextField
+              type="password"
+              label="USB Token PIN"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              fullWidth
+              margin="normal"
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderColor: "#E0E0E0",
+                  "&:hover fieldset": { borderColor: "#1976D2" },
+                  "&.Mui-focused fieldset": {
+                    borderColor: "#1976D2",
+                    borderWidth: "2px",
+                  },
+                  backgroundColor: "#FAFAFA",
+                  borderRadius: "8px",
+                  fontSize: "14px",
+                },
+                "& .MuiInputLabel-root": {
+                  color: "#757575",
+                  "&.Mui-focused": { color: "#1976D2" },
+                },
+              }}
+              aria-label="USB Token PIN"
+              inputProps={{ "aria-describedby": "pin-helper-text" }}
+            />
+            <Typography id="pin-helper-text" variant="caption">
+              Required to sign the document.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setConfirmOpen(false)} aria-label="Cancel">
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePinSubmit}
+              color="primary"
+              disabled={buttonLoading || !pin}
+              aria-label="Submit PIN"
+            >
+              Submit
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <BasicModal
+          open={pdfModalOpen}
+          handleClose={handleModalClose}
+          handleActionButton={isSignedPdf ? null : () => setConfirmOpen(true)}
+          buttonText={isSignedPdf ? null : "Sign PDF"}
+          Title={
+            isSignedPdf
+              ? "Signed Corrigendum Document"
+              : "Corrigendum Document Preview"
+          }
+          pdf={pdfUrl}
+          sx={{
+            "& .MuiDialog-paper": {
+              width: { xs: "90%", md: "80%" },
+              maxWidth: "800px",
+              height: "80vh",
+              borderRadius: "12px",
+            },
+          }}
+        />
+      </Box>
+      <ToastContainer />
+    </Box>
+  );
+}

@@ -43,6 +43,7 @@ import EmailSettings from "../screens/designer/EmailSettings";
 import ViewerLayout from "../screens/viewer/ViewerLayout";
 import ViewerHome from "../screens/viewer/ViewerHome";
 import IssueCorrigendum from "../screens/officer/IssueCorrigendum";
+import ViewCorrigendumDetails from "../screens/officer/ViewCorrigendumDetails";
 
 const RoutesComponent = () => {
   return (
@@ -81,6 +82,10 @@ const RoutesComponent = () => {
           <Route path="responseFile" element={<ResponseFile />} />
           <Route path="registerdsc" element={<RegisterDSC />} />
           <Route path="issuecorrigendum" element={<IssueCorrigendum />} />
+          <Route
+            path="viewcorrigendumdetails"
+            element={<ViewCorrigendumDetails />}
+          />
         </Route>
       </Route>
       <Route element={<ProtectedRoute requiredRoles={["Viewer"]} />}>
