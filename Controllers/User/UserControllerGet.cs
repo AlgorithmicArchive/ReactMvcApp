@@ -1,3 +1,4 @@
+using System.Data;
 using System.Security.Claims;
 using DocumentFormat.OpenXml.Office.CustomUI;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +11,20 @@ namespace SahayataNidhi.Controllers.User
 {
     public partial class UserController
     {
+
+        public string? GetSanctionedCorrigendum(dynamic WorkFlow, string id)
+        {
+            foreach (var item in WorkFlow)
+            {
+                if ((string)item.status == "sanctioned")
+                {
+                    return id;
+                }
+            }
+
+            return null; // Return 0 only if no "sanctioned" status was found
+        }
+
 
 
         [HttpGet]
@@ -54,39 +69,38 @@ namespace SahayataNidhi.Controllers.User
         public IActionResult GetInitiatedApplications(int pageIndex = 0, int pageSize = 10)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var UserId = new SqlParameter("@UserId", Convert.ToInt32(userIdClaim));
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return BadRequest("Invalid user ID.");
+            }
+
+            // Define SQL parameters
+            var UserId = new SqlParameter("@UserId", userId);
             var PageIndex = new SqlParameter("@PageIndex", pageIndex);
             var PageSize = new SqlParameter("@PageSize", pageSize);
             var IsPaginated = new SqlParameter("@IsPaginated", 1);
+            var TotalRecords = new SqlParameter("@TotalRecords", SqlDbType.Int) { Direction = ParameterDirection.Output };
 
-            // Ensure that you filter by the correct "Initiated" status
-            var applications = dbcontext.CitizenApplications.FromSqlRaw("EXEC GetInitiatedApplications @UserId, @PageIndex, @PageSize, @IsPaginated", UserId, PageIndex, PageSize, IsPaginated).ToList();
-
-            var totalRecords = applications.Count;
-
-            var pagedApplications = applications
-                .OrderBy(a =>
-                {
-                    var parts = a.ReferenceNumber.Split('/');
-                    var numberPart = parts.Last();
-                    return int.Parse(numberPart);
-                })
-                .ThenBy(a => a.ReferenceNumber)
-                .Skip(pageIndex * pageSize)
-                .Take(pageSize)
+            // Execute stored procedure
+            var applications = dbcontext.CitizenApplications
+                .FromSqlRaw("EXEC GetInitiatedApplications @UserId, @PageIndex, @PageSize, @IsPaginated, @TotalRecords OUTPUT",
+                    UserId, PageIndex, PageSize, IsPaginated, TotalRecords)
                 .ToList();
+
+            // Retrieve the total record count from the output parameter
+            int totalRecords = TotalRecords.Value != DBNull.Value ? Convert.ToInt32(TotalRecords.Value) : 0;
 
             // Define columns (exclude customActions)
             var columns = new List<dynamic>
-            {
-                new { header = "S.No", accessorKey = "sno" },
-                new { header = "Service Name", accessorKey = "serviceName" },
-                new { header = "Reference Number", accessorKey = "referenceNumber" },
-                new { header = "Applicant Name", accessorKey = "applicantName" },
-                new { header = "Currently With", accessorKey = "currentlyWith" },
-                new { header = "Submission Date", accessorKey = "submissionDate" },
-                new { header = "Status", accessorKey = "status" }
-            };
+                {
+                    new { header = "S.No", accessorKey = "sno" },
+                    new { header = "Service Name", accessorKey = "serviceName" },
+                    new { header = "Reference Number", accessorKey = "referenceNumber" },
+                    new { header = "Applicant Name", accessorKey = "applicantName" },
+                    new { header = "Currently With", accessorKey = "currentlyWith" },
+                    new { header = "Submission Date", accessorKey = "submissionDate" },
+                    new { header = "Status", accessorKey = "status" }
+                };
 
             // Initialize data list with embedded actions
             List<dynamic> data = new List<dynamic>();
@@ -105,13 +119,25 @@ namespace SahayataNidhi.Controllers.User
                 {"Failure", "Payment Failed"},
             };
 
-            foreach (var application in pagedApplications)
+            foreach (var application in applications)
             {
                 var formDetails = JsonConvert.DeserializeObject<dynamic>(application.FormDetails!);
                 var officers = JsonConvert.DeserializeObject<JArray>(application.WorkFlow!);
                 var currentPlayer = application.CurrentPlayer;
                 string officerDesignation = (string)officers![currentPlayer!]!["designation"]!;
                 string serviceName = dbcontext.Services.FirstOrDefault(s => s.ServiceId == application.ServiceId)!.ServiceName!;
+                var Corrigendum = dbcontext.Corrigenda.Where(co => co.ReferenceNumber == application.ReferenceNumber).ToList();
+                List<string> corrigendumIds = [];
+                foreach (var item in Corrigendum)
+                {
+                    string value = GetSanctionedCorrigendum(JsonConvert.DeserializeObject<dynamic>(item.WorkFlow), item.CorrigendumId);
+                    if (value != null)
+                    {
+                        corrigendumIds.Add(value);
+                    }
+
+                }
+
 
                 string officerArea = GetOfficerArea(officerDesignation, formDetails);
 
@@ -124,7 +150,11 @@ namespace SahayataNidhi.Controllers.User
                 else if ((string)officers[currentPlayer!]!["status"]! == "sanctioned")
                 {
                     actions.Add(new { tooltip = "View", color = "#F0C38E", actionFunction = "CreateTimeLine" });
-                    actions.Add(new { tooltip = "Download", color = "#F0C38E", actionFunction = "DownloadSanctionLetter" });
+                    actions.Add(new { tooltip = "Download SL", color = "#F0C38E", actionFunction = "DownloadSanctionLetter" });
+                    foreach (string id in corrigendumIds)
+                    {
+                        actions.Add(new { tooltip = "Download Corrigendum " + id.TrimEnd('/').Split('/').Last(), corrigendumId = id, color = "#F0C38E", actionFunction = "DownloadCorrigendum" });
+                    }
                 }
                 else
                 {
@@ -135,7 +165,7 @@ namespace SahayataNidhi.Controllers.User
                 data.Add(new
                 {
                     sno = (pageIndex * pageSize) + index + 1,
-                    serviceName = serviceName,
+                    serviceName,
                     referenceNumber = application.ReferenceNumber,
                     applicantName = GetFieldValue("ApplicantName", formDetails),
                     currentlyWith = officerDesignation + " " + officerArea,

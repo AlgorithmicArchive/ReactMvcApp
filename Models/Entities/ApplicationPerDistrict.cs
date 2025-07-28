@@ -7,6 +7,8 @@ public partial class ApplicationPerDistrict
 {
     public int Uuid { get; set; }
 
+    public string? Type { get; set; }
+
     public int DistrictId { get; set; }
 
     public int? ServiceId { get; set; }

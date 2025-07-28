@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Card,
@@ -6,6 +6,8 @@ import {
   Typography,
   useTheme,
   Avatar,
+  TextField,
+  MenuItem,
 } from "@mui/material";
 import { styled } from "@mui/system";
 import {
@@ -21,6 +23,10 @@ import {
   EmojiEvents,
 } from "@mui/icons-material";
 import { Col, Row } from "react-bootstrap";
+import CustomSelectField from "../../components/form/CustomSelectField";
+import { useForm } from "react-hook-form";
+import axiosInstance from "../../axiosConfig";
+import { fetchTehsils } from "../../assets/fetch";
 
 const DashboardCard = styled(Card)(({ theme }) => ({
   minWidth: 200,
@@ -115,6 +121,50 @@ const cardData = [
 
 export default function ViewerHome() {
   const theme = useTheme();
+  const [state, setState] = useState(0);
+  const [division, setDvision] = useState(null);
+  const [districts, setDistricts] = useState([]);
+  const [district, setDistrict] = useState();
+  const [tehsils, setTehsils] = useState([]);
+  const [tehsil, setTeshil] = useState();
+
+  const { control } = useForm();
+
+  useEffect(() => {
+    setDistricts([]);
+    const fetchDistricts = async () => {
+      const response = await axiosInstance.get("/Base/GetDistricts", {
+        params: { division },
+      });
+      const result = response.data;
+      let Districts = result.districts.map((item) => ({
+        label: item.districtName,
+        value: item.districtId,
+      }));
+      setDistricts(Districts);
+    };
+    if (division != null && division != "") {
+      fetchDistricts();
+    }
+  }, [division]);
+
+  useEffect(() => {
+    setTehsils([]);
+    const fetchTeshils = async () => {
+      const response = await axiosInstance.get("/Base/GetTeshilForDistrict", {
+        params: { districtId: district },
+      });
+      const result = response.data;
+      let Teshils = result.tehsils.map((item) => ({
+        label: item.tehsilName,
+        value: item.tehsilId,
+      }));
+      setTehsils(Teshils);
+    };
+    if (district != null && district != "") {
+      fetchTeshils();
+    }
+  }, [district]);
 
   return (
     <Box
@@ -144,6 +194,76 @@ export default function ViewerHome() {
           justifyContent: "center",
         }}
       >
+        <Row style={{ width: "100%", justifyContent: "center" }}>
+          <Col xs={12} lg={2}>
+            <TextField
+              select
+              name="State"
+              label="Select State"
+              fullWidth
+              defaultValue={0}
+              onChange={(e) => setState(e.target.value)}
+            >
+              {[
+                { label: "Please Select", value: "" },
+                { label: "Jammu & Kahsmir", value: 0 },
+              ].map((item, index) => (
+                <MenuItem key={index} value={item.value}>
+                  {item.label}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Col>
+          <Col xs={12} lg={2}>
+            <TextField
+              select
+              name="Dvision"
+              label="Select Dvision"
+              fullWidth
+              onChange={(e) => setDvision(e.target.value)}
+            >
+              {[
+                { label: "Please Select", value: "" },
+                { label: "Jammu", value: 1 },
+                { label: "Kashmir", value: 2 },
+              ].map((item, index) => (
+                <MenuItem key={index} value={item.value}>
+                  {item.label}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Col>
+          <Col xs={12} lg={2}>
+            <TextField
+              select
+              name="District"
+              label="Select District"
+              fullWidth
+              onChange={(e) => setDistrict(e.target.value)}
+            >
+              {districts.map((item, index) => (
+                <MenuItem key={index} value={item.value}>
+                  {item.label}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Col>
+          <Col xs={12} lg={2}>
+            <TextField
+              select
+              name="Teshil"
+              label="Select Tehsil"
+              fullWidth
+              onChange={(e) => setTeshil(e.target.value)}
+            >
+              {tehsils.map((item, index) => (
+                <MenuItem key={index} value={item.value}>
+                  {item.label}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Col>
+        </Row>
         <Row style={{ justifyContent: "center" }}>
           {cardData.map((card, index) => (
             <Col

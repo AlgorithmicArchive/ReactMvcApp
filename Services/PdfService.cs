@@ -200,7 +200,7 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
         document.Add(footerTable);
 
         document.Close();
-        await helper.GetFilePath(null, memoryStream.ToArray(), ApplicationId.Replace("/", "_") + "SanctionLetter.pdf");
+        await helper.GetFilePath(null, memoryStream.ToArray(), ApplicationId.Replace("/", "_") + "_SanctionLetter.pdf");
     }
 
     public async Task CreateAcknowledgement(OrderedDictionary details, string applicationId, string serviceName)
@@ -247,7 +247,7 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
         await helper.GetFilePath(null, memoryStream.ToArray(), applicationId.Replace("/", "_") + "Acknowledgement.pdf");
     }
 
-    public async Task CreateCorrigendumSanctionPdf(string corrigendumFieldsJson, string applicationId, OfficerDetailsModal officer, string serviceName, string corrigendumId)
+    public async Task CreateCorrigendumSanctionPdf(string corrigendumFieldsJson, string applicationId, OfficerDetailsModal officer, string serviceName, string corrigendumId, string sanctionedDate)
     {
         // Validate inputs
         if (string.IsNullOrEmpty(corrigendumFieldsJson))
@@ -287,25 +287,28 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
         document.Add(new Paragraph(sanctionedFromWhere)
             .SetTextAlignment(TextAlignment.CENTER)
             .SetFontSize(16));
-        document.Add(new Paragraph($"Corrigendum Sanction Letter for {serviceName}")
+        document.Add(new Paragraph("Corrigendum")
             .SetTextAlignment(TextAlignment.CENTER)
             .SetFontSize(16));
 
         // Add recipient (bank manager)
         string branchOffice = GetBranchOffice(applicationId);
-        document.Add(new Paragraph($"To\n\nTHE MANAGER\nTHE JAMMU AND KASHMIR BANK LIMITED\nB/O {branchOffice}")
+        document.Add(new Paragraph($"To\nSubject: {applicationId} dated: {sanctionedDate}\nTHE MANAGER\nTHE JAMMU AND KASHMIR BANK LIMITED\nB/O {branchOffice}")
             .SetFontSize(14));
-        document.Add(new Paragraph("\nPlease Find the Corrigendum Details Below:")
+        document.Add(new Paragraph($"\nIn partial modification of above mentioned Sanctione Letter, the following corrections may be read as:")
             .SetFontSize(12));
 
-        // Create table for corrigendum fields
-        Table table = new Table(UnitValue.CreatePercentArray([30, 35, 35])).UseAllAvailableWidth();
-        table.AddHeaderCell(new Cell().Add(new Paragraph("Form Field").SetBold()));
-        table.AddHeaderCell(new Cell().Add(new Paragraph("Old Value").SetBold()));
-        table.AddHeaderCell(new Cell().Add(new Paragraph("New Value").SetBold()));
+        // Create table for corrigendum fields with Serial Number
+        Table table = new Table(UnitValue.CreatePercentArray(new float[] { 10, 30, 30, 30 })).UseAllAvailableWidth();
+        table.AddHeaderCell(new Cell().Add(new Paragraph("S.No").SetBold()));
+        table.AddHeaderCell(new Cell().Add(new Paragraph("Description").SetBold()));
+        table.AddHeaderCell(new Cell().Add(new Paragraph("As Existing").SetBold()));
+        table.AddHeaderCell(new Cell().Add(new Paragraph("As Corrected").SetBold()));
 
         var stack = new Stack<(string path, JToken field)>();
         string remarks = corrigendumFields["remarks"]?.ToString() ?? "";
+        var qrDetails = new List<string>();
+        int serialNumber = 1;
 
         // Seed with top-level entries, excluding remarks
         foreach (var item in corrigendumFields)
@@ -323,9 +326,19 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
             string oldValue = field["old_value"]?.ToString() ?? "";
             string newValue = field["new_value"]?.ToString() ?? "";
 
+            // Add to table
+            table.AddCell(new Cell().Add(new Paragraph(serialNumber.ToString())));
             table.AddCell(new Cell().Add(new Paragraph(header)));
             table.AddCell(new Cell().Add(new Paragraph(oldValue)));
             table.AddCell(new Cell().Add(new Paragraph(newValue)));
+
+            // Add to QR details
+            if (!string.IsNullOrEmpty(oldValue) || !string.IsNullOrEmpty(newValue))
+            {
+                qrDetails.Add($"S.No {serialNumber}: {header}: As Existing={oldValue}, As Corrected={newValue}");
+            }
+
+            serialNumber++;
 
             // Process nested additional_values
             var additionalValues = field["additional_values"];
@@ -341,14 +354,18 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
 
         document.Add(table);
 
+        // Add remarks and remaining text
+        document.Add(new Paragraph($"\nThe rest of the contents of the afore said Sanction letter holds good.")
+            .SetFontSize(12));
+
         // Add vertical gap
         document.Add(new Paragraph("\n").SetHeight(10));
 
         // Create table for NO and ISSUING AUTHORITY
-        Table idTable = new Table(UnitValue.CreatePercentArray([50, 50]))
+        Table idTable = new Table(UnitValue.CreatePercentArray(new float[] { 50, 50 }))
             .UseAllAvailableWidth();
         idTable.AddCell(new Cell()
-            .Add(new Paragraph($"NO: {applicationId}")
+            .Add(new Paragraph($"NO: {corrigendumId}")
                 .SetFontSize(8)
                 .SetFontColor(ColorConstants.BLUE)
                 .SetBold())
@@ -362,28 +379,14 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
             .SetTextAlignment(TextAlignment.RIGHT));
         document.Add(idTable);
 
-        // Create QR code
-        var qrDetails = new List<string>();
-        foreach (var item in corrigendumFields)
-        {
-            if (item.Key != "remarks" && item.Value is JObject field)
-            {
-                string header = Regex.Replace(item.Key, "(\\B[A-Z])", " $1");
-                string newValue = field["new_value"]?.ToString() ?? "";
-                if (!string.IsNullOrEmpty(newValue))
-                {
-                    qrDetails.Add($"{header}: {newValue}");
-                }
-            }
-        }
-        qrDetails.Add($"ApplicationId: {applicationId}");
-
+        // Create QR code with updated details
+        qrDetails.Add($"Application Number: {applicationId}");
         string qrContent = string.Join("\n", qrDetails);
         if (string.IsNullOrEmpty(qrContent))
         {
-            qrContent = $"ApplicationId: {applicationId}";
+            qrContent = $"Application Number: {applicationId}";
         }
-        BarcodeQRCode qrCode = new BarcodeQRCode(qrContent);
+        BarcodeQRCode qrCode = new(qrContent);
         PdfFormXObject qrXObject = qrCode.CreateFormXObject(ColorConstants.BLACK, pdf);
         Image qrImage = new Image(qrXObject)
             .ScaleToFit(110, 110)
@@ -391,7 +394,7 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
         document.Add(qrImage);
 
         // Create footer table for Date and Officer
-        Table footerTable = new Table(UnitValue.CreatePercentArray([50, 50]))
+        Table footerTable = new Table(UnitValue.CreatePercentArray(new float[] { 50, 50 }))
             .UseAllAvailableWidth();
         footerTable.AddCell(new Cell()
             .Add(new Paragraph($"Date: {DateTime.Today:dd/MM/yyyy}")
@@ -409,6 +412,7 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
         document.Add(footerTable);
 
         document.Close();
-        await helper.GetFilePath(null, memoryStream.ToArray(), applicationId.Replace("/", "_") + "_" + corrigendumId + "CorrigendumSanctionLetter.pdf");
+        await helper.GetFilePath(null, memoryStream.ToArray(), corrigendumId.Replace("/", "_") + "_CorrigendumSanctionLetter.pdf");
     }
+
 }

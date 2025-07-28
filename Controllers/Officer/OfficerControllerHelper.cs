@@ -71,9 +71,29 @@ namespace SahayataNidhi.Controllers.Officer
             }
             return "";
         }
-       
 
-       
+        public int GetCountPerDistrict(int districtId, int serviceId)
+        {
+            var financialYear = helper.GetCurrentFinancialYear();
+
+            // Define the output parameter
+            var newCountParam = new SqlParameter
+            {
+                ParameterName = "@NewCount",
+                SqlDbType = System.Data.SqlDbType.Int,
+                Direction = System.Data.ParameterDirection.Output
+            };
+
+            // Call the stored procedure
+            dbcontext.Database.ExecuteSqlRaw(
+                "EXEC GetAndIncrementCount @DistrictId = {0}, @ServiceId = {1}, @FinancialYear = {2}, @Type = {3}, @NewCount = @NewCount OUTPUT",
+                districtId, serviceId, financialYear, "Corrigendum", newCountParam
+            );
+
+            // Retrieve the output value
+            return (int)newCountParam.Value;
+        }
+
         [HttpPost]
         public async Task<IActionResult> UpdatePdf([FromForm] IFormCollection form)
         {

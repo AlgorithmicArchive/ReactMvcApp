@@ -11,6 +11,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using SahayataNidhi.Models.Entities;
 
 namespace SahayataNidhi.Controllers
 {
@@ -281,7 +282,7 @@ namespace SahayataNidhi.Controllers
         {
             var officer = GetOfficerDetails();
 
-            if (officer!.Role == "Designer" || officer.UserType == "Admin")
+            if (officer!.Role == "Designer" || officer.UserType == "Admin" || officer.UserType == "Viewer")
             {
                 var Services = dbcontext.Services.ToList();
                 return Json(new { status = true, services = Services });
@@ -316,9 +317,15 @@ namespace SahayataNidhi.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetDistricts()
+        public IActionResult GetDistricts(string? division = null)
         {
-            var districts = dbcontext.Districts.ToList();
+            List<District> districts;
+            if (division != null)
+            {
+                districts = dbcontext.Districts.Where(d => d.Division == Convert.ToInt32(division)).ToList();
+                return Json(new { status = true, districts });
+            }
+            districts = dbcontext.Districts.ToList();
             return Json(new { status = true, districts });
         }
 

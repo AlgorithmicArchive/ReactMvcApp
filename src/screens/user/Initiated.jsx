@@ -61,8 +61,45 @@ export default function Initiated() {
 
       try {
         const fileName =
-          // "JK-PNS-JMU_2025-2026_11_2CorrigendumSanctionLetter.pdf";
           applicationId.replace(/\//g, "_") + "SanctionLetter.pdf";
+
+        // Fetch the sanction letter from the API
+        const response = await axiosInstance.get(
+          "/User/DownloadSanctionLetter",
+          { params: { fileName: fileName }, responseType: "blob" }
+        );
+
+        // Create a Blob from the response data
+        const blob = new Blob([response.data], { type: "application/pdf" });
+
+        // Trigger download
+        const link = document.createElement("a");
+        link.href = window.URL.createObjectURL(blob);
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Clean up
+        window.URL.revokeObjectURL(link.href);
+      } catch (error) {
+        console.error("Error downloading sanction letter:", error);
+        toast.error("Failed to download sanction letter.", {
+          position: "top-center",
+          autoClose: 3000,
+          theme: "colored",
+        });
+      }
+    },
+    DownloadCorrigendum: async (row, action) => {
+      console.log("Action", action);
+      const userdata = row.original;
+      const applicationId = userdata.referenceNumber;
+
+      try {
+        const fileName =
+          action.corrigendumId.replace(/\//g, "_") +
+          "_CorrigendumSanctionLetter.pdf";
 
         // Fetch the sanction letter from the API
         const response = await axiosInstance.get(

@@ -99,8 +99,8 @@ namespace SahayataNidhi.Controllers.User
 
             // Call the stored procedure
             dbcontext.Database.ExecuteSqlRaw(
-                "EXEC GetAndIncrementCount @DistrictId = {0}, @ServiceId = {1}, @FinancialYear = {2}, @NewCount = @NewCount OUTPUT",
-                districtId, serviceId, financialYear, newCountParam
+                "EXEC GetAndIncrementCount @DistrictId = {0}, @ServiceId = {1}, @FinancialYear = {2}, @Type = {3}, @NewCount = @NewCount OUTPUT",
+                districtId, serviceId, financialYear, "Application", newCountParam
             );
 
             // Retrieve the output value

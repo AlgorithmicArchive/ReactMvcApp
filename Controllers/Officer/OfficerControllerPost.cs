@@ -55,8 +55,7 @@ namespace SahayataNidhi.Controllers.Officer
                     return BadRequest("Reference number is required.");
                 }
 
-                int serviceId;
-                if (!int.TryParse(form["serviceId"].ToString(), out serviceId))
+                if (!int.TryParse(form["serviceId"].ToString(), out int serviceId))
                 {
                     return BadRequest("Invalid service ID.");
                 }
@@ -69,12 +68,7 @@ namespace SahayataNidhi.Controllers.Officer
                 }
 
                 // Try to parse applicationId (optional)
-                int? applicationId = null;
-                if (!string.IsNullOrWhiteSpace(form["applicationId"].ToString()) &&
-                    int.TryParse(form["applicationId"].ToString(), out int parsedId))
-                {
-                    applicationId = parsedId;
-                }
+                string? applicationId = form["applicationId"].ToString() ?? "";
 
                 // Validate corrigendumFieldsJson
                 try
@@ -107,7 +101,7 @@ namespace SahayataNidhi.Controllers.Officer
                 JObject formDetailsJObject;
                 try
                 {
-                    formDetailsJObject = JsonConvert.DeserializeObject<JObject>(application.FormDetails)!;
+                    formDetailsJObject = JObject.Parse(application.FormDetails)!;
                 }
                 catch (JsonException ex)
                 {
@@ -136,14 +130,14 @@ namespace SahayataNidhi.Controllers.Officer
                 {
                     return Json(new { status = false, message = "No workflow players defined for this service." });
                 }
-
-                if (applicationId.HasValue)
+                _logger.LogInformation($"----------- Application ID: {applicationId}    -----------------------------");
+                if (form.ContainsKey("applicationId"))
                 {
                     // Update existing corrigendum
-                    var corrigendum = dbcontext.Corrigenda.FirstOrDefault(c => c.CorrigendumId == applicationId.Value);
+                    var corrigendum = dbcontext.Corrigenda.FirstOrDefault(c => c.CorrigendumId == applicationId);
                     if (corrigendum == null)
                     {
-                        return BadRequest($"Corrigendum with ID {applicationId.Value} not found.");
+                        return BadRequest($"Corrigendum with ID {applicationId} not found.");
                     }
 
                     // Update CorrigendumFields
@@ -214,6 +208,15 @@ namespace SahayataNidhi.Controllers.Officer
                 }
                 else
                 {
+                    var Location = formDetailsJObject["Location"];
+                    _logger.LogInformation($"--------- Location {Location} ----------------");
+                    int DistrictId = Convert.ToInt32(Location!.FirstOrDefault(l => l["name"]!.ToString() == "District")!["value"]);
+                    var finYear = helper.GetCurrentFinancialYear();
+                    var districtDetails = dbcontext.Districts.FirstOrDefault(s => s.DistrictId == DistrictId);
+                    string districtShort = districtDetails!.DistrictShort!;
+                    int count = GetCountPerDistrict(DistrictId, serviceId);
+
+                    var CorrigendumNumber = "JK-" + service.NameShort + "-" + districtShort + "-CRG" + "/" + finYear + "/" + count;
                     // Create new corrigendum
                     var filteredWorkflow = new JArray();
                     foreach (var player in players)
@@ -256,6 +259,7 @@ namespace SahayataNidhi.Controllers.Officer
 
                     var corrigendum = new Corrigendum
                     {
+                        CorrigendumId = CorrigendumNumber,
                         ReferenceNumber = referenceNumber,
                         Location = location,
                         CorrigendumFields = corrigendumFieldsJson,
@@ -272,7 +276,7 @@ namespace SahayataNidhi.Controllers.Officer
                 return Json(new
                 {
                     status = true,
-                    message = applicationId.HasValue ? "Corrigendum updated successfully." : "Corrigendum created successfully."
+                    message = applicationId != null ? "Corrigendum updated successfully." : "Corrigendum created successfully."
                 });
             }
             catch (Exception ex)
@@ -303,7 +307,7 @@ namespace SahayataNidhi.Controllers.Officer
                 var corrigendumId = form["corrigendumId"].ToString();
 
                 var corrigendum = dbcontext.Corrigenda
-                    .FirstOrDefault(c => c.ReferenceNumber == referenceNumber && c.CorrigendumId == Convert.ToInt32(corrigendumId));
+                    .FirstOrDefault(c => c.ReferenceNumber == referenceNumber && c.CorrigendumId == corrigendumId);
 
                 if (corrigendum == null)
                 {
@@ -404,7 +408,7 @@ namespace SahayataNidhi.Controllers.Officer
                 }
 
                 var corrigendum = await dbcontext.Corrigenda
-                    .FirstOrDefaultAsync(c => c.ReferenceNumber == applicationId && c.CorrigendumId == Convert.ToInt32(corrigendumId));
+                    .FirstOrDefaultAsync(c => c.ReferenceNumber == applicationId && c.CorrigendumId == corrigendumId);
                 if (corrigendum == null)
                 {
                     _logger.LogWarning("Corrigendum not found for applicationId: {ApplicationId}, corrigendumId: {CorrigendumId}", applicationId, corrigendumId);
@@ -412,7 +416,7 @@ namespace SahayataNidhi.Controllers.Officer
                 }
 
                 // Save the signed PDF to UserDocuments
-                var fileName = applicationId.Replace("/", "_") + "_" + corrigendumId + "CorrigendumSanctionLetter.pdf";
+                var fileName = corrigendumId.Replace("/", "_") + "_CorrigendumSanctionLetter.pdf";
                 using var memoryStream = new MemoryStream();
                 await signedPdf.CopyToAsync(memoryStream);
                 var fileData = memoryStream.ToArray();

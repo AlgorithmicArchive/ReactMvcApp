@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useForm, Controller, get, useWatch } from "react-hook-form";
+import { useForm, Controller, get, useWatch, set } from "react-hook-form";
 import {
   runValidations,
   TransformationFunctionsList,
@@ -37,6 +37,7 @@ import CloseIcon from "@mui/icons-material/CloseOutlined";
 import MessageModal from "../MessageModal";
 import LoadingSpinner from "../LoadingSpinner";
 import { toast, ToastContainer } from "react-toastify";
+import OtpModal from "../OtpModal";
 
 const sectionIconMap = {
   Location: <LocationOnIcon sx={{ fontSize: 36, color: "#14B8A6" }} />, // Teal
@@ -168,6 +169,9 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
   const [applicantImagePreview, setApplicantImagePreview] = useState(
     "/assets/images/profile.jpg"
   );
+  const [aadhaarValid, setAadhaarValid] = useState(false);
+  const [otpModal, setOtpModal] = useState(false);
+
   const [DependableFields, setDependableFields] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
@@ -855,8 +859,35 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
     return fields;
   };
 
-  const handleAaddhaarNumber = () => {
-    console.log("Aadhaar Number", aadhaarNumber);
+  const handleAaddhaarNumber = async () => {
+    const sendOTP = await fetch(
+      "/Home/SendAadhaarOTP?aadhaarNumber=" + aadhaarNumber
+    );
+    const result = await sendOTP.json();
+    console.log(result);
+    if (result.status) {
+      setOtpModal(true);
+    }
+  };
+
+  const handleOtpSubmit = async (otp) => {
+    const formdata = new FormData();
+    formdata.append("aadhaarNumber", aadhaarNumber);
+    formdata.append("otp", otp);
+    const response = await fetch("/Home/ValidateAadhaarOTP", {
+      method: "POST",
+      body: formdata,
+    });
+
+    const result = await response.json();
+
+    if (result.status) {
+      setOtpModal(false);
+      setAadhaarValid(true);
+      // setValue("AadharNumber", result.aadhaarToken);
+      setAadhaarNumber(result.aadhaarToken);
+      toast.success("Aadhaar Number Validated.");
+    }
   };
 
   const handleAreaChange = async (sectionIndex, field, value) => {
@@ -1016,9 +1047,12 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
       const sectionFormData = {};
       // Use formData if available, otherwise fall back to initialData
       const fieldValue =
-        formData[field.name] !== undefined
+        field.name == "AadharNumber"
+          ? aadhaarNumber
+          : formData[field.name] !== undefined
           ? formData[field.name]
           : initialData[field.name] || "";
+
       sectionFormData["label"] = field.label;
       sectionFormData["name"] = field.name;
 
@@ -1240,28 +1274,35 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
                     isBackspacePressed.current = e.key === "Backspace";
                   }}
                   onChange={(e) => {
-                    const val = e.target.value;
-                    const lastChar = val.toString().charAt(val.length - 1);
+                    let val = e.target.value;
+                    const fieldName = field.name;
+                    let transformedVal = val;
 
-                    let updatedAadhaar;
+                    // Aadhaar-specific logic
+                    if (fieldName === "AadharNumber") {
+                      const lastChar = val.toString().charAt(val.length - 1);
 
-                    if (isBackspacePressed.current) {
-                      updatedAadhaar = aadhaarNumber.slice(0, -1); // remove last digit
-                    } else {
-                      updatedAadhaar = aadhaarNumber + lastChar; // append digit
+                      let updatedAadhaar;
+
+                      if (isBackspacePressed.current) {
+                        updatedAadhaar = aadhaarNumber.slice(0, -1); // remove last
+                      } else {
+                        updatedAadhaar = aadhaarNumber + lastChar; // add
+                      }
+
+                      setAadhaarNumber(updatedAadhaar);
+                      transformedVal = updatedAadhaar;
+                      val = updatedAadhaar;
                     }
 
-                    setAadhaarNumber(updatedAadhaar);
-
-                    let transformedVal = updatedAadhaar;
-
+                    // Generic transformation logic (for any field)
                     if (field.transformationFunctions?.length > 0) {
                       field.transformationFunctions.forEach((fnName) => {
                         const transformFn = TransformationFunctionsList[fnName];
                         if (transformFn) {
                           transformedVal = transformFn(
                             transformedVal,
-                            updatedAadhaar,
+                            val,
                             getValues(),
                             setValue
                           );
@@ -1291,7 +1332,20 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
                   }}
                   sx={commonStyles}
                 />
+                {field.name == "AadharNumber" && aadhaarValid ? (
+                  <Typography
+                    variant="subtitle2"
+                    color="success"
+                    fontWeight="bold"
+                  >
+                    Verified
+                  </Typography>
+                ) : (
+                  ""
+                )}
                 {field.name == "AadharNumber" &&
+                  value.length != 0 &&
+                  !aadhaarValid &&
                   !Boolean(errors[field.name]) && (
                     <Button
                       sx={[buttonStyles, { width: "100%" }]}
@@ -2002,6 +2056,18 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
         message="Some fields are not filled or are incorrectly filed. Please correctly fill all fields."
         type="error" // can be: "error", "success", "warning", "info"
       />
+
+      {otpModal && (
+        <OtpModal
+          open={otpModal}
+          onClose={() => {
+            console.log("OtpModal onClose triggered");
+            setOtpModal(false);
+          }}
+          onSubmit={handleOtpSubmit}
+        />
+      )}
+
       <ToastContainer />
     </Box>
   );

@@ -5,7 +5,7 @@ namespace SahayataNidhi.Models.Entities;
 
 public partial class Corrigendum
 {
-    public int CorrigendumId { get; set; }
+    public string CorrigendumId { get; set; } = null!;
 
     public string ReferenceNumber { get; set; } = null!;
 

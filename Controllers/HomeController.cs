@@ -2,6 +2,7 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
@@ -741,6 +742,129 @@ namespace SahayataNidhi.Controllers
             return Json(new { isUnique });
         }
 
+
+        public dynamic? AadhaarData(string aadhaarNumber)
+        {
+            var AadhaarData = new List<dynamic>
+            {
+                new {
+                      AadhaarNumber = "690237896873",
+                      Name = "Rahul Sharma",
+                      DOB = "1989-01-01",
+                      Gender = "M",
+                      Address = "123 Sector 10, New Delhi",
+                      Email = "randomizerweb129@gmail.com"
+                   },
+                new {
+                      AadhaarNumber = "690227896872",
+                      Name = "Rahul Sharma",
+                      DOB = "1989-01-01",
+                      Gender = "M",
+                      Address = "123 Sector 10, New Delhi",
+                      Email = "randomizerweb129@gmail.com"
+                   },
+            };
+
+
+
+            var result = AadhaarData.FirstOrDefault(x => x.AadhaarNumber == aadhaarNumber);
+
+            return result;
+        }
+
+        public async Task<IActionResult> SendAadhaarOTP(string aadhaarNumber)
+        {
+            string otpKey;
+            var aadhaarData = AadhaarData(aadhaarNumber);
+            string email = aadhaarData!.Email;
+            otpKey = $"otp:{email}";
+
+            string otp = GenerateOTP(6);
+            _otpStore.StoreOtp(otpKey, otp);
+
+            string htmlMessage = $@"
+            <div style='font-family: Arial, sans-serif;'>
+                <h2 style='color: #2e6c80;'>Your OTP Code</h2>
+                <p>Use the following One-Time Password (OTP) to complete your verification. It is valid for <strong>5 minutes</strong>.</p>
+                <div style='font-size: 24px; font-weight: bold; color: #333; margin: 20px 0;'>{otp}</div>
+                <p>If you did not request this, please ignore this email.</p>
+                <br />
+                <p style='font-size: 12px; color: #888;'>Thank you,<br />Your Application Team</p>
+            </div>";
+            _logger.LogInformation($"---------- OTP : {otp} -------------------");
+            // await _emailSender.SendEmail(email!, "OTP For Registration", htmlMessage);
+            return Json(new { status = true });
+        }
+
+        public IActionResult ValidateAadhaarOTP([FromForm] IFormCollection form)
+        {
+            var otp = form["otp"].ToString();
+            var aadhaarNumber = form["aadhaarNumber"].ToString();
+
+            if (string.IsNullOrEmpty(otp) || string.IsNullOrEmpty(aadhaarNumber))
+            {
+                return Json(new { status = false, message = "OTP or email is missing." });
+            }
+            string email = AadhaarData(aadhaarNumber)!.Email;
+            // Construct the OTP key using the provided email
+            string otpKey = $"otp:{email}";
+            string? storedOtp = _otpStore.RetrieveOtp(otpKey);
+
+            if (storedOtp == null)
+            {
+                return Json(new { status = false, message = "OTP has expired or is invalid." });
+            }
+
+            // Verify the OTP
+            if (storedOtp == otp)
+            {
+                string tokenizeAadhaar = TokenizeAadhaar(aadhaarNumber, "MySecureKey123");
+                return Json(new { status = true, message = "OTP validated successfully.", aadhaarToken = tokenizeAadhaar });
+            }
+
+            return Json(new { status = false, message = "Invalid OTP." });
+        }
+
+
+        public static string TokenizeAadhaar(string aadhaarNumber, string secretKey)
+        {
+            try
+            {
+                // Basic input validation
+                if (string.IsNullOrWhiteSpace(aadhaarNumber) || aadhaarNumber.Length != 12)
+                {
+                    throw new ArgumentException("Invalid Aadhaar number. Must be 12 digits.");
+                }
+
+                if (string.IsNullOrWhiteSpace(secretKey))
+                {
+                    throw new ArgumentException("Secret key cannot be empty.");
+                }
+
+                // Mask last 8 digits for tokenization (simplified example)
+                string maskedAadhaar = aadhaarNumber.Substring(0, 4) + "XXXXXXXX";
+
+                // Generate a simple hash-based token (NOT secure for production)
+                using var sha256 = SHA256.Create();
+                byte[] inputBytes = Encoding.UTF8.GetBytes(aadhaarNumber + secretKey);
+                byte[] hashBytes = sha256.ComputeHash(inputBytes);
+
+                // Convert to hexadecimal string
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < hashBytes.Length; i++)
+                {
+                    sb.Append(hashBytes[i].ToString("x2"));
+                }
+
+                // Return combined masked Aadhaar and token
+                return $"{maskedAadhaar}-{sb.ToString().Substring(0, 16)}";
+            }
+            catch (Exception ex)
+            {
+                // Log error in production
+                throw new Exception("Error during Aadhaar tokenization: " + ex.Message);
+            }
+        }
 
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

@@ -106,6 +106,7 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.FinancialYear)
                 .HasMaxLength(50)
                 .IsUnicode(false);
+            entity.Property(e => e.Type).HasMaxLength(30);
         });
 
         modelBuilder.Entity<AuditLog>(entity =>
@@ -225,6 +226,9 @@ public partial class SocialWelfareDepartmentContext : DbContext
         {
             entity.ToTable("Corrigendum");
 
+            entity.Property(e => e.CorrigendumId)
+                .HasMaxLength(60)
+                .IsUnicode(false);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");

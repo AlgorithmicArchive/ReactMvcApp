@@ -78,7 +78,7 @@ export default function Form() {
         {
           label: "Aadhaar Number",
           name: "AadharNumber",
-          value: "690317886783",
+          value: "",
         },
       ],
       "Present Address Details": [
@@ -248,7 +248,7 @@ export default function Form() {
         {
           label: "Aadhaar Number",
           name: "AadharNumber",
-          value: "690317886783",
+          value: "",
         },
       ],
       "Present Address Details": [

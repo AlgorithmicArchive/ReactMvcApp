@@ -255,6 +255,7 @@ const ValidationFunctionsList = {
 export const TransformationFunctionsList = {
   CaptilizeAlphabet: (value) => value.toUpperCase(),
   MaskAadhaar: (value, aadhaarNumber) => {
+    console.log(value, aadhaarNumber);
     const input =
       typeof aadhaarNumber === "string" && aadhaarNumber.length > 0
         ? aadhaarNumber

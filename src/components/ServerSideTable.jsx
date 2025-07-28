@@ -635,9 +635,12 @@ const ServerSideTable = React.forwardRef(
                       <Tooltip key={index} title={action.tooltip} arrow>
                         <ActionButton
                           variant="contained"
-                          size="small"
+                          sx={{ width: "max-content" }}
                           onClick={() =>
-                            actionFunctions[action.actionFunction]?.(row)
+                            actionFunctions[action.actionFunction]?.(
+                              row,
+                              action
+                            )
                           }
                           aria-label={`${
                             action.name || action.tooltip

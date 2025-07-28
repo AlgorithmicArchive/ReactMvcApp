@@ -715,7 +715,7 @@ namespace SahayataNidhi.Controllers.Officer
 
             // Call your PDF generator
             await _pdfService.CreateSanctionPdf(pdfFields, sanctionLetterFor?.ToString() ?? "", information?.ToString() ?? "", officer, applicationId);
-            string fileName = applicationId.Replace("/", "_") + "SanctionLetter.pdf";
+            string fileName = applicationId.Replace("/", "_") + "_SanctionLetter.pdf";
 
             return Json(new
             {
@@ -1355,7 +1355,7 @@ namespace SahayataNidhi.Controllers.Officer
             if (applicationId != null)
             {
                 var corrigendum = dbcontext.Corrigenda
-                    .FirstOrDefault(c => c.CorrigendumId == Convert.ToInt32(applicationId));
+                    .FirstOrDefault(c => c.CorrigendumId == applicationId);
 
                 var corrigendumFields = corrigendum!.CorrigendumFields;
 
@@ -1695,11 +1695,22 @@ namespace SahayataNidhi.Controllers.Officer
                 }
 
                 var corrigendum = dbcontext.Corrigenda
-                    .FirstOrDefault(c => c.ReferenceNumber == applicationId && c.CorrigendumId == Convert.ToInt32(corrigendumId));
+                    .FirstOrDefault(c => c.ReferenceNumber == applicationId && c.CorrigendumId == corrigendumId);
                 if (corrigendum == null)
                 {
                     return NotFound("Corrigendum not found.");
                 }
+
+                var application = dbcontext.CitizenApplications.FirstOrDefault(ca => ca.ReferenceNumber == applicationId);
+
+                var workflow = JArray.Parse(application!.WorkFlow!);
+                _logger.LogInformation($"---------- Workflwo: {workflow} -----------------");
+
+                JToken sanctionedOfficer = workflow.FirstOrDefault(p => (string)p["status"]! == "sanctioned")!;
+                _logger.LogInformation($"---------- Sanction Date: {sanctionedOfficer} -----------------");
+
+                string? sanctionDate = (string)sanctionedOfficer["completedAt"]!;
+                _logger.LogInformation($"---------- Sanction Date: {sanctionDate} -----------------");
 
                 var citizenApplication = dbcontext.CitizenApplications
                     .FirstOrDefault(ca => ca.ReferenceNumber == applicationId);
@@ -1720,10 +1731,11 @@ namespace SahayataNidhi.Controllers.Officer
                     applicationId,
                     officer,
                     service.ServiceName!,
-                    corrigendumId
+                    corrigendumId,
+                    sanctionDate
                 );
 
-                var filePath = applicationId.Replace("/", "_") + "_" + corrigendumId + "CorrigendumSanctionLetter.pdf";
+                var filePath = corrigendumId.Replace("/", "_") + "_CorrigendumSanctionLetter.pdf";
                 return Json(new { status = true, path = filePath });
             }
             catch (Exception ex)
