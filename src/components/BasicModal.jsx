@@ -37,7 +37,7 @@ const BasicModal = ({
           {
             maxHeight: "800px",
             overflowY: "scroll",
-            width: { xs: "100%", md: "70%" },
+            width: { xs: "100%", md: "90%" },
           },
         ]}
       >
@@ -56,7 +56,7 @@ const BasicModal = ({
             <UserDetailsAccordion applicationId={accordion} />
           </Box>
         )}
-        <Box sx={{ mt: 2 }}>
+        <Box sx={{ mt: 2, width: "100%" }}>
           {table != null && (
             <ServerSideTable
               url={table.url}
@@ -65,7 +65,7 @@ const BasicModal = ({
               Title={Title}
             />
           )}
-          {pdf != null && <PdfViewer pdfUrl={pdf} />}
+          {pdf != null && <PdfViewer pdfUrl={pdf} width={"100%"} />}
         </Box>
         <Box
           sx={{

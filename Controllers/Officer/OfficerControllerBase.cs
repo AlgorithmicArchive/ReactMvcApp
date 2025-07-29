@@ -98,9 +98,9 @@ namespace SahayataNidhi.Controllers.Officer
             string officerArea = GetAccessArea(officer.AccessLevel!, officer.AccessCode);
             return Json(new { serviceList, role = officer.RoleShort, area = officerArea });
         }
-       
-       
-       
+
+
+
         [HttpGet]
         public async Task<IActionResult> PullApplication(string applicationId)
         {
@@ -319,7 +319,7 @@ namespace SahayataNidhi.Controllers.Officer
 
                 if (action == "Sanction")
                 {
-                    string fileName = applicationId.Replace("/", "_") + "SanctionLetter.pdf";
+                    string fileName = applicationId.Replace("/", "_") + "_SanctionLetter.pdf";
                     var fileModel = await dbcontext.UserDocuments
                         .FirstOrDefaultAsync(f => f.FileName == fileName);
 

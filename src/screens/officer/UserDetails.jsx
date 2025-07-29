@@ -288,6 +288,7 @@ export default function UserDetails() {
 
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
       const blobUrl = URL.createObjectURL(signedBlob);
+      setPdfModalOpen(false);
       setPdfUrl(updateResponse.data.path);
       setPdfBlob(null);
       setIsSignedPdf(true);

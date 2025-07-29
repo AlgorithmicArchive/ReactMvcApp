@@ -840,18 +840,14 @@ namespace SahayataNidhi.Controllers.Officer
                     .SetVerticalAlignment(VerticalAlignment.MIDDLE)
                     .SetTextAlignment(TextAlignment.RIGHT);
 
-                _logger.LogInformation($"-------------------------IMAGE PATH: {imagePath} WEB HOST PATH: {_webHostEnvironment.WebRootPath}-------------------------");
-
                 if (!string.IsNullOrEmpty(imagePath))
                 {
-                    var fullImagePath = System.IO.Path.Combine(_webHostEnvironment.WebRootPath, imagePath.TrimStart('/'));
-                    _logger.LogInformation($"-------------------------Full IMAGE PATH: {fullImagePath}-------------------------");
-
-                    if (System.IO.File.Exists(fullImagePath))
+                    var ImageDetails = dbcontext.UserDocuments.FirstOrDefault(u => u.FileName == imagePath);
+                    if (ImageDetails != null)
                     {
                         try
                         {
-                            var imageData = ImageDataFactory.Create(fullImagePath);
+                            var imageData = ImageDataFactory.Create(ImageDetails.FileData);
                             var image = new Image(imageData)
                                 .ScaleToFit(50, 50)
                                 .SetBorder(new SolidBorder(new DeviceRgb(25, 118, 210), 2))
@@ -1026,18 +1022,16 @@ namespace SahayataNidhi.Controllers.Officer
                     {
                         var filePath = doc["File"]?.ToString();
                         var enclosure = doc["label"]?.ToString();
-
-                        if (!string.IsNullOrEmpty(filePath) && !string.IsNullOrEmpty(enclosure))
+                        var FileDetails = dbcontext.UserDocuments.FirstOrDefault(u => u.FileName == filePath);
+                        if (FileDetails != null)
                         {
-                            var fullPath = System.IO.Path.Combine(_webHostEnvironment.WebRootPath, filePath.TrimStart('/'));
-
-                            if (System.IO.File.Exists(fullPath))
+                            if (FileDetails.FileData != null)
                             {
                                 try
                                 {
                                     // Start a new page for each document
-
-                                    using var reader = new PdfReader(fullPath);
+                                    using var inputStream = new MemoryStream(FileDetails.FileData);
+                                    using var reader = new PdfReader(inputStream);
                                     using var tempMs = new MemoryStream();
                                     var srcPdf = new PdfDocument(reader, new PdfWriter(tempMs));
                                     var firstPage = srcPdf.GetPage(1);
@@ -1085,13 +1079,14 @@ namespace SahayataNidhi.Controllers.Officer
                 // Add Sanction Letter if application status is Sanctioned
                 if (application.Status == "Sanctioned")
                 {
-                    _logger.LogInformation($"-----------------------------Application ID: {applicationId}      {applicationId.Replace("/", "_")}-------------------------");
-                    var sanctionLetterPath = System.IO.Path.Combine(_webHostEnvironment.WebRootPath, "files", applicationId.Replace("/", "_") + "SanctionLetter.pdf");
-                    if (System.IO.File.Exists(sanctionLetterPath))
+                    var sanctionLetterPath = applicationId.Replace("/", "_") + "_SanctionLetter.pdf";
+                    var FileDetails = dbcontext.UserDocuments.FirstOrDefault(u => u.FileName == sanctionLetterPath);
+                    if (FileDetails != null)
                     {
                         try
                         {
-                            using var reader = new PdfReader(sanctionLetterPath);
+                            using var inputStream = new MemoryStream(FileDetails.FileData);
+                            using var reader = new PdfReader(inputStream);
                             using var tempMs = new MemoryStream();
                             var srcPdf = new PdfDocument(reader, new PdfWriter(tempMs));
                             var firstPage = srcPdf.GetPage(1);
@@ -1115,6 +1110,57 @@ namespace SahayataNidhi.Controllers.Officer
                             srcPdf.CopyPagesTo(1, documentPageCount, pdf);
                             srcPdf.Close();
                             document.Add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+
+                            var corrigendum = dbcontext.Corrigenda.Where(c => c.ReferenceNumber == applicationId).ToList();
+                            if (corrigendum.Count > 0)
+                            {
+                                foreach (var cor in corrigendum)
+                                {
+                                    var corFileDetails = dbcontext.UserDocuments.FirstOrDefault(u =>
+                                        u.FileName == cor.CorrigendumId.Replace("/", "_") + "_CorrigendumSanctionLetter.pdf");
+
+                                    if (corFileDetails != null)
+                                    {
+                                        using var corInputStream = new MemoryStream(corFileDetails.FileData);
+                                        using var corReader = new PdfReader(corInputStream);
+                                        using var corTempMs = new MemoryStream();
+                                        var corSrcPdf = new PdfDocument(corReader, new PdfWriter(corTempMs));
+                                        var corFirstPage = corSrcPdf.GetPage(1);
+
+                                        var corCanvas = new PdfCanvas(corFirstPage.NewContentStreamBefore(), corFirstPage.GetResources(), corSrcPdf);
+                                        var corCanvasDoc = new Document(corSrcPdf);
+                                        corCanvasDoc.ShowTextAligned(
+                                            new Paragraph("Sanction Letter")
+                                                .SetFontSize(14)
+                                                .SetBold()
+                                                .SetFontColor(new DeviceRgb(242, 140, 56))
+                                                .SetBackgroundColor(new DeviceRgb(245, 245, 245))
+                                                .SetPadding(5),
+                                            x: 36, y: corFirstPage.GetPageSize().GetTop() - 50,
+                                            TextAlignment.LEFT
+                                        );
+                                        corCanvasDoc.Close();
+
+                                        // Re-open the modified PDF to copy pages
+                                        using var finalCorReader = new PdfReader(new MemoryStream(corTempMs.ToArray()));
+                                        using var finalCorPdf = new PdfDocument(finalCorReader);
+                                        int corDocumentPageCount = finalCorPdf.GetNumberOfPages();
+                                        finalCorPdf.CopyPagesTo(1, corDocumentPageCount, pdf);
+                                        finalCorPdf.Close();
+
+                                        document.Add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+                                    }
+                                    else
+                                    {
+                                        document.Add(new Paragraph($"Corrigendum Letter for ID {cor.CorrigendumId}: File not found")
+                                            .SetFontSize(12)
+                                            .SetFontColor(ColorConstants.RED)
+                                            .SetMarginBottom(5));
+                                    }
+                                }
+
+                            }
+
                         }
                         catch (Exception ex)
                         {

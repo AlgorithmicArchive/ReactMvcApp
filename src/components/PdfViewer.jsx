@@ -12,6 +12,7 @@ const PdfViewer = ({ pdfUrl, path, exportButton = null, width }) => {
         flexDirection: "column",
         alignItems: "center",
         marginTop: "50px",
+        width: "100%",
         gap: 5,
       }}
     >

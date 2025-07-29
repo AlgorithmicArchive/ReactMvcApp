@@ -293,7 +293,7 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
 
         // Add recipient (bank manager)
         string branchOffice = GetBranchOffice(applicationId);
-        document.Add(new Paragraph($"To\nSubject: {applicationId} dated: {sanctionedDate}\nTHE MANAGER\nTHE JAMMU AND KASHMIR BANK LIMITED\nB/O {branchOffice}")
+        document.Add(new Paragraph($"To\nSubject: Corrigendum to Saction Letter with No. {applicationId} dated: {sanctionedDate}\nTHE MANAGER\nTHE JAMMU AND KASHMIR BANK LIMITED\nB/O {branchOffice}")
             .SetFontSize(14));
         document.Add(new Paragraph($"\nIn partial modification of above mentioned Sanctione Letter, the following corrections may be read as:")
             .SetFontSize(12));

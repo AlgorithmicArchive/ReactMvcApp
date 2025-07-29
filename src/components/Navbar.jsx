@@ -80,7 +80,7 @@ const MyNavbar = () => {
     >
       <Container>
         {/* Logo Section */}
-        <Navbar.Brand as={Link} to="/" className="me-4">
+        <Navbar.Brand className="me-4">
           <div className="me-5 d-flex align-items-center">
             <img
               src="/assets/images/logo.png"

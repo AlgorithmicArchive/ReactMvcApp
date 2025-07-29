@@ -94,66 +94,7 @@ namespace SahayataNidhi.Controllers.Officer
             return (int)newCountParam.Value;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> UpdatePdf([FromForm] IFormCollection form)
-        {
-            _logger.LogInformation($"Form: {form} ApplicationID: {form["applicationId"]}");
-
-            if (form == null || !form.Files.Any() || string.IsNullOrEmpty(form["applicationId"]))
-            {
-                return BadRequest(new { status = false, response = "Missing form data." });
-            }
-
-            var signedPdf = form.Files["signedPdf"];
-            var applicationId = form["applicationId"].ToString();
-
-            if (signedPdf == null || signedPdf.Length == 0)
-            {
-                return BadRequest(new { status = false, response = "No file uploaded." });
-            }
-
-            try
-            {
-                // Construct the file name based on applicationId
-                string fileName = applicationId.Replace("/", "_") + "SanctionLetter.pdf";
-
-                // Read the file into a byte array
-                using var memoryStream = new MemoryStream();
-                await signedPdf.CopyToAsync(memoryStream);
-                var fileData = memoryStream.ToArray();
-
-                // Check if the file exists in UserDocuments
-                var existingFile = await dbcontext.UserDocuments
-                    .FirstOrDefaultAsync(f => f.FileName == fileName);
-
-                if (existingFile != null)
-                {
-                    // Update existing record
-                    existingFile.FileData = fileData;
-                    existingFile.FileType = "application/pdf";
-                    existingFile.UpdatedAt = DateTime.UtcNow;
-                }
-                else
-                {
-                    // Create new record
-                    dbcontext.UserDocuments.Add(new UserDocument
-                    {
-                        FileName = fileName,
-                        FileData = fileData,
-                        FileType = "application/pdf",
-                        UpdatedAt = DateTime.UtcNow
-                    });
-                }
-
-                await dbcontext.SaveChangesAsync();
-
-                return Json(new { status = true, path = fileName });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { status = false, response = $"An error occurred while updating the sanction letter: {ex.Message}" });
-            }
-        }
+       
 
         private dynamic GetFormattedValue(dynamic item, JObject data)
         {
