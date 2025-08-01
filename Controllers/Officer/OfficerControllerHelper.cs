@@ -94,7 +94,7 @@ namespace SahayataNidhi.Controllers.Officer
             return (int)newCountParam.Value;
         }
 
-       
+
 
         private dynamic GetFormattedValue(dynamic item, JObject data)
         {
@@ -375,29 +375,72 @@ namespace SahayataNidhi.Controllers.Officer
             }
         }
 
-        public JToken ReorderFormDetails(JToken formDetailsToken)
+        public JToken ReorderFormDetails(JToken formDetailsToken, string applicationId, bool isSanctioned)
         {
             if (formDetailsToken is not JObject formDetailsObject)
-                return formDetailsToken; // If not an object, return as is
+                return formDetailsToken;
 
+            // Fetch sanctioned corrigendums
+            var corrigendums = dbcontext.Corrigenda
+                .Where(co => co.ReferenceNumber == applicationId && co.Status == "Sanctioned")
+                .ToList();
+
+            // Ensure "Documents" array exists
+            if (!formDetailsObject.ContainsKey("Documents") || formDetailsObject["Documents"] is not JArray)
+            {
+                formDetailsObject["Documents"] = new JArray();
+            }
+
+            var documentsArray = (JArray)formDetailsObject["Documents"]!;
+
+            // Filter out "Other" with "Please Select"
+            var filteredDocs = new JArray(
+                documentsArray.Where(doc =>
+                    doc["name"]?.ToString() != "Other" || doc["Enclosure"]?.ToString() != "Please Select")
+            );
+
+            // Add main Sanction Letter if sanctioned
+            if (isSanctioned)
+            {
+                filteredDocs.Add(new JObject
+                {
+                    { "label", "Sanction Letter" },
+                    { "name", "Sanction Letter" },
+                    { "Enclosure", "Sanction Letter" },
+                    { "File", applicationId.Replace("/", "_") + "_SanctionLetter.pdf" }
+                });
+            }
+
+            // Add Corrigendum Sanction Letters
+            foreach (var corrigendum in corrigendums)
+            {
+                filteredDocs.Add(new JObject
+                {
+                    { "label", "Corrigendum Sanction Letter" },
+                    { "name", "Corrigendum Sanction Letter" },
+                    { "Enclosure", "Corrigendum Sanction Letter" },
+                    { "File", corrigendum.CorrigendumId.Replace("/", "_") + "_CorrigendumSanctionLetter.pdf" }
+                });
+            }
+
+            formDetailsObject["Documents"] = filteredDocs;
+
+            // Reorder Location and Applicant Details to the top
             if (!formDetailsObject.ContainsKey("Location") || !formDetailsObject.ContainsKey("Applicant Details"))
-                return formDetailsToken; // If required keys are missing, return as is
+                return formDetailsToken;
 
-            // Extract and remove the desired sections
             var locationSection = formDetailsObject.Property("Location");
             var applicantSection = formDetailsObject.Property("Applicant Details");
 
             locationSection?.Remove();
             applicantSection?.Remove();
 
-            // Create new JObject with reordered properties
             JObject reordered = new JObject
-    {
-        { "Location", locationSection!.Value },
-        { "Applicant Details", applicantSection!.Value }
-    };
+            {
+                { "Location", locationSection!.Value },
+                { "Applicant Details", applicantSection!.Value }
+            };
 
-            // Add the rest of the sections in their original order
             foreach (var prop in formDetailsObject.Properties())
             {
                 if (prop.Name != "Location" && prop.Name != "Applicant Details")
@@ -408,6 +451,22 @@ namespace SahayataNidhi.Controllers.Officer
 
             return reordered;
         }
+
+        public string? GetSanctionedCorrigendum(dynamic WorkFlow, string id)
+        {
+            foreach (var item in WorkFlow)
+            {
+                if ((string)item.status == "sanctioned")
+                {
+                    return id;
+                }
+            }
+
+            return null; // Return 0 only if no "sanctioned" status was found
+        }
+
+
+
 
         private static string FormatSectionKey(string key)
         {

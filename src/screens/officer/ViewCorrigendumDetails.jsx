@@ -15,15 +15,24 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Collapse,
+  IconButton,
 } from "@mui/material";
-import { MaterialReactTable } from "material-react-table";
-import styled from "@emotion/styled";
+import {
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+} from "@mui/icons-material";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import BasicModal from "../../components/BasicModal";
+import { MaterialReactTable } from "material-react-table";
+import styled from "@emotion/styled";
+import CollapsibleFormDetails from "../../components/officer/CollapsibleFormDetails";
+import { fetchUserDetail } from "../../assets/fetch";
+import CollapsibleActionHistory from "../../components/officer/CollapsibleActionHistory";
 
 const TableContainer = styled(Box)`
   background: linear-gradient(180deg, #e6f0fa 0%, #b3cde0 100%);
@@ -125,6 +134,91 @@ const MaterialTable = ({ columns, data, viewType }) => {
   );
 };
 
+const CollapsibleTable = ({
+  title,
+  columns,
+  data,
+  viewType,
+  open,
+  setOpen,
+  onViewPdf,
+}) => {
+  return (
+    <Box sx={{ mb: 4 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          bgcolor: "#e6f0fa",
+          p: 2,
+          borderRadius: "8px",
+          cursor: "pointer",
+          border: "1px solid #b3cde0",
+        }}
+        onClick={() => setOpen(!open)}
+      >
+        <Typography variant="h6" sx={{ fontWeight: 600, color: "#2196f3" }}>
+          {title}
+        </Typography>
+        <IconButton aria-label={open ? `Collapse ${title}` : `Expand ${title}`}>
+          {open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        </IconButton>
+      </Box>
+      <Collapse in={open}>
+        <TableContainer>
+          <TableCard>
+            <MaterialTable
+              columns={columns}
+              data={data.map((item) => {
+                const isArray = Array.isArray(item.files);
+                const shouldShowButtons = isArray && item.files.length > 0;
+
+                return {
+                  ...item,
+                  files: shouldShowButtons ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 2,
+                      }}
+                    >
+                      {item.files.map((fileName, index) => (
+                        <Button
+                          key={index}
+                          variant="outlined"
+                          size="small"
+                          onClick={() => onViewPdf(fileName)}
+                          sx={{
+                            textTransform: "none",
+                            borderColor: "#1976D2",
+                            color: "#1976D2",
+                            "&:hover": {
+                              borderColor: "#1565C0",
+                              color: "#1565C0",
+                            },
+                          }}
+                        >
+                          View PDF {index + 1}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : isArray ? (
+                    item.files.join(", ")
+                  ) : (
+                    item.files
+                  ),
+                };
+              })}
+              viewType={viewType}
+            />
+          </TableCard>
+        </TableContainer>
+      </Collapse>
+    </Box>
+  );
+};
+
 const validationSchema = yup.object().shape({
   action: yup.string().required("Action is required"),
   remarks: yup.string().required("Remarks are required"),
@@ -133,7 +227,7 @@ const validationSchema = yup.object().shape({
 export default function ViewCorrigendumDetails() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { applicationId } = location.state || {};
+  const { referenceNumber, applicationId } = location.state || {};
   const [loading, setLoading] = useState(true);
   const [fieldColumns, setFieldColumns] = useState([]);
   const [fieldData, setFieldData] = useState([]);
@@ -141,6 +235,8 @@ export default function ViewCorrigendumDetails() {
   const [data, setData] = useState([]);
   const [columns, setColumns] = useState([]);
   const [actions, setActions] = useState([]);
+  const [formDetails, setFormDetails] = useState({});
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [corrigendumId, setCorrigendumId] = useState();
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState("");
@@ -150,6 +246,10 @@ export default function ViewCorrigendumDetails() {
   const [pin, setPin] = useState("");
   const [buttonLoading, setButtonLoading] = useState(false);
   const [pendingFormData, setPendingFormData] = useState(null);
+  const [fieldsOpen, setFieldsOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [corHistoryOpen, setCorHistoryOpen] = useState(false);
+  const [isSanctionLetter, setIsSanctionLetter] = useState(false);
 
   const {
     control,
@@ -163,12 +263,25 @@ export default function ViewCorrigendumDetails() {
     },
   });
 
+  const formatKey = (key) => {
+    if (!key) return "";
+    return key
+      .replace(/([A-Z])/g, " $1")
+      .replace(/^./, (str) => str.toUpperCase())
+      .trim();
+  };
+
   useEffect(() => {
     const fetchCorrigendum = async () => {
       try {
         const response = await axiosInstance.get(
           "/Officer/GetCorrigendumApplication",
-          { params: { referenceNumber: applicationId } }
+          {
+            params: {
+              referenceNumber: referenceNumber,
+              ...(applicationId && { corrigendumId: applicationId }),
+            },
+          },
         );
         const result = response.data;
         setData(result.data);
@@ -189,7 +302,25 @@ export default function ViewCorrigendumDetails() {
         setLoading(false);
       }
     };
-    if (applicationId) fetchCorrigendum();
+    async function loadDetails() {
+      setLoading(true);
+      try {
+        await fetchUserDetail(referenceNumber, setFormDetails);
+      } catch (error) {
+        console.error("Error fetching user details:", error);
+        toast.error("Failed to load user details. Please try again.", {
+          position: "top-center",
+          autoClose: 3000,
+          theme: "colored",
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+    if (applicationId) {
+      loadDetails();
+      fetchCorrigendum();
+    }
   }, [applicationId]);
 
   useEffect(() => {
@@ -217,7 +348,7 @@ export default function ViewCorrigendumDetails() {
           position: "top-center",
           autoClose: 3000,
           theme: "colored",
-        }
+        },
       );
       return false;
     }
@@ -240,7 +371,7 @@ export default function ViewCorrigendumDetails() {
     formData.append("pin", pin);
     formData.append(
       "original_path",
-      applicationId.replace(/\//g, "_") + "CorrigendumSanctionLetter.pdf"
+      applicationId.replace(/\//g, "_") + "CorrigendumSanctionLetter.pdf",
     );
     try {
       const response = await fetch("http://localhost:8000/sign", {
@@ -256,9 +387,15 @@ export default function ViewCorrigendumDetails() {
       throw new Error(
         "Error signing PDF: " +
           error.message +
-          " Check if Desktop App is started."
+          " Check if Desktop App is started.",
       );
     }
+  };
+
+  const handleViewPdf = (url) => {
+    setPdfUrl(url);
+    setIsSignedPdf(false);
+    setPdfModalOpen(true);
   };
 
   const handlePinSubmit = async () => {
@@ -279,31 +416,41 @@ export default function ViewCorrigendumDetails() {
       }
 
       const signedBlob = await signPdf(pdfBlob, pin);
+      console.log("Signed blob:", signedBlob);
 
       const updateFormData = new FormData();
       updateFormData.append("signedPdf", signedBlob, "signed.pdf");
-      updateFormData.append("applicationId", applicationId);
+      updateFormData.append("applicationId", referenceNumber);
       updateFormData.append("corrigendumId", corrigendumId);
       const updateResponse = await axiosInstance.post(
         "/Officer/UpdateCorrigendumPdf",
-        updateFormData
+        updateFormData,
       );
 
       if (!updateResponse.data.status) {
         throw new Error(
           "Failed to update PDF on server: " +
-            (updateResponse.data.response || "Unknown error")
+            (updateResponse.data.response || "Unknown error"),
         );
       }
 
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-      const blobUrl = URL.createObjectURL(signedBlob);
+      console.log("Server PDF path:", updateResponse.data.path);
+
+      // Revoke old blob URL if it exists
+      if (pdfUrl && pdfUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+
+      // Use server path with cache-busting
+      const uniqueUrl = `${updateResponse.data.path}`;
+      setPdfUrl(uniqueUrl);
       setPdfModalOpen(false);
-      setPdfUrl(updateResponse.data.path);
-      setPdfBlob(null);
-      setIsSignedPdf(true);
-      setConfirmOpen(false);
-      setPdfModalOpen(true);
+      setTimeout(() => {
+        setPdfBlob(null);
+        setIsSignedPdf(true);
+        setConfirmOpen(false);
+        setPdfModalOpen(true);
+      }, 100);
 
       if (pendingFormData) {
         await handleFinalSubmit(pendingFormData);
@@ -327,8 +474,8 @@ export default function ViewCorrigendumDetails() {
       const response = await axiosInstance.get(
         "/Officer/GetCorrigendumSanctionLetter",
         {
-          params: { applicationId, corrigendumId },
-        }
+          params: { applicationId: referenceNumber, corrigendumId },
+        },
       );
       const result = response.data;
       if (!result.status) {
@@ -342,10 +489,12 @@ export default function ViewCorrigendumDetails() {
         type: "application/pdf",
       });
 
+      setPdfModalOpen(false);
       setPdfBlob(newPdfBlob);
       setPdfUrl(result.path);
       setIsSignedPdf(false);
       setPdfModalOpen(true);
+      setIsSanctionLetter(true);
     } catch (error) {
       console.error("Error fetching corrigendum sanction letter:", error);
       toast.error(
@@ -354,7 +503,7 @@ export default function ViewCorrigendumDetails() {
           position: "top-center",
           autoClose: 3000,
           theme: "colored",
-        }
+        },
       );
     }
   };
@@ -365,12 +514,12 @@ export default function ViewCorrigendumDetails() {
       data.append(key, formData[key]);
     }
     data.append("corrigendumId", corrigendumId);
-    data.append("referenceNumber", applicationId);
+    data.append("referenceNumber", referenceNumber);
 
     try {
       const response = await axiosInstance.post(
         "/Officer/HandleCorrigendumAction",
-        data
+        data,
       );
       if (!response.data.status) {
         throw new Error(response.data.response || "Something went wrong");
@@ -415,6 +564,7 @@ export default function ViewCorrigendumDetails() {
     if (pdfUrl) URL.revokeObjectURL(pdfUrl);
     setPdfUrl("");
     setPdfBlob(null);
+    setIsSanctionLetter(false);
     setIsSignedPdf(false);
   };
 
@@ -472,48 +622,67 @@ export default function ViewCorrigendumDetails() {
           color="text.secondary"
           mb={4}
         >
-          Reference Number: {applicationId}
+          Reference Number: {referenceNumber}
         </Typography>
 
-        <Box sx={{ mb: 6 }}>
-          <Typography
-            variant="h5"
-            textAlign="center"
-            gutterBottom
-            sx={{ color: "#2196f3", fontWeight: 600 }}
-          >
-            Corrigendum Fields
-          </Typography>
-          <TableContainer>
-            <TableCard>
-              <MaterialTable
-                columns={fieldColumns}
-                data={fieldData}
-                viewType="corrigendum field"
-              />
-            </TableCard>
-          </TableContainer>
-        </Box>
+        <Typography
+          variant="h4"
+          sx={{
+            fontWeight: 700,
+            color: "primary.main",
+            textAlign: "center",
+            mt: 4,
+            mb: 4,
+          }}
+        >
+          Citizen Application Details
+        </Typography>
+        <CollapsibleFormDetails
+          formDetails={formDetails}
+          formatKey={formatKey}
+          detailsOpen={detailsOpen}
+          setDetailsOpen={setDetailsOpen}
+          onViewPdf={handleViewPdf}
+          applicationId={referenceNumber}
+        />
 
-        <Box sx={{ mb: 6 }}>
-          <Typography
-            variant="h5"
-            textAlign="center"
-            gutterBottom
-            sx={{ color: "#2196f3", fontWeight: 600 }}
-          >
-            Corrigendum History
-          </Typography>
-          <TableContainer>
-            <TableCard>
-              <MaterialTable
-                columns={columns}
-                data={data}
-                viewType="corrigendum history"
-              />
-            </TableCard>
-          </TableContainer>
-        </Box>
+        <Typography
+          variant="h4"
+          id="user-details-title"
+          sx={{
+            fontWeight: 700,
+            color: "primary.main",
+            textAlign: "center",
+            mb: 4,
+          }}
+        >
+          Application Movement History
+        </Typography>
+        <CollapsibleActionHistory
+          detailsOpen={historyOpen}
+          setDetailsOpen={setHistoryOpen}
+          applicationId={referenceNumber}
+        />
+
+        <CollapsibleTable
+          title="Corrigendum Fields"
+          columns={fieldColumns}
+          data={fieldData}
+          viewType="corrigendum field"
+          open={fieldsOpen}
+          setOpen={setFieldsOpen}
+          onViewPdf={handleViewPdf}
+        />
+
+        <CollapsibleTable
+          title="Corrigendum History"
+          columns={columns}
+          data={data}
+          viewType="corrigendum history"
+          open={corHistoryOpen}
+          setOpen={setCorHistoryOpen}
+          onViewPdf={handleViewPdf}
+        />
 
         {canTakeAction && (
           <Box
@@ -661,13 +830,11 @@ export default function ViewCorrigendumDetails() {
         <BasicModal
           open={pdfModalOpen}
           handleClose={handleModalClose}
-          handleActionButton={isSignedPdf ? null : () => setConfirmOpen(true)}
-          buttonText={isSignedPdf ? null : "Sign PDF"}
-          Title={
-            isSignedPdf
-              ? "Signed Corrigendum Document"
-              : "Corrigendum Document Preview"
+          handleActionButton={
+            isSanctionLetter && !isSignedPdf ? () => setConfirmOpen(true) : null
           }
+          buttonText={isSanctionLetter && !isSignedPdf ? "Sign PDF" : null}
+          Title={isSignedPdf ? "Signed Document" : "Document Preview"}
           pdf={pdfUrl}
           sx={{
             "& .MuiDialog-paper": {

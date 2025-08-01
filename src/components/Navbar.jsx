@@ -26,7 +26,6 @@ const MyNavbar = () => {
 
   // Detect screen size to toggle hover behavior
   useEffect(() => {
-    console.log("Officer Authorities", officerAuthorities);
     const handleResize = () => {
       setIsSmallScreen(window.innerWidth < 992); // Bootstrap's lg breakpoint
     };
@@ -241,6 +240,42 @@ const MyNavbar = () => {
                     </NavDropdown.Item>
                   </NavDropdown>
                 </div>
+                {officerAuthorities &&
+                  officerAuthorities.canManageBankFiles && (
+                    <div
+                      onMouseEnter={() =>
+                        handleMouseEnter("bankfiles-management")
+                      }
+                      onMouseLeave={handleMouseLeave}
+                    >
+                      <NavDropdown
+                        title={
+                          <span style={getNavItemStyle("bankfiles-management")}>
+                            Bank Files
+                          </span>
+                        }
+                        id="bankfiles-management"
+                        show={
+                          isSmallScreen
+                            ? undefined
+                            : hoveredItem === "bankfiles-management"
+                        }
+                      >
+                        <NavDropdown.Item
+                          onClick={() => handleNavigate("/officer/bankFile")}
+                        >
+                          Create Bank File
+                        </NavDropdown.Item>
+                        <NavDropdown.Item
+                          onClick={() =>
+                            handleNavigate("/officer/responseFile")
+                          }
+                        >
+                          Update Bank Response File
+                        </NavDropdown.Item>
+                      </NavDropdown>
+                    </div>
+                  )}
                 {officerAuthorities && officerAuthorities.canCorrigendum && (
                   <Nav.Link
                     as={Link}

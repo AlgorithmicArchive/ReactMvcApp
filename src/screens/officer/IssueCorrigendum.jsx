@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Box,
   Button,
@@ -11,11 +11,10 @@ import {
   IconButton,
   FormControl,
   InputLabel,
+  FormHelperText,
 } from "@mui/material";
 import { styled } from "@mui/system";
 import { Delete as DeleteIcon } from "@mui/icons-material";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import ServiceSelectionForm from "../../components/ServiceSelectionForm";
 import { fetchServiceList } from "../../assets/fetch";
 import axiosInstance from "../../axiosConfig";
@@ -24,6 +23,7 @@ import {
   TransformationFunctionsList,
 } from "../../assets/formvalidations";
 import { useLocation } from "react-router-dom";
+import { MaterialReactTable } from "material-react-table";
 
 const StyledContainer = styled(Container)({
   background: "linear-gradient(135deg, #ffffff 0%, #f0f4f8 100%)",
@@ -56,6 +56,85 @@ const StyledFormControl = styled(FormControl)({
   },
 });
 
+const MaterialTable = ({ columns, data, viewType }) => {
+  return (
+    <MaterialReactTable
+      columns={columns}
+      data={data}
+      enableColumnActions={false}
+      enableColumnFilters={false}
+      enablePagination={false}
+      enableSorting={false}
+      muiTablePaperProps={{
+        sx: {
+          borderRadius: "12px",
+          background: "#ffffff",
+          border: "1px solid #b3cde0",
+          boxShadow: "0 4px 16px rgba(0, 0, 0, 0.05)",
+        },
+      }}
+      muiTableContainerProps={{
+        sx: { maxHeight: "600px", background: "#ffffff" },
+      }}
+      muiTableHeadCellProps={{
+        sx: {
+          background: "#e6f0fa",
+          color: "#1f2937",
+          fontWeight: 600,
+          fontSize: { xs: 12, md: 14 },
+          borderBottom: "2px solid #b3cde0",
+          borderRight: "1px solid #b3cde0",
+          "&:last-child": { borderRight: "none" },
+        },
+      }}
+      muiTableBodyRowProps={{
+        sx: {
+          "&:hover": {
+            background: "#f8fafc",
+            transition: "background-color 0.2s ease",
+          },
+        },
+      }}
+      muiTableBodyCellProps={{
+        sx: {
+          color: "#1f2937",
+          background: "#ffffff",
+          fontSize: { xs: 12, md: 14 },
+          borderRight: "1px solid #b3cde0",
+          borderBottom: "1px solid #b3cde0",
+          "&:last-child": { borderRight: "none" },
+        },
+      }}
+      muiTableFooterRowProps={{
+        sx: { borderTop: "2px solid #b3cde0" },
+      }}
+      muiTablePaginationProps={{
+        rowsPerPageOptions: [10, 25, 50],
+        showFirstButton: true,
+        showLastButton: true,
+        sx: {
+          color: "#1f2937",
+          background: "#ffffff",
+          borderTop: "1px solid #b3cde0",
+          fontSize: { xs: 12, md: 14 },
+        },
+      }}
+      renderEmptyRowsFallback={() => (
+        <Box
+          sx={{
+            textAlign: "center",
+            py: 4,
+            color: "rgb(107, 114, 128)",
+            fontSize: { xs: 14, md: 16 },
+          }}
+        >
+          No {viewType?.toLowerCase() || ""} applications available.
+        </Box>
+      )}
+    />
+  );
+};
+
 export default function IssueCorrigendum() {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -67,8 +146,18 @@ export default function IssueCorrigendum() {
   const [corrigendumFields, setCorrigendumFields] = useState([]);
   const [selectedField, setSelectedField] = useState("");
   const [remarks, setRemarks] = useState("");
+  const [files, setFiles] = useState([]);
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({});
+  const [touched, setTouched] = useState({ remarks: false, files: false });
+  const [nextOfficer, setNextOfficer] = useState("");
+  const [columns, setColumns] = useState([]);
+  const [data, setData] = useState([]);
+  const [responseMessage, setResponseMessage] = useState({
+    message: "",
+    type: "",
+  });
+  const fileInputRef = useRef(null);
 
   const location = useLocation();
   const { ReferenceNumber, ServiceId, applicationId } = location.state || {};
@@ -79,10 +168,9 @@ export default function IssueCorrigendum() {
       try {
         await fetchServiceList(setServices);
       } catch (error) {
-        toast.error("Failed to load services. Please try again.", {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
+        setResponseMessage({
+          message: "Failed to load services. Please try again.",
+          type: "error",
         });
       } finally {
         setLoading(false);
@@ -134,11 +222,8 @@ export default function IssueCorrigendum() {
     if (parsedFormElements == null) {
       parsedFormElements = formElements;
     }
-    console.log("Form Elements", parsedFormElements);
-
     for (const section of parsedFormElements) {
       for (const field of section.fields) {
-        console.log("field", field);
         if (field.name === fieldName) {
           return {
             ...field,
@@ -172,86 +257,110 @@ export default function IssueCorrigendum() {
     };
   };
 
-  const validateField = async (field, value, formData, referenceNumber) => {
-    const fieldConfig = findFieldConfig(field.name);
+  const applyTransformations = (value, transformationFunctions) => {
     let transformedValue = value || "";
-
-    // Apply transformation functions
-    for (const transformFn of field.transformationFunctions || []) {
+    for (const transformFn of transformationFunctions || []) {
       if (TransformationFunctionsList[transformFn]) {
         transformedValue =
           TransformationFunctionsList[transformFn](transformedValue);
       }
     }
+    return transformedValue;
+  };
 
-    // Run validations
+  const validateField = async (field, value, formData, referenceNumber) => {
+    const fieldConfig = findFieldConfig(field.name);
+
+    if (value === field.oldValue) {
+      return {
+        transformedValue: value,
+        error: "New value cannot be the same as old value",
+      };
+    }
+
     const validationResult = await runValidations(
       {
         ...fieldConfig,
-        validationFunctions: field.validationFunctions || [],
+        validationFunctions: fieldConfig.validationFunctions || [],
       },
-      transformedValue,
+      value,
       formData,
-      referenceNumber
+      referenceNumber,
     );
 
     return {
-      transformedValue,
+      transformedValue: value,
       error: validationResult === true ? null : validationResult,
     };
+  };
+
+  const validateRemarks = (value) => {
+    return value.trim() ? null : "Remarks are required";
+  };
+
+  const validateFiles = (files) => {
+    return files.length > 0
+      ? null
+      : "At least one verification document is required";
   };
 
   const revalidateAllFields = async (
     updatedFields,
     formData,
-    referenceNumber
+    referenceNumber,
+    validateRemarksAndFiles = false,
   ) => {
     const newErrors = {};
     for (let i = 0; i < updatedFields.length; i++) {
       const field = updatedFields[i];
-      const { error } = await validateField(
-        field,
-        field.newValue,
-        formData,
-        referenceNumber
-      );
-      newErrors[i] = error;
+      if (field.newValue) {
+        const { error } = await validateField(
+          field,
+          field.newValue,
+          formData,
+          referenceNumber,
+        );
+        newErrors[i] = error;
 
-      // Validate additional fields
-      for (const additionalFieldName in field.additionalValues) {
-        const additionalFieldConfig = (
-          field.additionalFields[field.newValue] || []
-        ).find((f) => f.name === additionalFieldName);
-        if (additionalFieldConfig) {
-          const validationResult = await runValidations(
-            {
-              ...additionalFieldConfig,
-              validationFunctions:
-                additionalFieldConfig.validationFunctions || [],
-            },
-            field.additionalValues[additionalFieldName],
-            formData,
-            referenceNumber
-          );
-          newErrors[`${i}-${additionalFieldName}`] =
-            validationResult === true ? null : validationResult;
+        for (const additionalFieldName in field.additionalValues) {
+          const additionalFieldConfig = (
+            field.additionalFields[field.newValue] || []
+          ).find((f) => f.name === additionalFieldName);
+          if (additionalFieldConfig) {
+            const validationResult = await runValidations(
+              {
+                ...additionalFieldConfig,
+                validationFunctions:
+                  additionalFieldConfig.validationFunctions || [],
+              },
+              field.additionalValues[additionalFieldName],
+              formData,
+              referenceNumber,
+            );
+            newErrors[`${i}-${additionalFieldName}`] =
+              validationResult === true ? null : validationResult;
+          }
         }
       }
+    }
+    if (validateRemarksAndFiles) {
+      newErrors.remarks = validateRemarks(remarks);
+      newErrors.files = validateFiles(files);
     }
     return newErrors;
   };
 
   const handleCheckIfCorrigendum = async () => {
     if (!applicationId && (!referenceNumber || !serviceId)) {
-      toast.warning("Please provide both reference number and service.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
+      setResponseMessage({
+        message: "Please provide both reference number and service.",
+        type: "error",
       });
       return;
     }
 
     setLoading(true);
+    setResponseMessage({ message: "", type: "" });
     try {
       const params = applicationId
         ? {
@@ -263,7 +372,7 @@ export default function IssueCorrigendum() {
 
       const response = await axiosInstance.get(
         "/Officer/GetApplicationForCorrigendum",
-        { params }
+        { params },
       );
       const result = response.data;
 
@@ -277,9 +386,14 @@ export default function IssueCorrigendum() {
         setFormDetailsFields(normalizedFields);
         setFormElements(parsedFormElements);
         setCanIssue(true);
+        setNextOfficer(result.nextOfficer);
+        if (applicationId != null) {
+          setColumns(result.columns);
+          setData(result.data);
+        }
 
         setReferenceNumber(
-          result.application.ReferenceNumber || referenceNumber
+          result.application.ReferenceNumber || referenceNumber,
         );
         setServiceId(result.application.ServiceId || serviceId);
 
@@ -288,7 +402,6 @@ export default function IssueCorrigendum() {
           newFormData[item.name] = item.value;
         });
 
-        // Populate corrigendumFields if applicationId is provided
         let newCorrigendumFields = [];
         let newErrors = {};
         if (applicationId && result.corrigendumFields) {
@@ -296,24 +409,16 @@ export default function IssueCorrigendum() {
             const corrigendumFieldsData = JSON.parse(result.corrigendumFields);
             let index = 0;
             for (const [name, fieldData] of Object.entries(
-              corrigendumFieldsData
+              corrigendumFieldsData,
             )) {
               const fieldConfig = findFieldConfig(name, parsedFormElements);
               const formDetail = normalizedFields.find(
-                (item) => item.name === name
-              );
-              console.log(
-                "Form Detail",
-                formDetail,
-                "Form Details Fields",
-                normalizedFields,
-                "Field Config",
-                fieldConfig
+                (item) => item.name === name,
               );
               const selected = normalizedFields.find(
                 (item) =>
                   item.name === formDetail.name &&
-                  item.label === formDetail.label
+                  item.label === formDetail.label,
               );
 
               if (!formDetail) {
@@ -335,14 +440,21 @@ export default function IssueCorrigendum() {
               };
               newCorrigendumFields.push(newField);
 
+              const { error } = await validateField(
+                newField,
+                newField.newValue,
+                newFormData,
+                result.application.ReferenceNumber,
+              );
+              newErrors[index] = error;
+
               index++;
             }
           } catch (error) {
             console.error("Error parsing corrigendumFields:", error);
-            toast.error("Invalid corrigendum fields data from server.", {
-              position: "top-right",
-              autoClose: 3000,
-              theme: "colored",
+            setResponseMessage({
+              message: "Invalid corrigendum fields data from server.",
+              type: "error",
             });
           }
         }
@@ -350,35 +462,26 @@ export default function IssueCorrigendum() {
         setCorrigendumFields(newCorrigendumFields);
         setErrors(newErrors);
         setFormData(newFormData);
-        handleAddCorrigendumField();
+        if (!applicationId) {
+          handleAddCorrigendumField();
+        }
 
-        // Revalidate all fields to ensure consistency
-        const revalidatedErrors = await revalidateAllFields(
-          newCorrigendumFields,
-          newFormData,
-          result.application.ReferenceNumber
-        );
-        setErrors(revalidatedErrors);
-
-        toast.success("Application found. You can issue a corrigendum.", {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
+        setResponseMessage({
+          message: "Application found. You can issue a corrigendum.",
+          type: "success",
         });
       } else {
         setCanIssue(false);
-        toast.error(result.message, {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
+        setResponseMessage({
+          message: result.message,
+          type: "error",
         });
       }
     } catch (error) {
       console.error("Error in handleCheckIfCorrigendum:", error);
-      toast.error("Error checking application. Please try again.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
+      setResponseMessage({
+        message: "Error checking application. Please try again.",
+        type: "error",
       });
     } finally {
       setLoading(false);
@@ -387,44 +490,40 @@ export default function IssueCorrigendum() {
 
   const handleAddCorrigendumField = () => {
     if (!selectedField) {
-      toast.warning("Please select a field to add.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
+      setErrors((prev) => ({
+        ...prev,
+        selectedField: "Please select a field to add.",
+      }));
       return;
     }
 
     const [label, name] = selectedField.split("|");
     const existing = corrigendumFields.find((f) => f.name === name);
     if (existing) {
-      toast.warning("This field is already added.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
+      setErrors((prev) => ({
+        ...prev,
+        selectedField: "This field is already added.",
+      }));
       return;
     }
 
     const selected = formDetailsFields.find(
-      (item) => item.name === name && item.label === label
+      (item) => item.name === name && item.label === label,
     );
     if (!selected) {
-      toast.error("Selected field not found.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
+      setErrors((prev) => ({
+        ...prev,
+        selectedField: "Selected field not found.",
+      }));
       return;
     }
 
     const fieldConfig = findFieldConfig(name);
     if (!fieldConfig) {
-      toast.error("Field configuration not found.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
+      setErrors((prev) => ({
+        ...prev,
+        selectedField: "Field configuration not found.",
+      }));
       return;
     }
 
@@ -443,25 +542,66 @@ export default function IssueCorrigendum() {
 
     setCorrigendumFields((prev) => [...prev, newField]);
     setSelectedField("");
+    setErrors((prev) => ({ ...prev, selectedField: null }));
 
-    // Validate the new field
     const updatedFields = [...corrigendumFields, newField];
     revalidateAllFields(updatedFields, formData, referenceNumber).then(
       (newErrors) => {
         setErrors(newErrors);
-      }
+      },
     );
   };
 
-  const handleNewValueChange = async (
+  const handleNewValueChange = (index, value, additionalFieldName = null) => {
+    const updated = [...corrigendumFields];
+    const field = updated[index];
+    let transformedValue;
+
+    if (additionalFieldName) {
+      const additionalFieldConfig = (
+        field.additionalFields[field.newValue] || []
+      ).find((f) => f.name === additionalFieldName);
+      if (!additionalFieldConfig) {
+        console.warn(
+          `Additional field config not found for ${additionalFieldName}`,
+        );
+        return;
+      }
+      transformedValue = applyTransformations(
+        value,
+        additionalFieldConfig.transformationFunctions,
+      );
+      updated[index].additionalValues = {
+        ...field.additionalValues,
+        [additionalFieldName]: transformedValue,
+      };
+      setFormData((prev) => ({
+        ...prev,
+        [additionalFieldName]: transformedValue,
+      }));
+    } else {
+      transformedValue = applyTransformations(
+        value,
+        field.transformationFunctions,
+      );
+      updated[index].newValue = transformedValue;
+      setFormData((prev) => ({
+        ...prev,
+        [field.name]: transformedValue,
+      }));
+    }
+
+    setCorrigendumFields(updated);
+  };
+
+  const handleNewValueBlur = async (
     index,
     value,
-    additionalFieldName = null
+    additionalFieldName = null,
   ) => {
     const updated = [...corrigendumFields];
     const field = updated[index];
 
-    let transformedValue;
     let error;
 
     if (additionalFieldName) {
@@ -470,18 +610,9 @@ export default function IssueCorrigendum() {
       ).find((f) => f.name === additionalFieldName);
       if (!additionalFieldConfig) {
         console.warn(
-          `Additional field config not found for ${additionalFieldName}`
+          `Additional field config not found for ${additionalFieldName}`,
         );
         return;
-      }
-
-      transformedValue = value;
-      for (const transformFn of additionalFieldConfig.transformationFunctions ||
-        []) {
-        if (TransformationFunctionsList[transformFn]) {
-          transformedValue =
-            TransformationFunctionsList[transformFn](transformedValue);
-        }
       }
 
       const validationResult = await runValidations(
@@ -489,79 +620,63 @@ export default function IssueCorrigendum() {
           ...additionalFieldConfig,
           validationFunctions: additionalFieldConfig.validationFunctions || [],
         },
-        transformedValue,
+        field.additionalValues[additionalFieldName],
         formData,
-        referenceNumber
+        referenceNumber,
       );
 
       error = validationResult === true ? null : validationResult;
-
       setErrors((prev) => ({
         ...prev,
         [`${index}-${additionalFieldName}`]: error,
       }));
-
-      updated[index].additionalValues = {
-        ...field.additionalValues,
-        [additionalFieldName]: transformedValue,
-      };
     } else {
       const result = await validateField(
         field,
-        value,
+        field.newValue,
         formData,
-        referenceNumber
+        referenceNumber,
       );
-      transformedValue = result.transformedValue;
       error = result.error;
-
-      updated[index].newValue = transformedValue;
-
       setErrors((prev) => ({
         ...prev,
         [index]: error,
       }));
     }
 
-    setCorrigendumFields(updated);
-    setFormData((prev) => ({
-      ...prev,
-      [additionalFieldName || field.name]: transformedValue,
-    }));
-
-    // Revalidate all fields to ensure consistency
     const newErrors = await revalidateAllFields(
       updated,
       formData,
-      referenceNumber
+      referenceNumber,
+      true,
     );
     setErrors(newErrors);
-
-    if (error) {
-      toast.warning(
-        `Validation error for ${additionalFieldName || field.name}: ${error}`,
-        {
-          position: "top-right",
-          autoClose: 2000,
-          theme: "colored",
-        }
-      );
-    }
   };
 
-  const handleRemoveCorrigendumField = (index) => {
-    const updated = [...corrigendumFields];
-    updated.splice(index, 1);
-    setCorrigendumFields(updated);
-    setErrors((prev) => {
-      const newErrors = { ...prev };
-      Object.keys(newErrors).forEach((key) => {
-        if (key.startsWith(`${index}-`) || key === `${index}`) {
-          delete newErrors[key];
-        }
-      });
-      return newErrors;
-    });
+  const handleFileChange = (event) => {
+    const selectedFiles = Array.from(event.target.files);
+    setFiles((prev) => [...prev, ...selectedFiles]);
+    setTouched((prev) => ({ ...prev, files: true }));
+    const error = validateFiles([...files, ...selectedFiles]);
+    setErrors((prev) => ({ ...prev, files: error }));
+    event.target.value = "";
+  };
+
+  const handleRemoveFile = (index) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setTouched((prev) => ({ ...prev, files: true }));
+    const error = validateFiles(files.filter((_, i) => i !== index));
+    setErrors((prev) => ({ ...prev, files: error }));
+  };
+
+  const handleAddFileClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleRemarksBlur = () => {
+    setTouched((prev) => ({ ...prev, remarks: true }));
+    const error = validateRemarks(remarks);
+    setErrors((prev) => ({ ...prev, remarks: error }));
   };
 
   const generateCorrigendumObject = () => {
@@ -578,45 +693,55 @@ export default function IssueCorrigendum() {
 
   const handleSubmitCorrigendum = async () => {
     if (corrigendumFields.length === 0) {
-      toast.warning("Please add at least one field to submit.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
+      setErrors((prev) => ({
+        ...prev,
+        corrigendumFields: "Please add at least one field to submit.",
+      }));
       return;
     }
 
-    const hasEmptyNewValue = corrigendumFields.some((field) => !field.newValue);
-    const hasValidationErrors = Object.values(errors).some(
-      (error) => error !== null
+    setTouched((prev) => ({ ...prev, remarks: true, files: true }));
+
+    const newErrors = await revalidateAllFields(
+      corrigendumFields,
+      formData,
+      referenceNumber,
+      true,
     );
+    setErrors(newErrors);
+
+    const hasEmptyNewValue = corrigendumFields.some((field) => !field.newValue);
+    const hasValidationErrors = Object.values(newErrors).some(
+      (error) => error !== null,
+    );
+
     if (hasEmptyNewValue) {
-      toast.warning("Please fill in all new values before submitting.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
+      setErrors((prev) => ({
+        ...prev,
+        corrigendumFields: "Please fill in all new values before submitting.",
+      }));
       return;
     }
+
     if (hasValidationErrors) {
-      toast.warning("Please correct all validation errors before submitting.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
+      setErrors((prev) => ({
+        ...prev,
+        corrigendumFields:
+          "Please correct all validation errors before submitting.",
+      }));
       return;
     }
 
     setLoading(true);
+    setResponseMessage({ message: "", type: "" });
     try {
       const corrigendumObject = generateCorrigendumObject();
       try {
         JSON.parse(JSON.stringify(corrigendumObject));
       } catch (error) {
-        toast.error("Invalid corrigendum fields format.", {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
+        setResponseMessage({
+          message: "Invalid corrigendum fields format.",
+          type: "error",
         });
         setLoading(false);
         return;
@@ -630,48 +755,48 @@ export default function IssueCorrigendum() {
       if (applicationId) {
         formData.append("applicationId", applicationId);
       }
-
-      console.log("Form Data", formData);
+      files.forEach((file, index) => {
+        formData.append(`verificationDocuments[${index}]`, file);
+      });
 
       const response = await axiosInstance.post(
         "/Officer/SubmitCorrigendum",
-        formData
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
       );
 
       if (response.data.status) {
-        toast.success(
-          response.data.message || "Corrigendum submitted successfully!",
-          {
-            position: "top-right",
-            autoClose: 3000,
-            theme: "colored",
-          }
-        );
+        setResponseMessage({
+          message:
+            response.data.message || "Corrigendum submitted successfully!",
+          type: "success",
+        });
         setCorrigendumFields([]);
         setSelectedField("");
         setRemarks("");
+        setFiles([]);
         setCanIssue(false);
         setReferenceNumber("");
         setServiceId("");
         setErrors({});
         setFormData({});
+        setTouched({ remarks: false, files: false });
+        setNextOfficer("");
       } else {
-        toast.error(response.data.message || "Failed to submit corrigendum.", {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
+        setResponseMessage({
+          message: response.data.message || "Failed to submit corrigendum.",
+          type: "error",
         });
       }
     } catch (error) {
-      toast.error(
-        error.response?.data?.message ||
+      setResponseMessage({
+        message:
+          error.response?.data?.message ||
           "Error submitting corrigendum. Please try again.",
-        {
-          position: "top-right",
-          autoClose: 3000,
-          theme: "colored",
-        }
-      );
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -687,6 +812,7 @@ export default function IssueCorrigendum() {
               <Select
                 value={field.newValue}
                 onChange={(e) => handleNewValueChange(index, e.target.value)}
+                onBlur={(e) => handleNewValueBlur(index, e.target.value)}
                 label="New Value"
                 error={!!errors[index]}
               >
@@ -699,9 +825,7 @@ export default function IssueCorrigendum() {
                   ))}
               </Select>
               {errors[index] && (
-                <Typography color="error" variant="caption">
-                  {errors[index]}
-                </Typography>
+                <FormHelperText error>{errors[index]}</FormHelperText>
               )}
             </StyledFormControl>
           );
@@ -712,6 +836,7 @@ export default function IssueCorrigendum() {
               label="New Value"
               value={field.newValue}
               onChange={(e) => handleNewValueChange(index, e.target.value)}
+              onBlur={(e) => handleNewValueBlur(index, e.target.value)}
               InputLabelProps={{ shrink: true }}
               error={!!errors[index]}
               helperText={errors[index] || ""}
@@ -725,6 +850,7 @@ export default function IssueCorrigendum() {
               label="New Value"
               value={field.newValue}
               onChange={(e) => handleNewValueChange(index, e.target.value)}
+              onBlur={(e) => handleNewValueBlur(index, e.target.value)}
               error={!!errors[index]}
               helperText={errors[index] || ""}
               sx={{ minWidth: 200 }}
@@ -737,6 +863,7 @@ export default function IssueCorrigendum() {
               label="New Value"
               value={field.newValue}
               onChange={(e) => handleNewValueChange(index, e.target.value)}
+              onBlur={(e) => handleNewValueBlur(index, e.target.value)}
               error={!!errors[index]}
               helperText={errors[index] || ""}
               sx={{ minWidth: 200 }}
@@ -763,6 +890,9 @@ export default function IssueCorrigendum() {
                   onChange={(e) =>
                     handleNewValueChange(index, e.target.value, addField.name)
                   }
+                  onBlur={(e) =>
+                    handleNewValueBlur(index, e.target.value, addField.name)
+                  }
                   label={addField.label}
                   error={!!errors[errorKey]}
                 >
@@ -775,9 +905,7 @@ export default function IssueCorrigendum() {
                     ))}
                 </Select>
                 {errors[errorKey] && (
-                  <Typography color="error" variant="caption">
-                    {errors[errorKey]}
-                  </Typography>
+                  <FormHelperText error>{errors[errorKey]}</FormHelperText>
                 )}
               </StyledFormControl>
             );
@@ -790,6 +918,9 @@ export default function IssueCorrigendum() {
                 value={field.additionalValues[addField.name] || ""}
                 onChange={(e) =>
                   handleNewValueChange(index, e.target.value, addField.name)
+                }
+                onBlur={(e) =>
+                  handleNewValueBlur(index, e.target.value, addField.name)
                 }
                 InputLabelProps={{ shrink: true }}
                 error={!!errors[errorKey]}
@@ -807,6 +938,9 @@ export default function IssueCorrigendum() {
                 onChange={(e) =>
                   handleNewValueChange(index, e.target.value, addField.name)
                 }
+                onBlur={(e) =>
+                  handleNewValueBlur(index, e.target.value, addField.name)
+                }
                 error={!!errors[errorKey]}
                 helperText={errors[errorKey] || ""}
                 sx={{ minWidth: 200 }}
@@ -821,6 +955,9 @@ export default function IssueCorrigendum() {
                 value={field.additionalValues[addField.name] || ""}
                 onChange={(e) =>
                   handleNewValueChange(index, e.target.value, addField.name)
+                }
+                onBlur={(e) =>
+                  handleNewValueBlur(index, e.target.value, addField.name)
                 }
                 error={!!errors[errorKey]}
                 helperText={errors[errorKey] || ""}
@@ -920,7 +1057,28 @@ export default function IssueCorrigendum() {
           >
             Check Application
           </StyledButton>
+
+          {responseMessage.message && (
+            <Typography
+              sx={{ mt: 2 }}
+              color={
+                responseMessage.type === "error" ? "error" : "success.main"
+              }
+            >
+              {responseMessage.message}
+            </Typography>
+          )}
         </Box>
+
+        {applicationId != null && (
+          <Box>
+            <MaterialTable
+              columns={columns}
+              data={data}
+              viewType={"Corrigendum History"}
+            />
+          </Box>
+        )}
 
         {canIssue && (
           <Box sx={{ mt: 6 }}>
@@ -945,6 +1103,7 @@ export default function IssueCorrigendum() {
                   value={selectedField}
                   onChange={(e) => setSelectedField(e.target.value)}
                   label="Select a field to change"
+                  error={!!errors.selectedField}
                 >
                   <MenuItem value="" disabled>
                     Select a field
@@ -952,7 +1111,13 @@ export default function IssueCorrigendum() {
                   {formDetailsFields
                     .filter(
                       (item) =>
-                        !corrigendumFields.some((f) => f.name === item.name)
+                        !corrigendumFields.some((f) => f.name === item.name) &&
+                        [
+                          "ApplicantName",
+                          "DateOfBirth",
+                          "IfscCode",
+                          "AccountNumber",
+                        ].includes(item.name),
                     )
                     .map((item) => (
                       <MenuItem
@@ -963,6 +1128,9 @@ export default function IssueCorrigendum() {
                       </MenuItem>
                     ))}
                 </Select>
+                {errors.selectedField && (
+                  <FormHelperText error>{errors.selectedField}</FormHelperText>
+                )}
               </StyledFormControl>
               <StyledButton
                 variant="outlined"
@@ -974,6 +1142,11 @@ export default function IssueCorrigendum() {
             {formDetailsFields.length === 0 && (
               <Typography color="error" sx={{ mt: 2 }}>
                 No editable fields available for this application.
+              </Typography>
+            )}
+            {errors.corrigendumFields && (
+              <Typography color="error" sx={{ mt: 2, mb: 2 }}>
+                {errors.corrigendumFields}
               </Typography>
             )}
 
@@ -1006,7 +1179,20 @@ export default function IssueCorrigendum() {
                 {renderInputField(field, index)}
                 <IconButton
                   color="error"
-                  onClick={() => handleRemoveCorrigendumField(index)}
+                  onClick={() => {
+                    const updatedFields = corrigendumFields.filter(
+                      (_, i) => i !== index,
+                    );
+                    setCorrigendumFields(updatedFields);
+                    revalidateAllFields(
+                      updatedFields,
+                      formData,
+                      referenceNumber,
+                      true,
+                    ).then((newErrors) => {
+                      setErrors(newErrors);
+                    });
+                  }}
                   sx={{
                     "&:hover": {
                       backgroundColor: "rgba(211, 47, 47, 0.1)",
@@ -1023,6 +1209,7 @@ export default function IssueCorrigendum() {
               label="Remarks"
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
+              onBlur={handleRemarksBlur}
               multiline
               rows={4}
               sx={{
@@ -1034,7 +1221,79 @@ export default function IssueCorrigendum() {
                   boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
                 },
               }}
+              error={!!errors.remarks}
+              helperText={errors.remarks || ""}
             />
+
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle1" sx={{ mb: 1, color: "#333" }}>
+                Verification Documents
+              </Typography>
+              <StyledButton
+                variant="outlined"
+                onClick={handleAddFileClick}
+                sx={{ mb: 2 }}
+              >
+                Add Verification Document
+              </StyledButton>
+              <input
+                type="file"
+                accept=".pdf"
+                onChange={handleFileChange}
+                style={{ display: "none" }}
+                ref={fileInputRef}
+              />
+              {errors.files && (
+                <FormHelperText error sx={{ mt: 1, mb: 1 }}>
+                  {errors.files}
+                </FormHelperText>
+              )}
+              {files.length > 0 && (
+                <Box
+                  sx={{
+                    mt: 1,
+                    display: "flex",
+                    flexDirection: "row",
+                    gap: 1,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {files.map((file, index) => (
+                    <Box
+                      key={index}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        width: "max-content",
+                        backgroundColor: "#f9f9f9",
+                        padding: "8px 12px",
+                        border: "1px solid #000",
+                        borderRadius: "8px",
+                        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{ color: "#333", pr: 2 }}
+                      >
+                        {file.name}
+                      </Typography>
+                      <IconButton
+                        color="error"
+                        onClick={() => handleRemoveFile(index)}
+                        sx={{
+                          "&:hover": {
+                            backgroundColor: "rgba(211, 47, 47, 0.1)",
+                          },
+                        }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
 
             {corrigendumFields.length > 0 && (
               <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
@@ -1042,14 +1301,13 @@ export default function IssueCorrigendum() {
                   onClick={handleSubmitCorrigendum}
                   disabled={loading}
                 >
-                  Submit Corrigendum
+                  {`Forward Corrigendum to ${nextOfficer}`}
                 </StyledButton>
               </Box>
             )}
           </Box>
         )}
       </StyledContainer>
-      <ToastContainer />
     </Box>
   );
 }

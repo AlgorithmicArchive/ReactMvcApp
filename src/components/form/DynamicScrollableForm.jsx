@@ -38,6 +38,7 @@ import MessageModal from "../MessageModal";
 import LoadingSpinner from "../LoadingSpinner";
 import { toast, ToastContainer } from "react-toastify";
 import OtpModal from "../OtpModal";
+import { CheckCircle } from "@mui/icons-material";
 
 const sectionIconMap = {
   Location: <LocationOnIcon sx={{ fontSize: 36, color: "#14B8A6" }} />, // Teal
@@ -1264,7 +1265,13 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
                 ),
             }}
             render={({ field: { onChange, value, ref } }) => (
-              <>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 2,
+                }}
+              >
                 <TextField
                   type={field.type}
                   id={`field-${field.id}`}
@@ -1337,8 +1344,9 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
                     variant="subtitle2"
                     color="success"
                     fontWeight="bold"
+                    sx={{ display: "flex" }}
                   >
-                    Verified
+                    Verified <CheckCircle />
                   </Typography>
                 ) : (
                   ""
@@ -1348,13 +1356,23 @@ const DynamicScrollableForm = ({ mode = "new", data }) => {
                   !aadhaarValid &&
                   !Boolean(errors[field.name]) && (
                     <Button
-                      sx={[buttonStyles, { width: "100%" }]}
+                      sx={[
+                        {
+                          background:
+                            "linear-gradient(to right, #10B981, #059669)", // Green-500 to Green-600
+                          color: "#FFFFFF",
+                          fontWeight: "bold",
+                          paddingRight: 2,
+                          paddingLeft: 2,
+                          borderRadius: 5,
+                        },
+                      ]}
                       onClick={handleAaddhaarNumber}
                     >
                       Validate
                     </Button>
                   )}
-              </>
+              </Box>
             )}
           />
         );

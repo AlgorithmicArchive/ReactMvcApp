@@ -132,7 +132,7 @@ export default function UserDetails() {
         {
           params: { applicationId },
           responseType: "blob",
-        }
+        },
       );
 
       const blob = new Blob([response.data], { type: "application/pdf" });
@@ -168,7 +168,7 @@ export default function UserDetails() {
     formData.append("pin", pin);
     formData.append(
       "original_path",
-      applicationId.replace(/\//g, "_") + "SanctionLetter.pdf"
+      applicationId.replace(/\//g, "_") + "SanctionLetter.pdf",
     );
     try {
       const response = await fetch("http://localhost:8000/sign", {
@@ -184,7 +184,7 @@ export default function UserDetails() {
       throw new Error(
         "Error signing PDF: " +
           error.message +
-          " Check If Desktop App is started."
+          " Check If Desktop App is started.",
       );
     }
   }
@@ -208,7 +208,7 @@ export default function UserDetails() {
           position: "top-center",
           autoClose: 3000,
           theme: "colored",
-        }
+        },
       );
       return false;
     }
@@ -250,7 +250,7 @@ export default function UserDetails() {
       const now = new Date();
       const tokenSerial = normalizeSerial(selectedCertificate.serial_number);
       const registeredSerial = normalizeSerial(
-        certificateDetails.serial_number
+        certificateDetails.serial_number,
       );
 
       if (tokenSerial !== registeredSerial) {
@@ -276,25 +276,26 @@ export default function UserDetails() {
       updateFormData.append("applicationId", applicationId);
       const updateResponse = await axiosInstance.post(
         "/Officer/UpdatePdf",
-        updateFormData
+        updateFormData,
       );
 
       if (!updateResponse.data.status) {
         throw new Error(
           "Failed to update PDF on server: " +
-            (updateResponse.data.response || "Unknown error")
+            (updateResponse.data.response || "Unknown error"),
         );
       }
 
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
       const blobUrl = URL.createObjectURL(signedBlob);
-      setPdfModalOpen(false);
       setPdfUrl(updateResponse.data.path);
-      setPdfBlob(null);
-      setIsSignedPdf(true);
-      setConfirmOpen(false);
-      setPdfModalOpen(true);
-
+      setPdfModalOpen(false);
+      setTimeout(() => {
+        setPdfBlob(null);
+        setIsSignedPdf(true);
+        setConfirmOpen(false);
+        setPdfModalOpen(true);
+      }, 100);
       if (pendingFormData) {
         await handleFinalSubmit(pendingFormData);
         setPendingFormData(null);
@@ -351,7 +352,7 @@ export default function UserDetails() {
     try {
       const { data: result } = await axiosInstance.post(
         "/Officer/HandleAction",
-        formData
+        formData,
       );
       if (!result.status) {
         throw new Error(result.response || "Something went wrong");
@@ -392,7 +393,7 @@ export default function UserDetails() {
             position: "top-center",
             autoClose: 3000,
             theme: "colored",
-          }
+          },
         );
         setButtonLoading(false);
         return;
@@ -452,7 +453,7 @@ export default function UserDetails() {
                 margin="normal"
                 inputProps={{
                   maxLength: field.validationFunctions?.includes(
-                    "specificLength"
+                    "specificLength",
                   )
                     ? field.maxLength
                     : undefined,
@@ -570,7 +571,7 @@ export default function UserDetails() {
                             </InputLabel>
                             {renderField(
                               { ...additionalField, name: additionalFieldName },
-                              sectionIndex
+                              sectionIndex,
                             )}
                           </Box>
                         );

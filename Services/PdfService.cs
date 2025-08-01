@@ -291,10 +291,30 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
             .SetTextAlignment(TextAlignment.CENTER)
             .SetFontSize(16));
 
+        // Add Corrigendum ID and Date line above "TO"
+        Table corrLineTable = new Table(UnitValue.CreatePercentArray(new float[] { 50, 50 }))
+            .UseAllAvailableWidth();
+        corrLineTable.AddCell(new Cell()
+            .Add(new Paragraph($"Corrigendum ID: {corrigendumId}")
+                .SetFontSize(10)
+                .SetBold())
+            .SetBorder(Border.NO_BORDER)
+            .SetTextAlignment(TextAlignment.LEFT));
+        corrLineTable.AddCell(new Cell()
+            .Add(new Paragraph($"Date: {DateTime.Today:dd/MM/yyyy}")
+                .SetFontSize(10)
+                .SetBold())
+            .SetBorder(Border.NO_BORDER)
+            .SetTextAlignment(TextAlignment.RIGHT));
+        document.Add(corrLineTable);
+
+
         // Add recipient (bank manager)
         string branchOffice = GetBranchOffice(applicationId);
-        document.Add(new Paragraph($"To\nSubject: Corrigendum to Saction Letter with No. {applicationId} dated: {sanctionedDate}\nTHE MANAGER\nTHE JAMMU AND KASHMIR BANK LIMITED\nB/O {branchOffice}")
+        document.Add(new Paragraph($"To\n\nTHE MANAGER\nTHE JAMMU AND KASHMIR BANK LIMITED\nB/O {branchOffice}")
             .SetFontSize(14));
+        document.Add(new Paragraph($"\nSubject: Corrigendum to Saction Letter with No. {applicationId} dated: {sanctionedDate}"))
+            .SetFontSize(14);
         document.Add(new Paragraph($"\nIn partial modification of above mentioned Sanctione Letter, the following corrections may be read as:")
             .SetFontSize(12));
 
@@ -335,7 +355,7 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
             // Add to QR details
             if (!string.IsNullOrEmpty(oldValue) || !string.IsNullOrEmpty(newValue))
             {
-                qrDetails.Add($"S.No {serialNumber}: {header}: As Existing={oldValue}, As Corrected={newValue}");
+                qrDetails.Add($"{header} ={newValue}");
             }
 
             serialNumber++;
@@ -355,7 +375,7 @@ public class PdfService(IWebHostEnvironment webHostEnvironment, SocialWelfareDep
         document.Add(table);
 
         // Add remarks and remaining text
-        document.Add(new Paragraph($"\nThe rest of the contents of the afore said Sanction letter holds good.")
+        document.Add(new Paragraph($"\nThe rest of the contents of the afore said Sanction letter remains unchanged.")
             .SetFontSize(12));
 
         // Add vertical gap

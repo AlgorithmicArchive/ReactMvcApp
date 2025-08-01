@@ -234,88 +234,53 @@ namespace SahayataNidhi.Controllers.User
             if (!Regex.IsMatch(fmt, @"\{\d+\}"))
                 return new { Label = label, Value = fmt };
 
-            // 1) Build rawValues, filtering out empty values
+            // Build rawValues, ensuring empty or missing fields are represented as empty strings
             var rawValues = (item.selectedFields as IEnumerable<object> ?? Enumerable.Empty<object>())
                 .Select(sf =>
                 {
                     var name = sf?.ToString() ?? "";
-                    if (string.IsNullOrWhiteSpace(name)) return null;
+                    if (string.IsNullOrWhiteSpace(name)) return "";
                     var fieldObj = FindFieldRecursively(data, name);
                     var value = fieldObj == null ? "" : ExtractValueWithSpecials(fieldObj, name);
-                    return string.IsNullOrWhiteSpace(value) ? null : value;
+                    return string.IsNullOrWhiteSpace(value) ? "" : value;
                 })
-                .Where(v => v != null)
                 .ToList();
 
-            // 2) Find highest non-empty index
-            int lastIndex = rawValues.Count - 1;
-            if (lastIndex < 0)
-                return new { Label = label, Value = "" };
+            // Tokenize fmt into literals and placeholders
+            var tokens = Regex.Split(fmt, @"(\{\d+\})").Where(t => !string.IsNullOrEmpty(t)).ToList();
 
-            // 3) Tokenize into placeholders and literals
-            var tokens = Regex.Split(fmt, @"(\{\d+\})").ToList();
+            var outputParts = new List<string>();
+            string literalAccumulator = "";
 
-            // 4) Find the first placeholder whose index > lastIndex
-            int badTokenIdx = tokens
-                .Select((tok, idx) => new { tok, idx })
-                .FirstOrDefault(x =>
-                {
-                    var m = Regex.Match(x.tok, @"\{(\d+)\}");
-                    return m.Success && int.Parse(m.Groups[1].Value) > lastIndex;
-                })
-                ?.idx ?? tokens.Count;
-
-            // 5) Collect tokens up to badTokenIdx
-            var kept = tokens.Take(badTokenIdx).ToList();
-
-            // 6) If the last kept token is a literal and contains ')', trim it at the first ')'
-            if (kept.Count > 0 && !Regex.IsMatch(kept.Last(), @"\{\d+\}"))
+            for (int i = 0; i < tokens.Count; i++)
             {
-                var lit = kept.Last();
-                int p = lit.IndexOf(')');
-                if (p >= 0)
-                    kept[kept.Count - 1] = lit.Substring(0, p + 1);
-            }
+                var token = tokens[i];
 
-            // 7) Rebuild, skipping empty placeholders and their preceding literals
-            var sb = new StringBuilder();
-            for (int i = 0; i < kept.Count; i++)
-            {
-                var tok = kept[i];
-                var m = Regex.Match(tok, @"\{(\d+)\}");
-                if (m.Success)
+                if (Regex.IsMatch(token, @"^\{\d+\}$"))
                 {
-                    int idx = int.Parse(m.Groups[1].Value);
-                    if (idx <= lastIndex && !string.IsNullOrWhiteSpace(rawValues[idx]))
+                    // It's a placeholder
+                    var indexStr = token.Substring(1, token.Length - 2);
+                    if (int.TryParse(indexStr, out int index) && index < rawValues.Count && !string.IsNullOrWhiteSpace(rawValues[index]))
                     {
-                        // Append the preceding literal (if it exists and is not empty) before the value
-                        if (i > 0 && !Regex.IsMatch(kept[i - 1], @"\{\d+\}") && !string.IsNullOrWhiteSpace(kept[i - 1]))
-                        {
-                            sb.Append(kept[i - 1]);
-                        }
-                        sb.Append(rawValues[idx]);
+                        // Append accumulated literal and the placeholder's value
+                        outputParts.Add(literalAccumulator);
+                        outputParts.Add(rawValues[index]);
                     }
-                    else
-                    {
-                        // Skip the preceding literal if the placeholder is empty
-                        if (i > 0 && !Regex.IsMatch(kept[i - 1], @"\{\d+\}"))
-                        {
-                            i--; // Backtrack to skip the preceding literal
-                        }
-                    }
+                    // Reset accumulator regardless of whether the placeholder was valid
+                    literalAccumulator = "";
                 }
-                else if (i + 1 >= kept.Count || !Regex.IsMatch(kept[i + 1], @"\{\d+\}"))
+                else
                 {
-                    // Append standalone literals not followed by a placeholder
-                    if (!string.IsNullOrWhiteSpace(tok))
-                    {
-                        sb.Append(tok);
-                    }
+                    // Accumulate literal, but don't append yet
+                    literalAccumulator += token;
                 }
             }
 
-            // 8) Clean up multiple commas and trailing commas/spaces
-            var result = Regex.Replace(sb.ToString().TrimEnd(), @",(\s*,)*\s*$", "");
+            // Join the output parts
+            var result = string.Join("", outputParts);
+
+            // Clean up multiple commas and trailing commas/spaces
+            result = Regex.Replace(result, @",(\s*,)*\s*$", "");
             result = Regex.Replace(result, @"\s*,\s*,", ",").Trim();
 
             _logger.LogInformation($"---------- Result: {JsonConvert.SerializeObject(result)} --------------------");

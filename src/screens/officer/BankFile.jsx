@@ -373,6 +373,7 @@ export default function BankFile() {
             key={`${service}-${district}-${month}-${year}`}
             url="/Officer/GetRecordsForBankFile"
             extraParams={extraParams}
+            Title={"Bank File"}
           />
         </Container>
       )}

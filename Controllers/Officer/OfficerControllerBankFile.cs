@@ -11,6 +11,7 @@ using Microsoft.Data.SqlClient;
 using System.Security.Claims;
 using System.Data;
 using System.Text.RegularExpressions;
+using System.Text;
 
 namespace SahayataNidhi.Controllers.Officer
 {
@@ -534,6 +535,149 @@ namespace SahayataNidhi.Controllers.Officer
 
         //     return Json(new { bankFile, newRecords = newRecords.Count });
         // }
+
+
+        [HttpGet]
+        public IActionResult GetRecordsForBankFile(int AccessCode, int ServiceId, string type, int Month, int Year, int pageIndex = 0, int pageSize = 10)
+        {
+            var accessCode = new SqlParameter("@AccessCode", AccessCode);
+            var applicationStatus = new SqlParameter("@ApplicationStatus", type);
+            var serviceId = new SqlParameter("@ServiceId", ServiceId);
+            var month = new SqlParameter("@Month", Month);
+            var year = new SqlParameter("@Year", Year);
+
+            // Call new stored procedure
+            var rawResults = dbcontext.Database
+            .SqlQueryRaw<BankFileRawResult>(
+                "EXEC GetRecordsForBankFile_New @AccessCode, @ApplicationStatus, @ServiceId, @Month, @Year",
+                new SqlParameter("@AccessCode", AccessCode),
+                new SqlParameter("@ApplicationStatus", type),
+                new SqlParameter("@ServiceId", ServiceId),
+                new SqlParameter("@Month", Month),
+                new SqlParameter("@Year", Year)
+            )
+            .ToList();
+
+            // Optional: Sort by ReferenceNumber (last part)
+            var sortedResults = rawResults.OrderBy(a =>
+            {
+                var parts = a.ReferenceNumber!.Split('/');
+                var numberPart = parts.Last();
+                return int.TryParse(numberPart, out int num) ? num : 0;
+            }).ToList();
+
+            var totalRecords = sortedResults.Count;
+
+            // Paginate
+            var pagedResults = sortedResults
+                .Skip(pageIndex * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            var columns = new List<dynamic>
+            {
+                new { accessorKey = "referenceNumber", header = "Reference Number" },
+                new { accessorKey = "districtbankuid", header = "District Bank Uid" },
+                new { accessorKey = "department", header = "Department" },
+                new { accessorKey = "payingBankAccountNumber", header = "Paying Bank Account Number" },
+                new { accessorKey = "payingBankIfscCode", header = "Paying IFSC Code" },
+                new { accessorKey = "amount", header = "Pension Amount" },
+                new { accessorKey = "fileGenerationDate", header = "File Generation Date" },
+                new { accessorKey = "payingBankName", header = "Paying Bank Name" },
+                new { accessorKey = "applicantName", header = "Applicant Name" },
+                new { accessorKey = "receivingIfscCode", header = "Receiving IFSC Code" },
+                new { accessorKey = "receivingAccountNumber", header = "Receiving Account Number" },
+                new { accessorKey = "pensionType", header = "Pension Type" },
+            };
+
+            return Ok(new
+            {
+                data = pagedResults,
+                columns,
+                totalRecords,
+                pageIndex,
+                pageSize
+            });
+        }
+
+        [HttpGet]
+        public IActionResult ExportBankFileCsv(int AccessCode, int ServiceId, string type, int Month, int Year)
+        {
+            // Fetch district short name from DB based on AccessCode
+            var districtShortName = dbcontext.Districts
+                .Where(d => d.DistrictId == AccessCode)
+                .Select(d => d.DistrictShort) // ensure this column exists
+                .FirstOrDefault();
+
+            if (string.IsNullOrEmpty(districtShortName))
+                return BadRequest("District not found");
+
+            // Prepare filename
+            string monthShort = new DateTime(Year, Month, 1).ToString("MMM"); // e.g., "Jul"
+            string fileName = $"BankFile_{districtShortName}_{monthShort}_{Year}.csv";
+
+            // SQL parameters
+            var accessCode = new SqlParameter("@AccessCode", AccessCode);
+            var applicationStatus = new SqlParameter("@ApplicationStatus", type);
+            var serviceId = new SqlParameter("@ServiceId", ServiceId);
+            var month = new SqlParameter("@Month", Month);
+            var year = new SqlParameter("@Year", Year);
+
+            // Execute stored procedure
+            var rawResults = dbcontext.Database
+                .SqlQueryRaw<BankFileRawResult>(
+                    "EXEC GetRecordsForBankFile_New @AccessCode, @ApplicationStatus, @ServiceId, @Month, @Year",
+                    accessCode, applicationStatus, serviceId, month, year)
+                .ToList();
+
+            if (rawResults.Count == 0)
+                return NotFound("No records found for the provided parameters.");
+
+            // Build CSV
+            var csvBuilder = new StringBuilder();
+            foreach (var item in rawResults)
+            {
+                var line = string.Join(",",
+                    EscapeCsv(item.ReferenceNumber),
+                    EscapeCsv(item.Districtbankuid),
+                    EscapeCsv(item.Department),
+                    EscapeCsv(item.PayingBankAccountNumber),
+                    EscapeCsv(item.PayingBankIfscCode),
+                    EscapeCsv(item.PayingBankName),
+                    EscapeCsv(item.FileGenerationDate.ToString("yyyy-MM-dd HH:mm:ss")),
+                    item.Amount,
+                    EscapeCsv(item.ApplicantName),
+                    EscapeCsv(item.ReceivingIfscCode),
+                    EscapeCsv(item.ReceivingAccountNumber),
+                    EscapeCsv(item.PensionType)
+                );
+
+                csvBuilder.AppendLine(line);
+            }
+
+            // Define file path on the server
+            string folderPath = System.IO.Path.Combine(_webHostEnvironment.WebRootPath, "BankFiles");
+            if (!Directory.Exists(folderPath))
+                Directory.CreateDirectory(folderPath);
+
+            string filePath = System.IO.Path.Combine(folderPath, fileName);
+
+            // Save file to disk
+            System.IO.File.WriteAllText(filePath, csvBuilder.ToString(), Encoding.UTF8);
+
+            // Return file to frontend
+            var mimeType = "text/csv";
+            return PhysicalFile(filePath, mimeType, fileName);
+        }
+
+        private static string EscapeCsv(string? input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return "";
+            if (input.Contains(",") || input.Contains("\"") || input.Contains("\n"))
+                return $"\"{input.Replace("\"", "\"\"")}\"";
+            return input;
+        }
 
 
     }

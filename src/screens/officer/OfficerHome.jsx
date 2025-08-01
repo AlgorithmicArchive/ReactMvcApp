@@ -22,6 +22,7 @@ import {
   Card,
   Tooltip as MuiTooltip,
   CardContent,
+  Avatar,
 } from "@mui/material";
 import { useForm } from "react-hook-form";
 import axiosInstance from "../../axiosConfig";
@@ -36,6 +37,7 @@ import {
   Legend,
   Tooltip,
 } from "chart.js";
+import ChartDataLabels from "chartjs-plugin-datalabels";
 import ServerSideTable from "../../components/ServerSideTable";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -44,51 +46,41 @@ import BasicModal from "../../components/BasicModal";
 import styled from "@emotion/styled";
 import debounce from "lodash/debounce";
 import { UserContext } from "../../UserContext";
+import {
+  AssignmentTurnedIn,
+  Cancel,
+  CheckCircle,
+  EditNote,
+  Forward,
+  HourglassEmpty,
+  Group,
+  Reply,
+  SyncAlt,
+  ArrowRightAlt,
+} from "@mui/icons-material";
 
-// Register Chart.js components
+// Register Chart.js components and datalabels plugin
 ChartJS.register(
   ArcElement,
   BarElement,
   CategoryScale,
   LinearScale,
   Tooltip,
-  Legend
+  Legend,
+  ChartDataLabels,
 );
 
 // Styled components
-const StyledCard = styled(Card)`
-  background: linear-gradient(135deg, #ffffff, #f8f9fa);
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
-  }
-`;
-
-const StatCard = styled(Card)`
-  border-radius: 12px;
-  color: white;
-  overflow: hidden;
-  position: relative;
-  cursor: pointer;
-  max-width: 200px;
-  &:before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(45deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.1));
-    z-index: 0;
-  }
-  &:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-  }
-`;
+const StatCard = styled(Card)(({ theme }) => ({
+  minWidth: 250,
+  borderRadius: "16px",
+  boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
+  transition: "transform 0.3s ease, box-shadow 0.3s ease",
+  "&:hover": {
+    transform: "translateY(-6px)",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+  },
+}));
 
 const StyledButton = styled(Button)`
   background: linear-gradient(45deg, #1976d2, #2196f3);
@@ -117,10 +109,22 @@ const StyledDialog = styled(Dialog)`
   }
 `;
 
+const StyledCard = styled(Card)`
+  background: linear-gradient(135deg, #ffffff, #f8f9fa);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  &:hover {
+    transform: translateY(-5px);
+    boxshadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+  }
+`;
+
 export default function OfficerHome() {
   const [services, setServices] = useState([]);
   const [serviceId, setServiceId] = useState("");
   const [countList, setCountList] = useState([]);
+  const [corrigendumList, setCorrigendumList] = useState([]);
   const [counts, setCounts] = useState({
     total: 0,
     pending: 0,
@@ -128,6 +132,9 @@ export default function OfficerHome() {
     citizenPending: 0,
     rejected: 0,
     sanctioned: 0,
+    returnedCount: 0,
+    shiftedCount: 0,
+    corrigendumCount: 0,
   });
   const [canSanction, setCanSanction] = useState(false);
   const [canHavePool, setCanHavePool] = useState(false);
@@ -152,7 +159,7 @@ export default function OfficerHome() {
   const [officerRole, setOfficerRole] = useState("");
   const [officerArea, setOfficerArea] = useState("");
   const [lastServiceId, setLastServiceId] = useState("");
-  const [tableKey, setTableKey] = useState(0); // Added to force table re-render
+  const [tableKey, setTableKey] = useState(0);
   const [pendingFormData, setPendingFormData] = useState(null);
   const [pullRow, setPullRow] = useState({});
   const [url, setUrl] = useState("/Officer/GetApplications");
@@ -161,7 +168,7 @@ export default function OfficerHome() {
   const tableInstanceRef = useRef(null);
   const navigate = useNavigate();
 
-  const { setOfficerAuthorities } = useContext(UserContext);
+  const { setOfficerAuthorities, officerAuthorities } = useContext(UserContext);
 
   const {
     control,
@@ -169,7 +176,74 @@ export default function OfficerHome() {
     reset,
   } = useForm();
 
-  // Debounced handleRecords with cleanup
+  const iconMap = useMemo(
+    () => ({
+      "Total Applications": (
+        <AssignmentTurnedIn sx={{ fontSize: 28, color: "inherit" }} />
+      ),
+      Pending: <HourglassEmpty sx={{ fontSize: 28, color: "inherit" }} />,
+      Forwarded: <Forward sx={{ fontSize: 28, color: "inherit" }} />,
+      Returned: <Reply sx={{ fontSize: 28, color: "inherit" }} />,
+      "Pending With Citizen": <Group sx={{ fontSize: 28, color: "inherit" }} />,
+      "Pendig With Citizen": <Group sx={{ fontSize: 28, color: "inherit" }} />,
+      Rejected: <Cancel sx={{ fontSize: 28, color: "inherit" }} />,
+      Sanctioned: <CheckCircle sx={{ fontSize: 28, color: "inherit" }} />,
+      "Shifted To Another Location": (
+        <SyncAlt sx={{ fontSize: 28, color: "inherit" }} />
+      ),
+      "Total Corrigendums": (
+        <EditNote sx={{ fontSize: 28, color: "inherit" }} />
+      ),
+      Pending: <HourglassEmpty sx={{ fontSize: 28, color: "inherit" }} />,
+      Forwarded: <Forward sx={{ fontSize: 28, color: "inherit" }} />,
+      Returned: <Reply sx={{ fontSize: 28, color: "inherit" }} />,
+      Rejected: <Cancel sx={{ fontSize: 28, color: "inherit" }} />,
+      Issued: <CheckCircle sx={{ fontSize: 28, color: "inherit" }} />,
+    }),
+    [],
+  );
+
+  const statusColors = useMemo(
+    () => ({
+      "Total Applications": "#C2D0FF",
+      "Under Process": "#EBFFC2",
+      Forwarded: "#C2EDFE",
+      Returned: "#C2EDFE",
+      "Pending With Citizen": "#DAC2FE",
+      Rejected: "#FEC2C2",
+      Sanctioned: "#C9F2CA",
+      "Shifted To Another Location": "#00897B",
+      "Total Corrigendum": "#C2D0FF",
+      "Under Process": "#EBFFC2",
+      Forwarded: "#C2EDFE",
+      Returned: "#C2EDFE",
+      Rejected: "#FEC2C2",
+      Issued: "#C9F2CA",
+    }),
+    [],
+  );
+
+  const textColors = useMemo(
+    () => ({
+      "Total Applications": "#000000",
+      "Under Process": "#000000",
+      Forwarded: "#000000",
+      Returned: "#000000",
+      "Pending With Citizen": "#000000",
+      "Pendig With Citizen": "#000000",
+      Rejected: "#000000",
+      Sanctioned: "#000000",
+      "Shifted To Another Location": "#000000",
+      "Total Corrigendum": "#000000",
+      "Under Process": "#000000",
+      Forwarded: "#000000",
+      Returned: "#000000",
+      Rejected: "#000000",
+      Issued: "#000000",
+    }),
+    [],
+  );
+
   const debouncedHandleRecords = useCallback(
     debounce(async (newServiceId) => {
       if (!newServiceId || newServiceId === lastServiceId) return;
@@ -182,9 +256,10 @@ export default function OfficerHome() {
           "/Officer/GetApplicationsCount",
           {
             params: { ServiceId: newServiceId },
-          }
+          },
         );
         setCountList(response.data.countList);
+        setCorrigendumList(response.data.corrigendumList || []);
         setCanSanction(response.data.canSanction);
         setCanHavePool(response.data.canHavePool);
         setOfficerAuthorities(response.data.officerAuthorities);
@@ -192,7 +267,7 @@ export default function OfficerHome() {
         const newCounts = {
           total:
             response.data.countList.find(
-              (item) => item.label === "Total Applications"
+              (item) => item.label === "Total Applications",
             )?.count || 0,
           pending:
             response.data.countList.find((item) => item.label === "Pending")
@@ -202,7 +277,9 @@ export default function OfficerHome() {
               ?.count || 0,
           citizenPending:
             response.data.countList.find(
-              (item) => item.label === "Citizen Pending"
+              (item) =>
+                item.label === "Pending With Citizen" ||
+                item.label === "Pendig With Citizen",
             )?.count || 0,
           rejected:
             response.data.countList.find((item) => item.label === "Rejected")
@@ -210,6 +287,18 @@ export default function OfficerHome() {
           sanctioned:
             response.data.countList.find((item) => item.label === "Sanctioned")
               ?.count || 0,
+          returnedCount:
+            response.data.countList.find((item) => item.label === "Returned")
+              ?.count || 0,
+          shiftedCount:
+            response.data.countList.find(
+              (item) => item.label === "Shifted To Another Location",
+            )?.count || 0,
+          corrigendumCount:
+            response.data.corrigendumList?.reduce(
+              (sum, item) => sum + (item.count || 0),
+              0,
+            ) || 0,
         };
         setCounts(newCounts);
       } catch (error) {
@@ -223,10 +312,9 @@ export default function OfficerHome() {
         setLoading(false);
       }
     }, 500),
-    [lastServiceId]
+    [lastServiceId],
   );
 
-  // Cleanup debounce on unmount
   useEffect(() => {
     return () => {
       debouncedHandleRecords.cancel();
@@ -257,20 +345,37 @@ export default function OfficerHome() {
     }
   };
 
-  const handleCardClick = useCallback((statusName) => {
-    setType(
-      statusName === "Citizen Pending"
-        ? "returntoedit"
-        : statusName === "Shifted To Another Location"
-        ? "shifted"
-        : statusName.toLowerCase()
+  const handleCardClick = useCallback((statusName, type) => {
+    // Normalize the statusName by removing "Corrigendum" (with optional space)
+    const isCorrigendum = statusName.toLowerCase().includes("corrigendum");
+    const cleanedStatus = statusName.replace(/Corrigendum\s*/gi, "").trim();
+    console.log(cleanedStatus);
+
+    const typeMap = {
+      "Total Corrigendum": "total",
+      "Under Process": isCorrigendum ? "pending" : "pending",
+      Forwarded: isCorrigendum ? "forwarded" : "forwarded",
+      Returned: isCorrigendum ? "returned" : "returned",
+      Rejected: isCorrigendum ? "rejected" : "rejected",
+      Sanctioned: isCorrigendum ? "sanctioned" : "sanctioned",
+      Issued: "sanctioned",
+      "Pending With Citizen": "returntoedit",
+      "Pendig With Citizen": "returntoedit",
+      "Shifted To Another Location": "shifted",
+    };
+
+    const mappedType = typeMap[cleanedStatus] || cleanedStatus.toLowerCase();
+    setType(mappedType);
+
+    // Set URL based on whether it's a corrigendum or application
+    setUrl(
+      type != null && type == "corrigendum"
+        ? "/Officer/GetCorrigendumApplicaions"
+        : "/Officer/GetApplications",
     );
-    if (statusName === "Corrigendum") {
-      setUrl("/Officer/GetCorrigendumApplicaions");
-    } else {
-      setUrl("/Officer/GetApplications");
-    }
+
     setShowTable(true);
+
     setTimeout(() => {
       tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 100);
@@ -283,7 +388,7 @@ export default function OfficerHome() {
     ) {
       tableInstanceRef.current.refetch();
     }
-    setTableKey((prev) => prev + 1); // Force table re-render
+    setTableKey((prev) => prev + 1);
   }, []);
 
   const actionFunctions = useMemo(
@@ -307,12 +412,56 @@ export default function OfficerHome() {
       handleViewCorrigendumApplication: (row) => {
         const userdata = row.original;
         navigate("/officer/viewcorrigendumdetails", {
-          state: { applicationId: userdata.referenceNumber },
+          state: {
+            referenceNumber: userdata.referenceNumber,
+            ...(userdata.applicationId && {
+              applicationId: userdata.applicationId,
+            }),
+          },
         });
+      },
+      handleViewPdf: async (row, action) => {
+        const { referenceNumber } = row.original;
+        const { type, corrigendumId } = action;
+
+        try {
+          let filename;
+
+          if (type === "DownloadSL") {
+            // Construct filename for sanction letter: referenceNumber with / replaced by _ and _SanctionLetter
+            filename = `${referenceNumber.replace(
+              /\//g,
+              "_",
+            )}_SanctionLetter.pdf`;
+          } else if (type === "DownloadCorrigendum") {
+            // Construct filename for corrigendum: corrigendumId with / replaced by _ and _CorrigendumLetter
+            if (!corrigendumId) {
+              throw new Error("Corrigendum ID is missing in action");
+            }
+            filename = `${corrigendumId.replace(
+              /\//g,
+              "_",
+            )}_CorrigendumSanctionLetter.pdf`;
+          } else {
+            throw new Error(`Invalid action type: ${type}`);
+          }
+
+          setPdfUrl(filename);
+          setPdfBlob(null); // No blob needed since PdfViewer handles /Base/DisplayFile
+          setIsSignedPdf(true);
+          setCurrentApplicationId(referenceNumber);
+          setPdfModalOpen(true);
+        } catch (error) {
+          console.error("Error in handleViewPdf:", error);
+          toast.error(`Error preparing PDF: ${error.message}`, {
+            position: "top-right",
+            autoClose: 3000,
+            theme: "colored",
+          });
+        }
       },
       handleEditCorrigendumApplication: (row) => {
         const userdata = row.original;
-        console.log("User Data", userdata);
         navigate("/officer/issuecorrigendum", {
           state: {
             ReferenceNumber: userdata.referenceNumber,
@@ -322,7 +471,7 @@ export default function OfficerHome() {
         });
       },
     }),
-    [navigate, serviceId, debouncedHandleRecords, refreshTable]
+    [navigate],
   );
 
   const handlePushToPool = useCallback(
@@ -337,7 +486,7 @@ export default function OfficerHome() {
       }
 
       const selectedData = selectedRows.map(
-        (row) => row.original.referenceNumber
+        (row) => row.original.referenceNumber,
       );
       const list = JSON.stringify(selectedData);
 
@@ -360,7 +509,7 @@ export default function OfficerHome() {
         });
       }
     },
-    [serviceId, debouncedHandleRecords, refreshTable]
+    [serviceId, debouncedHandleRecords, refreshTable],
   );
 
   const signPdf = async (pdfBlob, pin) => {
@@ -369,7 +518,7 @@ export default function OfficerHome() {
     formData.append("pin", pin);
     formData.append(
       "original_path",
-      currentApplicationId.replace(/\//g, "_") + "SanctionLetter.pdf"
+      currentApplicationId.replace(/\//g, "_") + "_SanctionLetter.pdf",
     );
     try {
       const response = await fetch("http://localhost:8000/sign", {
@@ -385,7 +534,7 @@ export default function OfficerHome() {
       throw new Error(
         "Error signing PDF: " +
           error.message +
-          " Check if Desktop App is started."
+          " Check if Desktop App is started.",
       );
     }
   };
@@ -412,7 +561,7 @@ export default function OfficerHome() {
           ? "Sanctioned"
           : selectedAction === "Reject"
           ? "Rejected"
-          : "Returned to Inbox"
+          : "Returned to Inbox",
       );
 
       let hasError = false;
@@ -424,16 +573,15 @@ export default function OfficerHome() {
           });
           if (!response.data.status) {
             throw new Error(
-              response.data.message || "Failed to remove from pool."
+              response.data.message || "Failed to remove from pool.",
             );
           }
         } else if (selectedAction === "Sanction") {
-          // Fetch sanction letter first
           const response = await axiosInstance.get(
             "/Officer/GetSanctionLetter",
             {
               params: { applicationId: id },
-            }
+            },
           );
           const result = response.data;
           if (!result.status) {
@@ -451,13 +599,12 @@ export default function OfficerHome() {
           setPdfUrl(result.path);
           setIsSignedPdf(false);
           setPdfModalOpen(true);
-          // Store formData for use after signing
           setPendingFormData(formData);
-          return false; // Pause processing for Sanction
+          return false;
         } else {
           const { data: result } = await axiosInstance.post(
             "/Officer/HandleAction",
-            formData
+            formData,
           );
           if (!result.status) {
             throw new Error(result.response || "Something went wrong");
@@ -473,7 +620,7 @@ export default function OfficerHome() {
                 position: "top-right",
                 autoClose: 3000,
                 theme: "colored",
-              }
+              },
             );
             hasError = true;
           }
@@ -487,14 +634,14 @@ export default function OfficerHome() {
             position: "top-right",
             autoClose: 3000,
             theme: "colored",
-          }
+          },
         );
         hasError = true;
       }
 
       return !hasError;
     },
-    [selectedAction, serviceId, pdfUrl, setPendingFormData]
+    [selectedAction, serviceId, pdfUrl],
   );
 
   const processAllIds = useCallback(
@@ -527,7 +674,7 @@ export default function OfficerHome() {
         } ${successCount} of ${ids.length} application${
           ids.length > 1 ? "s" : ""
         }!`,
-        { position: "top-right", autoClose: 2000, theme: "colored" }
+        { position: "top-right", autoClose: 2000, theme: "colored" },
       );
       refreshTable();
       if (serviceId) debouncedHandleRecords(serviceId);
@@ -538,7 +685,7 @@ export default function OfficerHome() {
       processSingleId,
       debouncedHandleRecords,
       refreshTable,
-    ]
+    ],
   );
 
   const handlePinSubmit = useCallback(async () => {
@@ -558,8 +705,13 @@ export default function OfficerHome() {
     } catch (error) {
       setConfirmOpen(false);
       setPin("");
+      toast.error(`Error signing PDF: ${error.message}`, {
+        position: "top-right",
+        autoClose: 3000,
+        theme: "colored",
+      });
     }
-  }, [pin, signAndUpdatePdf]);
+  }, [pin]);
 
   const handleSignPdf = useCallback(async () => {
     if (storedPin) {
@@ -582,7 +734,7 @@ export default function OfficerHome() {
             await processSingleId(
               pendingIds[nextIndex],
               nextIndex,
-              pendingIds.length
+              pendingIds.length,
             );
           } else {
             setPendingIds([]);
@@ -596,7 +748,7 @@ export default function OfficerHome() {
                 position: "top-right",
                 autoClose: 2000,
                 theme: "colored",
-              }
+              },
             );
             refreshTable();
             if (serviceId) debouncedHandleRecords(serviceId);
@@ -658,24 +810,23 @@ export default function OfficerHome() {
         updateFormData.append("applicationId", currentApplicationId);
         const updateResponse = await axiosInstance.post(
           "/Officer/UpdatePdf",
-          updateFormData
+          updateFormData,
         );
         if (!updateResponse.data.status) {
           throw new Error(
             "Failed to update PDF on server: " +
-              (updateResponse.data.response || "Unknown error")
+              (updateResponse.data.response || "Unknown error"),
           );
         }
 
-        // Perform HandleAction after successful signing
         if (pendingFormData) {
           const { data: result } = await axiosInstance.post(
             "/Officer/HandleAction",
-            pendingFormData
+            pendingFormData,
           );
           if (!result.status) {
             throw new Error(
-              result.response || "Failed to sanction application"
+              result.response || "Failed to sanction application",
             );
           }
         }
@@ -707,16 +858,15 @@ export default function OfficerHome() {
         setPdfUrl(updateResponse.data.path);
         setPdfBlob(null);
         setIsSignedPdf(true);
-        setPendingFormData(null); // Clear pending form data
+        setPendingFormData(null);
         toast.success("PDF signed successfully!", {
           position: "top-right",
           autoClose: 2000,
           theme: "colored",
         });
 
-        // Update cards by fetching new counts
         if (serviceId) {
-          await debouncedHandleRecords(serviceId); // Ensure counts are updated
+          await debouncedHandleRecords(serviceId);
         }
 
         const nextIndex = currentIdIndex + 1;
@@ -727,7 +877,7 @@ export default function OfficerHome() {
           await processSingleId(
             pendingIds[nextIndex],
             nextIndex,
-            pendingIds.length
+            pendingIds.length,
           );
         } else {
           setPendingIds([]);
@@ -742,11 +892,10 @@ export default function OfficerHome() {
               position: "top-right",
               autoClose: 2000,
               theme: "colored",
-            }
+            },
           );
-          // Update cards for final batch
           if (serviceId) {
-            await debouncedHandleRecords(serviceId); // Ensure counts are updated
+            await debouncedHandleRecords(serviceId);
           }
           refreshTable();
         }
@@ -756,7 +905,7 @@ export default function OfficerHome() {
           autoClose: 3000,
           theme: "colored",
         });
-        setPendingFormData(null); // Clear pending form data on error
+        setPendingFormData(null);
         throw error;
       }
     },
@@ -771,14 +920,14 @@ export default function OfficerHome() {
       debouncedHandleRecords,
       refreshTable,
       pendingFormData,
-    ]
+    ],
   );
 
   const handleRejectConfirm = useCallback(async () => {
     setLoading(true);
     setRejectConfirmOpen(false);
     await processAllIds(
-      pendingRejectRows.map((row) => row.original.referenceNumber)
+      pendingRejectRows.map((row) => row.original.referenceNumber),
     );
     setLoading(false);
   }, [pendingRejectRows, processAllIds]);
@@ -825,7 +974,7 @@ export default function OfficerHome() {
         await processAllIds(ids);
       }
     },
-    [selectedAction, processAllIds]
+    [selectedAction, processAllIds],
   );
 
   const getActionOptions = useMemo(() => {
@@ -839,75 +988,104 @@ export default function OfficerHome() {
     return options;
   }, [canSanction]);
 
-  const barData = useMemo(
-    () => ({
-      labels: [
-        "Total",
-        "Pending",
-        "Forwarded",
-        "Citizen Pending",
-        "Rejected",
-        "Sanctioned",
-      ],
+  const barData = useMemo(() => {
+    const labels = ["Total", "Pending"];
+    const data = [counts.total, counts.pending];
+    const backgroundColor = ["#C2D0FF", "#EBFFC2"];
+    const borderColor = ["#C2D0FF", "#EBFFC2"];
+
+    if (officerAuthorities.canForwardToPlayer) {
+      labels.push("Forwarded");
+      data.push(counts.forwarded);
+      backgroundColor.push("#C2EDFE");
+      borderColor.push("#C2EDFE");
+    }
+
+    if (officerAuthorities.canReturnToCitizen) {
+      labels.push("Citizen Pending");
+      data.push(counts.citizenPending);
+      backgroundColor.push("#DAC2FE");
+      borderColor.push("#DAC2FE");
+    }
+
+    if (officerAuthorities.canReturnToPlayer) {
+      labels.push("Returned");
+      data.push(counts.returnedCount);
+      backgroundColor.push("#C2EDFE");
+      borderColor.push("#C2EDFE");
+    }
+
+    labels.push("Rejected");
+    data.push(counts.rejected);
+    backgroundColor.push("#FEC2C2");
+    borderColor.push("#FEC2C2");
+
+    if (officerAuthorities.canSanction) {
+      labels.push("Sanctioned");
+      data.push(counts.sanctioned);
+      backgroundColor.push("#C9F2CA");
+      borderColor.push("#C9F2CA");
+    }
+
+    return {
+      labels,
       datasets: [
         {
           label: "Applications",
-          data: [
-            counts.total,
-            counts.pending,
-            counts.forwarded,
-            counts.citizenPending,
-            counts.rejected,
-            counts.sanctioned,
-          ],
-          backgroundColor: [
-            "#1976d2",
-            "#ff9800",
-            "#1976d2",
-            "#9c27b0",
-            "#f44336",
-            "#4caf50",
-          ],
-          borderColor: ["#1565c0", "#f57c00", "#7b1fa2", "#d32f2f", "#388e3c"],
-          borderWidth: 0,
+          data,
+          backgroundColor,
+          borderColor,
+          borderWidth: 1,
         },
       ],
-    }),
-    [counts]
-  );
+    };
+  }, [counts, officerAuthorities]);
 
-  const pieData = useMemo(
-    () => ({
-      labels: [
-        "Pending",
-        "Forwarded",
-        "Citizen Pending",
-        "Rejected",
-        "Sanctioned",
-      ],
+  const pieData = useMemo(() => {
+    const labels = ["Pending"];
+    const data = [counts.pending];
+    const backgroundColor = ["#FBC02D"];
+
+    if (officerAuthorities.canForwardToPlayer) {
+      labels.push("Forwarded");
+      data.push(counts.forwarded);
+      backgroundColor.push("#0288D1");
+    }
+
+    if (officerAuthorities.canReturnToPlayer) {
+      labels.push("Returned");
+      data.push(counts.returnedCount);
+      backgroundColor.push("#4CAF50");
+    }
+
+    if (officerAuthorities.canReturnToCitizen) {
+      labels.push("Citizen Pending");
+      data.push(counts.citizenPending);
+      backgroundColor.push("#DAC2FE");
+    }
+
+    labels.push("Rejected");
+    data.push(counts.rejected);
+    backgroundColor.push("#D32F2F");
+
+    if (officerAuthorities.canSanction) {
+      labels.push("Sanctioned");
+      data.push(counts.sanctioned);
+      backgroundColor.push("#388E3C");
+    }
+
+    return {
+      labels,
       datasets: [
         {
-          data: [
-            counts.pending,
-            counts.forwarded,
-            counts.citizenPending,
-            counts.rejected,
-            counts.sanctioned,
-          ],
-          backgroundColor: [
-            "#ff9800",
-            "#1976d2",
-            "#9c27b0",
-            "#f44336",
-            "#4caf50",
-          ],
-          borderColor: ["#fff", "#fff", "#fff", "#fff", "#fff"],
-          borderWidth: 0,
+          data,
+          backgroundColor,
+          borderColor: new Array(labels.length).fill("#FFFFFF"),
+          borderWidth: 1,
         },
       ],
-    }),
-    [counts]
-  );
+    };
+  }, [counts, officerAuthorities]);
 
   const chartOptions = useMemo(
     () => ({
@@ -916,11 +1094,13 @@ export default function OfficerHome() {
       plugins: {
         legend: {
           position: "top",
-          labels: { font: { size: 14, family: "'Inter', sans-serif" } },
+          labels: {
+            font: { size: 14, family: "'Inter', sans-serif" },
+          },
         },
       },
     }),
-    []
+    [],
   );
 
   const extraParams = useMemo(
@@ -928,7 +1108,7 @@ export default function OfficerHome() {
       ServiceId: serviceId,
       type: type,
     }),
-    [serviceId, type]
+    [serviceId, type],
   );
 
   useEffect(() => {
@@ -951,17 +1131,6 @@ export default function OfficerHome() {
     fetchServices();
   }, []);
 
-  const statusColors = useMemo(
-    () => ({
-      "Total Applications": "#1976d2",
-      Pending: "#ff9800",
-      "Citizen Pending": "#9c27b0",
-      Rejected: "#f44336",
-      Sanctioned: "#4caf50",
-    }),
-    []
-  );
-
   if (loading) {
     return (
       <Box
@@ -971,7 +1140,7 @@ export default function OfficerHome() {
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          bgcolor: "#f8f9fa",
+          bgcolor: "#ffffffff",
         }}
       >
         <CircularProgress size={60} />
@@ -989,7 +1158,7 @@ export default function OfficerHome() {
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
-          bgcolor: "#f8f9fa",
+          bgcolor: "#ffffffff",
         }}
       >
         <Typography color="error" variant="h6" sx={{ mb: 2 }}>
@@ -1014,7 +1183,7 @@ export default function OfficerHome() {
         flexDirection: "column",
         alignItems: "center",
         p: { xs: 3, md: 5 },
-        background: "linear-gradient(180deg, #e6f0fa 0%, #b3cde0 100%)",
+        backgroundColor: "#FFFFFF",
       }}
     >
       <Typography
@@ -1029,7 +1198,7 @@ export default function OfficerHome() {
         {officerRole} {officerArea}
       </Typography>
 
-      <Container>
+      <Container fluid>
         <Row className="mb-5 justify-content-center">
           <Col xs={12} md={8} lg={6}>
             <ServiceSelectionForm
@@ -1046,9 +1215,24 @@ export default function OfficerHome() {
           </Col>
         </Row>
 
-        {counts && (
+        {counts && countList?.length > 0 && (
           <>
-            <Row className="mb-5 justify-content-center gap-1">
+            <Typography
+              variant="h5"
+              sx={{
+                mb: 3,
+                fontWeight: 600,
+                color: "#2d3748",
+                textAlign: "center",
+                fontFamily: "'Inter', sans-serif",
+              }}
+            >
+              Applications
+            </Typography>
+            <Row
+              className="mb-5 justify-content-center align-items-center"
+              style={{ width: "100%" }}
+            >
               {countList.map((item, index) => (
                 <Col
                   key={index}
@@ -1056,52 +1240,253 @@ export default function OfficerHome() {
                   sm={6}
                   md={4}
                   lg={2}
-                  className="mb-4 justify-content-center"
+                  className="mb-4"
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                  }}
                 >
                   <StatCard
                     sx={{
-                      bgcolor: statusColors[item.label] || "#1976d2",
-                      margin: "0 auto",
+                      backgroundColor: statusColors[item.label] || "#1976d2",
+                      padding: "16px",
+                      borderRadius: "12px",
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      height: "160px",
                     }}
                     onClick={() => handleCardClick(item.label)}
                   >
-                    <CardContent sx={{ position: "relative", zIndex: 1, p: 2 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
                       <Typography
-                        variant="h6"
+                        variant="subtitle2"
                         sx={{
-                          fontWeight: 600,
-                          fontSize: { xs: "0.9rem", md: "1rem" },
+                          fontWeight: "bold",
+                          color: textColors[item.label] || "#FFFFFF",
+                          fontSize: "0.85rem",
                         }}
                       >
                         {item.label}
                       </Typography>
-                      <MuiTooltip
-                        title={
-                          item.tooltipText || `View ${item.label} applications`
-                        }
-                        enterTouchDelay={0}
-                        leaveTouchDelay={2000}
-                        arrow
+
+                      {React.cloneElement(
+                        iconMap[item.label] || (
+                          <AssignmentTurnedIn sx={{ fontSize: 16 }} />
+                        ),
+                        {
+                          style: {
+                            color: "#000000",
+                          },
+                        },
+                      )}
+                    </Box>
+
+                    <MuiTooltip
+                      title={
+                        item.tooltipText ||
+                        `View ${
+                          item.label === "Pendig With Citizen"
+                            ? "Pending With Citizen"
+                            : item.label
+                        } applications`
+                      }
+                      enterTouchDelay={0}
+                      leaveTouchDelay={2000}
+                      arrow
+                    >
+                      <Typography
+                        variant="h3"
+                        sx={{
+                          fontWeight: "bold",
+                          color: textColors[item.label] || "#FFFFFF",
+                          textAlign: "left",
+                          fontSize: "4rem",
+                        }}
                       >
+                        {item.count}
+                      </Typography>
+                    </MuiTooltip>
+
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        mt: 1,
+                        width: "100%",
+                      }}
+                    >
+                      {item.forwardedSanctionedCount != null ? (
                         <Typography
-                          variant="h3"
+                          variant="body2"
                           sx={{
-                            fontWeight: 700,
-                            mt: 1,
-                            fontSize: { xs: "1.5rem", md: "2rem" },
-                            cursor: "pointer", // Indicate interactivity
+                            fontWeight: "bold",
+                            fontSize: "0.8rem",
+                            color: "#000000", // or your preferred color
                           }}
                         >
-                          {item.count}
+                          Sanctioned: {item.forwardedSanctionedCount}
                         </Typography>
-                      </MuiTooltip>
-                    </CardContent>
+                      ) : (
+                        <span />
+                      )}
+
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: textColors[item.label] || "#FFFFFF",
+                          fontSize: "0.85rem",
+                          display: "inline-flex",
+                          alignItems: "center",
+                        }}
+                      >
+                        View All{" "}
+                        <ArrowRightAlt sx={{ fontSize: 16, ml: 0.5 }} />
+                      </Typography>
+                    </Box>
                   </StatCard>
                 </Col>
               ))}
             </Row>
+
+            {corrigendumList?.length > 0 && (
+              <>
+                <Typography
+                  variant="h5"
+                  sx={{
+                    mb: 3,
+                    fontWeight: 600,
+                    color: "#2d3748",
+                    textAlign: "center",
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                >
+                  Corrigendums
+                </Typography>
+                <Row
+                  className="mb-5 justify-content-center align-items-center"
+                  style={{ width: "100%" }}
+                >
+                  {corrigendumList.map((item, index) => (
+                    <Col
+                      key={index}
+                      xs={12}
+                      sm={6}
+                      md={4}
+                      lg={2}
+                      className="mb-4"
+                      style={{ display: "flex", justifyContent: "center" }}
+                    >
+                      <StatCard
+                        sx={{
+                          backgroundColor:
+                            statusColors[item.label] || "#1976d2",
+                          padding: "16px",
+                          borderRadius: "12px",
+                          cursor: "pointer",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "space-between",
+                          height: "160px",
+                        }}
+                        onClick={() => handleCardClick(item.label)}
+                      >
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Typography
+                            variant="subtitle2"
+                            sx={{
+                              fontWeight: "bold",
+                              color: textColors[item.label] || "#FFFFFF",
+                              fontSize: "0.85rem",
+                            }}
+                          >
+                            {item.label === "Pendig With Citizen"
+                              ? "Pending With Citizen"
+                              : item.label}
+                          </Typography>
+
+                          {React.cloneElement(
+                            iconMap[item.label] || (
+                              <AssignmentTurnedIn sx={{ fontSize: 16 }} />
+                            ),
+                            {
+                              style: {
+                                color: "#000000",
+                              },
+                            },
+                          )}
+                        </Box>
+
+                        <MuiTooltip
+                          title={
+                            item.tooltipText ||
+                            `View ${
+                              item.label === "Pendig With Citizen"
+                                ? "Pending With Citizen"
+                                : item.label
+                            } applications`
+                          }
+                          enterTouchDelay={0}
+                          leaveTouchDelay={2000}
+                          arrow
+                        >
+                          <Typography
+                            variant="h3"
+                            sx={{
+                              fontWeight: "bold",
+                              color: textColors[item.label] || "#FFFFFF",
+                              textAlign: "left",
+                              fontSize: "4rem",
+                            }}
+                          >
+                            {item.count}
+                          </Typography>
+                        </MuiTooltip>
+
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "flex-end",
+                            mt: 1,
+                            width: "100%",
+                          }}
+                        >
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: textColors[item.label] || "#FFFFFF",
+                              fontSize: "0.85rem",
+                              display: "inline-flex",
+                              alignItems: "center",
+                            }}
+                          >
+                            View All{" "}
+                            <ArrowRightAlt sx={{ fontSize: 16, ml: 0.5 }} />
+                          </Typography>
+                        </Box>
+                      </StatCard>
+                    </Col>
+                  ))}
+                </Row>
+              </>
+            )}
+
             <Row>
-              <Col xs={12} lg={6} className="mb-4 mt">
+              <Col xs={12} lg={6} className="mb-4">
                 <StyledCard>
                   <CardContent>
                     <Typography
@@ -1174,7 +1559,6 @@ export default function OfficerHome() {
         )}
       </Container>
 
-      {/* Rejection Dialog */}
       <StyledDialog
         open={rejectConfirmOpen}
         onClose={() => {
@@ -1225,12 +1609,10 @@ export default function OfficerHome() {
         </DialogActions>
       </StyledDialog>
 
-      {/* Pull Application Dialog */}
       <StyledDialog
         open={pullConfirmOpen}
         onClose={() => {
-          setRejectConfirmOpen(false);
-          setPendingRejectRows([]);
+          setPullConfirmOpen(false);
         }}
       >
         <DialogTitle
@@ -1252,9 +1634,7 @@ export default function OfficerHome() {
         </DialogContent>
         <DialogActions>
           <StyledButton
-            onClick={() => {
-              setPullConfirmOpen(false);
-            }}
+            onClick={() => setPullConfirmOpen(false)}
             aria-label="Cancel"
           >
             Cancel

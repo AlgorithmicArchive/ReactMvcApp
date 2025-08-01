@@ -26,11 +26,13 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { toast } from "react-toastify";
 
-const PlayerEditModal = ({ player, onClose, onSave }) => {
+const PlayerEditModal = ({ player, onClose, onSave, players }) => {
   const [editedPlayer, setEditedPlayer] = useState({
     ...player,
     canHavePool: player.canHavePool || false,
+    canManageBankFiles: player.canManageBankFiles || false,
     actionForm: player.actionForm || [],
   });
   const [isFieldModalOpen, setIsFieldModalOpen] = useState(false);
@@ -82,6 +84,29 @@ const PlayerEditModal = ({ player, onClose, onSave }) => {
   };
 
   const handleChange = (field, value) => {
+    // Check for canCorrigendum and canManageBankFiles exclusivity
+    if (field === "canCorrigendum" && value) {
+      const otherCorrigendum = players.find(
+        (p) => p.playerId !== editedPlayer.playerId && p.canCorrigendum
+      );
+      if (otherCorrigendum) {
+        toast.error(
+          `Another player (${otherCorrigendum.designation}) already has Can Corrigendum authority.`
+        );
+        return;
+      }
+    }
+    if (field === "canManageBankFiles" && value) {
+      const otherBankFiles = players.find(
+        (p) => p.playerId !== editedPlayer.playerId && p.canManageBankFiles
+      );
+      if (otherBankFiles) {
+        toast.error(
+          `Another player (${otherBankFiles.designation}) already has Can Manage Bank Files authority.`
+        );
+        return;
+      }
+    }
     setEditedPlayer((prev) => ({
       ...prev,
       [field]: value,
@@ -265,6 +290,17 @@ const PlayerEditModal = ({ player, onClose, onSave }) => {
               />
             }
             label="Can Corrigendum"
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={editedPlayer.canManageBankFiles}
+                onChange={(e) =>
+                  handleChange("canManageBankFiles", e.target.checked)
+                }
+              />
+            }
+            label="Can Manage Bank Files"
           />
         </Box>
         <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>

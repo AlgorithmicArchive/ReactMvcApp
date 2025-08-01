@@ -6,7 +6,15 @@ public class StatusCounts
     public int ReturnToEditCount { get; set; }
     public int SanctionedCount { get; set; }
     public int RejectCount { get; set; }
-    public int DisbursedCount { get; set; } // Added for the DisbursedCount
+    public int DisbursedCount { get; set; }
+    public int TotalApplications { get; set; }
+    public int ForwardedSanctionedCount { get; set; }
+
+    // Corrigendum-specific
+    public int CorrigendumPendingCount { get; set; }
+    public int CorrigendumForwardedCount { get; set; }
+    public int CorrigendumReturnedCount { get; set; }
+    public int CorrigendumRejectedCount { get; set; }
+    public int CorrigendumSanctionedCount { get; set; }
     public int CorrigendumCount { get; set; }
-    public int TotalApplications { get; set; } // New property for total applications count
 }

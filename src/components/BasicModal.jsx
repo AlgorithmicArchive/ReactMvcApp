@@ -65,7 +65,7 @@ const BasicModal = ({
               Title={Title}
             />
           )}
-          {pdf != null && <PdfViewer pdfUrl={pdf} width={"100%"} />}
+          {pdf != null && <PdfViewer pdfUrl={pdf} width={"50%"} />}
         </Box>
         <Box
           sx={{

@@ -37,7 +37,7 @@ namespace SahayataNidhi.Controllers.Officer
             return Json(new { status = true, ServiceId, list });
         }
         [HttpPost]
-        public IActionResult SubmitCorrigendum([FromForm] IFormCollection form)
+        public async Task<IActionResult> SubmitCorrigendum([FromForm] IFormCollection form)
         {
             try
             {
@@ -47,6 +47,22 @@ namespace SahayataNidhi.Controllers.Officer
                 {
                     return Unauthorized("Officer details not found.");
                 }
+
+                List<string> Files = [];
+                if (form.Files != null && form.Files.Count > 0)
+                {
+                    foreach (var formFile in form.Files)
+                    {
+                        if (formFile.Length > 0)
+                        {
+                            string filePath = await helper.GetFilePath(formFile);
+                            Files.Add(filePath);
+                        }
+                    }
+
+                }
+
+
 
                 // Get form fields
                 string referenceNumber = form["referenceNumber"].ToString();
@@ -130,7 +146,7 @@ namespace SahayataNidhi.Controllers.Officer
                 {
                     return Json(new { status = false, message = "No workflow players defined for this service." });
                 }
-                _logger.LogInformation($"----------- Application ID: {applicationId}    -----------------------------");
+
                 if (form.ContainsKey("applicationId"))
                 {
                     // Update existing corrigendum
@@ -139,9 +155,34 @@ namespace SahayataNidhi.Controllers.Officer
                     {
                         return BadRequest($"Corrigendum with ID {applicationId} not found.");
                     }
+                    var corrigendumFields = JObject.Parse(corrigendum.CorrigendumFields ?? "{}");
 
-                    // Update CorrigendumFields
-                    corrigendum.CorrigendumFields = corrigendumFieldsJson;
+                    // Ensure the 'Files' section exists
+                    if (corrigendumFields["Files"] is not JObject corrigendumFiles)
+                    {
+                        corrigendumFiles = new JObject();
+                        corrigendumFields["Files"] = corrigendumFiles;
+                    }
+
+                    // Get or create the array for the officer role
+                    if (!corrigendumFiles.TryGetValue(officer.RoleShort!, out var roleFileToken) || roleFileToken.Type != JTokenType.Array)
+                    {
+                        corrigendumFiles[officer.RoleShort!] = new JArray();
+                    }
+
+                    var roleFileArray = (JArray)corrigendumFiles[officer.RoleShort!]!;
+
+                    // Append each new file (ensure duplicates aren't added if you want)
+                    foreach (var file in Files)
+                    {
+                        if (!roleFileArray.Contains(file))
+                        {
+                            roleFileArray.Add(file);
+                        }
+                    }
+
+                    // Finally update the corrigendum
+                    corrigendum.CorrigendumFields = corrigendumFields.ToString(Formatting.None);
 
                     // Parse existing workflow
                     JArray workFlow;
@@ -166,7 +207,7 @@ namespace SahayataNidhi.Controllers.Officer
                         return BadRequest("Invalid current player index.");
                     }
 
-                    workFlow[currentPlayerIndex]["status"] = "edited";
+                    workFlow[currentPlayerIndex]["status"] = "forwarded";
                     workFlow[currentPlayerIndex]["remarks"] = remarks;
                     workFlow[currentPlayerIndex]["completedAt"] = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
 
@@ -196,7 +237,7 @@ namespace SahayataNidhi.Controllers.Officer
                     var newHistoryEntry = new
                     {
                         officer = officer.Role + " " + GetOfficerArea(officer.Role!, formDetailsJObject),
-                        status = "edited",
+                        status = "forwarded",
                         remarks = remarks,
                         actionTakenOn = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")
                     };
@@ -237,7 +278,7 @@ namespace SahayataNidhi.Controllers.Officer
 
                     if (filteredWorkflow.Count > 0)
                     {
-                        filteredWorkflow[0]["status"] = "created";
+                        filteredWorkflow[0]["status"] = "forwarded";
                         filteredWorkflow[0]["remarks"] = remarks;
                         filteredWorkflow[0]["completedAt"] = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt");
                         if (filteredWorkflow.Count > 1)
@@ -250,22 +291,29 @@ namespace SahayataNidhi.Controllers.Officer
                     var history = new
                     {
                         officer = officer.Role + " " + GetOfficerArea(officer.Role!, formDetailsJObject),
-                        status = "created",
+                        status = "Forwarded",
                         remarks = remarks,
                         actionTakenOn = DateTime.Now.ToString("dd MMM yyyy hh:mm:ss tt")
                     };
 
                     List<dynamic> History = [history];
+                    var corrigendumFields = JObject.Parse(corrigendumFieldsJson);
+                    corrigendumFields["Files"] = new JObject
+                    {
+                        [officer.RoleShort!] = new JArray(Files.Select(Path.GetFileName))
+                    };
+
 
                     var corrigendum = new Corrigendum
                     {
                         CorrigendumId = CorrigendumNumber,
                         ReferenceNumber = referenceNumber,
                         Location = location,
-                        CorrigendumFields = corrigendumFieldsJson,
+                        CorrigendumFields = JsonConvert.SerializeObject(corrigendumFields),
                         WorkFlow = workFlow,
                         CurrentPlayer = filteredWorkflow.Count > 1 ? 1 : 0, // 0-based index
-                        History = JsonConvert.SerializeObject(History)
+                        History = JsonConvert.SerializeObject(History),
+                        Status = "Initiated"
                     };
 
                     dbcontext.Corrigenda.Add(corrigendum);
@@ -276,7 +324,7 @@ namespace SahayataNidhi.Controllers.Officer
                 return Json(new
                 {
                     status = true,
-                    message = applicationId != null ? "Corrigendum updated successfully." : "Corrigendum created successfully."
+                    message = applicationId != null ? "Corrigendum updated successfully." : "Corrigendum Forwarded successfully."
                 });
             }
             catch (Exception ex)
@@ -288,7 +336,6 @@ namespace SahayataNidhi.Controllers.Officer
                 });
             }
         }
-
         [HttpPost]
         public async Task<IActionResult> UpdatePdf([FromForm] IFormCollection form)
         {
@@ -350,7 +397,7 @@ namespace SahayataNidhi.Controllers.Officer
             }
         }
         [HttpPost]
-        public IActionResult HandleCorrigendumAction([FromForm] IFormCollection form)
+        public async Task<IActionResult> HandleCorrigendumAction([FromForm] IFormCollection form)
         {
             try
             {
@@ -364,6 +411,21 @@ namespace SahayataNidhi.Controllers.Officer
                 var action = form["action"].ToString();
                 var remarks = form["remarks"].ToString();
                 var corrigendumId = form["corrigendumId"].ToString();
+                List<string> Files = [];
+                if (form.Files != null && form.Files.Count > 0)
+                {
+                    foreach (var formFile in form.Files)
+                    {
+                        if (formFile.Length > 0)
+                        {
+                            string filePath = await helper.GetFilePath(formFile);
+                            Files.Add(filePath);
+                        }
+                    }
+
+                }
+
+
 
                 var corrigendum = dbcontext.Corrigenda
                     .FirstOrDefault(c => c.ReferenceNumber == referenceNumber && c.CorrigendumId == corrigendumId);
@@ -396,6 +458,7 @@ namespace SahayataNidhi.Controllers.Officer
                     else if (action == "sanction")
                     {
                         workFlow[currentPlayer]["status"] = "sanctioned";
+                        corrigendum.Status = "Sanctioned";
                     }
                     else if (action == "return")
                     {
@@ -405,6 +468,11 @@ namespace SahayataNidhi.Controllers.Officer
                         workFlow[currentPlayer - 1]["remarks"] = "";
                         workFlow[currentPlayer - 1]["completedAt"] = "";
                         corrigendum.CurrentPlayer = currentPlayer - 1;
+                    }
+                    else if (action == "Reject")
+                    {
+                        workFlow[currentPlayer]["status"] = "rejected";
+                        corrigendum.Status = "Rejected";
                     }
                     workFlow[currentPlayer]["remarks"] = remarks;
                     workFlow[currentPlayer]["completedAt"] = DateTime.Now.ToString("dd MMMM yyyy hh:mm:ss tt");
@@ -422,6 +490,34 @@ namespace SahayataNidhi.Controllers.Officer
                 corrigendumHistory!.Add(newCorrigendumHistory);
                 corrigendum.History = JsonConvert.SerializeObject(corrigendumHistory);
 
+                var corrigendumFields = JObject.Parse(corrigendum.CorrigendumFields);
+
+                // Ensure 'Files' is a JObject
+                if (corrigendumFields["Files"] is not JObject filesObj)
+                {
+                    filesObj = [];
+                    corrigendumFields["Files"] = filesObj;
+                }
+
+                var roleKey = officer.RoleShort!; // Assumes not null
+                var newFiles = new JArray(Files); // Files is already an array of filenames
+
+                if (filesObj[roleKey] is JArray existingFiles)
+                {
+                    foreach (var file in Files)
+                    {
+                        existingFiles.Add(file);
+                    }
+                }
+                else
+                {
+                    filesObj[roleKey] = newFiles;
+                }
+
+                corrigendum.CorrigendumFields = corrigendumFields.ToString(Formatting.None);
+
+
+
                 dbcontext.Corrigenda.Update(corrigendum);
                 dbcontext.SaveChanges();
 
@@ -432,7 +528,6 @@ namespace SahayataNidhi.Controllers.Officer
                 return StatusCode(500, new { status = false, response = ex.Message });
             }
         }
-
         public async Task<IActionResult> UpdateCorrigendumPdf([FromForm] IFormCollection form)
         {
             try

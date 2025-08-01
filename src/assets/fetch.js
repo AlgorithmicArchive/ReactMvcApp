@@ -46,7 +46,7 @@ export const fetchDataPost = async (
   rowsPerPage,
   URL,
   params,
-  formdata
+  formdata,
 ) => {
   try {
     console.log(formdata);
@@ -130,7 +130,7 @@ export const fetchDistricts = async (setDistrictOptions) => {
 export const fetchServiceList = async (
   setServices,
   setOfficerRole,
-  setOfficerArea
+  setOfficerArea,
 ) => {
   try {
     const response = await axiosInstance.get("/Officer/GetServiceList");
@@ -149,7 +149,7 @@ export const fetchServiceList = async (
 export const fetchTehsils = async (districtId, setTehsilOptions) => {
   try {
     const response = await axios.get(
-      `/Base/GetTeshilForDistrict?districtId=${districtId}`
+      `/Base/GetTeshilForDistrict?districtId=${districtId}`,
     );
     const { status, tehsils } = response.data;
     if (status) {
@@ -169,7 +169,7 @@ export const fetchTehsils = async (districtId, setTehsilOptions) => {
 export const fetchBlocks = async (districtId, setBlockOptions) => {
   try {
     const response = await axios.get(
-      `/Base/GetBlockForDistrict?districtId=${districtId}`
+      `/Base/GetBlockForDistrict?districtId=${districtId}`,
     );
     const { status, blocks } = response.data;
     if (status) {
@@ -234,7 +234,7 @@ export async function checkBankFile(districtId, serviceId) {
     "/Officer/VerifyBankFileAndRecords",
     {
       params: { ServiceId: serviceId, DistrictId: districtId },
-    }
+    },
   );
   return response.data;
 }
@@ -248,13 +248,14 @@ export async function createBankFile(districtId, serviceId) {
 export async function fetchUserDetail(
   applicationId,
   setFormDetails,
-  setActionForm
+  setActionForm = null,
 ) {
   const response = await axiosInstance.get("/Officer/GetUserDetails", {
     params: { applicationId: applicationId },
   });
   setFormDetails(response.data.list);
-  setActionForm(response.data.currentOfficerDetails.actionForm);
+  if (setActionForm != null)
+    setActionForm(response.data.currentOfficerDetails.actionForm);
 }
 
 export async function fetchFormDetails(applicationId) {

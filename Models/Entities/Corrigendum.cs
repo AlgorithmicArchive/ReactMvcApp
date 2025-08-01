@@ -19,6 +19,8 @@ public partial class Corrigendum
 
     public string? History { get; set; }
 
+    public string? Status { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public virtual CitizenApplication ReferenceNumberNavigation { get; set; } = null!;

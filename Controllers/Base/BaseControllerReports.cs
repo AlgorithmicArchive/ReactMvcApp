@@ -36,7 +36,6 @@ namespace SahayataNidhi.Controllers
                     return string.Empty;
             }
         }
-
         public string GetOfficerArea(string designation, dynamic formDetails)
         {
             var officerDesignation = dbcontext.OfficersDesignations
@@ -72,26 +71,28 @@ namespace SahayataNidhi.Controllers
                     return string.Empty;
             }
         }
-
         public string GetApplications(string? scope, string? columnOrder, string? columnVisibility, int ServiceId, string? type, int pageIndex = 0, int pageSize = 10)
         {
             var officerDetails = GetOfficerDetails();
             var role = new SqlParameter("@Role", officerDetails!.Role);
             var accessLevel = new SqlParameter("@AccessLevel", officerDetails.AccessLevel);
             var accessCode = new SqlParameter("@AccessCode", officerDetails.AccessCode);
-            var applicationStatus = new SqlParameter("@ApplicationStatus", (object)type?.ToLower()! ?? DBNull.Value);
+            var applicationStatus = new SqlParameter("@ApplicationStatus", (object?)type ?? DBNull.Value);
             var serviceId = new SqlParameter("@ServiceId", ServiceId);
+            var pageIndexParam = new SqlParameter("@PageIndex", pageIndex);
+            var pageSizeParam = new SqlParameter("@PageSize", pageSize);
+            var isPaginated = new SqlParameter("@IsPaginated", scope == "InView" ? 1 : 0);
+            var totalRecordsParam = new SqlParameter
+            {
+                ParameterName = "@TotalRecords",
+                SqlDbType = System.Data.SqlDbType.Int,
+                Direction = System.Data.ParameterDirection.Output
+            };
+
             List<CitizenApplication> response;
 
-            List<string> orderedColumns;
-            Dictionary<string, bool> visibility;
-            orderedColumns = JsonConvert.DeserializeObject<List<string>>(columnOrder!)!;
-            visibility = JsonConvert.DeserializeObject<Dictionary<string, bool>>(columnVisibility!)!;
-
             var service = dbcontext.Services.FirstOrDefault(s => s.ServiceId == ServiceId);
-
             var workflow = JsonConvert.DeserializeObject<List<dynamic>>(service!.OfficerEditableField!);
-            // The JSON field names must match those in your stored JSON.
             dynamic authorities = workflow!.FirstOrDefault(p => p.designation == officerDetails.Role)!;
 
             if (type == "shifted")
@@ -104,30 +105,18 @@ namespace SahayataNidhi.Controllers
             else
             {
                 response = dbcontext.CitizenApplications
-                .FromSqlRaw("EXEC GetApplicationsForOfficer @Role, @AccessLevel, @AccessCode, @ApplicationStatus, @ServiceId",
-                    role, accessLevel, accessCode, applicationStatus, serviceId)
-                .ToList();
+                    .FromSqlRaw("EXEC GetApplicationsForOfficer @Role, @AccessLevel, @AccessCode, @ApplicationStatus, @ServiceId, @PageIndex, @PageSize, @IsPaginated, @TotalRecords OUTPUT",
+                        role, accessLevel, accessCode, applicationStatus, serviceId, pageIndexParam, pageSizeParam, isPaginated, totalRecordsParam)
+                    .ToList();
             }
 
-            // Sorting for consistent pagination based on ReferenceNumber
-            var sortedResponse = response.OrderBy(a =>
-            {
-                var parts = a.ReferenceNumber.Split('/');
-                var numberPart = parts.Last();
-                return int.TryParse(numberPart, out int num) ? num : 0;
-            }).ToList();
+            int totalRecords = type == "shifted" ? response.Count : (int)totalRecordsParam.Value;
 
-            var totalRecords = sortedResponse.Count;
-            var pagedResponse = new List<CitizenApplication>();
-            if (scope == "InView")
-            {
-                pagedResponse = sortedResponse
-                   .Skip(pageIndex * pageSize)
-                   .Take(pageSize)
-                   .ToList();
-            }
-            else pagedResponse = sortedResponse;
+            // Deserialize column order and visibility
+            var orderedColumns = JsonConvert.DeserializeObject<List<string>>(columnOrder ?? "[]")!;
+            var visibility = JsonConvert.DeserializeObject<Dictionary<string, bool>>(columnVisibility ?? "{}")!;
 
+            // Basic available columns
             List<dynamic> columns =
             [
                 new { accessorKey = "referenceNumber", header = "Reference Number" },
@@ -136,14 +125,14 @@ namespace SahayataNidhi.Controllers
             ];
 
             var filteredColumns = orderedColumns
-            .Where(key => visibility.TryGetValue(key, out var isVisible) && isVisible)
-            .Select(key =>
-                columns.FirstOrDefault(col =>
-                    col.GetType().GetProperty("accessorKey")?.GetValue(col)?.ToString() == key
+                .Where(key => visibility.TryGetValue(key, out var isVisible) && isVisible)
+                .Select(key =>
+                    columns.FirstOrDefault(col =>
+                        col.GetType().GetProperty("accessorKey")?.GetValue(col)?.ToString() == key
+                    )
                 )
-            )
-            .Where(col => col != null)
-            .ToList();
+                .Where(col => col != null)
+                .ToList();
 
             List<dynamic> data = [];
             List<dynamic> poolData = [];
@@ -158,30 +147,24 @@ namespace SahayataNidhi.Controllers
                 ? JsonConvert.DeserializeObject<List<string>>(poolList.List)
                 : new List<string>();
 
-            int index = 0;
-
-            foreach (var details in pagedResponse)
+            foreach (var details in response)
             {
                 var formDetails = JsonConvert.DeserializeObject<dynamic>(details.FormDetails!);
-                var officers = JsonConvert.DeserializeObject<JArray>(details.WorkFlow!);
-
-                dynamic item = new ExpandoObject();
-                var itemDict = (IDictionary<string, object?>)item;
+                var item = new ExpandoObject() as IDictionary<string, object?>;
 
                 var columnKeys = filteredColumns
                     .Select(col => col!.GetType().GetProperty("accessorKey")?.GetValue(col)?.ToString())
                     .Where(key => !string.IsNullOrEmpty(key))
                     .ToHashSet();
 
-                // Conditionally add only those fields present in filteredColumns
                 if (columnKeys.Contains("referenceNumber"))
-                    itemDict["referenceNumber"] = details.ReferenceNumber;
+                    item["referenceNumber"] = details.ReferenceNumber;
 
                 if (columnKeys.Contains("applicantName"))
-                    itemDict["applicantName"] = GetFieldValue("ApplicantName", formDetails);
+                    item["applicantName"] = GetFieldValue("ApplicantName", formDetails);
 
                 if (columnKeys.Contains("submissionDate"))
-                    itemDict["submissionDate"] = details.CreatedAt;
+                    item["submissionDate"] = details.CreatedAt;
 
                 if (type == "shifted")
                 {
@@ -190,16 +173,10 @@ namespace SahayataNidhi.Controllers
                 else
                 {
                     if (pool!.Contains(details.ReferenceNumber) && type == "pending")
-                    {
                         poolData.Add(item);
-                    }
                     else
-                    {
                         data.Add(item);
-                    }
                 }
-
-                index++;
             }
 
             var result = Json(new
@@ -207,13 +184,11 @@ namespace SahayataNidhi.Controllers
                 data,
                 columns = filteredColumns,
                 poolData,
-                totalRecords,
+                totalRecords
             });
-
 
             return JsonConvert.SerializeObject(result);
         }
-
         public async Task<string> GetApplicationHistory(string? scope, string? columnOrder, string? columnVisibility, string ApplicationId, int page, int size)
         {
             var application = await dbcontext.CitizenApplications.FirstOrDefaultAsync(ca => ca.ReferenceNumber == ApplicationId);
@@ -428,7 +403,5 @@ namespace SahayataNidhi.Controllers
 
             return JsonConvert.SerializeObject(result);
         }
-
-
     }
 }

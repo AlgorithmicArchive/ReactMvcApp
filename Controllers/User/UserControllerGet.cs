@@ -25,8 +25,6 @@ namespace SahayataNidhi.Controllers.User
             return null; // Return 0 only if no "sanctioned" status was found
         }
 
-
-
         [HttpGet]
         public IActionResult GetFormDetails(string applicationId)
         {

@@ -80,6 +80,7 @@ export default function CreateWorkflow() {
     canPull: false,
     canHavePool: false,
     canCorrigendum: false,
+    canManageBankFiles: false,
     actionForm: [],
     prevPlayerId: null,
     nextPlayerId: null,
@@ -174,12 +175,12 @@ export default function CreateWorkflow() {
             if (newActionField) {
               return {
                 ...field,
-                options: newActionField.options, // Only update options
-                label: newActionField.label, // Update label to reflect designation changes
+                options: newActionField.options,
+                label: newActionField.label,
               };
             }
           }
-          return field; // Preserve custom fields and Remarks
+          return field;
         });
         return { ...player, actionForm: updatedActionForm };
       })
@@ -256,6 +257,7 @@ export default function CreateWorkflow() {
       canPull: false,
       canHavePool: false,
       canCorrigendum: false,
+      canManageBankFiles: false,
       actionForm: [],
       status: "",
       completedAt: null,
@@ -266,6 +268,17 @@ export default function CreateWorkflow() {
   const saveWorkflow = async () => {
     if (!selectedServiceId) {
       toast.error("Please select a service first.");
+      return;
+    }
+    // Check for multiple players with canCorrigendum or canManageBankFiles
+    const corrigendumCount = players.filter((p) => p.canCorrigendum).length;
+    const bankFilesCount = players.filter((p) => p.canManageBankFiles).length;
+    if (corrigendumCount > 1) {
+      toast.error("Only one player can have Can Corrigendum authority.");
+      return;
+    }
+    if (bankFilesCount > 1) {
+      toast.error("Only one player can have Can Manage Bank Files authority.");
       return;
     }
     const formdata = new FormData();
@@ -310,6 +323,29 @@ export default function CreateWorkflow() {
   };
 
   const updatePlayer = (updatedPlayer) => {
+    // Check for multiple players with canCorrigendum or canManageBankFiles
+    if (updatedPlayer.canCorrigendum) {
+      const otherCorrigendum = players.find(
+        (p) => p.playerId !== updatedPlayer.playerId && p.canCorrigendum
+      );
+      if (otherCorrigendum) {
+        toast.error(
+          `Another player (${otherCorrigendum.designation}) already has Can Corrigendum authority.`
+        );
+        return;
+      }
+    }
+    if (updatedPlayer.canManageBankFiles) {
+      const otherBankFiles = players.find(
+        (p) => p.playerId !== updatedPlayer.playerId && p.canManageBankFiles
+      );
+      if (otherBankFiles) {
+        toast.error(
+          `Another player (${otherBankFiles.designation}) already has Can Manage Bank Files authority.`
+        );
+        return;
+      }
+    }
     setPlayers((prev) =>
       prev.map((p) =>
         p.playerId === updatedPlayer.playerId ? updatedPlayer : p
@@ -465,6 +501,14 @@ export default function CreateWorkflow() {
                             <strong>Bulk Applications:</strong>{" "}
                             {player.canHavePool ? "Yes" : "No"}
                           </Typography>
+                          <Typography variant="body2">
+                            <strong>Corrigendum:</strong>{" "}
+                            {player.canCorrigendum ? "Yes" : "No"}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>Manage Bank Files:</strong>{" "}
+                            {player.canManageBankFiles ? "Yes" : "No"}
+                          </Typography>
                         </Box>
                         <Box sx={{ mt: 2, display: "flex", gap: 2 }}>
                           <Button
@@ -501,6 +545,7 @@ export default function CreateWorkflow() {
             player={selectedPlayer}
             onClose={() => setIsEditModalOpen(false)}
             onSave={updatePlayer}
+            players={players}
             sx={{
               "& .MuiDialog-paper": {
                 borderRadius: 2,

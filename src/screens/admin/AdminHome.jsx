@@ -5,8 +5,9 @@ import {
   Typography,
   CircularProgress,
   Fade,
+  Container,
 } from "@mui/material";
-import { Container, Row, Col } from "react-bootstrap";
+import { Row, Col } from "react-bootstrap";
 import React, { useEffect, useState, useRef } from "react";
 import PeopleIcon from "@mui/icons-material/People";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
@@ -260,8 +261,11 @@ export default function AdminHome() {
         )}
 
         {showTable && (
-          <Fade in={showTable}>
-            <Box ref={tableRef} sx={{ padding: 2, marginTop: 4 }}>
+          <Fade in={showTable} style={{ width: "100%" }}>
+            <Box
+              ref={tableRef}
+              sx={{ padding: 2, marginTop: 4, width: "100%" }}
+            >
               <Typography variant="h5" gutterBottom>
                 List of {listType}
               </Typography>
@@ -270,6 +274,7 @@ export default function AdminHome() {
                 url={url}
                 extraParams={{}}
                 actionFunctions={{}}
+                Title={listType}
               />
             </Box>
           </Fade>

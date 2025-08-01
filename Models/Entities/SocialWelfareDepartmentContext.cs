@@ -235,6 +235,9 @@ public partial class SocialWelfareDepartmentContext : DbContext
             entity.Property(e => e.ReferenceNumber)
                 .HasMaxLength(50)
                 .IsUnicode(false);
+            entity.Property(e => e.Status)
+                .HasMaxLength(20)
+                .IsUnicode(false);
 
             entity.HasOne(d => d.ReferenceNumberNavigation).WithMany(p => p.Corrigenda)
                 .HasForeignKey(d => d.ReferenceNumber)

@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import { Typography } from "@mui/material";
+import { Typography, Box } from "@mui/material";
 import { UserContext } from "../UserContext";
 
 const TokenTimer = () => {
@@ -20,15 +20,14 @@ const TokenTimer = () => {
           setTimeLeft(
             `${minutes.toString().padStart(2, "0")}:${seconds
               .toString()
-              .padStart(2, "0")}`
+              .padStart(2, "0")}`,
           );
         }
       };
 
-      updateTimer(); // Initial update
-      const interval = setInterval(updateTimer, 1000); // Update every second
-
-      return () => clearInterval(interval); // Cleanup on unmount
+      updateTimer();
+      const interval = setInterval(updateTimer, 1000);
+      return () => clearInterval(interval);
     } else {
       setTimeLeft(null);
     }
@@ -37,22 +36,26 @@ const TokenTimer = () => {
   if (!timeLeft || !tokenExpiry) return null;
 
   return (
-    <Typography
-      variant="body2"
+    <Box
       sx={{
-        color: "white",
-        bgcolor: "primary.main",
-        px: 2,
-        py: 1,
-        borderRadius: 1,
         position: "fixed",
-        top: 10,
-        right: 10,
-        zIndex: 1000,
+        top: 20,
+        right: 20,
+        zIndex: 1300,
+        px: 3,
+        py: 1.5,
+        bgcolor: "#ff9800",
+        color: "#fff",
+        borderRadius: "8px",
+        boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.3)",
+        fontWeight: "bold",
+        fontSize: "1.1rem",
+        textAlign: "center",
+        minWidth: "220px",
       }}
     >
       Session expires in: {timeLeft}
-    </Typography>
+    </Box>
   );
 };
 
